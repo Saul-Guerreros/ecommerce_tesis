@@ -1,0 +1,85 @@
+  <main>
+        <section class="uk-section uk-section-small">
+          <div class="uk-container uk-container-xsmall">
+            <div class="uk-text-center">
+              <ul class="uk-breadcrumb uk-flex-center uk-margin-remove">
+                <li><a routerLink="">Home</a></li>
+                <li><span>Sign Up</span></li>
+              </ul>
+              <h1 class="uk-margin-small-top uk-margin-remove-bottom">Create Account</h1>
+            </div>
+            <div class="uk-margin-medium-top">
+              <div class="uk-card uk-card-default uk-card-small tm-ignore-container">
+                <div class="uk-card-body">
+                  <div class="uk-form-stacked">
+                    <div class="uk-grid-medium uk-child-width-1-1" uk-grid="">
+                      <div><label><div class="uk-form-label">Name</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                              class="uk-input"
+                              id="name"
+                              type="text"
+                              name="name"
+                              [(ngModel)]="name"
+                              placeholder="Shahnewaz Sakil"
+                              autocomplete="your name"
+                              required=""
+                            /></div></label></div>
+                      <div><label><div class="uk-form-label">sur Name</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                              class="uk-input"
+                              id="surname"
+                              type="text"
+                              name="surname"
+                              [(ngModel)]="surname"
+                              placeholder="Sakil"
+                              autocomplete="you surname"
+                              required=""
+                            /></div></label></div> 
+                      <div><label><div class="uk-form-label">phone</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                              class="uk-input"
+                              id="phone"
+                              type="tel"
+                              name="phone"
+                              [(ngModel)]="phone"
+                              placeholder="999999"
+                              autocomplete="your phone"
+                              required=""
+                            /></div></label></div>     
+                      <div><label><div class="uk-form-label">Email</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: mail"></span><input
+                              class="uk-input"
+                              id="email"
+                              type="email"
+                              name="email"
+                              [(ngModel)]="email"
+                              placeholder="shofy@mail.com"
+                              autocomplete="email"
+                              required=""
+                            /></div></label></div><div><label><div class="uk-form-label">Password</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
+                              class="uk-input"
+                              id="tp_password" 
+                              type="password"
+                              name="password"
+                              [(ngModel)]="password"
+                             placeholder="Min. 6 character"
+                              autocomplete="new-password"
+                              required=""
+                            /></div></label></div><div><label><div class="uk-form-label">Confirm Password</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
+                              class="uk-input"
+                              type="password"
+                              name="password_confirmation"
+                              placeholder="••••••••"
+                              autocomplete="new-password"
+                              required=""
+                            /></div></label></div><div><label><input class="uk-checkbox" type="checkbox" name="terms" required="" />
+                          <span class="uk-margin-small-left">I agree to the 
+                            <a href="#">Terms &amp; Conditions</a>
+                             and 
+                            <a href="#">Privacy Policy</a></span></label></div><div>
+                              <button class="uk-button uk-button-primary uk-width-1-1" type="button" (click)="register()">Create Account</button>
+                            </div><div class="uk-text-center uk-text-meta">Already have an account? 
+                        <a routerLink="/login">Sign in</a></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+</main>

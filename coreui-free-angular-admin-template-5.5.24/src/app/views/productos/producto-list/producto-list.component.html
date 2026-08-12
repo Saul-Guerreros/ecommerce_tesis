@@ -1,0 +1,147 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Productos</strong>
+    <button cButton color="primary" (click)="abrirCrear()">
+      <svg cIcon name="cilPlus" class="me-1"></svg>
+      Nuevo producto
+    </button>
+  </c-card-header>
+
+  <c-card-body>
+    <!-- Filtros -->
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <input
+          cFormControl
+          type="text"
+          placeholder="Buscar por título o código..."
+          [(ngModel)]="search"
+          (ngModelChange)="onBuscarCambio()"
+        />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="categoriaFiltro" (ngModelChange)="onFiltroCambio()">
+          <option [ngValue]="null">Todas las categorías</option>
+          <option *ngFor="let c of categorias" [ngValue]="c.cat_id">{{ c.cat_nombre }}</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="marcaFiltro" (ngModelChange)="onFiltroCambio()">
+          <option [ngValue]="null">Todas las marcas</option>
+          <option *ngFor="let m of marcas" [ngValue]="m.mar_id">{{ m.mar_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="estadoFiltro" (ngModelChange)="onFiltroCambio()">
+          <option [ngValue]="null">Todos los estados</option>
+          <option [ngValue]="1">Activo</option>
+          <option [ngValue]="0">Inactivo</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="text-center py-4" *ngIf="cargando">
+      <c-spinner color="primary"></c-spinner>
+    </div>
+
+    <div class="alert alert-danger" *ngIf="error">{{ error }}</div>
+
+    <table cTable hover responsive *ngIf="!cargando && productos.length">
+      <thead>
+        <tr>
+          <th style="width: 60px">Img</th>
+          <th>Título</th>
+          <th>Código</th>
+          <th>Categoría</th>
+          <th>Marca</th>
+          <th class="text-end">Precio</th>
+          <th class="text-center">Stock</th>
+          <th class="text-center">Estado</th>
+          <th class="text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of productos">
+          <td>
+            <img
+              *ngIf="imagenPrincipal(p) as img"
+              [src]="img"
+              alt="{{ p.prd_titulo }}"
+              width="40"
+              height="40"
+              style="object-fit: cover; border-radius: 4px;"
+            />
+            <span *ngIf="!imagenPrincipal(p)" class="text-muted">—</span>
+          </td>
+          <td>{{ p.prd_titulo }}</td>
+          <td>{{ p.prd_codinv }}</td>
+          <td>{{ p.categoria?.cat_nombre }}</td>
+          <td>{{ p.marca?.mar_descri }}</td>
+          <td class="text-end">{{ p.prd_precio | currency }}</td>
+          <td class="text-center">
+            <span [class.text-danger]="p.stock_bajo" [class.fw-bold]="p.stock_bajo">
+              {{ p.prd_stock }}
+            </span>
+          </td>
+          <td class="text-center">
+            <c-badge [color]="p.prd_estado === 1 ? 'success' : 'secondary'">
+              {{ p.prd_estado === 1 ? 'Activo' : 'Inactivo' }}
+            </c-badge>
+          </td>
+          <td class="text-center">
+            <button cButton size="sm" color="info" variant="ghost" (click)="abrirEditar(p)">
+              <svg cIcon name="cilPencil"></svg>
+            </button>
+            <button cButton size="sm" color="danger" variant="ghost" (click)="confirmarEliminar(p)">
+              <svg cIcon name="cilTrash"></svg>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-center text-muted py-4" *ngIf="!cargando && !productos.length">
+      No se encontraron productos con los filtros seleccionados.
+    </div>
+
+    <!-- Paginación -->
+    <nav *ngIf="totalPaginas > 1">
+      <ul cPagination class="justify-content-end">
+        <li cPageItem [disabled]="page === 1">
+          <a cPageLink role="button" (click)="cambiarPagina(page - 1)">Anterior</a>
+        </li>
+        <li cPageItem *ngFor="let n of [].constructor(totalPaginas); let i = index" [active]="page === i + 1">
+          <a cPageLink role="button" (click)="cambiarPagina(i + 1)">{{ i + 1 }}</a>
+        </li>
+        <li cPageItem [disabled]="page === totalPaginas">
+          <a cPageLink role="button" (click)="cambiarPagina(page + 1)">Siguiente</a>
+        </li>
+      </ul>
+    </nav>
+  </c-card-body>
+</c-card>
+
+<!-- Modal formulario crear/editar -->
+<app-producto-form
+  [visible]="mostrarFormulario"
+  [producto]="productoSeleccionado"
+  [categorias]="categorias"
+  [marcas]="marcas"
+  (cerrar)="mostrarFormulario = false"
+  (guardado)="onGuardado()"
+></app-producto-form>
+
+<!-- Modal confirmación eliminar -->
+<c-modal [visible]="mostrarConfirmacion" (visibleChange)="mostrarConfirmacion = $event">
+  <c-modal-header>
+    <h5 cModalTitle>Eliminar producto</h5>
+  </c-modal-header>
+  <c-modal-body>
+    ¿Seguro que deseas eliminar
+    <strong>{{ productoAEliminar?.prd_titulo }}</strong>? Esta acción no se puede deshacer.
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="mostrarConfirmacion = false">Cancelar</button>
+    <button cButton color="danger" (click)="eliminar()">Eliminar</button>
+  </c-modal-footer>
+</c-modal>
