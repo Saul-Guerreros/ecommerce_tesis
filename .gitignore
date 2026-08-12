@@ -1,0 +1,57 @@
+# ==============================
+# Dependencias
+# ==============================
+
+node_modules/
+vendor/
+
+# ==============================
+# Variables de entorno
+# ==============================
+
+.env
+.env.*
+!.env.example
+
+# ==============================
+# Angular
+# ==============================
+
+.angular/
+dist/
+.tmp/
+
+# ==============================
+# Laravel
+# ==============================
+
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+# ==============================
+# Sistema operativo
+# ==============================
+
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Visual Studio Code
+# ==============================
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ==============================
+# Logs
+# ==============================
+
+*.log
+npm-debug.log*
+
+# Plantillas de referencia
+coreui-free-angular-admin-template-5.5.24/
+plantilla uikit/
