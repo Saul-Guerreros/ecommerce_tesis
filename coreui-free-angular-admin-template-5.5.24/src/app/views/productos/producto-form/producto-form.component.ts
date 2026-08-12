@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule, FormModule, GridModule, ModalModule, SpinnerModule } from '@coreui/angular';
+import { environment } from '../../../../environments/environment';
 import { Categoria, Marca, Producto } from '../../../core/models/producto.model';
 import { ProductoService } from '../../../core/services/producto.service';
 
@@ -61,6 +62,13 @@ export class ProductoFormComponent implements OnChanges {
 
   get esEdicion(): boolean {
     return !!this.producto?.prd_id;
+  }
+
+  /** Arma la URL completa hacia el backend para las imágenes ya guardadas,
+   *  porque una ruta relativa como '/storage/...' se resolvería contra el
+   *  origen de Angular (ej. localhost:4200) y no contra Laravel (127.0.0.1:8000). */
+  obtenerUrlImagen(rutaRelativa: string): string {
+    return `${environment.URL_BACKEND}/storage/${rutaRelativa}`;
   }
 
   ngOnChanges(): void {

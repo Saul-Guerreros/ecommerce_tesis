@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   ButtonModule,
@@ -13,16 +13,17 @@ import {
   ModalModule,
 } from '@coreui/angular';
 import { IconModule } from '@coreui/icons-angular';
+import { environment } from '../../../../environments/environment';
 import { CatalogoService } from '../../../core/services/catalogo.service';
 import { ProductoService } from '../../../core/services/producto.service';
 import { Categoria, Marca, Producto } from '../../../core/models/producto.model';
 import { ProductoFormComponent } from '../producto-form/producto-form.component';
 
-
-
 @Component({
   selector: 'app-producto-list',
-  imports: [CommonModule,
+  standalone: true,
+  imports: [
+    CommonModule,
     FormsModule,
     ButtonModule,
     BadgeModule,
@@ -35,9 +36,8 @@ import { ProductoFormComponent } from '../producto-form/producto-form.component'
     ModalModule,
     IconModule,
     ProductoFormComponent,
-],
+  ],
   templateUrl: './producto-list.component.html',
-  styles: ``,
 })
 export class ProductoListComponent implements OnInit {
   productos: Producto[] = [];
@@ -71,8 +71,7 @@ export class ProductoListComponent implements OnInit {
 
   constructor(
     private productoService: ProductoService,
-    private catalogoService: CatalogoService,
-    private cdr: ChangeDetectorRef
+    private catalogoService: CatalogoService
   ) {}
 
   ngOnInit(): void {
@@ -132,13 +131,11 @@ export class ProductoListComponent implements OnInit {
   abrirCrear(): void {
     this.productoSeleccionado = null;
     this.mostrarFormulario = true;
-    this.cdr.detectChanges();
   }
 
   abrirEditar(producto: Producto): void {
     this.productoSeleccionado = producto;
     this.mostrarFormulario = true;
-    this.cdr.detectChanges();
   }
 
   onGuardado(): void {
@@ -171,6 +168,6 @@ export class ProductoListComponent implements OnInit {
 
   imagenPrincipal(producto: Producto): string | null {
     const principal = producto.imagenes?.find((i) => i.img_princi) ?? producto.imagenes?.[0];
-    return principal ? `/storage/${principal.img_url}` : null;
+    return principal ? `${environment.URL_BACKEND}/storage/${principal.img_url}` : null;
   }
 }

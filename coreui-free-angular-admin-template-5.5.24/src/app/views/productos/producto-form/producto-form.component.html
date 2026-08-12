@@ -120,7 +120,7 @@
           <div class="d-flex flex-wrap gap-2 mt-2" *ngIf="producto?.imagenes?.length">
             <div class="position-relative" *ngFor="let img of producto?.imagenes">
               <img
-                [src]="'/storage/' + img.img_url"
+                [src]="obtenerUrlImagen(img.img_url)"
                 width="70"
                 height="70"
                 style="object-fit: cover; border-radius: 4px;"
