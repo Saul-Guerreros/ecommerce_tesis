@@ -19,20 +19,23 @@ export const routes: Routes = [
         path: 'dashboard',
         loadChildren: () => import('./views/dashboard/routes').then((m) => m.routes)
       },
-	      {
-        path: 'categories',
-        loadComponent: () =>
-         import('./views/categories/categories.component')
-          .then(m => m.CategoriesComponent)
-          
-      },
+	    
 
       {
       path: 'productos',
       loadChildren: () => import('./views/productos/productos.routes').then((m) => m.routes),
       data: { title: 'Productos' },
      },
-
+      {
+      path: 'categories',
+      loadChildren: () => import('./modules/categories/categories.module').then(m => m.CategoriesModule),
+      data: { title: 'Categorías' },
+      },
+      {
+      path: 'brands',
+      loadChildren: () => import('./modules/brands/brands.module').then(m => m.BrandsModule),
+      data: { title: 'Marcas' },
+      },
 
       {
         path: 'theme',

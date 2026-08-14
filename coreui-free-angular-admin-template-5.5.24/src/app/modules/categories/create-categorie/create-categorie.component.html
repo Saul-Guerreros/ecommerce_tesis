@@ -1,1 +1,38 @@
-<p>create-categorie works!</p>
+<c-card>
+  <c-card-header>
+    <strong>Nueva categoría</strong>
+  </c-card-header>
+  <c-card-body>
+    <form [formGroup]="form" (ngSubmit)="guardar()">
+      <div class="mb-3">
+        <label cLabel for="cat_nombre">Nombre</label>
+        <input cFormControl id="cat_nombre" formControlName="cat_nombre" placeholder="Ej: Laptops" />
+        <div class="text-danger small" *ngIf="form.get('cat_nombre')?.touched && form.get('cat_nombre')?.invalid">
+          El nombre es obligatorio (máx. 45 caracteres)
+        </div>
+      </div>
+
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="esSub" (change)="toggleSubcategoria()" />
+        <label class="form-check-label" for="esSub">
+          ¿Es una subcategoría?
+        </label>
+      </div>
+
+      <div class="mb-3" *ngIf="esSubcategoria">
+        <label cLabel for="cat_idpadr">Categoría padre</label>
+        <select cSelect id="cat_idpadr" formControlName="cat_idpadr">
+          <option [ngValue]="null">-- Selecciona una categoría --</option>
+          <option *ngFor="let cat of categoriasPadre" [ngValue]="cat.cat_id">
+            {{ cat.cat_nombre }} (Nivel {{ cat.cat_nivel }})
+          </option>
+        </select>
+      </div>
+
+      <button cButton color="secondary" type="button" class="me-2" (click)="cancelar()">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        {{ guardando ? 'Guardando...' : 'Guardar' }}
+      </button>
+    </form>
+  </c-card-body>
+</c-card>

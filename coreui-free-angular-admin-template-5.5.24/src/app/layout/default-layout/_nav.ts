@@ -26,6 +26,20 @@ export const navItems: INavData[] = [
           ]
   },
   {
+  name: 'Marcas',
+  iconComponent: { name: 'cil-tag' },
+  children: [
+    {
+      name: 'Lista de marcas',
+      url: '/brands'
+    },
+    {
+      name: 'Nueva marca',
+      url: '/brands/new'
+    }
+  ]
+  },
+  {
   name: 'Productos',
   url: '/productos',
   iconComponent: { name: 'cilBasket' }, 

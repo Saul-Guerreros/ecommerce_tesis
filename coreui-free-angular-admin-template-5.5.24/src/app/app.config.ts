@@ -14,6 +14,8 @@ import { DropdownModule, SidebarModule } from '@coreui/angular';
 import { IconSetService } from '@coreui/icons-angular';
 import { routes } from './app.routes';
 import { withInterceptorsFromDi } from '@angular/common/http';
+import { provideAnimations } from '@angular/platform-browser/animations';
+import { ToastrModule } from 'ngx-toastr';
 
 
 export const appConfig: ApplicationConfig = {
@@ -33,7 +35,13 @@ export const appConfig: ApplicationConfig = {
     importProvidersFrom(SidebarModule, DropdownModule),
     IconSetService,
     provideAnimationsAsync(),
-    provideHttpClient(withInterceptorsFromDi()),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor]), withInterceptorsFromDi()),
+    importProvidersFrom(
+      ToastrModule.forRoot({
+        timeOut: 3000,
+        positionClass: 'toast-top-right',
+        preventDuplicates: true,
+      })
+    ),
   ]
 };

@@ -1,1 +1,13 @@
-<p>delete-categorie works!</p>
+<c-modal [visible]="visible" (visibleChange)="visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>Confirmar eliminación</h5>
+  </c-modal-header>
+  <c-modal-body>
+    ¿Seguro que deseas eliminar la categoría
+    <strong>{{ categoria?.cat_nombre }}</strong>?
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" (click)="confirmarEliminacion()">Eliminar</button>
+  </c-modal-footer>
+</c-modal>

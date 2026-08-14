@@ -1,1 +1,42 @@
-<p>list-categorie works!</p>
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Categorías</strong>
+    <button cButton color="primary" (click)="irACrear()">+ Nueva categoría</button>
+  </c-card-header>
+
+  <c-card-body>
+    <table cTable striped hover>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nombre</th>
+          <th>Nivel</th>
+          <th>Categoría padre</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let cat of categorias">
+          <td>{{ cat.cat_id }}</td>
+          <td>{{ cat.cat_nombre }}</td>
+          <td>{{ cat.cat_nivel }}</td>
+          <td>{{ cat.padre?.cat_nombre || '—' }}</td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2" (click)="irAEditar(cat.cat_id!)">Editar</button>
+            <button cButton size="sm" color="danger" (click)="abrirModalEliminar(cat)">Eliminar</button>
+          </td>
+        </tr>
+        <tr *ngIf="!loading && categorias.length === 0">
+          <td colspan="5" class="text-center">No hay categorías registradas</td>
+        </tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-delete-categorie
+  [visible]="deleteModalVisible"
+  [categoria]="categoriaSeleccionada"
+  (visibleChange)="deleteModalVisible = $event"
+  (confirmar)="onConfirmarEliminar()">
+</app-delete-categorie>

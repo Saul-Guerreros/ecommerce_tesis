@@ -159,7 +159,7 @@
 
     <c-modal-footer>
       <button type="button" cButton color="secondary" (click)="cerrarModal()">Cancelar</button>
-      <button type="submit" cButton color="primary" [disabled]="guardando">
+      <button type="submit" cButton  color="primary" [disabled]="guardando">
         <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
         {{ esEdicion ? 'Guardar cambios' : 'Crear producto' }}
       </button>

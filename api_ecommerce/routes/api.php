@@ -1,11 +1,15 @@
 <?php
 
 use App\Http\Controllers\Api\CategoriaController;
-use App\Http\Controllers\Api\MarcaController;
+
 use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\product\categorieController;
+use App\Http\Controllers\Admin\product\marcaController;
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -50,6 +54,9 @@ Route::prefix('productos')->group(function () {
     Route::delete('/{producto}', [ProductoController::class, 'destroy']);
     Route::delete('/{producto}/imagenes/{imagen}', [ProductoController::class, 'eliminarImagen']);
 });
- 
-Route::get('categorias', [CategoriaController::class, 'index']);
-Route::get('marcas', [MarcaController::class, 'index']);
+// Route::get('categorias', [CategoriaController::class, 'index']);
+// Route::get('marcas', [MarcaController::class, 'index']);
+
+
+Route::apiResource('categorias', categorieController::class);
+Route::apiResource('marcas', marcaController::class);
