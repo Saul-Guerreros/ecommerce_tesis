@@ -1,0 +1,38 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Marcas</strong>
+    <button cButton color="primary" (click)="irACrear()">+ Nueva marca</button>
+  </c-card-header>
+
+  <c-card-body>
+    <table cTable striped hover>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Descripción</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let mar of marcas">
+          <td>{{ mar.mar_id }}</td>
+          <td>{{ mar.mar_descri }}</td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2" (click)="irAEditar(mar.mar_id!)">Editar</button>
+            <button cButton size="sm" color="danger" (click)="abrirModalEliminar(mar)">Eliminar</button>
+          </td>
+        </tr>
+        <tr *ngIf="!loading && marcas.length === 0">
+          <td colspan="3" class="text-center">No hay marcas registradas</td>
+        </tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-delete-brand
+  [visible]="deleteModalVisible"
+  [marca]="marcaSeleccionada"
+  (visibleChange)="deleteModalVisible = $event"
+  (confirmar)="onConfirmarEliminar()">
+</app-delete-brand>

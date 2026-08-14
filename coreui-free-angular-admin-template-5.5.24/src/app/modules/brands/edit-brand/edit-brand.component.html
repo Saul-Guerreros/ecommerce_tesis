@@ -1,0 +1,25 @@
+<c-card>
+  <c-card-header>
+    <strong>Editar marca</strong>
+  </c-card-header>
+  <c-card-body>
+    <div *ngIf="cargando" class="text-center py-4">
+      Cargando...
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando">
+      <div class="mb-3">
+        <label cLabel for="mar_descri">Descripción</label>
+        <input cFormControl id="mar_descri" formControlName="mar_descri" placeholder="Ej: Samsung" />
+        <div class="text-danger small" *ngIf="form.get('mar_descri')?.touched && form.get('mar_descri')?.invalid">
+          La descripción es obligatoria (máx. 50 caracteres)
+        </div>
+      </div>
+
+      <button cButton color="secondary" type="button" class="me-2" (click)="cancelar()">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        {{ guardando ? 'Guardando...' : 'Guardar cambios' }}
+      </button>
+    </form>
+  </c-card-body>
+</c-card>
