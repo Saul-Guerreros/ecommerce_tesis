@@ -1,0 +1,222 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <input
+        type="text"
+        class="form-control"
+        style="width: 260px"
+        placeholder="Buscar atributo..."
+        [(ngModel)]="search"
+        (keyup.enter)="searchTo()"
+      />
+      <button cButton color="primary" size="sm" (click)="searchTo()">Buscar</button>
+      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    </div>
+    <button cButton color="primary" (click)="openCreate()">+ Nuevo Atributo</button>
+  </c-card-header>
+
+  <c-card-body>
+    <table cTable hover responsive [striped]="true">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Tipo</th>
+          <th>Estado</th>
+          <th># Propiedades</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let atributo of atributos">
+          <td class="fw-semibold">{{ atributo.atb_nombre }}</td>
+          <td>{{ nombreTipo(atributo.atb_tipo) }}</td>
+          <td>
+            <c-badge color="success" *ngIf="atributo.atb_estado == 1">Activo</c-badge>
+            <c-badge color="danger" *ngIf="atributo.atb_estado == 2">Inactivo</c-badge>
+          </td>
+          <td>{{ atributo.propiedades?.length || 0 }}</td>
+          <td class="text-end">
+            <button
+              *ngIf="esSeleccionable(atributo.atb_tipo)"
+              cButton
+              size="sm"
+              color="info"
+              variant="outline"
+              class="me-1"
+              (click)="openPropiedades(atributo)"
+            >
+              Propiedades
+            </button>
+            <button cButton size="sm" color="light" class="me-1" (click)="openEdit(atributo)">Editar</button>
+            <button cButton size="sm" color="danger" variant="outline" (click)="openDelete(atributo)">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="!atributos.length">
+          <td colspan="5" class="text-center text-muted py-4">No hay atributos registrados</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <nav *ngIf="totalPages > 1" class="mt-3">
+      <ul cPagination align="end">
+        <li cPageItem [disabled]="currentPage === 1">
+          <a cPageLink role="button" (click)="changePage(currentPage - 1)">Anterior</a>
+        </li>
+        <li cPageItem *ngFor="let p of pagesArray" [active]="currentPage === p">
+          <a cPageLink role="button" (click)="changePage(p)">{{ p }}</a>
+        </li>
+        <li cPageItem [disabled]="currentPage === totalPages">
+          <a cPageLink role="button" (click)="changePage(currentPage + 1)">Siguiente</a>
+        </li>
+      </ul>
+    </nav>
+  </c-card-body>
+</c-card>
+
+<!-- ================= MODAL: Crear ================= -->
+<c-modal [visible]="showCreate" (visibleChange)="showCreate = $event">
+  <c-modal-header>
+    <h5 cModalTitle>Nuevo Atributo</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div class="alert alert-danger" *ngIf="createError">{{ createError }}</div>
+    <div class="mb-3">
+      <label class="form-label">Nombre del atributo (*)</label>
+      <input type="text" class="form-control" [(ngModel)]="createNombre" placeholder="Ej: Color, Talla" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Tipo (*)</label>
+      <select class="form-select" [(ngModel)]="createTipo">
+        <option [value]="1">Texto</option>
+        <option [value]="2">Número</option>
+        <option [value]="3">Seleccionable</option>
+        <option [value]="4">Seleccionable Múltiple</option>
+      </select>
+      <small class="text-muted">Los tipos "Seleccionable" habilitan la gestión de propiedades.</small>
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="showCreate = false">Cerrar</button>
+    <button cButton color="primary" (click)="guardarCreate()">
+      Registrar
+      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    </button>
+  </c-modal-footer>
+</c-modal>
+
+<!-- ================= MODAL: Editar ================= -->
+<c-modal [visible]="showEdit" (visibleChange)="showEdit = $event">
+  <c-modal-header>
+    <h5 cModalTitle>Editar Atributo: "{{ editAtributo?.atb_nombre }}"</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div class="alert alert-danger" *ngIf="editError">{{ editError }}</div>
+    <div class="mb-3">
+      <label class="form-label">Nombre del atributo (*)</label>
+      <input type="text" class="form-control" [(ngModel)]="editNombre" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Tipo (*)</label>
+      <select class="form-select" [(ngModel)]="editTipo">
+        <option [value]="1">Texto</option>
+        <option [value]="2">Número</option>
+        <option [value]="3">Seleccionable</option>
+        <option [value]="4">Seleccionable Múltiple</option>
+      </select>
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="showEdit = false">Cerrar</button>
+    <button cButton color="primary" (click)="guardarEdit()">
+      Actualizar
+      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    </button>
+  </c-modal-footer>
+</c-modal>
+
+<!-- ================= MODAL: Eliminar ================= -->
+<c-modal [visible]="showDelete" (visibleChange)="showDelete = $event">
+  <c-modal-header>
+    <h5 cModalTitle>Eliminar Atributo</h5>
+  </c-modal-header>
+  <c-modal-body>
+    ¿Estás seguro de eliminar el atributo <strong>{{ deleteAtributo?.atb_nombre }}</strong>?
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="showDelete = false">Cerrar</button>
+    <button cButton color="danger" (click)="confirmarDelete()">
+      Eliminar
+      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    </button>
+  </c-modal-footer>
+</c-modal>
+
+<!-- ================= MODAL: Propiedades ================= -->
+<c-modal [visible]="showPropiedades" (visibleChange)="showPropiedades = $event" size="lg">
+  <c-modal-header>
+    <h5 cModalTitle>Propiedades: {{ propAtributo?.atb_nombre }}</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div class="alert alert-danger" *ngIf="propError">{{ propError }}</div>
+
+    <div class="row g-2 align-items-end mb-4">
+      <div class="col-md-4">
+        <label class="form-label">Nombre de la propiedad (*)</label>
+        <input type="text" class="form-control" [(ngModel)]="propNombre" placeholder="Ej: Rojo, S, XL" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Tipo</label>
+        <select class="form-select" [(ngModel)]="propTipoAccion">
+          <option [value]="1">Normal</option>
+          <option [value]="2">Color</option>
+        </select>
+      </div>
+      <div class="col-md-3" *ngIf="propTipoAccion == 2">
+        <label class="form-label">Color (*)</label>
+        <input type="color" class="form-control form-control-color" [(ngModel)]="propCodigo" />
+      </div>
+      <div class="col-md-2">
+        <button cButton color="primary" class="w-100" (click)="guardarPropiedad()">
+          Agregar
+          <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+        </button>
+      </div>
+    </div>
+
+    <table cTable hover responsive [striped]="true">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Color</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of propiedades">
+          <td>{{ p.prp_nombre }}</td>
+          <td>
+            <span
+              *ngIf="p.prp_codigo"
+              class="d-inline-block rounded"
+              [style.background]="p.prp_codigo"
+              style="width: 20px; height: 20px; border: 1px solid #ccc"
+            ></span>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="danger" variant="outline" (click)="eliminarPropiedad(p)">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="!propiedades.length">
+          <td colspan="3" class="text-center text-muted py-3">Sin propiedades registradas</td>
+        </tr>
+      </tbody>
+    </table>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="showPropiedades = false">Cerrar</button>
+  </c-modal-footer>
+</c-modal>

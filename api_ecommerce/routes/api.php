@@ -1,14 +1,14 @@
 <?php
 
+use App\Http\Controllers\Admin\AtributoController;
+use App\Http\Controllers\Admin\product\categorieController;
+use App\Http\Controllers\Admin\product\marcaController;
+use App\Http\Controllers\Admin\SliderController;
 use App\Http\Controllers\Api\CategoriaController;
-
 use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\product\categorieController;
-use App\Http\Controllers\Admin\product\marcaController;
-use App\Http\Controllers\Admin\SliderController;
 
 
 
@@ -53,6 +53,14 @@ Route::group([
     Route::get('sliders-productos/{id}', [SliderController::class, 'productoShow']);
     Route::resource('sliders', SliderController::class);
     Route::post('sliders/{id}', [SliderController::class, 'update']);
+
+    Route::get('atributos', [AtributoController::class, 'index']);
+    Route::post('atributos', [AtributoController::class, 'store']);
+    Route::put('atributos/{id}', [AtributoController::class, 'update']);
+    Route::delete('atributos/{id}', [AtributoController::class, 'destroy']);
+
+    Route::post('propiedades', [AtributoController::class, 'storePropiedad']);
+    Route::delete('propiedades/{id}', [AtributoController::class, 'destroyPropiedad']);
 });
 
 Route::prefix('productos')->group(function () {

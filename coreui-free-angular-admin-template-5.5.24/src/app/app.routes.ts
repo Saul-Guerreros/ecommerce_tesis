@@ -37,8 +37,12 @@ export const routes: Routes = [
       data: { title: 'Marcas' },
       },
       {
-     path: 'sliders',
-     loadChildren: () => import('./views/sliders/sliders.routes').then((m) => m.SLIDERS_ROUTES),
+        path: 'atributos',
+        loadChildren: () => import('./views/atributos/atributos.routes').then((m) => m.ATRIBUTOS_ROUTES),
+      },
+      {
+        path: 'sliders',
+        loadChildren: () => import('./views/sliders/sliders.routes').then((m) => m.SLIDERS_ROUTES),
       },
 
       {
