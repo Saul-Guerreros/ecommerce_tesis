@@ -20,10 +20,10 @@
           <td>{{ cat.cat_id }}</td>
           <td>{{ cat.cat_nombre }}</td>
           <td>{{ cat.cat_nivel }}</td>
-          <td>{{ cat.padre?.cat_nombre || '—' }}</td>
+         <td>{{ obtenerNombrePadre(cat.cat_idpadr) }}</td>
           <td class="text-end">
-            <button cButton size="sm" color="info" class="me-2" (click)="irAEditar(cat.cat_id!)">Editar</button>
-            <button cButton size="sm" color="danger" (click)="abrirModalEliminar(cat)">Eliminar</button>
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="irAEditar(cat.cat_id!)">Editar</button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="abrirModalEliminar(cat)">Eliminar</button>
           </td>
         </tr>
         <tr *ngIf="!loading && categorias.length === 0">

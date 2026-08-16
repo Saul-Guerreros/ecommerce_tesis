@@ -36,6 +36,10 @@ export const routes: Routes = [
       loadChildren: () => import('./modules/brands/brands.module').then(m => m.BrandsModule),
       data: { title: 'Marcas' },
       },
+      {
+     path: 'sliders',
+     loadChildren: () => import('./views/sliders/sliders.routes').then((m) => m.SLIDERS_ROUTES),
+      },
 
       {
         path: 'theme',

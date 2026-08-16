@@ -35,7 +35,7 @@ export class ListCategorieComponent implements OnInit  {
   this.loading = true;
   this.categoriesService.getAll().subscribe({
     next: (res) => {
-      this.categorias = res;   // antes: res.data
+      this.categorias = res;   
       this.loading = false;
     },
     error: () => {
@@ -44,9 +44,14 @@ export class ListCategorieComponent implements OnInit  {
     },
   });
 }
+  obtenerNombrePadre(catIdPadr: number | null | undefined): string {
+  if (!catIdPadr) return '—';
+  const padre = this.categorias.find(c => c.cat_id === catIdPadr);
+  return padre ? padre.cat_nombre : '—';
+  }
 
   irACrear(): void {
-    this.router.navigate(['/categories/crear']);
+    this.router.navigate(['/categories/new']);
   }
 
   irAEditar(id: number): void {

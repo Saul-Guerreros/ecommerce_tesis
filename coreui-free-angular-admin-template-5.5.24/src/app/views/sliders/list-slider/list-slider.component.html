@@ -1,0 +1,91 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <input
+        type="text"
+        class="form-control"
+        style="width: 260px"
+        placeholder="Buscar por título..."
+        [(ngModel)]="search"
+        (keyup.enter)="searchTo()"
+      />
+      <button cButton color="primary" size="sm" (click)="searchTo()">Buscar</button>
+      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    </div>
+    <a routerLink="/sliders/crear" cButton color="primary">
+      + Nuevo Slider
+    </a>
+  </c-card-header>
+
+  <c-card-body>
+    <table cTable hover responsive [striped]="true">
+      <thead>
+        <tr>
+          <th>Imagen</th>
+          <th>Título</th>
+          <th>Producto (ID)</th>
+          <th>Orden</th>
+          <th>Tipo</th>
+          <th>Estado</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let slider of sliders">
+          <td>
+            <img *ngIf="slider.sld_imagen" [src]="slider.sld_imagen" alt="" width="70" class="rounded" />
+          </td>
+          <td>
+            <div class="fw-semibold">{{ slider.sld_titulo }}</div>
+            <div class="text-muted small" *ngIf="slider.sld_subtitulo">{{ slider.sld_subtitulo }}</div>
+          </td>
+          <td>{{ slider.sld_prdid }}</td>
+          <td>{{ slider.sld_orden }}</td>
+          <td>{{ slider.sld_tipo }}</td>
+          <td>
+            <c-badge color="success" *ngIf="slider.sld_estado == 1">Activo</c-badge>
+            <c-badge color="danger" *ngIf="slider.sld_estado == 2">Inactivo</c-badge>
+          </td>
+          <td class="text-end">
+            <a [routerLink]="['/sliders/editar', slider.sld_id]" cButton size="sm" color="light" class="me-1">
+              Editar
+            </a>
+            <button cButton size="sm" color="danger" variant="outline" (click)="confirmDelete(slider)">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="!sliders.length">
+          <td colspan="7" class="text-center text-muted py-4">No hay sliders registrados</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <nav *ngIf="totalPages > 1" class="mt-3">
+      <ul cPagination align="end">
+        <li cPageItem [disabled]="currentPage === 1">
+          <a cPageLink role="button" (click)="changePage(currentPage - 1)">Anterior</a>
+        </li>
+        <li cPageItem *ngFor="let p of pagesArray" [active]="currentPage === p">
+          <a cPageLink role="button" (click)="changePage(p)">{{ p }}</a>
+        </li>
+        <li cPageItem [disabled]="currentPage === totalPages">
+          <a cPageLink role="button" (click)="changePage(currentPage + 1)">Siguiente</a>
+        </li>
+      </ul>
+    </nav>
+  </c-card-body>
+</c-card>
+
+<c-modal [visible]="deleteModalVisible" (visibleChange)="deleteModalVisible = $event">
+  <c-modal-header>
+    <h5 cModalTitle>Eliminar Slider</h5>
+  </c-modal-header>
+  <c-modal-body>
+    ¿Estás seguro de eliminar el slider <strong>{{ sliderToDelete?.sld_titulo }}</strong>?
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="deleteModalVisible = false">Cancelar</button>
+    <button cButton color="danger" (click)="deleteSlider()">Eliminar</button>
+  </c-modal-footer>
+</c-modal>

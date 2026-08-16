@@ -18,8 +18,8 @@
           <td>{{ mar.mar_id }}</td>
           <td>{{ mar.mar_descri }}</td>
           <td class="text-end">
-            <button cButton size="sm" color="info" class="me-2" (click)="irAEditar(mar.mar_id!)">Editar</button>
-            <button cButton size="sm" color="danger" (click)="abrirModalEliminar(mar)">Eliminar</button>
+            <button cButton size="sm" color="info"  class="me-2 text-white" (click)="irAEditar(mar.mar_id!)">Editar</button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="abrirModalEliminar(mar)">Eliminar</button>
           </td>
         </tr>
         <tr *ngIf="!loading && marcas.length === 0">

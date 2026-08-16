@@ -16,7 +16,7 @@ class Producto extends Model
     protected $table = 'producto';
 
     protected $primaryKey = 'prd_id';
-
+    public $timestamps = false;
     // La tabla solo tiene prd_creado, no tiene updated_at
     const CREATED_AT = 'prd_creado';
     const UPDATED_AT = null;

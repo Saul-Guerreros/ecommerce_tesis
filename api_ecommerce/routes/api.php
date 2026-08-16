@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\product\categorieController;
 use App\Http\Controllers\Admin\product\marcaController;
+use App\Http\Controllers\Admin\SliderController;
 
 
 
@@ -45,6 +46,14 @@ Route::group([
 
 });
 
+Route::group([
+    'prefix' => 'admin'
+], function ($router) {
+    Route::get('sliders-productos', [SliderController::class, 'productos']);
+    Route::get('sliders-productos/{id}', [SliderController::class, 'productoShow']);
+    Route::resource('sliders', SliderController::class);
+    Route::post('sliders/{id}', [SliderController::class, 'update']);
+});
 
 Route::prefix('productos')->group(function () {
     Route::get('/', [ProductoController::class, 'index']);
@@ -53,10 +62,9 @@ Route::prefix('productos')->group(function () {
     Route::match(['put', 'post'], '/{producto}', [ProductoController::class, 'update']);
     Route::delete('/{producto}', [ProductoController::class, 'destroy']);
     Route::delete('/{producto}/imagenes/{imagen}', [ProductoController::class, 'eliminarImagen']);
-});
-// Route::get('categorias', [CategoriaController::class, 'index']);
-// Route::get('marcas', [MarcaController::class, 'index']);
 
+    
+});
 
 Route::apiResource('categorias', categorieController::class);
 Route::apiResource('marcas', marcaController::class);
