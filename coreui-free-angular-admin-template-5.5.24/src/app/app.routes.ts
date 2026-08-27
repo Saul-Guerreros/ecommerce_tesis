@@ -44,7 +44,14 @@ export const routes: Routes = [
         path: 'sliders',
         loadChildren: () => import('./views/sliders/sliders.routes').then((m) => m.SLIDERS_ROUTES),
       },
-
+      {
+        path: 'cupones',
+        loadChildren: () => import('./views/cupones/routes').then((m) => m.routes),
+      },
+	  {
+		path: 'discounts',
+		loadChildren: () => import('./views/discounts/routes').then((m) => m.routes),
+	   },
       {
         path: 'theme',
         loadChildren: () => import('./views/theme/routes').then((m) => m.routes)

@@ -1,0 +1,149 @@
+<c-card>
+  <c-card-header>
+    <strong>Nuevo Cupon</strong>
+    <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="alert alert-danger" *ngIf="errorMsg">{{ errorMsg }}</div>
+    <div class="alert alert-success" *ngIf="successMsg">{{ successMsg }}</div>
+
+    <div class="row mb-6">
+      <div class="col-lg-5">
+        <label cLabel class="fw-semibold">Codigo del cupon: (*)</label>
+        <input type="text" cFormControl [(ngModel)]="code" placeholder="Ej: PROMOCIONES2024" />
+      </div>
+
+      <div class="col-lg-4">
+        <label cLabel class="fw-semibold d-block">Gestion de descuento: (*)</label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" id="td1" [checked]="type_discount == 1" (click)="changeTypeDiscount(1)">
+          <label class="btn btn-outline-primary" for="td1">Porcentaje</label>
+
+          <input type="radio" class="btn-check" id="td2" [checked]="type_discount == 2" (click)="changeTypeDiscount(2)">
+          <label class="btn btn-outline-primary" for="td2">Monto fijo</label>
+        </div>
+      </div>
+
+      <div class="col-lg-3">
+        <label cLabel class="fw-semibold">Descuento: (*)</label>
+        <input type="number" cFormControl [(ngModel)]="discount" placeholder="Ej: 50" />
+      </div>
+    </div>
+
+    <div class="row mb-6">
+      <div class="col-lg-4">
+        <label cLabel class="fw-semibold d-block">Gestion de uso: (*)</label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" id="tc1" [checked]="type_count == 1" (click)="changeTypeCount(1)">
+          <label class="btn btn-outline-primary" for="tc1">Ilimitado</label>
+
+          <input type="radio" class="btn-check" id="tc2" [checked]="type_count == 2" (click)="changeTypeCount(2)">
+          <label class="btn btn-outline-primary" for="tc2">Limitado</label>
+        </div>
+      </div>
+
+      <div class="col-lg-3" *ngIf="type_count == 2">
+        <label cLabel class="fw-semibold">N&deg; de usos: (*)</label>
+        <input type="number" cFormControl [(ngModel)]="num_use" placeholder="Ej: 20" />
+      </div>
+    </div>
+
+    <div class="row mb-6">
+      <!-- Selector de tipo de cupon -->
+      <div class="col-lg-3">
+        <div class="d-grid gap-2">
+          <button type="button" class="btn" [class.btn-primary]="type_cupone == 1" [class.btn-outline-primary]="type_cupone != 1" (click)="changeTypeCupone(1)">
+            Productos
+          </button>
+          <button type="button" class="btn" [class.btn-primary]="type_cupone == 2" [class.btn-outline-primary]="type_cupone != 2" (click)="changeTypeCupone(2)">
+            Categorias
+          </button>
+          <button type="button" class="btn" [class.btn-primary]="type_cupone == 3" [class.btn-outline-primary]="type_cupone != 3" (click)="changeTypeCupone(3)">
+            Marcas
+          </button>
+        </div>
+      </div>
+
+      <!-- Selector segun tipo -->
+      <div class="col-lg-4">
+        <div *ngIf="type_cupone == 1">
+          <label cLabel class="fw-semibold">Productos: (*)</label>
+          <div class="d-flex gap-2">
+            <select cSelect [(ngModel)]="product_id">
+              <option value="">Selec.</option>
+              <option *ngFor="let item of products" [value]="item.id">{{ item.title }}</option>
+            </select>
+            <button cButton color="success" size="sm" (click)="addProduct()">+</button>
+          </div>
+        </div>
+
+        <div *ngIf="type_cupone == 2">
+          <label cLabel class="fw-semibold">Departamento (Primer Nivel): (*)</label>
+          <div class="d-flex gap-2">
+            <select cSelect [(ngModel)]="categorie_id">
+              <option value="">Selec.</option>
+              <option *ngFor="let item of categories_first" [value]="item.id">{{ item.name }}</option>
+            </select>
+            <button cButton color="success" size="sm" (click)="addCategorie()">+</button>
+          </div>
+        </div>
+
+        <div *ngIf="type_cupone == 3">
+          <label cLabel class="fw-semibold">Marcas: (*)</label>
+          <div class="d-flex gap-2">
+            <select cSelect [(ngModel)]="brand_id">
+              <option value="">Selec.</option>
+              <option *ngFor="let item of brands" [value]="item.id">{{ item.name }}</option>
+            </select>
+            <button cButton color="success" size="sm" (click)="addBrand()">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de agregados -->
+      <div class="col-lg-5">
+        <table cTable small *ngIf="type_cupone == 1">
+          <thead>
+            <tr><th>Titulo</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let product of products_add">
+              <td>{{ product.title }}</td>
+              <td><button cButton color="danger" size="sm" (click)="removeProduct(product)">X</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table cTable small *ngIf="type_cupone == 2">
+          <thead>
+            <tr><th>Categoria</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let categorie of categories_add">
+              <td>{{ categorie.name }}</td>
+              <td><button cButton color="danger" size="sm" (click)="removeCategorie(categorie)">X</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table cTable small *ngIf="type_cupone == 3">
+          <thead>
+            <tr><th>Marca</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let brand of brands_add">
+              <td>{{ brand.name }}</td>
+              <td><button cButton color="danger" size="sm" (click)="removeBrand(brand)">X</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button cButton color="primary" (click)="save()">Guardar</button>
+      <a routerLink="/cupones/list" cButton color="light">Cancelar</a>
+    </div>
+  </c-card-body>
+</c-card>

@@ -11,6 +11,12 @@ export const routes: Routes = [
           import('./producto-list/producto-list.component').then((m) => m.ProductoListComponent),
         data: { title: 'Productos' },
       },
+      {
+         path: ':id/variations',
+        loadComponent: () =>
+      import('./product-variations/product-variations.component').then((m) => m.ProductVariationsComponent),
+      data: { title: 'Especificaciones y Variaciones' },
+      },
     ],
   },
 ];

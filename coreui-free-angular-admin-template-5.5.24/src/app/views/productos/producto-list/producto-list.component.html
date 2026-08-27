@@ -89,6 +89,9 @@
             </c-badge>
           </td>
           <td class="text-center">
+            <button cButton color="light" size="sm" [routerLink]="['/productos', p.prd_id, 'variations']">
+              <svg cIcon name="cilList"></svg>
+            </button>
             <button cButton size="sm" color="info" variant="ghost" (click)="abrirEditar(p)">
               <svg cIcon name="cilPencil"></svg>
             </button>

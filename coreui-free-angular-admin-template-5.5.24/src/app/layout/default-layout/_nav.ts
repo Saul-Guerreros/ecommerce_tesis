@@ -12,7 +12,6 @@ export const navItems: INavData[] = [
   },
    {
     name: 'Categorías',
-   
     iconComponent: { name: 'cil-list' },
            children: [
           {
@@ -54,7 +53,16 @@ export const navItems: INavData[] = [
   url: '/sliders/list',
   iconComponent: { name: 'cil-image' },
   },
-
+  {
+  name:'cupones',
+  url:'/cupones/list',
+  iconComponent: { name: 'cil-image'},
+  }, 
+  {
+  name:'campaña de descuento',
+  url:'/discounts/list',
+  iconComponent: { name: 'cil-image'},
+  }, 
   {
     title: true,
     name: 'Theme'

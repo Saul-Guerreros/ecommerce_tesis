@@ -1,0 +1,97 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-2">
+      <input
+        type="text"
+        class="form-control"
+        style="width: 260px"
+        placeholder="Buscar cupon por codigo"
+        [(ngModel)]="search"
+        (keyup.enter)="searchTo()"
+      />
+      <button cButton color="primary" variant="outline" size="sm" (click)="searchTo()">
+        Buscar
+      </button>
+      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    </div>
+
+    <a routerLink="/cupones/register" cButton color="primary">
+      + Nuevo Cupon
+    </a>
+  </c-card-header>
+
+  <c-card-body>
+    <table cTable hover responsive striped>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>State</th>
+          <th>Tipo de Cupon</th>
+          <th>Descuento</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let cupon of cupones">
+          <td class="fw-semibold">{{ cupon.code }}</td>
+          <td>
+            <span cBadge color="success" *ngIf="cupon.state == 1">Activo</span>
+            <span cBadge color="danger" *ngIf="cupon.state == 2">Inactivo</span>
+          </td>
+          <td>{{ getNameTypeCupon(cupon.type_cupone) }}</td>
+          <td>{{ cupon.discount }} {{ cupon.type_discount == 1 ? '%' : 'Gs.' }}</td>
+          <td class="text-end">
+            <a
+              [routerLink]="['/cupones/list/edit', cupon.id]"
+              cButton
+              color="light"
+              size="sm"
+              class="me-1"
+            >
+              Editar
+            </a>
+            <button cButton color="danger" variant="outline" size="sm" (click)="confirmDelete(cupon)">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+
+        <tr *ngIf="cupones.length === 0">
+          <td colspan="5" class="text-center text-muted py-4">No hay cupones registrados</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <ul cPagination align="end" *ngIf="totalPages > 1">
+      <li cPageItem [disabled]="currentPage === 1">
+        <a cPageLink href="javascript:void(0)" (click)="loadPage(currentPage - 1)">Anterior</a>
+      </li>
+      <li cPageItem *ngFor="let p of [].constructor(totalPages); let i = index" [active]="currentPage === i + 1">
+        <a cPageLink href="javascript:void(0)" (click)="loadPage(i + 1)">{{ i + 1 }}</a>
+      </li>
+      <li cPageItem [disabled]="currentPage === totalPages">
+        <a cPageLink href="javascript:void(0)" (click)="loadPage(currentPage + 1)">Siguiente</a>
+      </li>
+    </ul>
+  </c-card-body>
+</c-card>
+
+<!-- Modal confirmacion de borrado -->
+<c-modal [visible]="deleteModalVisible" (visibleChange)="deleteModalVisible = $event">
+  <c-modal-header>
+    <h5 cModalTitle>Eliminar cupon</h5>
+    <button cButtonClose (click)="cancelDelete()"></button>
+  </c-modal-header>
+  <c-modal-body>
+    <div class="alert alert-danger" *ngIf="deleteErrorMsg">{{ deleteErrorMsg }}</div>
+    ¿Estas seguro de eliminar el cupon
+    <strong>{{ cuponToDelete?.code }}</strong>?
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="light" (click)="cancelDelete()">Cancelar</button>
+    <button cButton color="danger" [disabled]="isDeleting" (click)="deleteCupon()">
+      <span class="spinner-border spinner-border-sm me-1" *ngIf="isDeleting"></span>
+      Eliminar
+    </button>
+  </c-modal-footer>
+</c-modal>

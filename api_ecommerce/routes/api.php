@@ -6,6 +6,10 @@ use App\Http\Controllers\Admin\product\marcaController;
 use App\Http\Controllers\Admin\SliderController;
 use App\Http\Controllers\Api\CategoriaController;
 use App\Http\Controllers\Api\ProductoController;
+use App\Http\Controllers\Admin\Product\VariacionProductoController;
+use App\Http\Controllers\Admin\Product\EspecificacionProductoController;
+use App\Http\Controllers\Admin\Cupone\CuponeController;
+use App\Http\Controllers\Admin\Discount\DiscountController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +65,23 @@ Route::group([
 
     Route::post('propiedades', [AtributoController::class, 'storePropiedad']);
     Route::delete('propiedades/{id}', [AtributoController::class, 'destroyPropiedad']);
+
+    Route::get('variaciones/config', [VariacionProductoController::class, 'config']);
+    Route::get('variaciones', [VariacionProductoController::class, 'index']);
+    Route::post('variaciones', [VariacionProductoController::class, 'store']);
+    Route::put('variaciones/{id}', [VariacionProductoController::class, 'update']);
+    Route::delete('variaciones/{id}', [VariacionProductoController::class, 'destroy']);
+
+    Route::get('especificaciones', [EspecificacionProductoController::class, 'index']);
+    Route::post('especificaciones', [EspecificacionProductoController::class, 'store']);
+    Route::put('especificaciones/{id}', [EspecificacionProductoController::class, 'update']);
+    Route::delete('especificaciones/{id}', [EspecificacionProductoController::class, 'destroy']);
+	
+	Route::get("cupones/config", [CuponeController::class, "config"]);
+    Route::resource("cupones", CuponeController::class);
+   
+    Route::resource("discounts", DiscountController::class);
+
 });
 
 Route::prefix('productos')->group(function () {

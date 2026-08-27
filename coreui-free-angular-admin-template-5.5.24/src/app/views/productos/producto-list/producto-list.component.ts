@@ -18,6 +18,7 @@ import { CatalogoService } from '../../../core/services/catalogo.service';
 import { ProductoService } from '../../../core/services/producto.service';
 import { Categoria, Marca, Producto } from '../../../core/models/producto.model';
 import { ProductoFormComponent } from '../producto-form/producto-form.component';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-producto-list',
@@ -36,6 +37,7 @@ import { ProductoFormComponent } from '../producto-form/producto-form.component'
     ModalModule,
     IconModule,
     ProductoFormComponent,
+    RouterLink,
   ],
   templateUrl: './producto-list.component.html',
 })
