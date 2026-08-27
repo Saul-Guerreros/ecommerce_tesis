@@ -50,11 +50,12 @@
    </ul>
   </div>
  </section>
+ <!-- TODO: reemplazar por *ngFor/@for con categorías reales desde HomeService (igual que categories_menus en el header) -->
  <section class="uk-section uk-section-default uk-section-small">
   <div class="uk-container">
    <div class="uk-grid uk-grid-small uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-6@m" uk-grid="">
     <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" href="subcategory.html">
+     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
       <div class="tm-ratio tm-ratio-4-3">
        <div class="tm-media-box">
         <figure class="tm-media-box-wrap">
@@ -67,13 +68,13 @@
         Laptops
        </div>
        <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        from $149
+        Desde $149
        </div>
       </div>
      </a>
     </div>
     <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" href="subcategory.html">
+     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
       <div class="tm-ratio tm-ratio-4-3">
        <div class="tm-media-box">
         <figure class="tm-media-box-wrap">
@@ -86,13 +87,13 @@
         Smartphones
        </div>
        <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        from $99
+        Desde $99
        </div>
       </div>
      </a>
     </div>
     <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" href="subcategory.html">
+     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
       <div class="tm-ratio tm-ratio-4-3">
        <div class="tm-media-box">
         <figure class="tm-media-box-wrap">
@@ -105,73 +106,73 @@
         Tablets
        </div>
        <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        from $129
+        Desde $129
        </div>
       </div>
      </a>
     </div>
     <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" href="subcategory.html">
+     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
       <div class="tm-ratio tm-ratio-4-3">
        <div class="tm-media-box">
         <figure class="tm-media-box-wrap">
-         <img alt="Smart Watches" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/watches.webp"/>
+         <img alt="Smartwatches" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/watches.webp"/>
         </figure>
        </div>
       </div>
       <div class="uk-margin-small-top">
        <div class="uk-text-truncate">
-        Smart Watches
+        Smartwatches
        </div>
        <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        from $49
+        Desde $49
        </div>
       </div>
      </a>
     </div>
     <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" href="subcategory.html">
+     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
       <div class="tm-ratio tm-ratio-4-3">
        <div class="tm-media-box">
         <figure class="tm-media-box-wrap">
-         <img alt="Gaming Consoles" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/consoles.webp"/>
+         <img alt="Consolas de videojuegos" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/consoles.webp"/>
         </figure>
        </div>
       </div>
       <div class="uk-margin-small-top">
        <div class="uk-text-truncate">
-        Gaming Consoles
+        Consolas de videojuegos
        </div>
        <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        from $399
+        Desde $399
        </div>
       </div>
      </a>
     </div>
     <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" href="subcategory.html">
+     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
       <div class="tm-ratio tm-ratio-4-3">
        <div class="tm-media-box">
         <figure class="tm-media-box-wrap">
-         <img alt="Cameras" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/cameras.webp"/>
+         <img alt="Cámaras" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/cameras.webp"/>
         </figure>
        </div>
       </div>
       <div class="uk-margin-small-top">
        <div class="uk-text-truncate">
-        Cameras
+        Cámaras
        </div>
        <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        from $129
+        Desde $129
        </div>
       </div>
      </a>
     </div>
    </div>
    <div class="uk-margin uk-text-center">
-    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="catalog.html">
+    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" routerLink="/catalogo">
      <span>
-      see all categories
+      ver todas las categorías
      </span>
      <span uk-icon="icon: chevron-right; ratio: .75;">
      </span>
@@ -184,23 +185,23 @@
    <div class="uk-grid uk-grid-small uk-child-width-1-2 uk-child-width-1-4@s uk-text-center" uk-grid="">
     <div>
      <div class="tm-feature-icon"><span uk-icon="icon: world; ratio: 1.3;"></span></div>
-     <div class="uk-text-bolder uk-text-small">Free Shipping</div>
-     <div class="uk-text-meta uk-text-xsmall">On orders over $50</div>
+     <div class="uk-text-bolder uk-text-small">Envío gratis</div>
+     <div class="uk-text-meta uk-text-xsmall">En compras mayores a $50</div>
     </div>
     <div>
      <div class="tm-feature-icon"><span uk-icon="icon: receiver; ratio: 1.3;"></span></div>
-     <div class="uk-text-bolder uk-text-small">24/7 Support</div>
-     <div class="uk-text-meta uk-text-xsmall">Dedicated support</div>
+     <div class="uk-text-bolder uk-text-small">Soporte 24/7</div>
+     <div class="uk-text-meta uk-text-xsmall">Atención personalizada</div>
     </div>
     <div>
      <div class="tm-feature-icon"><span uk-icon="icon: lock; ratio: 1.3;"></span></div>
-     <div class="uk-text-bolder uk-text-small">Secure Payment</div>
-     <div class="uk-text-meta uk-text-xsmall">100% protected</div>
+     <div class="uk-text-bolder uk-text-small">Pago seguro</div>
+     <div class="uk-text-meta uk-text-xsmall">100% protegido</div>
     </div>
     <div>
      <div class="tm-feature-icon"><span uk-icon="icon: refresh; ratio: 1.3;"></span></div>
-     <div class="uk-text-bolder uk-text-small">Easy Returns</div>
-     <div class="uk-text-meta uk-text-xsmall">30-day guarantee</div>
+     <div class="uk-text-bolder uk-text-small">Devoluciones fáciles</div>
+     <div class="uk-text-meta uk-text-xsmall">Garantía de 30 días</div>
     </div>
    </div>
   </div>
@@ -208,20 +209,20 @@
  <section class="uk-section uk-section-small">
   <div class="uk-container">
    <h2 class="uk-text-center">
-    Trending Items
+    Productos en tendencia
    </h2>
    <div class="uk-card uk-card-default tm-ignore-container">
     <div class="uk-grid uk-grid-collapse uk-child-width-1-3 uk-child-width-1-4@m tm-products-grid" uk-grid="">
      <article class="tm-product-card">
       <div class="tm-product-card-media">
        <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="product.html">
+        <a class="tm-media-box" href="#" onclick="return false;">
          <div class="tm-product-card-labels">
           <span class="uk-label uk-label-warning">
-           top selling
+           más vendido
           </span>
           <span class="uk-label uk-label-danger">
-           trade-in
+           acepta canje
           </span>
          </div>
          <figure class="tm-media-box-wrap">
@@ -236,14 +237,14 @@
          Laptop
         </div>
         <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="product.html">
+         <a class="uk-link-heading" href="#" onclick="return false;">
           Apple MacBook Pro 15" Touch Bar MPTU2LL/A 256GB (Silver)
          </a>
         </h3>
         <ul class="uk-list uk-text-small tm-product-card-properties">
          <li>
           <span class="uk-text-muted">
-           Diagonal display:
+           Pantalla:
           </span>
           <span>
            15.4"
@@ -251,7 +252,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           CPU:
+           Procesador:
           </span>
           <span>
            Intel® Core™ i7
@@ -267,7 +268,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           Video Card:
+           Tarjeta gráfica:
           </span>
           <span>
            AMD Radeon Pro 555
@@ -286,18 +287,18 @@
         </div>
         <div class="tm-product-card-add">
          <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites tm-action-button-active js-added-to" title="Add to favorites">
+          <a class="tm-product-card-action js-add-to js-add-to-favorites tm-action-button-active js-added-to" title="Agregar a favoritos">
            <span uk-icon="icon: heart; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to favorites
+            Agregar a favoritos
            </span>
           </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare tm-action-button-active js-added-to" title="Add to compare">
+          <a class="tm-product-card-action js-add-to js-add-to-compare tm-action-button-active js-added-to" title="Agregar a comparar">
            <span uk-icon="icon: copy; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to compare
+            Agregar a comparar
            </span>
           </a>
          </div>
@@ -305,7 +306,7 @@
           <span class="tm-product-card-add-button-icon" uk-icon="cart">
           </span>
           <span class="tm-product-card-add-button-text">
-           add to cart
+           agregar al carrito
           </span>
          </button>
         </div>
@@ -315,13 +316,13 @@
      <article class="tm-product-card">
       <div class="tm-product-card-media">
        <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="product.html">
+        <a class="tm-media-box" href="#" onclick="return false;">
          <div class="tm-product-card-labels">
           <span class="uk-label uk-label-success">
-           new
+           nuevo
           </span>
           <span class="uk-label uk-label-danger">
-           trade-in
+           acepta canje
           </span>
          </div>
          <figure class="tm-media-box-wrap">
@@ -336,14 +337,14 @@
          Laptop
         </div>
         <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="product.html">
+         <a class="uk-link-heading" href="#" onclick="return false;">
           Apple MacBook 12" MNYN2LL/A 512GB (Rose Gold)
          </a>
         </h3>
         <ul class="uk-list uk-text-small tm-product-card-properties">
          <li>
           <span class="uk-text-muted">
-           Diagonal display:
+           Pantalla:
           </span>
           <span>
            12"
@@ -351,7 +352,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           CPU:
+           Procesador:
           </span>
           <span>
            Intel® Core™ i5
@@ -367,7 +368,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           Video Card:
+           Tarjeta gráfica:
           </span>
           <span>
            Intel® HD Graphics 615
@@ -383,18 +384,18 @@
         </div>
         <div class="tm-product-card-add">
          <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites tm-action-button-active js-added-to" title="Add to favorites">
+          <a class="tm-product-card-action js-add-to js-add-to-favorites tm-action-button-active js-added-to" title="Agregar a favoritos">
            <span uk-icon="icon: heart; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to favorites
+            Agregar a favoritos
            </span>
           </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare tm-action-button-active js-added-to" title="Add to compare">
+          <a class="tm-product-card-action js-add-to js-add-to-compare tm-action-button-active js-added-to" title="Agregar a comparar">
            <span uk-icon="icon: copy; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to compare
+            Agregar a comparar
            </span>
           </a>
          </div>
@@ -402,7 +403,7 @@
           <span class="tm-product-card-add-button-icon" uk-icon="cart">
           </span>
           <span class="tm-product-card-add-button-text">
-           add to cart
+           agregar al carrito
           </span>
          </button>
         </div>
@@ -412,7 +413,7 @@
      <article class="tm-product-card">
       <div class="tm-product-card-media">
        <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="product.html">
+        <a class="tm-media-box" href="#" onclick="return false;">
          <figure class="tm-media-box-wrap">
           <img alt="Lenovo IdeaPad YOGA 920-13IKB 80Y7001RRK (Copper)" decoding="async" loading="lazy" src="assets/images/products/3/3-medium.webp"/>
          </figure>
@@ -425,14 +426,14 @@
          Laptop
         </div>
         <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="product.html">
+         <a class="uk-link-heading" href="#" onclick="return false;">
           Lenovo IdeaPad YOGA 920-13IKB 80Y7001RRK (Copper)
          </a>
         </h3>
         <ul class="uk-list uk-text-small tm-product-card-properties">
          <li>
           <span class="uk-text-muted">
-           Diagonal display:
+           Pantalla:
           </span>
           <span>
            13.9"
@@ -440,7 +441,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           CPU:
+           Procesador:
           </span>
           <span>
            Intel® Core™ i7 8550U
@@ -456,7 +457,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           Video Card:
+           Tarjeta gráfica:
           </span>
           <span>
            Intel® HD Graphics 620
@@ -472,18 +473,18 @@
         </div>
         <div class="tm-product-card-add">
          <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites tm-action-button-active js-added-to" title="Add to favorites">
+          <a class="tm-product-card-action js-add-to js-add-to-favorites tm-action-button-active js-added-to" title="Agregar a favoritos">
            <span uk-icon="icon: heart; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to favorites
+            Agregar a favoritos
            </span>
           </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Add to compare">
+          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Agregar a comparar">
            <span uk-icon="icon: copy; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to compare
+            Agregar a comparar
            </span>
           </a>
          </div>
@@ -491,7 +492,7 @@
           <span class="tm-product-card-add-button-icon" uk-icon="cart">
           </span>
           <span class="tm-product-card-add-button-text">
-           add to cart
+           agregar al carrito
           </span>
          </button>
         </div>
@@ -501,10 +502,10 @@
      <article class="tm-product-card">
       <div class="tm-product-card-media">
        <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="product.html">
+        <a class="tm-media-box" href="#" onclick="return false;">
          <div class="tm-product-card-labels">
           <span class="uk-label uk-label-warning">
-           top selling
+           más vendido
           </span>
          </div>
          <figure class="tm-media-box-wrap">
@@ -519,14 +520,14 @@
          Laptop
         </div>
         <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="product.html">
+         <a class="uk-link-heading" href="#" onclick="return false;">
           ASUS Zenbook UX330UA-FC020T (Rose Gold)
          </a>
         </h3>
         <ul class="uk-list uk-text-small tm-product-card-properties">
          <li>
           <span class="uk-text-muted">
-           Diagonal display:
+           Pantalla:
           </span>
           <span>
            13.3"
@@ -534,7 +535,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           CPU:
+           Procesador:
           </span>
           <span>
            Intel® Core™ i7-6500U
@@ -550,7 +551,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           Video Card:
+           Tarjeta gráfica:
           </span>
           <span>
            Intel® HD Graphics 520
@@ -566,18 +567,18 @@
         </div>
         <div class="tm-product-card-add">
          <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Add to favorites">
+          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Agregar a favoritos">
            <span uk-icon="icon: heart; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to favorites
+            Agregar a favoritos
            </span>
           </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Add to compare">
+          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Agregar a comparar">
            <span uk-icon="icon: copy; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to compare
+            Agregar a comparar
            </span>
           </a>
          </div>
@@ -585,7 +586,7 @@
           <span class="tm-product-card-add-button-icon" uk-icon="cart">
           </span>
           <span class="tm-product-card-add-button-text">
-           add to cart
+           agregar al carrito
           </span>
          </button>
         </div>
@@ -595,7 +596,7 @@
      <article class="tm-product-card">
       <div class="tm-product-card-media">
        <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="product.html">
+        <a class="tm-media-box" href="#" onclick="return false;">
          <figure class="tm-media-box-wrap">
           <img alt="Dell XPS 15 9560-8968 (Silver)" decoding="async" loading="lazy" src="assets/images/products/5/5-medium.webp"/>
          </figure>
@@ -608,14 +609,14 @@
          Laptop
         </div>
         <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="product.html">
+         <a class="uk-link-heading" href="#" onclick="return false;">
           Dell XPS 15 9560-8968 (Silver)
          </a>
         </h3>
         <ul class="uk-list uk-text-small tm-product-card-properties">
          <li>
           <span class="uk-text-muted">
-           Diagonal display:
+           Pantalla:
           </span>
           <span>
            15.6"
@@ -623,7 +624,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           CPU:
+           Procesador:
           </span>
           <span>
            Intel® Core™ i7 7700HQ
@@ -639,7 +640,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           Video Card:
+           Tarjeta gráfica:
           </span>
           <span>
            NVIDIA GeForce GTX 960M
@@ -658,18 +659,18 @@
         </div>
         <div class="tm-product-card-add">
          <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Add to favorites">
+          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Agregar a favoritos">
            <span uk-icon="icon: heart; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to favorites
+            Agregar a favoritos
            </span>
           </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Add to compare">
+          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Agregar a comparar">
            <span uk-icon="icon: copy; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to compare
+            Agregar a comparar
            </span>
           </a>
          </div>
@@ -677,7 +678,7 @@
           <span class="tm-product-card-add-button-icon" uk-icon="cart">
           </span>
           <span class="tm-product-card-add-button-text">
-           add to cart
+           agregar al carrito
           </span>
          </button>
         </div>
@@ -687,10 +688,10 @@
      <article class="tm-product-card">
       <div class="tm-product-card-media">
        <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="product.html">
+        <a class="tm-media-box" href="#" onclick="return false;">
          <div class="tm-product-card-labels">
           <span class="uk-label uk-label-danger">
-           trade-in
+           acepta canje
           </span>
          </div>
          <figure class="tm-media-box-wrap">
@@ -705,14 +706,14 @@
          Laptop
         </div>
         <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="product.html">
+         <a class="uk-link-heading" href="#" onclick="return false;">
           Apple MacBook Air 13" MQD32LL/A 128GB (Silver)
          </a>
         </h3>
         <ul class="uk-list uk-text-small tm-product-card-properties">
          <li>
           <span class="uk-text-muted">
-           Diagonal display:
+           Pantalla:
           </span>
           <span>
            13.3"
@@ -720,7 +721,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           CPU:
+           Procesador:
           </span>
           <span>
            Intel® Core™ i5
@@ -736,7 +737,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           Video Card:
+           Tarjeta gráfica:
           </span>
           <span>
            Intel® HD Graphics 6000
@@ -752,18 +753,18 @@
         </div>
         <div class="tm-product-card-add">
          <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Add to favorites">
+          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Agregar a favoritos">
            <span uk-icon="icon: heart; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to favorites
+            Agregar a favoritos
            </span>
           </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare tm-action-button-active js-added-to" title="Add to compare">
+          <a class="tm-product-card-action js-add-to js-add-to-compare tm-action-button-active js-added-to" title="Agregar a comparar">
            <span uk-icon="icon: copy; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to compare
+            Agregar a comparar
            </span>
           </a>
          </div>
@@ -771,7 +772,7 @@
           <span class="tm-product-card-add-button-icon" uk-icon="cart">
           </span>
           <span class="tm-product-card-add-button-text">
-           add to cart
+           agregar al carrito
           </span>
          </button>
         </div>
@@ -781,7 +782,7 @@
      <article class="tm-product-card">
       <div class="tm-product-card-media">
        <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="product.html">
+        <a class="tm-media-box" href="#" onclick="return false;">
          <figure class="tm-media-box-wrap">
           <img alt="Dell Inspiron 5378-2063 (Gray)" decoding="async" loading="lazy" src="assets/images/products/7/7-medium.webp"/>
          </figure>
@@ -794,14 +795,14 @@
          Laptop
         </div>
         <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="product.html">
+         <a class="uk-link-heading" href="#" onclick="return false;">
           Dell Inspiron 5378-2063 (Gray)
          </a>
         </h3>
         <ul class="uk-list uk-text-small tm-product-card-properties">
          <li>
           <span class="uk-text-muted">
-           Diagonal display:
+           Pantalla:
           </span>
           <span>
            13.3"
@@ -809,7 +810,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           CPU:
+           Procesador:
           </span>
           <span>
            Intel® Core™ i3-7100U
@@ -825,7 +826,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           HDD Capacity:
+           Capacidad HDD:
           </span>
           <span>
            1 TB
@@ -844,18 +845,18 @@
         </div>
         <div class="tm-product-card-add">
          <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Add to favorites">
+          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Agregar a favoritos">
            <span uk-icon="icon: heart; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to favorites
+            Agregar a favoritos
            </span>
           </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Add to compare">
+          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Agregar a comparar">
            <span uk-icon="icon: copy; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to compare
+            Agregar a comparar
            </span>
           </a>
          </div>
@@ -863,7 +864,7 @@
           <span class="tm-product-card-add-button-icon" uk-icon="cart">
           </span>
           <span class="tm-product-card-add-button-text">
-           add to cart
+           agregar al carrito
           </span>
          </button>
         </div>
@@ -873,10 +874,10 @@
      <article class="tm-product-card">
       <div class="tm-product-card-media">
        <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="product.html">
+        <a class="tm-media-box" href="#" onclick="return false;">
          <div class="tm-product-card-labels">
           <span class="uk-label uk-label-success">
-           new
+           nuevo
           </span>
          </div>
          <figure class="tm-media-box-wrap">
@@ -891,14 +892,14 @@
          Laptop
         </div>
         <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="product.html">
+         <a class="uk-link-heading" href="#" onclick="return false;">
           Lenovo Yoga 720-13IKB 80X60059RK (Silver)
          </a>
         </h3>
         <ul class="uk-list uk-text-small tm-product-card-properties">
          <li>
           <span class="uk-text-muted">
-           Diagonal display:
+           Pantalla:
           </span>
           <span>
            13.3"
@@ -906,7 +907,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           CPU:
+           Procesador:
           </span>
           <span>
            Intel® Core™ i5-7200U
@@ -922,7 +923,7 @@
          </li>
          <li>
           <span class="uk-text-muted">
-           Video Card:
+           Tarjeta gráfica:
           </span>
           <span>
            Intel® HD Graphics 620
@@ -938,18 +939,18 @@
         </div>
         <div class="tm-product-card-add">
          <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Add to favorites">
+          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Agregar a favoritos">
            <span uk-icon="icon: heart; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to favorites
+            Agregar a favoritos
            </span>
           </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Add to compare">
+          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Agregar a comparar">
            <span uk-icon="icon: copy; ratio: .75;">
            </span>
            <span class="tm-product-card-action-text">
-            Add to compare
+            Agregar a comparar
            </span>
           </a>
          </div>
@@ -957,7 +958,7 @@
           <span class="tm-product-card-add-button-icon" uk-icon="cart">
           </span>
           <span class="tm-product-card-add-button-text">
-           add to cart
+           agregar al carrito
           </span>
          </button>
         </div>
@@ -967,9 +968,9 @@
     </div>
    </div>
    <div class="uk-margin uk-text-center">
-    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="subcategory.html">
+    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" routerLink="/catalogo">
      <span>
-      shop all
+      ver todo
      </span>
      <span uk-icon="icon: chevron-right; ratio: .75;">
      </span>
@@ -980,7 +981,7 @@
  <section class="uk-section uk-section-default uk-section-small">
   <div class="uk-container">
    <h2 class="uk-text-center">
-    Popular Brands
+    Marcas populares
    </h2>
    <div class="uk-margin-medium-top" uk-slider="finite: true">
     <div class="uk-position-relative">
@@ -1111,9 +1112,9 @@
     </ul>
    </div>
    <div class="uk-margin uk-text-center">
-    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="brands.html">
+    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="#" onclick="return false;">
      <span>
-      see all brands
+      ver todas las marcas
      </span>
      <span uk-icon="icon: chevron-right; ratio: .75;">
      </span>
@@ -1125,35 +1126,35 @@
   <div class="uk-container">
    <div class="uk-grid uk-grid-small uk-child-width-1-1 uk-child-width-1-3@s" uk-grid="">
     <div>
-     <a class="tm-banner" href="subcategory.html">
+     <a class="tm-banner" routerLink="/catalogo">
       <div class="tm-ratio tm-ratio-4-3">
        <img alt="Laptops &amp; Tablets" src="assets/images/catalog/laptops.webp" uk-cover="" loading="lazy" decoding="async"/>
       </div>
       <div class="tm-banner-caption">
-       <div class="tm-banner-caption-eyebrow">From $149</div>
+       <div class="tm-banner-caption-eyebrow">Desde $149</div>
        <div class="tm-banner-caption-title">Laptops &amp; Tablets</div>
       </div>
      </a>
     </div>
     <div>
-     <a class="tm-banner" href="subcategory.html">
+     <a class="tm-banner" routerLink="/catalogo">
       <div class="tm-ratio tm-ratio-4-3">
        <img alt="Smartphones" src="assets/images/catalog/smartphones.webp" uk-cover="" loading="lazy" decoding="async"/>
       </div>
       <div class="tm-banner-caption">
-       <div class="tm-banner-caption-eyebrow">From $99</div>
+       <div class="tm-banner-caption-eyebrow">Desde $99</div>
        <div class="tm-banner-caption-title">Smartphones</div>
       </div>
      </a>
     </div>
     <div>
-     <a class="tm-banner" href="subcategory.html">
+     <a class="tm-banner" routerLink="/catalogo">
       <div class="tm-ratio tm-ratio-4-3">
        <img alt="Gaming Consoles" src="assets/images/catalog/consoles.webp" uk-cover="" loading="lazy" decoding="async"/>
       </div>
       <div class="tm-banner-caption">
-       <div class="tm-banner-caption-eyebrow">From $399</div>
-       <div class="tm-banner-caption-title">Gaming Consoles</div>
+       <div class="tm-banner-caption-eyebrow">Desde $399</div>
+       <div class="tm-banner-caption-title">Consolas de videojuegos</div>
       </div>
      </a>
     </div>
@@ -1164,54 +1165,56 @@
   <div class="uk-container">
    <div class="uk-flex uk-flex-center">
     <div class="uk-width-1-1 uk-width-2-3@s uk-text-center">
-     <div class="uk-text-meta uk-text-uppercase">Deal of the day</div>
+     <div class="uk-text-meta uk-text-uppercase">Oferta del día</div>
      <h2 class="uk-margin-remove-top">Apple MacBook Pro 15" Touch Bar</h2>
-     <p class="uk-text-small uk-margin-small-top">256GB, Silver. Intel&reg; Core&trade; i7, 16 GB RAM, AMD Radeon Pro 555.</p>
+     <p class="uk-text-small uk-margin-small-top">256GB, Plateada. Intel&reg; Core&trade; i7, 16 GB RAM, AMD Radeon Pro 555.</p>
      <div class="uk-grid uk-grid-small uk-flex-middle uk-flex-center" uk-grid="">
       <div><del class="uk-text-meta">$1899.00</del></div>
       <div class="uk-h3 uk-margin-remove">$1599.00</div>
      </div>
+     <!-- Los atributos data-unit se mantienen en inglés: home.component.ts los busca por estos valores exactos -->
      <div class="uk-margin tm-countdown uk-flex-center" id="tm-deal-countdown">
-      <div class="tm-countdown-item"><strong data-unit="days">00</strong><span>Days</span></div>
-      <div class="tm-countdown-item"><strong data-unit="hours">00</strong><span>Hours</span></div>
+      <div class="tm-countdown-item"><strong data-unit="days">00</strong><span>Días</span></div>
+      <div class="tm-countdown-item"><strong data-unit="hours">00</strong><span>Horas</span></div>
       <div class="tm-countdown-item"><strong data-unit="minutes">00</strong><span>Min</span></div>
-      <div class="tm-countdown-item"><strong data-unit="seconds">00</strong><span>Sec</span></div>
+      <div class="tm-countdown-item"><strong data-unit="seconds">00</strong><span>Seg</span></div>
      </div>
-     <a class="uk-button uk-button-default uk-light uk-margin-medium-top" href="product.html">Shop this deal</a>
+     <a class="uk-button uk-button-default uk-light uk-margin-medium-top" href="#" onclick="return false;">Ver esta oferta</a>
     </div>
    </div>
   </div>
  </section>
  <section class="uk-section uk-section-small">
   <div class="uk-container">
+   <!-- TODO: reemplazar por @for con artículos reales desde un BlogService -->
    <h2 class="uk-text-center">
     Blog
    </h2>
    <div class="uk-grid uk-grid-medium uk-grid-match uk-child-width-1-1 uk-child-width-1-2@s" uk-grid="">
     <div>
-     <a href="article.html">
+     <a href="#" onclick="return false;">
       <article class="uk-card uk-card-default uk-card-small uk-article uk-overflow-hidden uk-box-shadow-hover-large uk-height-1-1 tm-ignore-container">
        <div class="tm-ratio tm-ratio-16-9">
         <figure class="tm-media-box uk-cover-container uk-margin-remove">
-         <img alt="Everything You Need to Know About the MacBook Pro" decoding="async" loading="lazy" src="assets/images/articles/macbook-photo.webp" uk-cover="uk-cover"/>
+         <img alt="Todo lo que necesitas saber sobre la MacBook Pro" decoding="async" loading="lazy" src="assets/images/articles/macbook-photo.webp" uk-cover="uk-cover"/>
         </figure>
        </div>
        <div class="uk-card-body">
         <div class="uk-article-body">
          <div class="uk-article-meta uk-margin-xsmall-bottom">
           <time>
-           May 21, 2018
+           21 de mayo, 2018
           </time>
          </div>
          <div>
           <h3 class="uk-margin-remove">
-           Everything You Need to Know About the MacBook Pro
+           Todo lo que necesitas saber sobre la MacBook Pro
           </h3>
          </div>
          <div class="uk-margin-small-top">
           <p>
-           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id
-                            aliquam. Nam consectetur interdum nibh eget sodales. Cras volutpat efficitur ornare.
+           Repasamos las características clave de la nueva MacBook Pro y qué la hace
+                            una gran opción para trabajo y estudio.
           </p>
          </div>
         </div>
@@ -1220,30 +1223,29 @@
      </a>
     </div>
     <div>
-     <a href="article.html">
+     <a href="#" onclick="return false;">
       <article class="uk-card uk-card-default uk-card-small uk-article uk-overflow-hidden uk-box-shadow-hover-large uk-height-1-1 tm-ignore-container">
        <div class="tm-ratio tm-ratio-16-9">
         <figure class="tm-media-box uk-cover-container uk-margin-remove">
-         <img alt="Apple introduces macOS Mojave" decoding="async" loading="lazy" src="assets/images/articles/macos.webp" uk-cover="uk-cover"/>
+         <img alt="Apple presenta macOS Mojave" decoding="async" loading="lazy" src="assets/images/articles/macos.webp" uk-cover="uk-cover"/>
         </figure>
        </div>
        <div class="uk-card-body">
         <div class="uk-article-body">
          <div class="uk-article-meta uk-margin-xsmall-bottom">
           <time>
-           May 21, 2018
+           21 de mayo, 2018
           </time>
          </div>
          <div>
           <h3 class="uk-margin-remove">
-           Apple introduces macOS Mojave
+           Apple presenta macOS Mojave
           </h3>
          </div>
          <div class="uk-margin-small-top">
           <p>
-           Praesent consequat justo eu massa malesuada posuere. Donec ultricies tincidunt nisl, sed
-                            euismod nulla venenatis maximus. Maecenas sit amet semper tellus. Pellentesque imperdiet
-                            finibus sapien, a consectetur eros auctor a.
+           Un repaso a las novedades del nuevo sistema operativo y cómo mejora
+                            el rendimiento de tus equipos.
           </p>
          </div>
         </div>
@@ -1253,9 +1255,9 @@
     </div>
    </div>
    <div class="uk-margin uk-text-center">
-    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="blog.html">
+    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="#" onclick="return false;">
      <span>
-      see all articles
+      ver todos los artículos
      </span>
      <span uk-icon="icon: chevron-right; ratio: .75;">
      </span>
@@ -1268,32 +1270,32 @@
    <div class="uk-grid uk-grid-medium uk-child-width-1-1 uk-child-width-1-2@s" uk-grid="">
     <section>
      <h2 class="uk-text-center uk-text-left@s">
-      About
+      Sobre nosotros
      </h2>
      <p>
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc at neque vulputate, vestibulum magna
-                  in, accumsan urna. Nulla feugiat ipsum ex, molestie porttitor nibh faucibus at. Lorem ipsum dolor sit
-                  amet, consectetur adipiscing elit. Nullam hendrerit lorem ut finibus semper. Donec ac vehicula erat,
-                  nec consequat massa.
+      Somos una tienda de tecnología con base en Capiatá, Paraguay, dedicada a ofrecer
+                  laptops, smartphones, productos de gaming y accesorios al mejor precio, con atención
+                  cercana y asesoramiento real antes y después de tu compra.
      </p>
      <p>
-      Quisque rhoncus fermentum sapien id congue. Nam at rutrum turpis. Aliquam sagittis imperdiet tortor
-                  vel dignissim. Ut ipsum nunc, egestas et odio id, vestibulum posuere orci. Orci varius natoque
-                  penatibus et magnis dis parturient montes, nascetur ridiculus mus.
+      Trabajamos con marcas reconocidas y priorizamos la calidad, el soporte postventa y
+                  la confianza de nuestros clientes en cada compra, ya sea en tienda o a través de
+                  nuestra plataforma en línea.
      </p>
      <div class="uk-text-center uk-text-left@s">
-      <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="about.html">
+      <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="#" onclick="return false;">
        <span>
-        read more
+        ver más
        </span>
        <span uk-icon="icon: chevron-right; ratio: .75;">
        </span>
       </a>
      </div>
     </section>
+    <!-- TODO: reemplazar por @for con noticias reales desde un BlogService/NewsService -->
     <section>
      <h2 class="uk-text-center uk-text-left@s">
-      Latest News
+      Últimas noticias
      </h2>
      <ul class="uk-list uk-list-small uk-list-divider">
       <li>
@@ -1301,18 +1303,18 @@
         <div class="uk-article-body">
          <div class="uk-article-meta uk-margin-xsmall-bottom">
           <time>
-           June 4, 2018
+           4 de junio, 2018
           </time>
          </div>
          <h3 class="uk-h4 uk-margin-remove">
-          <a class="uk-link-heading" href="article.html">
-           Highlights from WWDC
+          <a class="uk-link-heading" href="#" onclick="return false;">
+           Lo más destacado de la WWDC
           </a>
          </h3>
          <div class="uk-margin-xsmall-top uk-text-small">
           <p>
-           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id
-                            aliquam. Nam consectetur interdum nibh eget sodales. Cras volutpat efficitur ornare.
+           Repasamos los anuncios más importantes del evento y qué significan
+                            para los próximos lanzamientos de la marca.
           </p>
          </div>
         </div>
@@ -1323,18 +1325,18 @@
         <div class="uk-article-body">
          <div class="uk-article-meta uk-margin-xsmall-bottom">
           <time>
-           June 4, 2018
+           4 de junio, 2018
           </time>
          </div>
          <h3 class="uk-h4 uk-margin-remove">
-          <a class="uk-link-heading" href="article.html">
-           Apple introduces macOS Mojave
+          <a class="uk-link-heading" href="#" onclick="return false;">
+           Apple presenta macOS Mojave
           </a>
          </h3>
          <div class="uk-margin-xsmall-top uk-text-small">
           <p>
-           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id
-                            aliquam. Nam consectetur interdum nibh eget sodales. Cras volutpat efficitur ornare.
+           Conocé las principales novedades de la nueva versión del sistema
+                            operativo de escritorio.
           </p>
          </div>
         </div>
@@ -1345,18 +1347,18 @@
         <div class="uk-article-body">
          <div class="uk-article-meta uk-margin-xsmall-bottom">
           <time>
-           May 29, 2018
+           29 de mayo, 2018
           </time>
          </div>
          <h3 class="uk-h4 uk-margin-remove">
-          <a class="uk-link-heading" href="article.html">
-           iOS 11.4 brings stereo pairs and multi-room audio with AirPlay 2
+          <a class="uk-link-heading" href="#" onclick="return false;">
+           iOS 11.4 incorpora audio en estéreo y multihabitación con AirPlay 2
           </a>
          </h3>
          <div class="uk-margin-xsmall-top uk-text-small">
           <p>
-           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id
-                            aliquam. Nam consectetur interdum nibh eget sodales. Cras volutpat efficitur ornare.
+           Un vistazo a las funciones de audio que trae la última actualización
+                            del sistema operativo móvil.
           </p>
          </div>
         </div>
@@ -1364,9 +1366,9 @@
       </li>
      </ul>
      <div class="uk-margin uk-text-center uk-text-left@s">
-      <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="news.html">
+      <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="#" onclick="return false;">
        <span>
-        see all news
+        ver todas las noticias
        </span>
        <span uk-icon="icon: chevron-right; ratio: .75;">
        </span>
@@ -1378,8 +1380,8 @@
  </section>
  <section class="uk-section uk-section-small">
   <div class="uk-container">
-   <h2 class="uk-text-center">Follow Us on Instagram</h2>
-   <div class="uk-text-center uk-margin-small-bottom uk-text-meta">&#64;ourstore</div>
+   <h2 class="uk-text-center">Seguinos en Instagram</h2>
+   <div class="uk-text-center uk-margin-small-bottom uk-text-meta">&#64;tienda</div>
    <div class="uk-grid uk-child-width-1-3 uk-child-width-1-6@s uk-grid-collapse uk-margin-medium-top tm-instagram-grid" uk-grid="">
     <div>
      <a class="tm-instagram-item" href="#">
@@ -1424,10 +1426,10 @@
   <div class="uk-container">
    <div class="uk-text-center">
     <div class="uk-h2 uk-margin-remove">
-     Subscribe for updates
+     Suscribite para recibir novedades
     </div>
     <div>
-     Be aware of new products and special offers.
+     Enterate de nuevos productos y ofertas especiales.
     </div>
    </div>
    <div class="uk-margin">
@@ -1437,12 +1439,12 @@
        <div class="uk-inline uk-width-1-1">
         <span class="uk-form-icon" uk-icon="mail">
         </span>
-        <input class="uk-input" placeholder="Your email" required="" type="email"/>
+        <input class="uk-input" placeholder="Tu correo" required="" type="email"/>
        </div>
       </div>
       <div>
        <button class="uk-button uk-button-primary">
-        subscribe
+        suscribirse
        </button>
       </div>
      </div>
@@ -1450,6 +1452,7 @@
    </div>
   </div>
  </section>
+ <!-- Carrusel de puntos fuertes de la tienda (contenido de la plantilla, editar por texto propio) -->
  <section class="uk-section uk-section-default uk-section-small">
   <div class="uk-container">
    <div uk-slider="">
@@ -1462,10 +1465,10 @@
        </div>
        <div class="uk-text-center uk-text-left@s uk-width-expand@s">
         <div>
-         Mauris placerat
+         Calidad garantizada
         </div>
         <div class="uk-text-meta">
-         Donec mollis nibh dolor, sit amet auctor
+         Productos originales con garantía oficial
         </div>
        </div>
       </div>
@@ -1478,10 +1481,10 @@
        </div>
        <div class="uk-text-center uk-text-left@s uk-width-expand@s">
         <div>
-         Lorem ipsum
+         Atención personalizada
         </div>
         <div class="uk-text-meta">
-         Sit amet, consectetur adipiscing elit
+         Te asesoramos antes y después de tu compra
         </div>
        </div>
       </div>
@@ -1494,10 +1497,10 @@
        </div>
        <div class="uk-text-center uk-text-left@s uk-width-expand@s">
         <div>
-         Proin pharetra
+         Entrega rápida
         </div>
         <div class="uk-text-meta">
-         Nec quam a fermentum ut viverra
+         Envíos a todo el país
         </div>
        </div>
       </div>
@@ -1510,10 +1513,10 @@
        </div>
        <div class="uk-text-center uk-text-left@s uk-width-expand@s">
         <div>
-         Praesent ultrices
+         Opiniones reales
         </div>
         <div class="uk-text-meta">
-         Praesent ultrices, orci nec finibus
+         Miles de clientes ya confiaron en nosotros
         </div>
        </div>
       </div>
@@ -1526,10 +1529,10 @@
        </div>
        <div class="uk-text-center uk-text-left@s uk-width-expand@s">
         <div>
-         Duis condimentum
+         Clientes satisfechos
         </div>
         <div class="uk-text-meta">
-         Pellentesque eget varius arcu
+         Tu satisfacción es nuestra prioridad
         </div>
        </div>
       </div>
