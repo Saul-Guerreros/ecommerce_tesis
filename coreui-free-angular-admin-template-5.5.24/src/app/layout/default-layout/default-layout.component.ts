@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { NgScrollbar } from 'ngx-scrollbar';
 
 import { IconDirective } from '@coreui/icons-angular';
 import {
   ContainerComponent,
+  INavData,
   ShadowOnScrollDirective,
   SidebarBrandComponent,
   SidebarComponent,
@@ -17,6 +18,8 @@ import {
 
 import { DefaultFooterComponent, DefaultHeaderComponent } from './';
 import { navItems } from './_nav';
+import { PERMISO_POR_RUTA } from './_nav-permisos';
+import { AuthService } from '../../auth/services/auth.service';
 
 function isOverflown(element: HTMLElement) {
   return (
@@ -48,5 +51,22 @@ function isOverflown(element: HTMLElement) {
   ]
 })
 export class DefaultLayoutComponent {
-  public navItems = [...navItems];
+  private authService = inject(AuthService);
+
+  // Filtra los items (y sub-items) cuya url requiere un permiso que el
+  // usuario logueado no tiene. Ver PERMISO_POR_RUTA en _nav-permisos.ts.
+  public navItems: INavData[] = this.filtrarPorPermisos([...navItems]);
+
+  private filtrarPorPermisos(items: INavData[]): INavData[] {
+    return items
+      .filter((item) => this.puedeVer(item.url))
+      .map((item) => (item.children ? { ...item, children: this.filtrarPorPermisos(item.children) } : item));
+  }
+
+  private puedeVer(url?: string | any[]): boolean {
+    if (!url || typeof url !== 'string') return true;
+    const permisoRequerido = PERMISO_POR_RUTA[url];
+    if (!permisoRequerido) return true;
+    return this.authService.tienePermiso(permisoRequerido);
+  }
 }

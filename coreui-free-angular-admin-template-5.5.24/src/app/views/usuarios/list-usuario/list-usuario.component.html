@@ -1,0 +1,247 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <input
+        type="text"
+        class="form-control"
+        style="width: 220px"
+        placeholder="Buscar por nombre, cédula o email..."
+        [(ngModel)]="search"
+        (keyup.enter)="searchTo()"
+      />
+      <select class="form-select" style="width: 160px" [(ngModel)]="filtroEstado" (change)="searchTo()">
+        <option value="">Todos los estados</option>
+        <option value="ACTIVO">Activo</option>
+        <option value="INACTIVO">Inactivo</option>
+        <option value="BLOQUEADO">Bloqueado</option>
+      </select>
+      <select class="form-select" style="width: 160px" [(ngModel)]="filtroRolId" (change)="searchTo()">
+        <option [ngValue]="null">Todos los roles</option>
+        <option *ngFor="let r of roles" [ngValue]="r.rol_id">{{ r.rol_descri }}</option>
+      </select>
+      <button cButton color="primary" size="sm" (click)="searchTo()">Buscar</button>
+      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    </div>
+    <button cButton color="primary" (click)="openCreate()">+ Nuevo Usuario</button>
+  </c-card-header>
+
+  <c-card-body>
+    <table cTable hover responsive [striped]="true">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Cédula</th>
+          <th>Email</th>
+          <th>Cargo</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let usuario of usuarios">
+          <td class="fw-semibold">
+            {{ usuario.persona.nombre_completo }}
+            <c-badge *ngIf="esMiPropioUsuario(usuario)" color="info" class="ms-1">Tú</c-badge>
+          </td>
+          <td>{{ usuario.persona.cedula }}</td>
+          <td>{{ usuario.email }}</td>
+          <td>{{ usuario.cargo }}</td>
+          <td>{{ usuario.rol }}</td>
+          <td>
+            <c-badge [color]="colorEstado(usuario.estado)">{{ usuario.estado }}</c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="light" class="me-1" (click)="openEdit(usuario)">Editar</button>
+
+            <c-dropdown class="d-inline-block" [autoClose]="true">
+              <button cButton cDropdownToggle size="sm" color="secondary" variant="outline">
+                Estado
+              </button>
+              <ul cDropdownMenu>
+                <li>
+                  <button
+                    cDropdownItem
+                    [disabled]="usuario.estado === 'ACTIVO'"
+                    (click)="cambiarEstado(usuario, 'ACTIVO')"
+                  >
+                    Activar
+                  </button>
+                </li>
+                <li>
+                  <button
+                    cDropdownItem
+                    [disabled]="usuario.estado === 'INACTIVO' || esMiPropioUsuario(usuario)"
+                    (click)="cambiarEstado(usuario, 'INACTIVO')"
+                  >
+                    Desactivar
+                  </button>
+                </li>
+                <li>
+                  <button
+                    cDropdownItem
+                    [disabled]="usuario.estado !== 'BLOQUEADO'"
+                    (click)="cambiarEstado(usuario, 'ACTIVO')"
+                  >
+                    Desbloquear
+                  </button>
+                </li>
+              </ul>
+            </c-dropdown>
+          </td>
+        </tr>
+        <tr *ngIf="!usuarios.length">
+          <td colspan="7" class="text-center text-muted py-4">No hay usuarios registrados</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <nav *ngIf="lastPage > 1" class="mt-3">
+      <ul cPagination align="end">
+        <li cPageItem [disabled]="currentPage === 1">
+          <a cPageLink role="button" (click)="changePage(currentPage - 1)">Anterior</a>
+        </li>
+        <li cPageItem *ngFor="let p of pagesArray" [active]="currentPage === p">
+          <a cPageLink role="button" (click)="changePage(p)">{{ p }}</a>
+        </li>
+        <li cPageItem [disabled]="currentPage === lastPage">
+          <a cPageLink role="button" (click)="changePage(currentPage + 1)">Siguiente</a>
+        </li>
+      </ul>
+    </nav>
+  </c-card-body>
+</c-card>
+
+<!-- ================= MODAL: Crear ================= -->
+<c-modal [visible]="showCreate" (visibleChange)="showCreate = $event" size="lg">
+  <c-modal-header>
+    <h5 cModalTitle>Nuevo Usuario</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div class="alert alert-danger" *ngIf="createError">{{ createError }}</div>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Primer nombre (*)</label>
+        <input type="text" class="form-control" [(ngModel)]="createForm.nombre1" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Segundo nombre</label>
+        <input type="text" class="form-control" [(ngModel)]="createForm.nombre2" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Primer apellido (*)</label>
+        <input type="text" class="form-control" [(ngModel)]="createForm.apellido1" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Segundo apellido</label>
+        <input type="text" class="form-control" [(ngModel)]="createForm.apellido2" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Cédula (*)</label>
+        <input type="text" class="form-control" [(ngModel)]="createForm.cedula" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Fecha de nacimiento</label>
+        <input type="date" class="form-control" [(ngModel)]="createForm.fecha_nacimiento" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Cargo (*)</label>
+        <select class="form-select" [(ngModel)]="createForm.cargo_id">
+          <option [ngValue]="null">Selecciona un cargo</option>
+          <option *ngFor="let c of cargos" [ngValue]="c.crg_id">{{ c.crg_descr }}</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Rol (*)</label>
+        <select class="form-select" [(ngModel)]="createForm.rol_id">
+          <option [ngValue]="null">Selecciona un rol</option>
+          <option *ngFor="let r of roles" [ngValue]="r.rol_id">{{ r.rol_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Email (*)</label>
+        <input type="email" class="form-control" [(ngModel)]="createForm.email" autocomplete="off" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Contraseña (*)</label>
+        <input type="password" class="form-control" [(ngModel)]="createForm.password" autocomplete="new-password" />
+        <small class="text-muted">Mínimo 8 caracteres.</small>
+      </div>
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="showCreate = false">Cerrar</button>
+    <button cButton color="primary" (click)="guardarCreate()">
+      Registrar
+      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    </button>
+  </c-modal-footer>
+</c-modal>
+
+<!-- ================= MODAL: Editar ================= -->
+<c-modal [visible]="showEdit" (visibleChange)="showEdit = $event" size="lg">
+  <c-modal-header>
+    <h5 cModalTitle>Editar Usuario: "{{ editUsuario?.persona?.nombre_completo }}"</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div class="alert alert-danger" *ngIf="editError">{{ editError }}</div>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Primer nombre (*)</label>
+        <input type="text" class="form-control" [(ngModel)]="editForm.nombre1" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Segundo nombre</label>
+        <input type="text" class="form-control" [(ngModel)]="editForm.nombre2" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Primer apellido (*)</label>
+        <input type="text" class="form-control" [(ngModel)]="editForm.apellido1" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Segundo apellido</label>
+        <input type="text" class="form-control" [(ngModel)]="editForm.apellido2" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Cédula (*)</label>
+        <input type="text" class="form-control" [(ngModel)]="editForm.cedula" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Fecha de nacimiento</label>
+        <input type="date" class="form-control" [(ngModel)]="editForm.fecha_nacimiento" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Cargo (*)</label>
+        <select class="form-select" [(ngModel)]="editForm.cargo_id">
+          <option [ngValue]="null">Selecciona un cargo</option>
+          <option *ngFor="let c of cargos" [ngValue]="c.crg_id">{{ c.crg_descr }}</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Rol (*)</label>
+        <select class="form-select" [(ngModel)]="editForm.rol_id">
+          <option [ngValue]="null">Selecciona un rol</option>
+          <option *ngFor="let r of roles" [ngValue]="r.rol_id">{{ r.rol_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Email (*)</label>
+        <input type="email" class="form-control" [(ngModel)]="editForm.email" autocomplete="off" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Nueva contraseña</label>
+        <input type="password" class="form-control" [(ngModel)]="editForm.password" autocomplete="new-password" />
+        <small class="text-muted">Dejar en blanco para no cambiarla.</small>
+      </div>
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="showEdit = false">Cerrar</button>
+    <button cButton color="primary" (click)="guardarEdit()">
+      Actualizar
+      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    </button>
+  </c-modal-footer>
+</c-modal>

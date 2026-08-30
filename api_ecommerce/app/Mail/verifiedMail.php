@@ -2,8 +2,8 @@
 
 namespace App\Mail;
 
+use App\Models\Usuario;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -13,18 +13,19 @@ class verifiedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    /**
-     * Create a new message instance.
-     */
-    public $user;
-    public function __construct($user)
-    {
-        $this->user = $user;
-    }
+    public Usuario $usuario;
+    public string $codigo;
 
     /**
-     * Get the message envelope.
+     * @param  Usuario  $usuario
+     * @param  string  $codigo  Token de verificacion en claro (sin hashear).
      */
+    public function __construct(Usuario $usuario, string $codigo)
+    {
+        $this->usuario = $usuario;
+        $this->codigo = $codigo;
+    }
+
     public function envelope(): Envelope
     {
         return new Envelope(
@@ -32,22 +33,16 @@ class verifiedMail extends Mailable
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
-        $user = $this->user;
         return new Content(
             view: 'mail.verifiedmail',
+            with: [
+                'codigo' => $this->codigo,
+            ],
         );
     }
 
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
     public function attachments(): array
     {
         return [];

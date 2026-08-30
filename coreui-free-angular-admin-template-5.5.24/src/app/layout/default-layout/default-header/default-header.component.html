@@ -71,15 +71,15 @@
     <ul cDropdownMenu class="pt-0 w-auto">
       <li>
         <h6 cDropdownHeader class="bg-body-secondary text-body-secondary fw-semibold py-2 rounded-top">
-          Account
+          {{ currentUser()?.full_name || 'Cuenta' }}
         </h6>
       </li>
       <li>
-        <a cDropdownItem routerLink="">
-          <svg cIcon class="me-2" name="cilBell"></svg>
-          Updates
-          <c-badge class="ms-2 float-end" color="info"> 42</c-badge>
-        </a>
+        <span cDropdownItem class="text-body-secondary" style="cursor: default; pointer-events: none;">
+          <svg cIcon class="me-2" name="cilUser"></svg>
+          {{ currentUser()?.email }}
+          <c-badge class="ms-2 float-end" color="info">{{ currentUser()?.rol }}</c-badge>
+        </span>
       </li>
       <li>
         <a cDropdownItem routerLink="/apps/email/inbox">
@@ -150,7 +150,7 @@
         </a>
       </li>
       <li>
-        <a cDropdownItem routerLink="">
+        <a cDropdownItem (click)="logout()" style="cursor: pointer;">
           <svg cIcon class="me-2" name="cilAccountLogout"></svg>
           Logout
         </a>

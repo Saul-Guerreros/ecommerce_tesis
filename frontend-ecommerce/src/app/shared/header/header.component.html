@@ -534,14 +534,19 @@
             404
            </a>
           </li>
-          <li>
+          <li *ngIf="!isLoggedIn">
            <a routerLink="/login">
             Sign In
            </a>
           </li>
-          <li>
-           <a href="register.html">
+          <li *ngIf="!isLoggedIn">
+           <a routerLink="/register">
             Sign Up
+           </a>
+          </li>
+          <li *ngIf="isLoggedIn">
+           <a href="javascript:void(0)" (click)="logout()">
+            Log out ({{ userName }})
            </a>
           </li>
           <li>
@@ -601,45 +606,56 @@
       3
      </span>
     </a>
-    <a class="uk-navbar-item uk-link-muted tm-navbar-button" href="account.html" uk-icon="user">
-    </a>
-    <div class="uk-padding-small uk-margin-remove" style="min-width: 150px;" uk-dropdown="pos: bottom-right; offset: -10; delay-hide: 200;">
-     <ul class="uk-nav uk-dropdown-nav">
-      <li>
-       <a href="account.html">
-        Orders
-        <span>
-         (2)
-        </span>
-       </a>
-      </li>
-      <li>
-       <a href="favorites.html">
-        Favorites
-        <span>
-         (3)
-        </span>
-       </a>
-      </li>
-      <li>
-       <a href="personal.html">
-        Personal
-       </a>
-      </li>
-      <li>
-       <a href="settings.html">
-        Settings
-       </a>
-      </li>
-      <li class="uk-nav-divider">
-      </li>
-      <li>
-       <a routerLink="/login">
-        Log out
-       </a>
-      </li>
-     </ul>
-    </div>
+    <ng-container *ngIf="isLoggedIn; else guestAccountLink">
+     <a class="uk-navbar-item uk-link-muted tm-navbar-button" href="javascript:void(0)" uk-icon="user">
+     </a>
+     <div class="uk-padding-small uk-margin-remove" style="min-width: 180px;" uk-dropdown="pos: bottom-right; offset: -10; delay-hide: 200;">
+      <ul class="uk-nav uk-dropdown-nav">
+       <li class="uk-text-meta uk-text-truncate" style="max-width: 200px;">
+        Hola, {{ userName }}
+       </li>
+       <li class="uk-nav-divider">
+       </li>
+       <li>
+        <a href="account.html">
+         Orders
+         <span>
+          (2)
+         </span>
+        </a>
+       </li>
+       <li>
+        <a href="favorites.html">
+         Favorites
+         <span>
+          (3)
+         </span>
+        </a>
+       </li>
+       <li>
+        <a href="personal.html">
+         Personal
+        </a>
+       </li>
+       <li>
+        <a href="settings.html">
+         Settings
+        </a>
+       </li>
+       <li class="uk-nav-divider">
+       </li>
+       <li>
+        <a href="javascript:void(0)" (click)="logout()">
+         Log out
+        </a>
+       </li>
+      </ul>
+     </div>
+    </ng-container>
+    <ng-template #guestAccountLink>
+     <a class="uk-navbar-item uk-link-muted tm-navbar-button" routerLink="/login" uk-icon="user">
+     </a>
+    </ng-template>
     <a class="uk-navbar-item uk-link-muted tm-navbar-button" href="cart.html" onclick="return false" uk-toggle="target: #cart-offcanvas">
      <span uk-icon="cart">
      </span>

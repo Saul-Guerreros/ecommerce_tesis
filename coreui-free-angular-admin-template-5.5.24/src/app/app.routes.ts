@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './auth/guards/auth.guard';
+import { permissionGuard } from './auth/guards/permission.guard';
 
 export const routes: Routes = [
   {
@@ -9,7 +11,7 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./layout').then(m => m.DefaultLayoutComponent),
-    
+    canActivate: [authGuard],
 
     data: {
       title: 'Home'
@@ -39,6 +41,13 @@ export const routes: Routes = [
       {
         path: 'atributos',
         loadChildren: () => import('./views/atributos/atributos.routes').then((m) => m.ATRIBUTOS_ROUTES),
+         canActivate: [permissionGuard('atributos.ver')],
+      },
+      {
+        path: 'usuarios',
+        loadChildren: () => import('./views/usuarios/usuarios.routes').then((m) => m.USUARIOS_ROUTES),
+        // Solo Administrador (Vendedor no tiene 'usuarios.ver', ver RolPermisoSeeder).
+        canActivate: [permissionGuard('usuarios.ver')],
       },
       {
         path: 'sliders',
@@ -48,10 +57,11 @@ export const routes: Routes = [
         path: 'cupones',
         loadChildren: () => import('./views/cupones/routes').then((m) => m.routes),
       },
-	  {
-		path: 'discounts',
-		loadChildren: () => import('./views/discounts/routes').then((m) => m.routes),
-	   },
+	    {
+		    path: 'discounts',
+		    loadChildren: () => import('./views/discounts/routes').then((m) => m.routes),
+	    },
+
       {
         path: 'theme',
         loadChildren: () => import('./views/theme/routes').then((m) => m.routes)
@@ -112,8 +122,25 @@ export const routes: Routes = [
     }
   },
   {
+    path: 'forgot-password',
+    loadComponent: () => import('./views/pages/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent),
+    data: {
+      title: 'Forgot Password'
+    }
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () => import('./views/pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),
+    data: {
+      title: 'Reset Password'
+    }
+  },
+  {
     path: 'register',
     loadComponent: () => import('./views/pages/register/register.component').then(m => m.RegisterComponent),
+    // No es auto-registro publico: crea un usuario funcionario (Admin/Vendedor),
+    // por eso exige login + el mismo permiso que el modal "+ Nuevo Usuario".
+    canActivate: [authGuard, permissionGuard('usuarios.gestionar')],
     data: {
       title: 'Register Page'
     }

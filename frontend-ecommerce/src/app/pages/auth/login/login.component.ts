@@ -65,8 +65,12 @@ export class LoginComponent {
     }
     this.authService.login(this.email,this.password).subscribe((resp:any) => {
         console.log(resp);
+        if (resp && resp.status === 423) {
+          this.toastr.error("Cuenta bloqueada", resp.error?.error || "Tu cuenta fue bloqueada por demasiados intentos fallidos. Contacta al soporte.");
+          return;
+        }
         if (resp.error && resp.error.error == 'Unauthorized') {
-          this.toastr.error("Validacion",'Las ccredenciales son incorrectas');
+          this.toastr.error("Validacion",'Las credenciales son incorrectas. Si tu cuenta es nueva, revisa tu correo para verificarla.');
           return
         }
         if (resp == true) {

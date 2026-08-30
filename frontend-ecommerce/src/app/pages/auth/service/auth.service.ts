@@ -49,9 +49,15 @@ export class AuthService {
     if (resp && resp.access_token) {
       localStorage.setItem("token",resp.access_token);
       localStorage.setItem("user",JSON.stringify(resp.user));
+      this.token = resp.access_token;
+      this.user = resp.user;
       return true;
     }
     return false;
+  }
+
+  isLoggedIn(): boolean {
+    return !!this.token;
   }
   register(data:any){
     let URL= URL_SERVICIOS +"/auth/register";
@@ -75,6 +81,14 @@ export class AuthService {
     return this.http.post(URL,data);
   }
   logout(){
+    let URL = URL_SERVICIOS + "/auth/logout";
+    this.http.post(URL, {}).subscribe({
+      next: () => this.clearSession(),
+      error: () => this.clearSession() // limpiamos igual aunque falle la peticion
+    });
+  }
+
+  private clearSession(){
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     this.user = null;

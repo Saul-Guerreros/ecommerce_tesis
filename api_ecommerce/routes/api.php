@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\product\marcaController;
 use App\Http\Controllers\Admin\SliderController;
 use App\Http\Controllers\Api\CategoriaController;
 use App\Http\Controllers\Api\ProductoController;
+use App\Http\Controllers\Api\UsuarioController;
 use App\Http\Controllers\Admin\Product\VariacionProductoController;
 use App\Http\Controllers\Admin\Product\EspecificacionProductoController;
 use App\Http\Controllers\Admin\Cupone\CuponeController;
@@ -82,6 +83,15 @@ Route::group([
    
     Route::resource("discounts", DiscountController::class);
 
+});
+
+Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {
+    Route::get('/catalogos', [UsuarioController::class, 'catalogos'])->middleware('permiso:usuarios.ver');
+    Route::get('/', [UsuarioController::class, 'index'])->middleware('permiso:usuarios.ver');
+    Route::get('/{usuario}', [UsuarioController::class, 'show'])->middleware('permiso:usuarios.ver');
+    Route::post('/', [UsuarioController::class, 'store'])->middleware('permiso:usuarios.gestionar');
+    Route::put('/{usuario}', [UsuarioController::class, 'update'])->middleware('permiso:usuarios.gestionar');
+    Route::patch('/{usuario}/estado', [UsuarioController::class, 'cambiarEstado'])->middleware('permiso:usuarios.gestionar');
 });
 
 Route::prefix('productos')->group(function () {

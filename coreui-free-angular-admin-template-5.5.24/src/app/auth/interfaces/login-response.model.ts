@@ -5,5 +5,4 @@ export interface LoginResponse {
   token_type: string;
   expires_in: number;
   user: User;
-
 }

@@ -81,7 +81,11 @@ export class LoginComponent {
       },
       error: (err) => {
         this.loading = false;
-        this.errorMsg = err.error?.error || err.error?.message || 'Credenciales incorrectas';
+        if (err.status === 423) {
+          this.errorMsg = err.error?.error || 'Cuenta bloqueada por demasiados intentos fallidos. Contacta al administrador.';
+        } else {
+          this.errorMsg = err.error?.error || err.error?.message || 'Credenciales incorrectas';
+        }
       }
     });
   }

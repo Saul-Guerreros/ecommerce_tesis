@@ -13,36 +13,78 @@
                 <div class="uk-card-body">
                   <div class="uk-form-stacked">
                     <div class="uk-grid-medium uk-child-width-1-1" uk-grid="">
-                      <div><label><div class="uk-form-label">Name</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+
+                      <div class="uk-grid-small uk-child-width-1-2@s" uk-grid="">
+                        <div><label><div class="uk-form-label">Primer nombre</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                                class="uk-input"
+                                id="nombre1"
+                                type="text"
+                                name="nombre1"
+                                [(ngModel)]="nombre1"
+                                placeholder="Juan"
+                                autocomplete="given-name"
+                                required=""
+                              /></div></label></div>
+                        <div><label><div class="uk-form-label">Segundo nombre</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                                class="uk-input"
+                                id="nombre2"
+                                type="text"
+                                name="nombre2"
+                                [(ngModel)]="nombre2"
+                                placeholder="(opcional)"
+                              /></div></label></div>
+                      </div>
+
+                      <div class="uk-grid-small uk-child-width-1-2@s" uk-grid="">
+                        <div><label><div class="uk-form-label">Primer apellido</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                                class="uk-input"
+                                id="apellido1"
+                                type="text"
+                                name="apellido1"
+                                [(ngModel)]="apellido1"
+                                placeholder="Pérez"
+                                autocomplete="family-name"
+                                required=""
+                              /></div></label></div>
+                        <div><label><div class="uk-form-label">Segundo apellido</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                                class="uk-input"
+                                id="apellido2"
+                                type="text"
+                                name="apellido2"
+                                [(ngModel)]="apellido2"
+                                placeholder="(opcional)"
+                              /></div></label></div>
+                      </div>
+
+                      <div class="uk-grid-small uk-child-width-1-2@s" uk-grid="">
+                        <div><label><div class="uk-form-label">Cédula</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: file-text"></span><input
+                                class="uk-input"
+                                id="cedula"
+                                type="text"
+                                name="cedula"
+                                [(ngModel)]="cedula"
+                                placeholder="0000000"
+                                required=""
+                              /></div></label></div>
+                        <div><label><div class="uk-form-label">Celular</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: phone"></span><input
+                                class="uk-input"
+                                id="celular"
+                                type="tel"
+                                name="celular"
+                                [(ngModel)]="celular"
+                                placeholder="0981 000 000"
+                                autocomplete="tel"
+                              /></div></label></div>
+                      </div>
+
+                      <div><label><div class="uk-form-label">Fecha de nacimiento</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: calendar"></span><input
                               class="uk-input"
-                              id="name"
-                              type="text"
-                              name="name"
-                              [(ngModel)]="name"
-                              placeholder="Shahnewaz Sakil"
-                              autocomplete="your name"
-                              required=""
+                              id="fecha_nacimiento"
+                              type="date"
+                              name="fecha_nacimiento"
+                              [(ngModel)]="fecha_nacimiento"
                             /></div></label></div>
-                      <div><label><div class="uk-form-label">sur Name</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
-                              class="uk-input"
-                              id="surname"
-                              type="text"
-                              name="surname"
-                              [(ngModel)]="surname"
-                              placeholder="Sakil"
-                              autocomplete="you surname"
-                              required=""
-                            /></div></label></div> 
-                      <div><label><div class="uk-form-label">phone</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
-                              class="uk-input"
-                              id="phone"
-                              type="tel"
-                              name="phone"
-                              [(ngModel)]="phone"
-                              placeholder="999999"
-                              autocomplete="your phone"
-                              required=""
-                            /></div></label></div>     
+
                       <div><label><div class="uk-form-label">Email</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: mail"></span><input
                               class="uk-input"
                               id="email"
@@ -58,13 +100,14 @@
                               type="password"
                               name="password"
                               [(ngModel)]="password"
-                             placeholder="Min. 6 character"
+                             placeholder="Mín. 8 caracteres"
                               autocomplete="new-password"
                               required=""
                             /></div></label></div><div><label><div class="uk-form-label">Confirm Password</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
                               class="uk-input"
                               type="password"
                               name="password_confirmation"
+                              [(ngModel)]="password_confirmation"
                               placeholder="••••••••"
                               autocomplete="new-password"
                               required=""

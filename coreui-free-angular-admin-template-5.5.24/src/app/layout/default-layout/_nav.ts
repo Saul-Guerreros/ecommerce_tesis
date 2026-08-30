@@ -63,6 +63,11 @@ export const navItems: INavData[] = [
   url:'/discounts/list',
   iconComponent: { name: 'cil-image'},
   }, 
+   {
+  name: 'Usuarios',
+  url: '/usuarios/list',
+  iconComponent: { name: 'cil-people' },
+  },
   {
     title: true,
     name: 'Theme'
