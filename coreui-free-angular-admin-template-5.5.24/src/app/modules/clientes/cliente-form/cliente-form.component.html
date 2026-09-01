@@ -1,0 +1,195 @@
+<c-modal [visible]="visible" (visibleChange)="!$event && cerrar()" size="lg" backdrop="static">
+
+  <c-modal-header>
+    <h5 cModalTitle>{{ isEdit ? 'Editar Cliente' : 'Nuevo Cliente' }}</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+
+    <h6 class="mb-3">Datos de la persona</h6>
+    <c-row>
+
+      <c-col md="4" class="mb-3">
+        <label cLabel>Tipo de documento <span class="text-danger">*</span></label>
+        <select cSelect [(ngModel)]="form.per_tpdid" name="per_tpdid"
+                [class.is-invalid]="errors.per_tpdid" [disabled]="isEdit">
+          <option [ngValue]="null">Seleccione…</option>
+          <option *ngFor="let t of config.tipos_documento" [ngValue]="t.tpd_id">
+            {{ t.tpd_descri }}
+          </option>
+        </select>
+        <div class="invalid-feedback d-block" *ngIf="errors.per_tpdid">
+          {{ errors.per_tpdid[0] }}
+        </div>
+      </c-col>
+
+      <c-col md="4" class="mb-3">
+        <label cLabel>Número de documento <span class="text-danger">*</span></label>
+        <input cFormControl [(ngModel)]="form.per_cedula" name="per_cedula"
+               (blur)="buscarPersona()" [readonly]="isEdit"
+               [class.is-invalid]="errors.per_cedula">
+        <div class="invalid-feedback d-block" *ngIf="errors.per_cedula">
+          {{ errors.per_cedula[0] }}
+        </div>
+        <small class="text-medium-emphasis" *ngIf="buscando">Buscando…</small>
+        <small class="text-success" *ngIf="personaEncontrada">
+          Persona ya registrada en el sistema
+        </small>
+      </c-col>
+
+      <c-col md="4" class="mb-3">
+        <label cLabel>RUC</label>
+        <input cFormControl [(ngModel)]="form.cli_ruc" name="cli_ruc"
+               (focus)="sugerirRuc()" placeholder="1234567-8"
+               [class.is-invalid]="errors.cli_ruc">
+        <div class="invalid-feedback d-block" *ngIf="errors.cli_ruc">
+          {{ errors.cli_ruc[0] }}
+        </div>
+      </c-col>
+
+      <c-col md="6" class="mb-3">
+        <label cLabel>Primer nombre <span class="text-danger">*</span></label>
+        <input cFormControl [(ngModel)]="form.per_nombr1" name="per_nombr1"
+               [class.is-invalid]="errors.per_nombr1">
+        <div class="invalid-feedback d-block" *ngIf="errors.per_nombr1">
+          {{ errors.per_nombr1[0] }}
+        </div>
+      </c-col>
+
+      <c-col md="6" class="mb-3">
+        <label cLabel>Segundo nombre</label>
+        <input cFormControl [(ngModel)]="form.per_nombr2" name="per_nombr2"
+               [class.is-invalid]="errors.per_nombr2">
+        <div class="invalid-feedback d-block" *ngIf="errors.per_nombr2">
+          {{ errors.per_nombr2[0] }}
+        </div>
+      </c-col>
+
+      <c-col md="6" class="mb-3">
+        <label cLabel>Primer apellido <span class="text-danger">*</span></label>
+        <input cFormControl [(ngModel)]="form.per_apell1" name="per_apell1"
+               [class.is-invalid]="errors.per_apell1">
+        <div class="invalid-feedback d-block" *ngIf="errors.per_apell1">
+          {{ errors.per_apell1[0] }}
+        </div>
+      </c-col>
+
+      <c-col md="6" class="mb-3">
+        <label cLabel>Segundo apellido</label>
+        <input cFormControl [(ngModel)]="form.per_apell2" name="per_apell2"
+               [class.is-invalid]="errors.per_apell2">
+        <div class="invalid-feedback d-block" *ngIf="errors.per_apell2">
+          {{ errors.per_apell2[0] }}
+        </div>
+      </c-col>
+
+      <c-col md="6" class="mb-3">
+        <label cLabel>Estado civil</label>
+        <select cSelect [(ngModel)]="form.per_estciv" name="per_estciv"
+                [class.is-invalid]="errors.per_estciv">
+          <option [ngValue]="null">Seleccione…</option>
+          <option *ngFor="let e of config.estados_civiles" [value]="e">{{ e }}</option>
+        </select>
+        <div class="invalid-feedback d-block" *ngIf="errors.per_estciv">
+          {{ errors.per_estciv[0] }}
+        </div>
+      </c-col>
+
+      <c-col md="6" class="mb-3">
+        <label cLabel>Fecha de nacimiento</label>
+        <input cFormControl type="date" [(ngModel)]="form.per_fechna" name="per_fechna"
+               [class.is-invalid]="errors.per_fechna">
+        <div class="invalid-feedback d-block" *ngIf="errors.per_fechna">
+          {{ errors.per_fechna[0] }}
+        </div>
+      </c-col>
+
+    </c-row>
+
+    <hr class="my-3">
+    <h6 class="mb-3">Datos del cliente</h6>
+    <c-row>
+
+      <c-col md="6" class="mb-3">
+        <label cLabel>Tipo de cliente <span class="text-danger">*</span></label>
+        <select cSelect [(ngModel)]="form.cli_tpcid" name="cli_tpcid"
+                [class.is-invalid]="errors.cli_tpcid">
+          <option [ngValue]="null">Seleccione…</option>
+          <option *ngFor="let t of config.tipos_cliente" [ngValue]="t.tpc_id">
+            {{ t.tpc_descri }}
+          </option>
+        </select>
+        <div class="invalid-feedback d-block" *ngIf="errors.cli_tpcid">
+          {{ errors.cli_tpcid[0] }}
+        </div>
+      </c-col>
+
+      <c-col md="6" class="mb-3">
+        <label cLabel>Estado</label>
+        <c-form-check switch class="mt-2">
+          <input cFormCheckInput type="checkbox"
+                 [checked]="form.cli_estado === 1"
+                 (change)="form.cli_estado = form.cli_estado === 1 ? 0 : 1">
+          <label cFormCheckLabel>
+            {{ form.cli_estado === 1 ? 'Activo' : 'Inactivo' }}
+          </label>
+        </c-form-check>
+      </c-col>
+
+    </c-row>
+
+    <hr class="my-3">
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">Contactos <span class="text-danger">*</span></h6>
+      <button cButton size="sm" color="secondary" variant="outline"
+              type="button" (click)="agregarContacto()">+ Agregar</button>
+    </div>
+
+    <c-alert color="danger" *ngIf="errorContactosGeneral" class="py-2">
+      {{ errorContactosGeneral }}
+    </c-alert>
+
+    <c-row *ngFor="let c of form.contactos; let i = index" class="mb-2 align-items-start">
+      <c-col md="4">
+        <select cSelect [(ngModel)]="c.con_tipo" [name]="'con_tipo_' + i"
+                [class.is-invalid]="errorContacto(i, 'con_tipo')">
+          <option *ngFor="let t of config.tipos_contacto" [value]="t">{{ t }}</option>
+        </select>
+        <div class="invalid-feedback d-block" *ngIf="errorContacto(i, 'con_tipo')">
+          {{ errorContacto(i, 'con_tipo') }}
+        </div>
+      </c-col>
+
+      <c-col md="7">
+        <input cFormControl [(ngModel)]="c.con_valor" [name]="'con_valor_' + i"
+               [placeholder]="c.con_tipo === 'EMAIL' ? 'correo@ejemplo.com' : '0981 123456'"
+               [class.is-invalid]="errorContacto(i, 'con_valor')">
+        <div class="invalid-feedback d-block" *ngIf="errorContacto(i, 'con_valor')">
+          {{ errorContacto(i, 'con_valor') }}
+        </div>
+      </c-col>
+
+      <c-col md="1">
+        <button cButton size="sm" color="danger" variant="ghost" type="button"
+                (click)="quitarContacto(i)" [disabled]="form.contactos.length === 1"
+                title="Quitar contacto">&times;</button>
+      </c-col>
+    </c-row>
+
+    <small class="text-medium-emphasis">
+      Debe registrar al menos un celular o WhatsApp para coordinar entregas.
+    </small>
+
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" variant="outline"
+            (click)="cerrar()" [disabled]="submitting">Cancelar</button>
+    <button cButton color="primary" (click)="guardar()" [disabled]="submitting">
+      <c-spinner *ngIf="submitting" size="sm" class="me-1"></c-spinner>
+      {{ isEdit ? 'Actualizar' : 'Registrar' }}
+    </button>
+  </c-modal-footer>
+
+</c-modal>

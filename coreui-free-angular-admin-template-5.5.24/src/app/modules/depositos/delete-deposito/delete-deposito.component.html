@@ -1,0 +1,29 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>Confirmar eliminación</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <p *ngIf="!enUso && !esPrincipal">
+      ¿Está seguro de eliminar el depósito <strong>{{ deposito?.dpo_nombre }}</strong>
+      ({{ deposito?.dpo_codigo }})? Esta acción no se puede deshacer.
+    </p>
+
+    <div class="alert alert-warning mb-0" *ngIf="enUso">
+      El depósito <strong>{{ deposito?.dpo_nombre }}</strong> ya tiene movimientos registrados
+      ({{ deposito?.usos_count }}) y no puede eliminarse. Utilice el botón <strong>Desactivar</strong>.
+    </div>
+
+    <div class="alert alert-info mb-0" *ngIf="!enUso && esPrincipal">
+      Este es el depósito principal de la sucursal. Si existen otros depósitos,
+      designe uno como principal antes de eliminarlo.
+    </div>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" class="text-white" *ngIf="!enUso" (click)="confirmar.emit()">
+      Eliminar
+    </button>
+  </c-modal-footer>
+</c-modal>

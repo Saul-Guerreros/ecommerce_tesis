@@ -14,6 +14,7 @@ export const routes: Routes = [
     data: {
       title: 'Home'
     },
+
     children: [
       {
         path: 'dashboard',
@@ -48,7 +49,65 @@ export const routes: Routes = [
         path: 'cupones',
         loadChildren: () => import('./views/cupones/routes').then((m) => m.routes),
       },
+      
+      {
+        path: 'empresas',
+        loadChildren: () => import('./modules/Configuracion/empresas.module').then(m => m.EmpresasModule),
+        data: { title: 'Empresa' },
+      },
+
+
+      {
+        path: 'sucursales',
+        loadChildren: () => import('./modules/sucursales/sucursales.module').then(m => m.SucursalesModule),
+        data: { title: 'Sucursales' },
+      },
+
+      {
+        path: 'ciudades',
+        loadChildren: () => import('./modules/ciudades/ciudades.module').then(m => m.CiudadesModule),
+        data: { title: 'Ciudades' },
+      },
+
+      {
+        path: 'departamentos',
+        loadChildren: () => import('./modules/departamentos/departamentos.module').then(m => m.DepartamentosModule),
+        data: { title: 'Departamentos' },
+      },
+      
+      {
+        path: 'depositos',
+        loadChildren: () => import('./modules/depositos/depositos.module').then(m => m.DepositosModule),
+        data: { title: 'Depósitos' },
+      },
+
+      {
+        path: 'timbrados',
+        loadChildren: () => import('./modules/timbrados/timbrados.module').then(m => m.TimbradosModule),
+        data: { title: 'Timbrados' },
+      },
+
+      {
+        path: 'tipos-comprobante',
+        loadChildren: () => import('./modules/tipos-comprobante/tipos-comprobante.module').then(m => m.TiposComprobanteModule),
+        data: { title: 'Tipos de comprobante' },
+      },
+
+      {
+        path: 'tipos-iva',
+        loadChildren: () => import('./modules/tipos-iva/tipos-iva.module').then(m => m.TiposIvaModule),
+        data: { title: 'Tipos de IVA' },
+      },
+      
+      {
+        path: 'tipos-proveedor',
+        loadChildren: () => import('./modules/tipos-proveedor/tipos-proveedor.module').then(m => m.TiposProveedorModule),
+        data: { title: 'Tipos de proveedor' },
+      },
+
 	  {
+
+
 		path: 'discounts',
 		loadChildren: () => import('./views/discounts/routes').then((m) => m.routes),
 	   },

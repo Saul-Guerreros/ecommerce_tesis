@@ -1,0 +1,87 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Departamentos</strong>
+    <button cButton color="primary" (click)="abrirNuevo()">+ Nuevo departamento</button>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-5">
+        <input cFormControl placeholder="Buscar departamento..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="">Todos los estados</option>
+          <option value="1">Activo</option>
+          <option value="0">Inactivo</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">
+          Limpiar
+        </button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">
+      {{ departamentos.length }} departamento(s) encontrado(s)
+    </div>
+
+    <div class="text-center py-4" *ngIf="cargando">
+      <c-spinner color="primary"></c-spinner>
+    </div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Departamento</th>
+          <th class="text-center">Ciudades</th>
+          <th class="text-center">Estado</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let d of departamentos">
+          <td>{{ d.dep_id }}</td>
+          <td>{{ d.dep_descri }}</td>
+          <td class="text-center">{{ d.ciudades_count }}</td>
+          <td class="text-center">
+            <c-badge [color]="d.dep_estado === 1 ? 'success' : 'secondary'">
+              {{ d.dep_estado === 1 ? 'Activo' : 'Inactivo' }}
+            </c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirEditar(d)">Editar</button>
+            <button cButton size="sm" [color]="d.dep_estado === 1 ? 'warning' : 'success'"
+                    class="me-2 text-white" (click)="cambiarEstado(d)">
+              {{ d.dep_estado === 1 ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(d)">Eliminar</button>
+          </td>
+        </tr>
+
+        <tr *ngIf="departamentos.length === 0">
+          <td colspan="5" class="text-center">No hay departamentos registrados</td>
+        </tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-form-departamento
+  [visible]="formModalVisible"
+  [departamento]="departamentoSeleccionado"
+  (visibleChange)="formModalVisible = $event"
+  (guardado)="cargar()">
+</app-form-departamento>
+
+<app-delete-departamento
+  [visible]="deleteModalVisible"
+  [departamento]="departamentoSeleccionado"
+  (visibleChange)="deleteModalVisible = $event"
+  (confirmar)="confirmarEliminar()">
+</app-delete-departamento>

@@ -1,4 +1,5 @@
 import { INavData } from '@coreui/angular';
+import { environment } from '../../../environments/environment';
 
 export const navItems: INavData[] = [
   {
@@ -10,59 +11,257 @@ export const navItems: INavData[] = [
       text: 'NEW'
     }
   },
-   {
+
+  // ==========================================
+  // 1. PUBLICACIÓN WEB
+  // ==========================================
+  {
+    title: true,
+    name: 'Publicación Web'
+  },
+  {
+    name: 'Ir a la Tienda',
+    url: environment.URL_FRONTEND,
+    iconComponent: { name: 'cil-external-link' },
+    attributes: { target: '_blank' }
+  },
+  
+  {
+    name: 'Atributos',
+    url: '/atributos/list',
+    iconComponent: { name: 'cil-list' }
+  },
+  {
+    name: 'Publicaciones',
+    url: '/publicaciones',
+    iconComponent: { name: 'cilBasket' }
+  },
+  {
+    name: 'Sliders',
+    url: '/sliders/list',
+    iconComponent: { name: 'cil-image' }
+  },
+  {
+    name: 'Cupones',
+    url: '/cupones/list',
+    iconComponent: { name: 'cil-gift' }
+  },
+  {
+    name: 'Campaña de Descuento',
+    url: '/discounts/list',
+    iconComponent: { name: 'cil-badge' }
+  },
+
+  // ==========================================
+  // 2. COMPRAS
+  // ==========================================
+  {
+    title: true,
+    name: 'Compras'
+  },
+  {
+    name: 'Gestión de Compras',
+    iconComponent: { name: 'cil-cart' },
+    children: [
+      { name: 'Proveedores', url: '/proveedores' },
+      { name: 'Tipos de proveedor', url: '/tipos-proveedor' },
+      { name: 'Facturas de Compra', url: '/facturas-compra' }
+    ]
+  },
+
+  // ==========================================
+  // 3. INVENTARIO
+  // ==========================================
+  {
+    title: true,
+    name: 'Inventario'
+  },
+  {
+    name: 'Marcas',
+    iconComponent: { name: 'cil-tag' },
+    children: [
+      { name: 'Lista de marcas', url: '/brands' },
+      { name: 'Nueva marca', url: '/brands/new' }
+    ]
+  },
+  {
     name: 'Categorías',
     iconComponent: { name: 'cil-list' },
-           children: [
-          {
-             name: 'Lista de categorías',
-               url: '/categories'
-          },
-          {
-              name: 'Nueva categoría',
-               url: '/categories/new'
-          }
-          ]
+    children: [
+      { name: 'Lista de categorías', url: '/categories' },
+      { name: 'Nueva categoría', url: '/categories/new' }
+    ]
   },
   {
-  name: 'Marcas',
-  iconComponent: { name: 'cil-tag' },
-  children: [
-    {
-      name: 'Lista de marcas',
-      url: '/brands'
-    },
-    {
-      name: 'Nueva marca',
-      url: '/brands/new'
-    }
-  ]
+    name: 'Productos',
+    url: '/inventario/productos',
+    iconComponent: { name: 'cilBasket' }
   },
   {
-  name: 'Atributos',
-  url: '/atributos/list',
-  iconComponent: { name: 'cil-list' },
+    name: 'Ajuste de Inventario',
+    url: '/inventario/ajustes',
+    iconComponent: { name: 'cil-swap-vertical' }
   },
   {
-  name: 'Productos',
-  url: '/productos',
-  iconComponent: { name: 'cilBasket' }, 
+    name: 'Movimiento de Stock',
+    url: '/inventario/kardex',
+    iconComponent: { name: 'cil-history' }
   },
   {
-  name: 'Sliders',
-  url: '/sliders/list',
-  iconComponent: { name: 'cil-image' },
+    name: 'Stock Actual',
+    url: '/inventario/stock-actual',
+    iconComponent: { name: 'cil-layers' }
+  },
+
+  // ==========================================
+  // 4. PERSONAS
+  // ==========================================
+  {
+    title: true,
+    name: 'Personas'
   },
   {
-  name:'cupones',
-  url:'/cupones/list',
-  iconComponent: { name: 'cil-image'},
-  }, 
+    name: 'Funcionarios',
+    iconComponent: { name: 'cil-people' },
+    children: [
+      { name: 'Lista de funcionarios', url: '/funcionarios' },
+      { name: 'Nuevo funcionario', url: '/funcionarios/new' }
+    ]
+  },
   {
-  name:'campaña de descuento',
-  url:'/discounts/list',
-  iconComponent: { name: 'cil-image'},
-  }, 
+    name: 'Clientes',
+    iconComponent: { name: 'cil-user' },
+    children: [
+      { name: 'Lista de clientes', url: '/clientes' },
+      { name: 'Nuevo cliente', url: '/clientes/new' }
+    ]
+  },
+  {
+    name: 'Cargos',
+    url: '/cargos',
+    iconComponent: { name: 'cil-briefcase' }
+  },
+  {
+    name: 'Tipos de Cliente',
+    url: '/tipos-cliente',
+    iconComponent: { name: 'cil-tags' }
+  },
+  {
+    name: 'Tipos de Documento',
+    url: '/tipos-documento',
+    iconComponent: { name: 'cil-description' }
+  },
+
+  // ==========================================
+  // 5. SEGURIDAD Y ACCESO
+  // ==========================================
+  {
+    title: true,
+    name: 'Seguridad y Acceso'
+  },
+  {
+    name: 'Usuarios',
+    iconComponent: { name: 'cil-lock-locked' },
+    children: [
+      { name: 'Lista de usuarios', url: '/usuarios' },
+      { name: 'Nuevo usuario', url: '/usuarios/new' }
+    ]
+  },
+  {
+    name: 'Roles',
+    iconComponent: { name: 'cil-shield-alt' },
+    children: [
+      { name: 'Lista de roles', url: '/roles' },
+      { name: 'Nuevo rol', url: '/roles/new' }
+    ]
+  },
+  {
+    name: 'Permisos',
+    url: '/permisos',
+    iconComponent: { name: 'cil-key' }
+  },
+  {
+    name: 'Historial de Contraseñas',
+    url: '/seguridad/historial-password',
+    iconComponent: { name: 'cil-history' }
+  },
+  {
+    name: 'Sesiones Activas',
+    url: '/seguridad/sesiones',
+    iconComponent: { name: 'cil-screen-desktop' }
+  },
+  {
+    name: 'Intentos de Sesión',
+    url: '/seguridad/intentos-sesion',
+    iconComponent: { name: 'cil-warning' }
+  },
+  {
+    name: 'Tokens de Verificación',
+    url: '/seguridad/tokens',
+    iconComponent: { name: 'cil-fingerprint' }
+  },
+
+  // ==========================================
+  // 6. CONFIGURACIÓN
+  // ==========================================
+  {
+    title: true,
+    name: 'Configuración'
+  },
+  {
+    name: 'Datos de la Empresa',
+    url: '/empresas',
+    iconComponent: { name: 'cil-building' }
+  },
+  {
+    name: 'Sucursales',
+    url: '/sucursales',
+    iconComponent: { name: 'cil-institution' },
+    children: [
+      { name: 'Lista de sucursales', 
+        url: '/sucursales' 
+      },
+
+      { name: 'Depósitos', 
+        url: '/depositos' 
+      }
+    ]
+  },
+   {
+    name: 'Timbrados y Comprobantes',
+    iconComponent: { name: 'cil-receipt' },
+    children: [
+      { name: 'Timbrados',
+        url: '/timbrados'
+      },
+
+      { name: 'Tipos de comprobante',
+        url: '/tipos-comprobante'
+      },
+
+      { name: 'Tipos de IVA',
+        url: '/tipos-iva'
+      }
+    ]
+  },
+ 
+  {
+    name: 'Ubicaciones',
+    iconComponent: { name: 'cil-map' },
+    children: [
+      { name: 'Departamentos', 
+        url: '/departamentos',
+      },
+
+      { name: 'Ciudad', 
+        url: '/ciudades', 
+      },
+
+      { name: 'Barrios', url: '/ubicaciones/barrios' },
+      { name: 'Calles', url: '/ubicaciones/calles' }
+    ]
+  },
+
   {
     title: true,
     name: 'Theme'
@@ -476,6 +675,7 @@ export const navItems: INavData[] = [
     name: 'Links',
     class: 'mt-auto'
   },
+
   {
     name: 'Docs',
     url: 'https://coreui.io/angular/docs/',

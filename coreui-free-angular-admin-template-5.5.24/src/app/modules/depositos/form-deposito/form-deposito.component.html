@@ -1,0 +1,85 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar depósito' : 'Nuevo depósito' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-12">
+          <label cLabel for="dpo_sucid">Sucursal <span class="text-danger">*</span></label>
+          <select cSelect id="dpo_sucid" formControlName="dpo_sucid">
+            <option [ngValue]="null">-- Seleccione --</option>
+            <option *ngFor="let s of sucursales" [ngValue]="s.suc_id">
+              {{ s.suc_nombre }} ({{ s.emp_razonsocial }})
+            </option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('dpo_sucid')">
+            {{ errorBackend('dpo_sucid') || 'Debe seleccionar la sucursal.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="dpo_codigo">Código <span class="text-danger">*</span></label>
+          <input cFormControl id="dpo_codigo" formControlName="dpo_codigo"
+                 placeholder="Ej: DEP01" maxlength="10" style="text-transform: uppercase" />
+          <div class="text-danger small" *ngIf="campoInvalido('dpo_codigo')">
+            {{ errorBackend('dpo_codigo') || 'El código es obligatorio (máx. 10 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <label cLabel for="dpo_nombre">Nombre <span class="text-danger">*</span></label>
+          <input cFormControl id="dpo_nombre" formControlName="dpo_nombre"
+                 placeholder="Ej: Depósito Central" maxlength="45" />
+          <div class="text-danger small" *ngIf="campoInvalido('dpo_nombre')">
+            {{ errorBackend('dpo_nombre') || 'El nombre es obligatorio (máx. 45 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="dpo_descri">Descripción</label>
+          <input cFormControl id="dpo_descri" formControlName="dpo_descri" maxlength="45" />
+          <div class="text-danger small" *ngIf="campoInvalido('dpo_descri')">
+            {{ errorBackend('dpo_descri') || 'Máximo 45 caracteres.' }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="dpo_princi">Depósito principal</label>
+          <select cSelect id="dpo_princi" formControlName="dpo_princi" [attr.disabled]="bloquearPrincipal ? true : null">
+            <option [ngValue]="0">No</option>
+            <option [ngValue]="1">Sí</option>
+          </select>
+          <div class="form-text" *ngIf="bloquearPrincipal">
+            Este es el depósito principal de la sucursal. Para cambiarlo, marque otro como principal desde el listado.
+          </div>
+          <div class="text-danger small" *ngIf="errorBackend('dpo_princi')">
+            {{ errorBackend('dpo_princi') }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="dpo_estado">Estado</label>
+          <select cSelect id="dpo_estado" formControlName="dpo_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+          <div class="text-danger small" *ngIf="errorBackend('dpo_estado')">
+            {{ errorBackend('dpo_estado') }}
+          </div>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

@@ -1,0 +1,78 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar tipo de comprobante' : 'Nuevo tipo de comprobante' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-md-4">
+          <label cLabel for="tco_codigo">Código <span class="text-danger">*</span></label>
+          <input cFormControl id="tco_codigo" formControlName="tco_codigo"
+                 placeholder="Ej: 001" maxlength="3" />
+          <div class="form-text">Numérico de 3 dígitos.</div>
+          <div class="text-danger small" *ngIf="campoInvalido('tco_codigo')">
+            {{ errorBackend('tco_codigo') || 'El código debe ser numérico de 3 dígitos.' }}
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <label cLabel for="tco_descri">Descripción <span class="text-danger">*</span></label>
+          <input cFormControl id="tco_descri" formControlName="tco_descri"
+                 placeholder="Ej: Factura" maxlength="45" />
+          <div class="text-danger small" *ngIf="campoInvalido('tco_descri')">
+            {{ errorBackend('tco_descri') || 'La descripción es obligatoria (máx. 45 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="tco_reqtim">¿Requiere timbrado?</label>
+          <select cSelect id="tco_reqtim" formControlName="tco_reqtim">
+            <option [ngValue]="1">Sí</option>
+            <option [ngValue]="0">No</option>
+          </select>
+          <div class="form-text">Los comprobantes internos no requieren timbrado.</div>
+          <div class="text-danger small" *ngIf="errorBackend('tco_reqtim')">
+            {{ errorBackend('tco_reqtim') }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="tco_afecstk">Efecto sobre el stock</label>
+          <select cSelect id="tco_afecstk" formControlName="tco_afecstk">
+            <option [ngValue]="1">Suma (entrada)</option>
+            <option [ngValue]="-1">Resta (salida)</option>
+            <option [ngValue]="0">Neutro</option>
+          </select>
+          <div class="form-text" *ngIf="bloquearEfecto">
+            No se puede modificar: el comprobante ya generó movimientos.
+          </div>
+          <div class="text-danger small" *ngIf="errorBackend('tco_afecstk')">
+            {{ errorBackend('tco_afecstk') }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="tco_estado">Estado</label>
+          <select cSelect id="tco_estado" formControlName="tco_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+          <div class="text-danger small" *ngIf="errorBackend('tco_estado')">
+            {{ errorBackend('tco_estado') }}
+          </div>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

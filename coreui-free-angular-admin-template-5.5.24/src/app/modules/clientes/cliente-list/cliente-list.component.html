@@ -1,0 +1,95 @@
+<c-card>
+
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Clientes <span class="text-medium-emphasis">({{ total }})</span></strong>
+    <button cButton color="primary" (click)="nuevo()">+ Nuevo Cliente</button>
+  </c-card-header>
+
+  <c-card-body>
+
+    <c-row class="mb-3">
+      <c-col md="5">
+        <input cFormControl placeholder="Buscar por nombre, documento, RUC o teléfono"
+               [(ngModel)]="search" (keyup.enter)="buscar()">
+      </c-col>
+      <c-col md="3">
+        <select cSelect [(ngModel)]="estado" (change)="buscar()">
+          <option value="">Todos los estados</option>
+          <option value="1">Activos</option>
+          <option value="0">Inactivos</option>
+        </select>
+      </c-col>
+      <c-col md="4">
+        <button cButton color="secondary" variant="outline" (click)="buscar()">Buscar</button>
+        <button cButton color="secondary" variant="ghost" class="ms-1"
+                (click)="limpiarFiltros()">Limpiar</button>
+      </c-col>
+    </c-row>
+
+    <div class="text-center py-3" *ngIf="isLoading$ | async">
+      <c-spinner color="primary"></c-spinner>
+    </div>
+
+    <table cTable hover responsive>
+      <thead>
+        <tr>
+          <th>Documento</th>
+          <th>Nombre completo</th>
+          <th>RUC</th>
+          <th>Contacto</th>
+          <th>Tipo</th>
+          <th>Estado</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let cliente of clientes">
+          <td>{{ cliente.persona.per_cedula }}</td>
+          <td>{{ cliente.persona.nombre_completo }}</td>
+          <td>{{ cliente.cli_ruc || '—' }}</td>
+          <td>{{ (cliente.contactos | contactoPrincipal) || '—' }}</td>
+          <td>{{ cliente.tipo_cliente?.tpc_descri }}</td>
+          <td>
+            <c-badge [color]="cliente.cli_estado === 1 ? 'success' : 'secondary'">
+              {{ cliente.cli_estado === 1 ? 'Activo' : 'Inactivo' }}
+            </c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" variant="outline"
+                    (click)="editar(cliente)">Editar</button>
+            <button cButton size="sm" variant="outline" class="ms-1"
+                    [color]="cliente.cli_estado === 1 ? 'warning' : 'success'"
+                    (click)="cambiarEstado(cliente)">
+              {{ cliente.cli_estado === 1 ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button cButton size="sm" color="danger" variant="outline" class="ms-1"
+                    (click)="confirmarEliminar(cliente)">Eliminar</button>
+          </td>
+        </tr>
+
+        <tr *ngIf="clientes.length === 0">
+          <td colspan="7" class="text-center text-medium-emphasis py-4">
+            No se encontraron clientes
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="d-flex justify-content-center mt-3" *ngIf="totalPaginas > 1">
+      <button cButton size="sm" variant="outline" color="secondary"
+              [disabled]="currentPage === 1" (click)="listar(currentPage - 1)">Anterior</button>
+      <span class="mx-3 align-self-center">
+        Página {{ currentPage }} de {{ totalPaginas }}
+      </span>
+      <button cButton size="sm" variant="outline" color="secondary"
+              [disabled]="currentPage === totalPaginas" (click)="listar(currentPage + 1)">Siguiente</button>
+    </div>
+
+  </c-card-body>
+</c-card>
+
+<app-cliente-form [(visible)]="showForm" [cliente]="clienteSel"
+                  (guardado)="onGuardado($event)"></app-cliente-form>
+
+<app-cliente-delete [(visible)]="showDelete" [cliente]="clienteSel"
+                    (eliminado)="onEliminado($event)"></app-cliente-delete>
