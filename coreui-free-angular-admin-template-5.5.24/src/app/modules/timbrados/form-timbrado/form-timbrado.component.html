@@ -5,35 +5,22 @@
 
   <form [formGroup]="form" (ngSubmit)="guardar()">
     <c-modal-body>
-      <div class="alert alert-info py-2 small mb-3" *ngIf="enUso">
-        Este timbrado ya emitió documentos. Solo puede modificar la vigencia, el número final,
-        la observación y el estado.
+
+      <div class="alert alert-warning" *ngIf="esEdicion && timbrado?.en_uso">
+        Este timbrado ya tiene numeración utilizada (número actual: <strong>{{ timbrado?.tim_nroact }}</strong>).
+        No podrá eliminarse; solo desactivarse.
       </div>
 
       <div class="row g-3">
 
         <div class="col-md-6">
-          <label cLabel for="tim_empid">Empresa <span class="text-danger">*</span></label>
-          <select cSelect id="tim_empid" formControlName="tim_empid">
-            <option [ngValue]="null">-- Seleccione --</option>
-            <option *ngFor="let e of empresas" [ngValue]="e.emp_id">
-              {{ e.emp_razonsocial }} ({{ e.emp_ruc }})
-            </option>
-          </select>
-          <div class="text-danger small" *ngIf="campoInvalido('tim_empid')">
-            {{ errorBackend('tim_empid') || 'Debe seleccionar la empresa.' }}
-          </div>
-        </div>
-
-        <div class="col-md-6">
           <label cLabel for="tim_sucid">Sucursal <span class="text-danger">*</span></label>
           <select cSelect id="tim_sucid" formControlName="tim_sucid">
-            <option [ngValue]="null">-- Seleccione --</option>
-            <option *ngFor="let s of sucursalesFiltradas" [ngValue]="s.suc_id">{{ s.suc_nombre }}</option>
+            <option [ngValue]="null">Seleccione una sucursal</option>
+            <option *ngFor="let s of sucursales" [ngValue]="s.suc_id">
+              {{ s.suc_nombre }} ({{ s.emp_razonsocial }})
+            </option>
           </select>
-          <div class="form-text" *ngIf="!form.get('tim_empid')?.value">
-            Seleccione primero la empresa.
-          </div>
           <div class="text-danger small" *ngIf="campoInvalido('tim_sucid')">
             {{ errorBackend('tim_sucid') || 'Debe seleccionar la sucursal.' }}
           </div>
@@ -42,105 +29,91 @@
         <div class="col-md-6">
           <label cLabel for="tim_tcoid">Tipo de comprobante <span class="text-danger">*</span></label>
           <select cSelect id="tim_tcoid" formControlName="tim_tcoid">
-            <option [ngValue]="null">-- Seleccione --</option>
-            <option *ngFor="let c of comprobantes" [ngValue]="c.tco_id">
-              {{ c.tco_codigo }} - {{ c.tco_descri }}
-            </option>
+            <option [ngValue]="null">Seleccione un tipo</option>
+            <option *ngFor="let t of tipos" [ngValue]="t.tco_id">{{ t.tco_descri }}</option>
           </select>
           <div class="text-danger small" *ngIf="campoInvalido('tim_tcoid')">
             {{ errorBackend('tim_tcoid') || 'Debe seleccionar el tipo de comprobante.' }}
           </div>
         </div>
 
-        <div class="col-md-6">
-          <label cLabel for="tim_numero">Nº de timbrado <span class="text-danger">*</span></label>
+        <div class="col-md-4">
+          <label cLabel for="tim_numero">Número de timbrado <span class="text-danger">*</span></label>
           <input cFormControl id="tim_numero" formControlName="tim_numero"
-                 placeholder="Ej: 12345678" maxlength="8" />
-          <div class="form-text">8 dígitos, otorgado por la SET.</div>
+                 placeholder="12345678" maxlength="8" />
           <div class="text-danger small" *ngIf="campoInvalido('tim_numero')">
-            {{ errorBackend('tim_numero') || 'El número debe tener 8 dígitos numéricos.' }}
+            {{ errorBackend('tim_numero') || 'Debe tener exactamente 8 caracteres.' }}
           </div>
         </div>
 
-        <div class="col-md-3">
-          <label cLabel for="tim_establec">Establecimiento <span class="text-danger">*</span></label>
-          <input cFormControl id="tim_establec" formControlName="tim_establec" maxlength="3" />
-          <div class="text-danger small" *ngIf="campoInvalido('tim_establec')">
-            {{ errorBackend('tim_establec') || '3 dígitos (ej: 001).' }}
-          </div>
-        </div>
-
-        <div class="col-md-3">
-          <label cLabel for="tim_puntexp">Punto de expedición <span class="text-danger">*</span></label>
-          <input cFormControl id="tim_puntexp" formControlName="tim_puntexp" maxlength="3" />
-          <div class="text-danger small" *ngIf="campoInvalido('tim_puntexp')">
-            {{ errorBackend('tim_puntexp') || '3 dígitos (ej: 001).' }}
+        <div class="col-md-2">
+          <label cLabel for="tim_puntex">Punto expedición <span class="text-danger">*</span></label>
+          <input cFormControl id="tim_puntex" formControlName="tim_puntex"
+                 placeholder="001" maxlength="3" />
+          <div class="text-danger small" *ngIf="campoInvalido('tim_puntex')">
+            {{ errorBackend('tim_puntex') || '3 dígitos (ej: 001).' }}
           </div>
         </div>
 
         <div class="col-md-3">
           <label cLabel for="tim_fechin">Vigencia desde <span class="text-danger">*</span></label>
-          <input cFormControl id="tim_fechin" type="date" formControlName="tim_fechin" />
+          <input cFormControl type="date" id="tim_fechin" formControlName="tim_fechin" />
           <div class="text-danger small" *ngIf="campoInvalido('tim_fechin')">
-            {{ errorBackend('tim_fechin') || 'La fecha de inicio es obligatoria.' }}
+            {{ errorBackend('tim_fechin') || 'Fecha obligatoria.' }}
           </div>
         </div>
 
         <div class="col-md-3">
           <label cLabel for="tim_fechfn">Vigencia hasta <span class="text-danger">*</span></label>
-          <input cFormControl id="tim_fechfn" type="date" formControlName="tim_fechfn" />
+          <input cFormControl type="date" id="tim_fechfn" formControlName="tim_fechfn" />
           <div class="text-danger small" *ngIf="campoInvalido('tim_fechfn')">
-            {{ errorBackend('tim_fechfn') || 'La fecha de fin es obligatoria.' }}
+            {{ errorBackend('tim_fechfn') || 'Debe ser posterior a la fecha de inicio.' }}
           </div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label cLabel for="tim_nroini">Número inicial <span class="text-danger">*</span></label>
-          <input cFormControl id="tim_nroini" type="number" min="1" formControlName="tim_nroini" />
+          <input cFormControl type="number" id="tim_nroini" formControlName="tim_nroini" min="1" />
           <div class="text-danger small" *ngIf="campoInvalido('tim_nroini')">
-            {{ errorBackend('tim_nroini') || 'El número inicial debe ser mayor a cero.' }}
+            {{ errorBackend('tim_nroini') || 'Obligatorio.' }}
           </div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label cLabel for="tim_nrofin">Número final <span class="text-danger">*</span></label>
-          <input cFormControl id="tim_nrofin" type="number" min="1" formControlName="tim_nrofin" />
+          <input cFormControl type="number" id="tim_nrofin" formControlName="tim_nrofin" />
           <div class="text-danger small" *ngIf="campoInvalido('tim_nrofin')">
-            {{ errorBackend('tim_nrofin') || 'El número final es obligatorio.' }}
+            {{ errorBackend('tim_nrofin') || 'Debe ser mayor al número inicial.' }}
           </div>
         </div>
 
-        <div class="col-md-4">
+        <!-- tim_nroact: solo lectura, informativo, unicamente en edicion -->
+        <div class="col-md-4" *ngIf="esEdicion">
+          <label cLabel>Número actual</label>
+          <input cFormControl [value]="timbrado?.tim_nroact" disabled />
+          <div class="text-muted small">Lo actualiza el sistema al emitir documentos.</div>
+        </div>
+
+        <div class="col-md-4" *ngIf="esEdicion">
           <label cLabel for="tim_estado">Estado</label>
           <select cSelect id="tim_estado" formControlName="tim_estado">
             <option [ngValue]="1">Activo</option>
             <option [ngValue]="0">Inactivo</option>
           </select>
-          <div class="text-danger small" *ngIf="errorBackend('tim_estado')">
-            {{ errorBackend('tim_estado') }}
-          </div>
         </div>
 
         <div class="col-12">
-          <label cLabel for="tim_observacion">Observación</label>
-          <input cFormControl id="tim_observacion" formControlName="tim_observacion" maxlength="150" />
-          <div class="text-danger small" *ngIf="campoInvalido('tim_observacion')">
-            {{ errorBackend('tim_observacion') || 'Máximo 150 caracteres.' }}
-          </div>
-        </div>
-
-        <div class="col-12" *ngIf="esEdicion">
-          <div class="text-muted small">
-            Último número emitido: <strong>{{ timbrado?.tim_nroact }}</strong> ·
-            Disponibles: <strong>{{ timbrado?.disponibles }}</strong>
-          </div>
+          <label cLabel for="tim_observ">Observaciones</label>
+          <textarea cFormControl id="tim_observ" formControlName="tim_observ" rows="2" maxlength="100"></textarea>
         </div>
 
       </div>
     </c-modal-body>
 
     <c-modal-footer>
-      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">
+        Cancelar
+      </button>
       <button cButton color="primary" type="submit" [disabled]="guardando">
         <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
         {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}

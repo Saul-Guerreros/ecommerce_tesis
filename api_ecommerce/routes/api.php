@@ -2,10 +2,8 @@
 
 use App\Http\Controllers\Admin\AtributoController;
 use App\Http\Controllers\Admin\product\categorieController;
-use App\Http\Controllers\Admin\product\marcaController;
 use App\Http\Controllers\Admin\SliderController;
 use App\Http\Controllers\Api\CategoriaController;
-use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\Admin\Product\VariacionProductoController;
 use App\Http\Controllers\Admin\Product\EspecificacionProductoController;
 use App\Http\Controllers\Admin\Cupone\CuponeController;
@@ -16,9 +14,12 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Admin\Configuracion\EmpresaController;
 
-use App\Http\Controllers\Admin\Configuracion\SucursalController;
-use App\Http\Controllers\Admin\Configuracion\CiudadController;
 use App\Http\Controllers\Admin\Configuracion\DepartamentoController;
+use App\Http\Controllers\Admin\Configuracion\CiudadController;
+use App\Http\Controllers\Admin\Configuracion\BarrioController;
+use App\Http\Controllers\Admin\Configuracion\CalleController;
+
+use App\Http\Controllers\Admin\Configuracion\SucursalController;
 
 use App\Http\Controllers\Admin\Configuracion\DepositoController;
 
@@ -26,11 +27,20 @@ use App\Http\Controllers\Admin\Cliente\ClienteController;
 
 use App\Http\Controllers\Admin\Compras\TipoIvaController;
 use App\Http\Controllers\Admin\Compras\TipoComprobanteController;
-use App\Http\Controllers\Admin\Compras\TimbradoController;
+
+use App\Http\Controllers\Admin\Configuracion\TimbradoController;
 
 use App\Http\Controllers\Admin\Compras\TipoProveedorController;
-
 use App\Http\Controllers\Admin\Compras\ProveedorController;
+use App\Http\Controllers\Admin\Compras\ContactoProveedorController;
+
+use App\Http\Controllers\Admin\product\MarcaController;
+
+use App\Http\Controllers\Admin\Compras\UnidadMedidaController;
+
+use App\Http\Controllers\Admin\product\ProductoController;
+
+use App\Http\Controllers\Admin\Compras\CompraController;
 
 /*
 |--------------------------------------------------------------------------
@@ -54,7 +64,7 @@ Route::group([
 ], function ($router) {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/login', [AuthController::class, 'login'])->name('login');
-     Route::post('/login_ecommerce', [AuthController::class, 'login_ecommerce'])->name('login_ecommerce');
+    Route::post('/login_ecommerce', [AuthController::class, 'login_ecommerce'])->name('login_ecommerce');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::post('/refresh', [AuthController::class, 'refresh'])->name('refresh');
     Route::post('/me', [AuthController::class, 'me'])->name('me');
@@ -98,24 +108,37 @@ Route::group([
    
     Route::resource("discounts", DiscountController::class);
 
-    // --- Módulo Configuracion: Fase 1 ---
+    // Módulo Configuracion: Fase 1 ---
     Route::patch('empresas/{id}/estado', [EmpresaController::class, 'toggleEstado']);
     Route::apiResource('empresas', EmpresaController::class);
 
-    // Para Ciudad
+    //Sucursales
+    Route::get('sucursales/config', [SucursalController::class, 'config']);
+    Route::patch('sucursales/{id}/estado', [SucursalController::class, 'toggleEstado']);
+    Route::apiResource('sucursales', SucursalController::class);// Para Ciudad
+    
+    //Departamentos
+    Route::get('departamentos/select', [DepartamentoController::class, 'select']);
+    Route::patch('departamentos/{id}/estado', [DepartamentoController::class, 'toggleEstado']);
+    Route::apiResource('departamentos', DepartamentoController::class);
+
+    //Ciudades
     Route::get('ciudades/config', [CiudadController::class, 'config']);
     Route::get('ciudades/select', [CiudadController::class, 'select']);
     Route::patch('ciudades/{id}/estado', [CiudadController::class, 'toggleEstado']);
     Route::apiResource('ciudades', CiudadController::class);
 
-    Route::get('sucursales/config', [SucursalController::class, 'config']);
-    Route::patch('sucursales/{id}/estado', [SucursalController::class, 'toggleEstado']);
-    Route::apiResource('sucursales', SucursalController::class);
+    //Barrios
+    Route::get('barrios/config', [BarrioController::class, 'config']);
+    Route::get('barrios/select', [BarrioController::class, 'select']);
+    Route::patch('barrios/{id}/estado', [BarrioController::class, 'toggleEstado']);
+    Route::apiResource('barrios', BarrioController::class);
 
-    //Para Departamento
-    Route::get('departamentos/select', [DepartamentoController::class, 'select']);
-    Route::patch('departamentos/{id}/estado', [DepartamentoController::class, 'toggleEstado']);
-    Route::apiResource('departamentos', DepartamentoController::class);
+    //Calles
+    Route::get('calles/config', [CalleController::class, 'config']);
+    Route::get('calles/select', [CalleController::class, 'select']);
+    Route::patch('calles/{id}/estado', [CalleController::class, 'toggleEstado']);
+    Route::apiResource('calles', CalleController::class);
 
     Route::get('depositos/config', [DepositoController::class, 'config']);
     Route::get('depositos/select', [DepositoController::class, 'select']);
@@ -127,7 +150,7 @@ Route::group([
     Route::get("clientes/buscar-persona", [ClienteController::class, "buscarPersona"]);
     Route::patch("clientes/{cliente}/estado", [ClienteController::class, "cambiarEstado"]);
     Route::resource("clientes", ClienteController::class)
-         ->only(['index','store','update','destroy']);
+    ->only(['index','store','update','destroy']);
 
 
     //Para Tipo_iva, Tipo_Comprobante, Timbrado
@@ -139,6 +162,7 @@ Route::group([
     Route::patch('tipos-comprobante/{id}/estado', [TipoComprobanteController::class, 'toggleEstado']);
     Route::apiResource('tipos-comprobante', TipoComprobanteController::class);
 
+    // --- Timbrados ---
     Route::get('timbrados/config', [TimbradoController::class, 'config']);
     Route::get('timbrados/select', [TimbradoController::class, 'select']);
     Route::patch('timbrados/{id}/estado', [TimbradoController::class, 'toggleEstado']);
@@ -155,17 +179,37 @@ Route::group([
     Route::get('proveedores/select', [ProveedorController::class, 'select']);
     Route::patch('proveedores/{id}/estado', [ProveedorController::class, 'toggleEstado']);
     Route::apiResource('proveedores', ProveedorController::class);
+
+    // --- Contactos de proveedor (sin config/select: se usan solo desde
+    //     dentro del formulario de un proveedor puntual) ---
+    Route::patch('contactos-proveedor/{id}/estado', [ContactoProveedorController::class, 'toggleEstado']);
+    Route::apiResource('contactos-proveedor', ContactoProveedorController::class);
+
+    // --- Unidades de medida ---
+    Route::get('unidades-medida/select', [UnidadMedidaController::class, 'select']);
+    Route::patch('unidades-medida/{id}/estado', [UnidadMedidaController::class, 'toggleEstado']);
+    Route::apiResource('unidades-medida', UnidadMedidaController::class);
+
+    // --- Productos ---
+    Route::get('productos/config', [ProductoController::class, 'config']);
+    Route::get('productos/select', [ProductoController::class, 'select']);
+    Route::patch('productos/{id}/estado', [ProductoController::class, 'toggleEstado']);
+    Route::apiResource('productos', ProductoController::class);
+
+    // --- Compras (modulo transaccional: sin apiResource, sin toggleEstado) ---
+    Route::get('compras/config', [CompraController::class, 'config']);
+    Route::get('compras', [CompraController::class, 'index']);
+    Route::get('compras/{id}', [CompraController::class, 'show']);
+    Route::post('compras', [CompraController::class, 'store']);
+    Route::patch('compras/{id}/anular', [CompraController::class, 'anular']);
+
 });
 
-Route::prefix('productos')->group(function () {
-    Route::get('/', [ProductoController::class, 'index']);
-    Route::post('/', [ProductoController::class, 'store']);
-    Route::get('/{producto}', [ProductoController::class, 'show']);
-    Route::match(['put', 'post'], '/{producto}', [ProductoController::class, 'update']);
-    Route::delete('/{producto}', [ProductoController::class, 'destroy']);
-    Route::delete('/{producto}/imagenes/{imagen}', [ProductoController::class, 'eliminarImagen']);
 
-});
 
 Route::apiResource('categorias', categorieController::class);
-Route::apiResource('marcas', marcaController::class);
+
+
+Route::get('marcas/select', [MarcaController::class, 'select']);
+Route::patch('marcas/{id}/estado', [MarcaController::class, 'toggleEstado']);
+Route::apiResource('marcas', MarcaController::class);

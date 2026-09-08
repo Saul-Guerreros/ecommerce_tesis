@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { BadgeModule, ButtonModule, CardModule, FormModule, SpinnerModule, TableModule } from '@coreui/angular';
-import { Timbrado, SucursalOption, ComprobanteOption } from '../models/timbrado.model';
+import { Timbrado, TipoComprobanteOption, SucursalOption } from '../models/timbrado.model';
 import { TimbradosService } from '../service/timbrados.service';
 import { FormTimbradoComponent } from '../form-timbrado/form-timbrado.component';
 import { DeleteTimbradoComponent } from '../delete-timbrado/delete-timbrado.component';
@@ -21,13 +21,13 @@ import { DeleteTimbradoComponent } from '../delete-timbrado/delete-timbrado.comp
 })
 export class ListTimbradoComponent implements OnInit {
   timbrados: Timbrado[] = [];
+  tipos: TipoComprobanteOption[] = [];
   sucursales: SucursalOption[] = [];
-  comprobantes: ComprobanteOption[] = [];
   cargando = false;
 
   search = '';
   filtroSucursal: number | null = null;
-  filtroComprobante: number | null = null;
+  filtroTipo: number | null = null;
   filtroEstado = '';
 
   private searchSubject = new Subject<string>();
@@ -46,8 +46,8 @@ export class ListTimbradoComponent implements OnInit {
 
     this.timbradosService.getConfig().subscribe({
       next: (res) => {
+        this.tipos      = res.tipos;
         this.sucursales = res.sucursales;
-        this.comprobantes = res.comprobantes;
       },
       error: () => {},
     });
@@ -67,7 +67,7 @@ export class ListTimbradoComponent implements OnInit {
       .getAll({
         search: this.search,
         sucursal: this.filtroSucursal,
-        comprobante: this.filtroComprobante,
+        tipo: this.filtroTipo,
         estado: this.filtroEstado,
       })
       .subscribe({
@@ -85,21 +85,9 @@ export class ListTimbradoComponent implements OnInit {
   limpiarFiltros(): void {
     this.search = '';
     this.filtroSucursal = null;
-    this.filtroComprobante = null;
+    this.filtroTipo = null;
     this.filtroEstado = '';
     this.cargar();
-  }
-
-  // El backend ya resolvió la situación (Vigente, Vencido, Pendiente,
-  // Agotado, Inactivo): acá solo se traduce a color.
-  colorSituacion(situacion?: string): string {
-    switch (situacion) {
-      case 'Vigente':   return 'success';
-      case 'Pendiente': return 'info';
-      case 'Vencido':   return 'danger';
-      case 'Agotado':   return 'warning';
-      default:          return 'secondary';
-    }
   }
 
   abrirNuevo(): void {
@@ -122,7 +110,7 @@ export class ListTimbradoComponent implements OnInit {
 
     this.timbradosService.delete(this.timbradoSeleccionado.tim_id).subscribe({
       next: (res) => {
-        this.toastr.success(res?.message ?? 'Timbrado eliminado', 'Exito');
+        this.toastr.success(res?.message ?? 'Timbrado eliminado', 'Éxito');
         this.deleteModalVisible = false;
         this.cargar();
       },
@@ -136,7 +124,7 @@ export class ListTimbradoComponent implements OnInit {
   cambiarEstado(t: Timbrado): void {
     this.timbradosService.toggleEstado(t.tim_id!).subscribe({
       next: (res) => {
-        this.toastr.success(res?.message ?? 'Estado actualizado', 'Exito');
+        this.toastr.success(res?.message ?? 'Estado actualizado', 'Éxito');
         this.cargar();
       },
       error: (err) => this.toastr.error(err?.error?.message ?? 'No se pudo cambiar el estado', 'Error'),

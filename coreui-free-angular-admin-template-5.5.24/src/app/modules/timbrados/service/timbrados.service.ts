@@ -12,13 +12,13 @@ export class TimbradosService {
   constructor(private http: HttpClient) {}
 
   getAll(
-    filtros: { search?: string; sucursal?: number | null; comprobante?: number | null; estado?: string } = {}
+    filtros: { search?: string; sucursal?: number | null; tipo?: number | null; estado?: string } = {}
   ): Observable<Timbrado[]> {
     let params = new HttpParams();
 
-    if (filtros.search) params = params.set('search', filtros.search);
+    if (filtros.search)   params = params.set('search', filtros.search);
     if (filtros.sucursal) params = params.set('sucursal', String(filtros.sucursal));
-    if (filtros.comprobante) params = params.set('comprobante', String(filtros.comprobante));
+    if (filtros.tipo)     params = params.set('tipo', String(filtros.tipo));
     if (filtros.estado !== undefined && filtros.estado !== '') {
       params = params.set('estado', filtros.estado);
     }
@@ -28,21 +28,8 @@ export class TimbradosService {
       .pipe(map((res) => res.data));
   }
 
-  // Empresas, sucursales y comprobantes para los selects del formulario.
   getConfig(): Observable<TimbradoConfig> {
     return this.http.get<TimbradoConfig>(`${this.apiUrl}/config`);
-  }
-
-  // Talonarios vigentes para los formularios de emisión (fases de venta).
-  getSelect(filtros: { sucursal?: number; comprobante?: number } = {}): Observable<Timbrado[]> {
-    let params = new HttpParams();
-
-    if (filtros.sucursal) params = params.set('sucursal', String(filtros.sucursal));
-    if (filtros.comprobante) params = params.set('comprobante', String(filtros.comprobante));
-
-    return this.http
-      .get<{ data: Timbrado[] }>(`${this.apiUrl}/select`, { params })
-      .pipe(map((res) => res.data));
   }
 
   create(timbrado: Partial<Timbrado>): Observable<any> {

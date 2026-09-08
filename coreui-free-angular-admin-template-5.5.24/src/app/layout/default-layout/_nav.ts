@@ -25,16 +25,15 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-external-link' },
     attributes: { target: '_blank' }
   },
-  
-  {
-    name: 'Atributos',
-    url: '/atributos/list',
-    iconComponent: { name: 'cil-list' }
-  },
   {
     name: 'Publicaciones',
     url: '/publicaciones',
-    iconComponent: { name: 'cilBasket' }
+    iconComponent: { name: 'cilBasket' },
+    children: [
+      { name: 'Lista de publicaciones', url: '/publicaciones' },
+      { name: 'Categorías', url: '/categories' },
+      { name: 'Atributos', url: '/atributos/list' }
+    ]
   },
   {
     name: 'Sliders',
@@ -59,6 +58,7 @@ export const navItems: INavData[] = [
     title: true,
     name: 'Compras'
   },
+
   {
     name: 'Gestión de Compras',
     iconComponent: { name: 'cil-cart' },
@@ -68,7 +68,7 @@ export const navItems: INavData[] = [
       { name: 'Facturas de Compra', url: '/facturas-compra' }
     ]
   },
-
+  
   // ==========================================
   // 3. INVENTARIO
   // ==========================================
@@ -77,25 +77,28 @@ export const navItems: INavData[] = [
     name: 'Inventario'
   },
   {
-    name: 'Marcas',
-    iconComponent: { name: 'cil-tag' },
-    children: [
-      { name: 'Lista de marcas', url: '/brands' },
-      { name: 'Nueva marca', url: '/brands/new' }
-    ]
-  },
-  {
-    name: 'Categorías',
-    iconComponent: { name: 'cil-list' },
-    children: [
-      { name: 'Lista de categorías', url: '/categories' },
-      { name: 'Nueva categoría', url: '/categories/new' }
-    ]
-  },
-  {
     name: 'Productos',
     url: '/inventario/productos',
-    iconComponent: { name: 'cilBasket' }
+    iconComponent: { name: 'cilBasket' },
+    children: [
+    { name: 'Lista de productos', url: '/inventario/productos' },
+
+      {
+        name: 'Marcas',
+        iconComponent: { name: 'cil-tag' },
+        children: [
+          { name: 'Lista de marcas', url: '/brands' },
+          { name: 'Nueva marca', url: '/brands/new' }
+        ]
+      },
+      {
+        name: 'Unidades de Medida',
+        iconComponent: { name: 'cil-ruler' },
+        url: '/unidades-medida'
+      },
+
+      { name: 'Unidades de Medida', url: '/unidades-medida' } // TODO: crear ruta, faltaba en el menú
+    ]
   },
   {
     name: 'Ajuste de Inventario',
@@ -181,24 +184,14 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-key' }
   },
   {
-    name: 'Historial de Contraseñas',
-    url: '/seguridad/historial-password',
-    iconComponent: { name: 'cil-history' }
-  },
-  {
-    name: 'Sesiones Activas',
-    url: '/seguridad/sesiones',
-    iconComponent: { name: 'cil-screen-desktop' }
-  },
-  {
-    name: 'Intentos de Sesión',
-    url: '/seguridad/intentos-sesion',
-    iconComponent: { name: 'cil-warning' }
-  },
-  {
-    name: 'Tokens de Verificación',
-    url: '/seguridad/tokens',
-    iconComponent: { name: 'cil-fingerprint' }
+    name: 'Auditoría',
+    iconComponent: { name: 'cil-history' },
+    children: [
+      { name: 'Historial de Contraseñas', url: '/seguridad/historial-password' },
+      { name: 'Sesiones Activas', url: '/seguridad/sesiones' },
+      { name: 'Intentos de Sesión', url: '/seguridad/intentos-sesion' },
+      { name: 'Tokens de Verificación', url: '/seguridad/tokens' }
+    ]
   },
 
   // ==========================================
@@ -218,50 +211,45 @@ export const navItems: INavData[] = [
     url: '/sucursales',
     iconComponent: { name: 'cil-institution' },
     children: [
-      { name: 'Lista de sucursales', 
-        url: '/sucursales' 
-      },
-
-      { name: 'Depósitos', 
-        url: '/depositos' 
-      }
+      { name: 'Lista de sucursales', url: '/sucursales' },
+      { name: 'Depósitos', url: '/depositos' }
     ]
   },
-   {
+  {
     name: 'Timbrados y Comprobantes',
     iconComponent: { name: 'cil-receipt' },
     children: [
-      { name: 'Timbrados',
-        url: '/timbrados'
-      },
-
-      { name: 'Tipos de comprobante',
-        url: '/tipos-comprobante'
-      },
-
-      { name: 'Tipos de IVA',
-        url: '/tipos-iva'
-      }
+      { name: 'Timbrados', url: '/timbrados' },
+      { name: 'Tipos de comprobante', url: '/tipos-comprobante' },
+      { name: 'Tipos de IVA', url: '/tipos-iva' }
     ]
   },
- 
-  {
+  
+   {
     name: 'Ubicaciones',
     iconComponent: { name: 'cil-map' },
     children: [
-      { name: 'Departamentos', 
+      { name: 'Departamentos',
         url: '/departamentos',
       },
 
-      { name: 'Ciudad', 
-        url: '/ciudades', 
+      { name: 'Ciudad',
+        url: '/ciudades',
       },
 
-      { name: 'Barrios', url: '/ubicaciones/barrios' },
-      { name: 'Calles', url: '/ubicaciones/calles' }
+      { name: 'Barrios',
+        url: '/barrios',
+      },
+
+      { name: 'Calles',
+        url: '/calles',
+      }
     ]
   },
 
+
+
+/*
   {
     title: true,
     name: 'Theme'
@@ -682,4 +670,6 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-description' },
     attributes: { target: '_blank' }
   }
+*/
+
 ];

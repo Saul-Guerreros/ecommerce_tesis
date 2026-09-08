@@ -20,11 +20,6 @@ export class DeleteTipoProveedorComponent {
     return (this.tipoProveedor?.usos_count ?? 0) > 0;
   }
 
-  get detalleUsos(): string {
-    const n = this.tipoProveedor?.usos_count ?? 0;
-    return `${n} proveedor(es)`;
-  }
-
   cerrar(): void {
     this.visible = false;
     this.visibleChange.emit(false);

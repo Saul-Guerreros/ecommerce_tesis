@@ -34,6 +34,8 @@ export class FormSucursalComponent implements OnInit, OnChanges {
       suc_empid:     [null, [Validators.required]],
       suc_ciuid:     [null, [Validators.required]],
       suc_nombre:    ['', [Validators.required, Validators.maxLength(50)]],
+      suc_princi:    [0],
+      suc_establ:    ['', [Validators.pattern(/^[0-9]{3}$/)]],
       suc_direccion: ['', [Validators.maxLength(100)]],
       suc_telef:     ['', [Validators.maxLength(20)]],
       suc_cel:       ['', [Validators.maxLength(20)]],
@@ -42,7 +44,6 @@ export class FormSucursalComponent implements OnInit, OnChanges {
     });
   }
 
-  // Los combos se cargan una sola vez, no en cada apertura del modal.
   ngOnInit(): void {
     this.sucursalesService.getConfig().subscribe({
       next: (res) => {
@@ -63,6 +64,8 @@ export class FormSucursalComponent implements OnInit, OnChanges {
         suc_empid:     this.sucursal?.suc_empid ?? (this.empresas.length === 1 ? this.empresas[0].emp_id : null),
         suc_ciuid:     this.sucursal?.suc_ciuid ?? null,
         suc_nombre:    this.sucursal?.suc_nombre ?? '',
+        suc_princi:    this.sucursal?.suc_princi ?? 0,
+        suc_establ:    this.sucursal?.suc_establ ?? '',
         suc_direccion: this.sucursal?.suc_direccion ?? '',
         suc_telef:     this.sucursal?.suc_telef ?? '',
         suc_cel:       this.sucursal?.suc_cel ?? '',
@@ -92,6 +95,7 @@ export class FormSucursalComponent implements OnInit, OnChanges {
 
     const datos: Partial<Sucursal> = {
       ...this.form.value,
+      suc_establ:    this.form.value.suc_establ || null,
       suc_direccion: this.form.value.suc_direccion || null,
       suc_telef:     this.form.value.suc_telef || null,
       suc_cel:       this.form.value.suc_cel || null,

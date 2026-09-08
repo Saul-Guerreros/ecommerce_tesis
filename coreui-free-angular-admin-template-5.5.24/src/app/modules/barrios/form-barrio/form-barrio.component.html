@@ -1,0 +1,53 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar barrio' : 'Nuevo barrio' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-12">
+          <label cLabel for="bar_ciuid">Ciudad <span class="text-danger">*</span></label>
+          <select cSelect id="bar_ciuid" formControlName="bar_ciuid">
+            <option [ngValue]="null">Seleccione una ciudad</option>
+            <option *ngFor="let c of ciudades" [ngValue]="c.ciu_id">
+              {{ c.ciu_descri }} ({{ c.dep_descri }})
+            </option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('bar_ciuid')">
+            {{ errorBackend('bar_ciuid') || 'Debe seleccionar la ciudad.' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="bar_descri">Nombre del barrio <span class="text-danger">*</span></label>
+          <input cFormControl id="bar_descri" formControlName="bar_descri"
+                 placeholder="Ej: Villa Morra" maxlength="50" />
+          <div class="text-danger small" *ngIf="campoInvalido('bar_descri')">
+            {{ errorBackend('bar_descri') || 'El nombre es obligatorio (max. 50 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="bar_estado">Estado</label>
+          <select cSelect id="bar_estado" formControlName="bar_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">
+        Cancelar
+      </button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

@@ -22,7 +22,10 @@ class DatabaseSeeder extends Seeder
                 //AdminUserSeeder::class,
                 TipoDocumentoSeeder::class,
                 TipoClienteSeeder::class,
+                TipoComprobanteSeeder::class,
+                UnidadMedidaSeeder::class,
             ]);
+            
 
     }
 }

@@ -3,44 +3,53 @@
 namespace App\Http\Controllers\Admin\Configuracion;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Configuracion\DepartamentoRequest;
+use App\Http\Resources\Configuracion\DepartamentoResource;
 use App\Models\Configuracion\Departamento;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 
 class DepartamentoController extends Controller
 {
-    private function rules(?int $id = null): array
-    {
-        return [
-            'dep_descri' => [
-                'required',
-                'string',
-                'max:50',
-                // UNIQUE simple: no hay dos departamentos con el mismo nombre
-                // en todo el país, a diferencia de ciudad que usa clave compuesta.
-                Rule::unique('departamento', 'dep_descri')->ignore($id, 'dep_id'),
-            ],
-            'dep_estado' => 'nullable|integer|in:0,1',
-        ];
-    }
+    /**
+     * Tablas que referencian a departamento.
+     */
+    private const DEPENDENCIAS = [
+        'ciudad' => ['columna' => 'ciu_depid', 'etiqueta' => 'ciudad(es)'],
+    ];
 
-    private function messages(): array
+    /**
+     * Cuenta cuantos registros de otras tablas apuntan a cada departamento.
+     * Devuelve [dep_id => ['ciudad' => 5]]
+     */
+    private function contarUsos(): array
     {
-        return [
-            'dep_descri.required' => 'El nombre del departamento es obligatorio.',
-            'dep_descri.unique'   => 'Ya existe un departamento con ese nombre.',
-            'dep_descri.max'      => 'El nombre no puede superar los 50 caracteres.',
-        ];
+        $usos = [];
+
+        foreach (self::DEPENDENCIAS as $tabla => $info) {
+            if (!Schema::hasTable($tabla)) {
+                continue;
+            }
+
+            $conteos = DB::table($tabla)
+                ->select($info['columna'], DB::raw('COUNT(*) AS total'))
+                ->groupBy($info['columna'])
+                ->pluck('total', $info['columna']);
+
+            foreach ($conteos as $depId => $total) {
+                $usos[$depId][$tabla] = (int) $total;
+            }
+        }
+
+        return $usos;
     }
 
     // GET /api/admin/departamentos?search=&estado=
     public function index(Request $request): JsonResponse
     {
-        $query = DB::table('departamento');
+        $query = Departamento::query();
 
         if ($request->filled('search')) {
             $search = '%' . strtolower($request->search) . '%';
@@ -52,21 +61,15 @@ class DepartamentoController extends Controller
         }
 
         $departamentos = $query->orderBy('dep_descri')->get();
+        $usos          = $this->contarUsos();
 
-        // Cantidad de ciudades por departamento: se muestra en la tabla y
-        // determina si el registro puede eliminarse.
-        $conteos = Schema::hasTable('ciudad')
-            ? DB::table('ciudad')
-                  ->select('ciu_depid', DB::raw('COUNT(*) AS total'))
-                  ->groupBy('ciu_depid')
-                  ->pluck('total', 'ciu_depid')
-            : collect();
-
-        $departamentos->each(function ($dep) use ($conteos) {
-            $dep->ciudades_count = (int) ($conteos->get($dep->dep_id) ?? 0);
+        $departamentos->each(function ($dep) use ($usos) {
+            $detalle            = $usos[$dep->dep_id] ?? [];
+            $dep->usos_count    = array_sum($detalle);
+            $dep->usos_detalle  = $detalle;
         });
 
-        return response()->json(['data' => $departamentos], 200);
+        return response()->json(['data' => DepartamentoResource::collection($departamentos)], 200);
     }
 
     /**
@@ -75,8 +78,7 @@ class DepartamentoController extends Controller
      */
     public function select(): JsonResponse
     {
-        $departamentos = DB::table('departamento')
-            ->where('dep_estado', 1)
+        $departamentos = Departamento::where('dep_estado', 1)
             ->orderBy('dep_descri')
             ->get(['dep_id', 'dep_descri']);
 
@@ -92,31 +94,25 @@ class DepartamentoController extends Controller
             return response()->json(['message' => 'Departamento no encontrado'], 404);
         }
 
-        return response()->json(['data' => $departamento], 200);
+        return response()->json(['data' => new DepartamentoResource($departamento)], 200);
     }
 
     // POST /api/admin/departamentos
-    public function store(Request $request): JsonResponse
+    public function store(DepartamentoRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), $this->rules(), $this->messages());
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $datos = $validator->validated();
+        $datos = $request->validated();
         $datos['dep_estado'] = $datos['dep_estado'] ?? 1;
 
         $departamento = Departamento::create($datos);
 
         return response()->json([
             'message' => 'Departamento registrado correctamente',
-            'data'    => $departamento,
+            'data'    => new DepartamentoResource($departamento),
         ], 201);
     }
 
     // PUT /api/admin/departamentos/{id}
-    public function update(Request $request, int $id): JsonResponse
+    public function update(DepartamentoRequest $request, int $id): JsonResponse
     {
         $departamento = Departamento::find($id);
 
@@ -124,17 +120,11 @@ class DepartamentoController extends Controller
             return response()->json(['message' => 'Departamento no encontrado'], 404);
         }
 
-        $validator = Validator::make($request->all(), $this->rules($id), $this->messages());
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $departamento->update($validator->validated());
+        $departamento->update($request->validated());
 
         return response()->json([
             'message' => 'Departamento actualizado correctamente',
-            'data'    => $departamento->fresh(),
+            'data'    => new DepartamentoResource($departamento->fresh()),
         ], 200);
     }
 
@@ -147,14 +137,25 @@ class DepartamentoController extends Controller
             return response()->json(['message' => 'Departamento no encontrado'], 404);
         }
 
-        if (Schema::hasTable('ciudad')) {
-            $ciudades = DB::table('ciudad')->where('ciu_depid', $id)->count();
+        $detalle = [];
 
-            if ($ciudades > 0) {
-                return response()->json([
-                    'message' => "No se puede eliminar: el departamento tiene {$ciudades} ciudad(es) asociada(s). Desactívelo en lugar de eliminarlo.",
-                ], 409);
+        foreach (self::DEPENDENCIAS as $tabla => $info) {
+            if (!Schema::hasTable($tabla)) {
+                continue;
             }
+
+            $total = DB::table($tabla)->where($info['columna'], $id)->count();
+
+            if ($total > 0) {
+                $detalle[] = "{$total} {$info['etiqueta']}";
+            }
+        }
+
+        if (!empty($detalle)) {
+            return response()->json([
+                'message' => 'No se puede eliminar: el departamento esta siendo utilizado por '
+                             . implode(', ', $detalle) . '. Desactivelo en lugar de eliminarlo.',
+            ], 409);
         }
 
         $departamento->delete();
@@ -178,7 +179,7 @@ class DepartamentoController extends Controller
             'message' => $departamento->dep_estado == 1
                 ? 'Departamento activado correctamente'
                 : 'Departamento desactivado correctamente',
-            'data'    => $departamento,
+            'data'    => new DepartamentoResource($departamento),
         ], 200);
     }
 }

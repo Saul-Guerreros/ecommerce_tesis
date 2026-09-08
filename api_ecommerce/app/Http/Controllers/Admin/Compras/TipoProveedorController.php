@@ -3,63 +3,38 @@
 namespace App\Http\Controllers\Admin\Compras;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Compra\TipoProveedorRequest;
+use App\Http\Resources\Compra\TipoProveedorResource;
 use App\Models\Compras\TipoProveedor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 
 class TipoProveedorController extends Controller
 {
-    /**
-     * proveedor todavia no existe cuando se corre este modulo por primera
-     * vez: Schema::hasTable evita el error hasta que llegue el paso 5.
-     */
     private const DEPENDENCIAS = [
         'proveedor' => ['columna' => 'pro_tprid', 'etiqueta' => 'proveedor(es)'],
     ];
 
-    private function rules(?int $id = null): array
+    private function contarUsos(): array
     {
-        return [
-            'tpr_descri' => [
-                'required', 'string', 'max:45',
-                Rule::unique('tipo_proveedor', 'tpr_descri')->ignore($id, 'tpr_id'),
-            ],
-            'tpr_estado' => 'nullable|integer|in:0,1',
-        ];
-    }
-
-    private function messages(): array
-    {
-        return [
-            'tpr_descri.required' => 'La descripcion es obligatoria.',
-            'tpr_descri.unique'   => 'Ya existe un tipo de proveedor con esa descripcion.',
-            'tpr_descri.max'      => 'La descripcion no puede superar los 45 caracteres.',
-        ];
-    }
-
-    private function contarUsos(int $id): array
-    {
-        $total   = 0;
-        $detalle = [];
+        $usos = [];
 
         foreach (self::DEPENDENCIAS as $tabla => $info) {
-            if (!Schema::hasTable($tabla)) {
-                continue;
-            }
+            if (!Schema::hasTable($tabla)) continue;
 
-            $cantidad = DB::table($tabla)->where($info['columna'], $id)->count();
+            $conteos = DB::table($tabla)
+                ->select($info['columna'], DB::raw('COUNT(*) AS total'))
+                ->groupBy($info['columna'])
+                ->pluck('total', $info['columna']);
 
-            if ($cantidad > 0) {
-                $total    += $cantidad;
-                $detalle[] = "{$cantidad} {$info['etiqueta']}";
+            foreach ($conteos as $id => $total) {
+                $usos[$id][$tabla] = (int) $total;
             }
         }
 
-        return ['total' => $total, 'detalle' => $detalle];
+        return $usos;
     }
 
     // GET /api/admin/tipos-proveedor?search=&estado=
@@ -77,23 +52,21 @@ class TipoProveedorController extends Controller
         }
 
         $tipos = $query->orderBy('tpr_descri')->get();
+        $usos  = $this->contarUsos();
 
-        $tipos->each(function ($tipo) {
-            $tipo->usos_count = $this->contarUsos($tipo->tpr_id)['total'];
+        $tipos->each(function ($t) use ($usos) {
+            $t->usos_count = array_sum($usos[$t->tpr_id] ?? []);
         });
 
-        return response()->json(['data' => $tipos], 200);
+        return response()->json(['data' => TipoProveedorResource::collection($tipos)], 200);
     }
 
-    /**
-     * GET /api/admin/tipos-proveedor/select
-     * Combo para el formulario de proveedor (paso 5).
-     */
+    // GET /api/admin/tipos-proveedor/select
     public function select(): JsonResponse
     {
         $tipos = TipoProveedor::where('tpr_estado', 1)
-                              ->orderBy('tpr_descri')
-                              ->get(['tpr_id', 'tpr_descri']);
+            ->orderBy('tpr_descri')
+            ->get(['tpr_id', 'tpr_descri']);
 
         return response()->json(['data' => $tipos], 200);
     }
@@ -102,54 +75,36 @@ class TipoProveedorController extends Controller
     public function show(int $id): JsonResponse
     {
         $tipo = TipoProveedor::find($id);
+        if (!$tipo) return response()->json(['message' => 'Tipo de proveedor no encontrado'], 404);
 
-        if (!$tipo) {
-            return response()->json(['message' => 'Tipo de proveedor no encontrado'], 404);
-        }
-
-        return response()->json(['data' => $tipo], 200);
+        return response()->json(['data' => new TipoProveedorResource($tipo)], 200);
     }
 
     // POST /api/admin/tipos-proveedor
-    public function store(Request $request): JsonResponse
+    public function store(TipoProveedorRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), $this->rules(), $this->messages());
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $datos = $validator->validated();
+        $datos = $request->validated();
         $datos['tpr_estado'] = $datos['tpr_estado'] ?? 1;
 
         $tipo = TipoProveedor::create($datos);
 
         return response()->json([
             'message' => 'Tipo de proveedor registrado correctamente',
-            'data'    => $tipo,
+            'data'    => new TipoProveedorResource($tipo),
         ], 201);
     }
 
     // PUT /api/admin/tipos-proveedor/{id}
-    public function update(Request $request, int $id): JsonResponse
+    public function update(TipoProveedorRequest $request, int $id): JsonResponse
     {
         $tipo = TipoProveedor::find($id);
+        if (!$tipo) return response()->json(['message' => 'Tipo de proveedor no encontrado'], 404);
 
-        if (!$tipo) {
-            return response()->json(['message' => 'Tipo de proveedor no encontrado'], 404);
-        }
-
-        $validator = Validator::make($request->all(), $this->rules($id), $this->messages());
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $tipo->update($validator->validated());
+        $tipo->update($request->validated());
 
         return response()->json([
             'message' => 'Tipo de proveedor actualizado correctamente',
-            'data'    => $tipo->fresh(),
+            'data'    => new TipoProveedorResource($tipo->fresh()),
         ], 200);
     }
 
@@ -157,18 +112,19 @@ class TipoProveedorController extends Controller
     public function destroy(int $id): JsonResponse
     {
         $tipo = TipoProveedor::find($id);
+        if (!$tipo) return response()->json(['message' => 'Tipo de proveedor no encontrado'], 404);
 
-        if (!$tipo) {
-            return response()->json(['message' => 'Tipo de proveedor no encontrado'], 404);
+        $detalle = [];
+        foreach (self::DEPENDENCIAS as $tabla => $info) {
+            if (!Schema::hasTable($tabla)) continue;
+            $total = DB::table($tabla)->where($info['columna'], $id)->count();
+            if ($total > 0) $detalle[] = "{$total} {$info['etiqueta']}";
         }
 
-        $usos = $this->contarUsos($id);
-
-        if ($usos['total'] > 0) {
+        if (!empty($detalle)) {
             return response()->json([
-                'message' => 'No se puede eliminar: el tipo esta asignado a '
-                             . implode(', ', $usos['detalle'])
-                             . '. Desactivelo en lugar de eliminarlo.',
+                'message' => 'No se puede eliminar: el tipo de proveedor está siendo utilizado por '
+                             . implode(', ', $detalle) . '. Desactívelo en lugar de eliminarlo.',
             ], 409);
         }
 
@@ -181,21 +137,14 @@ class TipoProveedorController extends Controller
     public function toggleEstado(int $id): JsonResponse
     {
         $tipo = TipoProveedor::find($id);
+        if (!$tipo) return response()->json(['message' => 'Tipo de proveedor no encontrado'], 404);
 
-        if (!$tipo) {
-            return response()->json(['message' => 'Tipo de proveedor no encontrado'], 404);
-        }
-
-        // Desactivarlo solo lo saca del combo de alta: los proveedores que ya
-        // lo tienen asignado siguen funcionando, por eso no se bloquea.
         $tipo->tpr_estado = $tipo->tpr_estado == 1 ? 0 : 1;
         $tipo->save();
 
         return response()->json([
-            'message' => $tipo->tpr_estado == 1
-                ? 'Tipo de proveedor activado correctamente'
-                : 'Tipo de proveedor desactivado correctamente',
-            'data'    => $tipo,
+            'message' => $tipo->tpr_estado == 1 ? 'Tipo de proveedor activado correctamente' : 'Tipo de proveedor desactivado correctamente',
+            'data'    => new TipoProveedorResource($tipo),
         ], 200);
     }
 }

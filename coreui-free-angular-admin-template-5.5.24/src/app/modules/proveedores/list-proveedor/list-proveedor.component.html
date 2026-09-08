@@ -1,0 +1,71 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Proveedores</strong>
+    <button cButton color="primary" (click)="abrirNuevo()">+ Nuevo proveedor</button>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-3">
+        <input cFormControl placeholder="Buscar por razón, fantasía o RUC..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroTipo" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos los tipos</option>
+          <option *ngFor="let t of tipos" [ngValue]="t.tpr_id">{{ t.tpr_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="">Todos los estados</option>
+          <option value="1">Activo</option>
+          <option value="0">Inactivo</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ proveedores.length }} proveedor(es) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>#</th><th>RUC</th><th>Razón social</th><th>Tipo</th><th>Ciudad</th>
+          <th class="text-center">Contactos</th><th class="text-center">Estado</th><th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of proveedores">
+          <td>{{ p.pro_id }}</td>
+          <td>{{ p.pro_ruc }}</td>
+          <td>{{ p.pro_razon }}<div class="text-muted small" *ngIf="p.pro_nomfan">{{ p.pro_nomfan }}</div></td>
+          <td>{{ p.tpr_descri }}</td>
+          <td>{{ p.ciu_descri }}</td>
+          <td class="text-center">{{ p.contactos_count }}</td>
+          <td class="text-center">
+            <c-badge [color]="p.pro_estado === 1 ? 'success' : 'secondary'">{{ p.pro_estado === 1 ? 'Activo' : 'Inactivo' }}</c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="secondary" class="me-2 text-white" (click)="abrirVer(p)">Ver</button>
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirEditar(p)">Editar</button>
+            <button cButton size="sm" [color]="p.pro_estado === 1 ? 'warning' : 'success'" class="me-2 text-white" (click)="cambiarEstado(p)">
+              {{ p.pro_estado === 1 ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(p)">Eliminar</button>
+          </td>
+        </tr>
+        <tr *ngIf="proveedores.length === 0"><td colspan="8" class="text-center">No hay proveedores registrados</td></tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-form-proveedor [visible]="formModalVisible" [proveedor]="proveedorSeleccionado" [soloLectura]="soloLectura"
+  (visibleChange)="formModalVisible = $event" (guardado)="cargar()"></app-form-proveedor>
+
+<app-delete-proveedor [visible]="deleteModalVisible" [proveedor]="proveedorSeleccionado"
+  (visibleChange)="deleteModalVisible = $event" (confirmar)="confirmarEliminar()"></app-delete-proveedor>

@@ -10,7 +10,7 @@
         <div class="col-md-6">
           <label cLabel for="suc_empid">Empresa <span class="text-danger">*</span></label>
           <select cSelect id="suc_empid" formControlName="suc_empid">
-            <option [ngValue]="null">-- Seleccione --</option>
+            <option [ngValue]="null">Seleccione una empresa</option>
             <option *ngFor="let e of empresas" [ngValue]="e.emp_id">{{ e.emp_razonsocial }}</option>
           </select>
           <div class="text-danger small" *ngIf="campoInvalido('suc_empid')">
@@ -21,7 +21,7 @@
         <div class="col-md-6">
           <label cLabel for="suc_ciuid">Ciudad <span class="text-danger">*</span></label>
           <select cSelect id="suc_ciuid" formControlName="suc_ciuid">
-            <option [ngValue]="null">-- Seleccione --</option>
+            <option [ngValue]="null">Seleccione una ciudad</option>
             <option *ngFor="let c of ciudades" [ngValue]="c.ciu_id">
               {{ c.ciu_descri }} ({{ c.dep_descri }})
             </option>
@@ -32,20 +32,49 @@
         </div>
 
         <div class="col-md-6">
-          <label cLabel for="suc_nombre">Nombre <span class="text-danger">*</span></label>
+          <label cLabel for="suc_nombre">Nombre de la sucursal <span class="text-danger">*</span></label>
           <input cFormControl id="suc_nombre" formControlName="suc_nombre"
-                 placeholder="Ej: Casa Central" maxlength="50" />
+                 placeholder="Ej: Casa Matriz" maxlength="50" />
           <div class="text-danger small" *ngIf="campoInvalido('suc_nombre')">
             {{ errorBackend('suc_nombre') || 'El nombre es obligatorio (máx. 50 caracteres).' }}
           </div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-3">
+          <label cLabel for="suc_establ">Cód. establecimiento</label>
+          <input cFormControl id="suc_establ" formControlName="suc_establ"
+                 placeholder="001" maxlength="3" />
+          <div class="text-danger small" *ngIf="campoInvalido('suc_establ')">
+            {{ errorBackend('suc_establ') || 'Debe tener exactamente 3 dígitos (ej: 001).' }}
+          </div>
+        </div>
+
+        <div class="col-md-3 d-flex align-items-end">
+          <div class="form-check">
+            <input cFormCheckInput type="checkbox" id="suc_princi" formControlName="suc_princi"
+                   [value]="1" [checked]="form.value.suc_princi === 1"
+                   (change)="form.patchValue({ suc_princi: $any($event.target).checked ? 1 : 0 })" />
+            <label cFormCheckLabel for="suc_princi">Sucursal principal</label>
+          </div>
+        </div>
+        <div class="col-12" *ngIf="campoInvalido('suc_princi')">
+          <div class="text-danger small">{{ errorBackend('suc_princi') }}</div>
+        </div>
+
+        <div class="col-md-8">
           <label cLabel for="suc_direccion">Dirección</label>
           <input cFormControl id="suc_direccion" formControlName="suc_direccion" maxlength="100" />
           <div class="text-danger small" *ngIf="campoInvalido('suc_direccion')">
             {{ errorBackend('suc_direccion') || 'Máximo 100 caracteres.' }}
           </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="suc_estado">Estado</label>
+          <select cSelect id="suc_estado" formControlName="suc_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
         </div>
 
         <div class="col-md-4">
@@ -59,17 +88,8 @@
         </div>
 
         <div class="col-md-4">
-          <label cLabel for="suc_estado">Estado</label>
-          <select cSelect id="suc_estado" formControlName="suc_estado">
-            <option [ngValue]="1">Activo</option>
-            <option [ngValue]="0">Inactivo</option>
-          </select>
-        </div>
-
-        <div class="col-md-8">
           <label cLabel for="suc_email">Correo electrónico</label>
-          <input cFormControl id="suc_email" formControlName="suc_email"
-                 placeholder="sucursal@empresa.com.py" maxlength="60" />
+          <input cFormControl id="suc_email" formControlName="suc_email" maxlength="60" />
           <div class="text-danger small" *ngIf="campoInvalido('suc_email')">
             {{ errorBackend('suc_email') || 'Formato de correo inválido.' }}
           </div>
@@ -79,7 +99,9 @@
     </c-modal-body>
 
     <c-modal-footer>
-      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">
+        Cancelar
+      </button>
       <button cButton color="primary" type="submit" [disabled]="guardando">
         <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
         {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}

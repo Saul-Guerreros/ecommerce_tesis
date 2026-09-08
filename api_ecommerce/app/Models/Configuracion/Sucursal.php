@@ -14,6 +14,8 @@ class Sucursal extends Model
         'suc_empid',
         'suc_ciuid',
         'suc_nombre',
+        'suc_princi',
+        'suc_establ',
         'suc_direccion',
         'suc_telef',
         'suc_cel',
@@ -25,6 +27,7 @@ class Sucursal extends Model
         'suc_id'     => 'integer',
         'suc_empid'  => 'integer',
         'suc_ciuid'  => 'integer',
+        'suc_princi' => 'integer',
         'suc_estado' => 'integer',
         'suc_creado' => 'datetime',
     ];
@@ -32,6 +35,11 @@ class Sucursal extends Model
     public function empresa()
     {
         return $this->belongsTo(Empresa::class, 'suc_empid', 'emp_id');
+    }
+
+    public function ciudad()
+    {
+        return $this->belongsTo(Ciudad::class, 'suc_ciuid', 'ciu_id');
     }
 
     public function setSucEmailAttribute($value): void

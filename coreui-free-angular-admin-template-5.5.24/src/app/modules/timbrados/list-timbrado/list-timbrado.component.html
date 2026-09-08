@@ -7,7 +7,7 @@
   <c-card-body>
     <div class="row g-2 mb-3">
       <div class="col-md-3">
-        <input cFormControl placeholder="Buscar por número o comprobante..."
+        <input cFormControl placeholder="Buscar por número..."
                [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
       </div>
 
@@ -19,9 +19,9 @@
       </div>
 
       <div class="col-md-2">
-        <select cSelect [(ngModel)]="filtroComprobante" (ngModelChange)="cargar()">
-          <option [ngValue]="null">Todos los comprobantes</option>
-          <option *ngFor="let c of comprobantes" [ngValue]="c.tco_id">{{ c.tco_descri }}</option>
+        <select cSelect [(ngModel)]="filtroTipo" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos los tipos</option>
+          <option *ngFor="let t of tipos" [ngValue]="t.tco_id">{{ t.tco_descri }}</option>
         </select>
       </div>
 
@@ -52,13 +52,14 @@
       <thead>
         <tr>
           <th>#</th>
-          <th>Nº timbrado</th>
-          <th>Comprobante</th>
-          <th>Punto</th>
+          <th>Número</th>
+          <th>Tipo</th>
           <th>Sucursal</th>
           <th>Vigencia</th>
-          <th class="text-end">Disponibles</th>
-          <th class="text-center">Situación</th>
+          <th>Rango</th>
+          <th class="text-center">Actual</th>
+          <th class="text-center">Vigente</th>
+          <th class="text-center">Estado</th>
           <th class="text-end">Acciones</th>
         </tr>
       </thead>
@@ -67,12 +68,19 @@
           <td>{{ t.tim_id }}</td>
           <td>{{ t.tim_numero }}</td>
           <td>{{ t.tco_descri }}</td>
-          <td>{{ t.tim_establec }}-{{ t.tim_puntexp }}</td>
           <td>{{ t.suc_nombre }}</td>
-          <td>{{ t.tim_fechin | date: 'dd/MM/yyyy' }} — {{ t.tim_fechfn | date: 'dd/MM/yyyy' }}</td>
-          <td class="text-end">{{ t.disponibles }}</td>
+          <td>{{ t.tim_fechin }} al {{ t.tim_fechfn }}</td>
+          <td>{{ t.tim_nroini }} - {{ t.tim_nrofin }}</td>
+          <td class="text-center">{{ t.tim_nroact }}</td>
           <td class="text-center">
-            <c-badge [color]="colorSituacion(t.situacion)">{{ t.situacion }}</c-badge>
+            <c-badge [color]="t.vigente ? 'success' : 'secondary'">
+              {{ t.vigente ? 'Sí' : 'No' }}
+            </c-badge>
+          </td>
+          <td class="text-center">
+            <c-badge [color]="t.tim_estado === 1 ? 'success' : 'secondary'">
+              {{ t.tim_estado === 1 ? 'Activo' : 'Inactivo' }}
+            </c-badge>
           </td>
           <td class="text-end">
             <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirEditar(t)">Editar</button>
@@ -85,7 +93,7 @@
         </tr>
 
         <tr *ngIf="timbrados.length === 0">
-          <td colspan="9" class="text-center">No hay timbrados registrados</td>
+          <td colspan="10" class="text-center">No hay timbrados registrados</td>
         </tr>
       </tbody>
     </table>

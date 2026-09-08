@@ -12,37 +12,26 @@ import { DeleteTipoProveedorComponent } from '../delete-tipo-proveedor/delete-ti
 @Component({
   selector: 'app-list-tipo-proveedor',
   standalone: true,
-  imports: [
-    CommonModule, FormsModule, CardModule, TableModule, ButtonModule,
-    BadgeModule, SpinnerModule, FormModule,
-    FormTipoProveedorComponent, DeleteTipoProveedorComponent,
-  ],
+  imports: [CommonModule, FormsModule, CardModule, TableModule, ButtonModule, BadgeModule, SpinnerModule, FormModule,
+    FormTipoProveedorComponent, DeleteTipoProveedorComponent],
   templateUrl: './list-tipo-proveedor.component.html',
 })
 export class ListTipoProveedorComponent implements OnInit {
   tipos: TipoProveedor[] = [];
   cargando = false;
-
   search = '';
   filtroEstado = '';
-
   private searchSubject = new Subject<string>();
 
   formModalVisible = false;
   deleteModalVisible = false;
   tipoSeleccionado: TipoProveedor | null = null;
 
-  constructor(
-    private tiposProveedorService: TiposProveedorService,
-    private toastr: ToastrService
-  ) {}
+  constructor(private service: TiposProveedorService, private toastr: ToastrService) {}
 
   ngOnInit(): void {
     this.cargar();
-
-    this.searchSubject
-      .pipe(debounceTime(400), distinctUntilChanged())
-      .subscribe(() => this.cargar());
+    this.searchSubject.pipe(debounceTime(400), distinctUntilChanged()).subscribe(() => this.cargar());
   }
 
   onSearchChange(): void {
@@ -51,18 +40,10 @@ export class ListTipoProveedorComponent implements OnInit {
 
   cargar(): void {
     this.cargando = true;
-    this.tiposProveedorService
-      .getAll({ search: this.search, estado: this.filtroEstado })
-      .subscribe({
-        next: (res) => {
-          this.tipos = res;
-          this.cargando = false;
-        },
-        error: () => {
-          this.toastr.error('No se pudieron cargar los tipos de proveedor', 'Error');
-          this.cargando = false;
-        },
-      });
+    this.service.getAll({ search: this.search, estado: this.filtroEstado }).subscribe({
+      next: (res) => { this.tipos = res; this.cargando = false; },
+      error: () => { this.toastr.error('No se pudieron cargar los tipos de proveedor', 'Error'); this.cargando = false; },
+    });
   }
 
   limpiarFiltros(): void {
@@ -88,26 +69,15 @@ export class ListTipoProveedorComponent implements OnInit {
 
   confirmarEliminar(): void {
     if (!this.tipoSeleccionado?.tpr_id) return;
-
-    this.tiposProveedorService.delete(this.tipoSeleccionado.tpr_id).subscribe({
-      next: (res) => {
-        this.toastr.success(res?.message ?? 'Tipo de proveedor eliminado', 'Exito');
-        this.deleteModalVisible = false;
-        this.cargar();
-      },
-      error: (err) => {
-        this.toastr.error(err?.error?.message ?? 'No se pudo eliminar', 'Error');
-        this.deleteModalVisible = false;
-      },
+    this.service.delete(this.tipoSeleccionado.tpr_id).subscribe({
+      next: (res) => { this.toastr.success(res?.message ?? 'Eliminado', 'Éxito'); this.deleteModalVisible = false; this.cargar(); },
+      error: (err) => { this.toastr.error(err?.error?.message ?? 'No se pudo eliminar', 'Error'); this.deleteModalVisible = false; },
     });
   }
 
   cambiarEstado(t: TipoProveedor): void {
-    this.tiposProveedorService.toggleEstado(t.tpr_id!).subscribe({
-      next: (res) => {
-        this.toastr.success(res?.message ?? 'Estado actualizado', 'Exito');
-        this.cargar();
-      },
+    this.service.toggleEstado(t.tpr_id!).subscribe({
+      next: (res) => { this.toastr.success(res?.message ?? 'Estado actualizado', 'Éxito'); this.cargar(); },
       error: (err) => this.toastr.error(err?.error?.message ?? 'No se pudo cambiar el estado', 'Error'),
     });
   }

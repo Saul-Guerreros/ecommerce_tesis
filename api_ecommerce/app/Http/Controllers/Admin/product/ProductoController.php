@@ -1,0 +1,273 @@
+<?php
+
+namespace App\Http\Controllers\Admin\product;
+
+use App\Http\Requests\product\ProductoRequest;
+use App\Http\Resources\product\ProductoResource;
+use App\Http\Controllers\Controller;
+use App\Models\Producto;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+class ProductoController extends Controller
+{
+    private const DEPENDENCIAS = [
+        'compra_detalle' => ['columna' => 'cmd_prdid', 'etiqueta' => 'compra(s) registrada(s)'],
+        'stock'          => ['columna' => 'sto_prdid', 'etiqueta' => 'registro(s) de stock'],
+    ];
+
+    private function contarUsos(): array
+    {
+        $usos = [];
+
+        foreach (self::DEPENDENCIAS as $tabla => $info) {
+            if (!Schema::hasTable($tabla)) {
+                continue;
+            }
+
+            $conteos = DB::table($tabla)
+                ->select($info['columna'], DB::raw('COUNT(*) AS total'))
+                ->groupBy($info['columna'])
+                ->pluck('total', $info['columna']);
+
+            foreach ($conteos as $prdId => $total) {
+                $usos[$prdId][$tabla] = (int) $total;
+            }
+        }
+
+        return $usos;
+    }
+
+    /**
+     * Adjunta stock_actual (suma en todos los depositos) y precio_sugerido
+     * (costo promedio ponderado GLOBAL x margen) a una coleccion o modelo
+     * de Producto. Se hace con UNA sola consulta agregada por lote, no una
+     * consulta por producto, para no generar N+1 en el listado.
+     *
+     * Si la tabla 'stock' todavia no existe (antes de correr las
+     * migraciones de Compra), deja ambos campos en null -- el Resource los
+     * omite automaticamente via whenNotNull().
+     */
+    private function conStock(Collection|Producto $productos): Collection|Producto
+    {
+        if (!Schema::hasTable('stock')) {
+            return $productos;
+        }
+
+        $coleccion = $productos instanceof Producto ? collect([$productos]) : $productos;
+        $ids = $coleccion->pluck('prd_id');
+
+        $agregados = DB::table('stock')
+            ->select(
+                'sto_prdid',
+                DB::raw('SUM(sto_cantid) AS cantidad_total'),
+                DB::raw('SUM(sto_cantid * sto_cosprm) AS costo_total')
+            )
+            ->whereIn('sto_prdid', $ids)
+            ->groupBy('sto_prdid')
+            ->get()
+            ->keyBy('sto_prdid');
+
+        foreach ($coleccion as $producto) {
+            $fila = $agregados->get($producto->prd_id);
+            $cantidadTotal = $fila ? (float) $fila->cantidad_total : 0;
+
+            $producto->stock_actual = $cantidadTotal;
+
+            if ($fila && $cantidadTotal > 0 && $producto->prd_margen !== null) {
+                $costoPromedioGlobal = ((float) $fila->costo_total) / $cantidadTotal;
+                $producto->precio_sugerido = round($costoPromedioGlobal * (1 + ((float) $producto->prd_margen) / 100), 2);
+            } else {
+                $producto->precio_sugerido = null;
+            }
+        }
+
+        return $productos;
+    }
+
+    // GET /api/admin/productos?search=&marca=&estado=
+    public function index(Request $request): JsonResponse
+    {
+        $query = Producto::with(['marca', 'tipoIva', 'unidadMedida']);
+
+        if ($request->filled('search')) {
+            $search = '%' . strtolower($request->search) . '%';
+            $query->where(function ($q) use ($search) {
+                $q->whereRaw('LOWER(prd_descri) LIKE ?', [$search])
+                  ->orWhereRaw('LOWER(prd_codinv) LIKE ?', [$search]);
+            });
+        }
+
+        if ($request->filled('marca')) {
+            $query->where('prd_marid', $request->marca);
+        }
+
+        if ($request->filled('estado') && $request->estado !== '') {
+            $query->where('prd_estado', $request->estado);
+        }
+
+        $productos = $query->orderBy('prd_descri')->get();
+        $usos      = $this->contarUsos();
+
+        $productos->each(function ($p) use ($usos) {
+            $p->usos_count = array_sum($usos[$p->prd_id] ?? []);
+        });
+
+        $productos = $this->conStock($productos);
+
+        return response()->json(['data' => ProductoResource::collection($productos)], 200);
+    }
+
+    // GET /api/admin/productos/config
+    public function config(): JsonResponse
+    {
+        $marcas = DB::table('marca')
+            ->where('mar_estado', 1)
+            ->orderBy('mar_descri')
+            ->get(['mar_id', 'mar_descri']);
+
+        $tiposIva = DB::table('tipo_iva')
+            ->where('tiv_estado', 1)
+            ->orderBy('tiv_tasa')
+            ->get(['tiv_id', 'tiv_descri', 'tiv_tasa']);
+
+        $unidades = DB::table('unidad_medida')
+            ->where('umd_estado', 1)
+            ->orderBy('umd_nombre')
+            ->get(['umd_id', 'umd_codigo', 'umd_nombre', 'umd_decimal']);
+
+        return response()->json([
+            'marcas'    => $marcas,
+            'tipos_iva' => $tiposIva,
+            'unidades'  => $unidades,
+        ], 200);
+    }
+
+    // GET /api/admin/productos/select
+    // GET /api/admin/productos/select
+    public function select(): JsonResponse
+    {
+        $productos = Producto::with('tipoIva')
+            ->where('prd_estado', 1)
+            ->orderBy('prd_descri')
+            ->get(['prd_id', 'prd_codinv', 'prd_descri', 'prd_prevta', 'prd_tivid']);
+
+        $productos->each(function ($p) {
+            $p->tiv_tasa = $p->tipoIva?->tiv_tasa;
+        });
+
+        return response()->json(['data' => $productos], 200);
+    }
+
+    // GET /api/admin/productos/{id}
+    public function show(int $id): JsonResponse
+    {
+        $producto = Producto::with(['marca', 'tipoIva', 'unidadMedida'])->find($id);
+
+        if (!$producto) {
+            return response()->json(['message' => 'Producto no encontrado'], 404);
+        }
+
+        $producto = $this->conStock($producto);
+
+        return response()->json(['data' => new ProductoResource($producto)], 200);
+    }
+
+    // POST /api/admin/productos
+    public function store(ProductoRequest $request): JsonResponse
+    {
+        $datos = $request->validated();
+        $datos['prd_estado'] = $datos['prd_estado'] ?? 1;
+        $datos['prd_afestk'] = $datos['prd_afestk'] ?? 1;
+
+        $producto = Producto::create($datos);
+        $producto->load(['marca', 'tipoIva', 'unidadMedida']);
+        $producto = $this->conStock($producto);
+
+        return response()->json([
+            'message' => 'Producto registrado correctamente',
+            'data'    => new ProductoResource($producto),
+        ], 201);
+    }
+
+    // PUT /api/admin/productos/{id}
+    public function update(ProductoRequest $request, int $id): JsonResponse
+    {
+        $producto = Producto::find($id);
+
+        if (!$producto) {
+            return response()->json(['message' => 'Producto no encontrado'], 404);
+        }
+
+        // request->validated() nunca trae stock_actual/precio_sugerido: no
+        // estan en las reglas del Request, se ignoran aunque lleguen.
+        $producto->update($request->validated());
+        $producto->load(['marca', 'tipoIva', 'unidadMedida']);
+        $producto = $this->conStock($producto);
+
+        return response()->json([
+            'message' => 'Producto actualizado correctamente',
+            'data'    => new ProductoResource($producto),
+        ], 200);
+    }
+
+    // DELETE /api/admin/productos/{id}
+    public function destroy(int $id): JsonResponse
+    {
+        $producto = Producto::find($id);
+
+        if (!$producto) {
+            return response()->json(['message' => 'Producto no encontrado'], 404);
+        }
+
+        $detalle = [];
+
+        foreach (self::DEPENDENCIAS as $tabla => $info) {
+            if (!Schema::hasTable($tabla)) {
+                continue;
+            }
+
+            $total = DB::table($tabla)->where($info['columna'], $id)->count();
+
+            if ($total > 0) {
+                $detalle[] = "{$total} {$info['etiqueta']}";
+            }
+        }
+
+        if (!empty($detalle)) {
+            return response()->json([
+                'message' => 'No se puede eliminar: el producto tiene ' . implode(', ', $detalle)
+                             . '. Desactívelo en lugar de eliminarlo.',
+            ], 409);
+        }
+
+        $producto->delete();
+
+        return response()->json(['message' => 'Producto eliminado correctamente'], 200);
+    }
+
+    // PATCH /api/admin/productos/{id}/estado
+    public function toggleEstado(int $id): JsonResponse
+    {
+        $producto = Producto::find($id);
+
+        if (!$producto) {
+            return response()->json(['message' => 'Producto no encontrado'], 404);
+        }
+
+        $producto->prd_estado = $producto->prd_estado == 1 ? 0 : 1;
+        $producto->save();
+        $producto->load(['marca', 'tipoIva', 'unidadMedida']);
+        $producto = $this->conStock($producto);
+
+        return response()->json([
+            'message' => $producto->prd_estado == 1
+                ? 'Producto activado correctamente'
+                : 'Producto desactivado correctamente',
+            'data'    => new ProductoResource($producto),
+        ], 200);
+    }
+}

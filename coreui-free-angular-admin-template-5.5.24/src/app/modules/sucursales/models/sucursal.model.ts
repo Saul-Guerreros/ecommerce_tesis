@@ -3,6 +3,8 @@ export interface Sucursal {
   suc_empid: number | null;
   suc_ciuid: number | null;
   suc_nombre: string;
+  suc_princi?: number;          // 0 = normal, 1 = sucursal principal de la empresa
+  suc_establ?: string | null;   // codigo de establecimiento (3 digitos), para Timbrados
   suc_direccion?: string | null;
   suc_telef?: string | null;
   suc_cel?: string | null;

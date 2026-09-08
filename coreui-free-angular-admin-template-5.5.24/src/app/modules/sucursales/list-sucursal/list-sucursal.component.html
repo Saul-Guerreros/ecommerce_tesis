@@ -46,6 +46,7 @@
         <tr>
           <th>#</th>
           <th>Nombre</th>
+          <th>Establ.</th>
           <th>Empresa</th>
           <th>Ciudad</th>
           <th>Dirección</th>
@@ -58,7 +59,11 @@
       <tbody>
         <tr *ngFor="let s of sucursales">
           <td>{{ s.suc_id }}</td>
-          <td>{{ s.suc_nombre }}</td>
+          <td>
+            {{ s.suc_nombre }}
+            <c-badge color="info" class="ms-1" *ngIf="s.suc_princi === 1">Principal</c-badge>
+          </td>
+          <td>{{ s.suc_establ || '-' }}</td>
           <td>{{ s.emp_razonsocial }}</td>
           <td>{{ s.ciu_descri }}</td>
           <td>{{ s.suc_direccion || '-' }}</td>
@@ -80,7 +85,7 @@
         </tr>
 
         <tr *ngIf="sucursales.length === 0">
-          <td colspan="9" class="text-center">No hay sucursales registradas</td>
+          <td colspan="10" class="text-center">No hay sucursales registradas</td>
         </tr>
       </tbody>
     </table>

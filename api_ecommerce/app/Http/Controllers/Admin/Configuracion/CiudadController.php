@@ -3,61 +3,33 @@
 namespace App\Http\Controllers\Admin\Configuracion;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Configuracion\CiudadRequest;
+use App\Http\Resources\Configuracion\CiudadResource;
 use App\Models\Configuracion\Ciudad;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 
 class CiudadController extends Controller
 {
     /**
      * Tablas que referencian a ciudad. Se usan para impedir el borrado de una
-     * ciudad en uso y para explicarle al usuario dónde está siendo utilizada.
+     * ciudad en uso y para explicarle al usuario donde esta siendo utilizada.
+     * Schema::hasTable() permite declarar dependencias futuras (proveedor)
+     * sin romper mientras esas tablas no existan.
      */
     private const DEPENDENCIAS = [
+        // 'calle' NO va acá: ya no tiene columna cal_ciuid propia (depende de
+        // ciudad solo de forma transitiva, vía barrio). Si una ciudad tiene
+        // barrios, esta entrada ya bloquea el borrado; y si un barrio tiene
+        // calles, es BarrioController quien lo bloquea al intentar borrar
+        // ese barrio. No hace falta (ni es correcto) repetir la validación acá.
         'barrio'    => ['columna' => 'bar_ciuid', 'etiqueta' => 'barrio(s)'],
-        'calle'     => ['columna' => 'cal_ciuid', 'etiqueta' => 'calle(s)'],
         'sucursal'  => ['columna' => 'suc_ciuid', 'etiqueta' => 'sucursal(es)'],
         'proveedor' => ['columna' => 'pro_ciuid', 'etiqueta' => 'proveedor(es)'],
     ];
 
-    private function rules(Request $request, ?int $id = null): array
-    {
-        return [
-            'ciu_depid' => 'required|integer|exists:departamento,dep_id',
-            'ciu_descri' => [
-                'required',
-                'string',
-                'max:50',
-                // UNIQUE compuesto (ciu_depid, ciu_descri): el nombre solo debe
-                // ser único dentro del mismo departamento. Existen ciudades
-                // homónimas en departamentos distintos.
-                Rule::unique('ciudad', 'ciu_descri')
-                    ->where(fn ($q) => $q->where('ciu_depid', $request->ciu_depid))
-                    ->ignore($id, 'ciu_id'),
-            ],
-            'ciu_estado' => 'nullable|integer|in:0,1',
-        ];
-    }
-
-    private function messages(): array
-    {
-        return [
-            'ciu_depid.required'  => 'Debe seleccionar el departamento.',
-            'ciu_depid.exists'    => 'El departamento seleccionado no existe.',
-            'ciu_descri.required' => 'El nombre de la ciudad es obligatorio.',
-            'ciu_descri.unique'   => 'Ese departamento ya tiene una ciudad con ese nombre.',
-            'ciu_descri.max'      => 'El nombre no puede superar los 50 caracteres.',
-        ];
-    }
-
-    /**
-     * Cuenta cuántos registros de otras tablas apuntan a cada ciudad.
-     * Devuelve [ciu_id => ['barrio' => 3, 'sucursal' => 1]]
-     */
     private function contarUsos(): array
     {
         $usos = [];
@@ -83,9 +55,10 @@ class CiudadController extends Controller
     // GET /api/admin/ciudades?search=&departamento=&estado=
     public function index(Request $request): JsonResponse
     {
-        $query = DB::table('ciudad')
-            ->join('departamento', 'ciu_depid', '=', 'dep_id')
-            ->select('ciudad.*', 'departamento.dep_descri');
+        // Eager loading explicito: el Resource expone dep_descri a traves de
+        // whenLoaded('departamento'). Sin el with() la relacion no se carga
+        // y la columna llegaria vacia al listado.
+        $query = Ciudad::with('departamento');
 
         if ($request->filled('search')) {
             $search = '%' . strtolower($request->search) . '%';
@@ -100,21 +73,21 @@ class CiudadController extends Controller
             $query->where('ciu_estado', $request->estado);
         }
 
-        $ciudades = $query->orderBy('dep_descri')->orderBy('ciu_descri')->get();
+        $ciudades = $query->orderBy('ciu_descri')->get();
         $usos     = $this->contarUsos();
 
         $ciudades->each(function ($ciu) use ($usos) {
-            $detalle = $usos[$ciu->ciu_id] ?? [];
-            $ciu->usos_count  = array_sum($detalle);
+            $detalle           = $usos[$ciu->ciu_id] ?? [];
+            $ciu->usos_count   = array_sum($detalle);
             $ciu->usos_detalle = $detalle;
         });
 
-        return response()->json(['data' => $ciudades], 200);
+        return response()->json(['data' => CiudadResource::collection($ciudades)], 200);
     }
 
     /**
      * GET /api/admin/ciudades/config
-     * Departamentos para el <select> del formulario.
+     * Departamentos para el <select> del formulario de ciudad.
      */
     public function config(): JsonResponse
     {
@@ -128,8 +101,9 @@ class CiudadController extends Controller
 
     /**
      * GET /api/admin/ciudades/select
-     * Lista plana para los combos de OTROS formularios (sucursal, proveedor).
-     * Solo ciudades activas: no tiene sentido asignar una ciudad dada de baja.
+     * Lista plana para los combos de OTROS formularios (barrio, calle,
+     * sucursal, proveedor). Solo ciudades activas: no tiene sentido asignar
+     * una ciudad dada de baja.
      */
     public function select(): JsonResponse
     {
@@ -146,37 +120,31 @@ class CiudadController extends Controller
     // GET /api/admin/ciudades/{id}
     public function show(int $id): JsonResponse
     {
-        $ciudad = Ciudad::find($id);
+        $ciudad = Ciudad::with('departamento')->find($id);
 
         if (!$ciudad) {
             return response()->json(['message' => 'Ciudad no encontrada'], 404);
         }
 
-        return response()->json(['data' => $ciudad], 200);
+        return response()->json(['data' => new CiudadResource($ciudad)], 200);
     }
 
     // POST /api/admin/ciudades
-    public function store(Request $request): JsonResponse
+    public function store(CiudadRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), $this->rules($request), $this->messages());
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $datos = $validator->validated();
+        $datos = $request->validated();
         $datos['ciu_estado'] = $datos['ciu_estado'] ?? 1;
 
         $ciudad = Ciudad::create($datos);
 
         return response()->json([
             'message' => 'Ciudad registrada correctamente',
-            'data'    => $ciudad,
+            'data'    => new CiudadResource($ciudad),
         ], 201);
     }
 
     // PUT /api/admin/ciudades/{id}
-    public function update(Request $request, int $id): JsonResponse
+    public function update(CiudadRequest $request, int $id): JsonResponse
     {
         $ciudad = Ciudad::find($id);
 
@@ -184,17 +152,11 @@ class CiudadController extends Controller
             return response()->json(['message' => 'Ciudad no encontrada'], 404);
         }
 
-        $validator = Validator::make($request->all(), $this->rules($request, $id), $this->messages());
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $ciudad->update($validator->validated());
+        $ciudad->update($request->validated());
 
         return response()->json([
             'message' => 'Ciudad actualizada correctamente',
-            'data'    => $ciudad->fresh(),
+            'data'    => new CiudadResource($ciudad->fresh()),
         ], 200);
     }
 
@@ -223,8 +185,8 @@ class CiudadController extends Controller
 
         if (!empty($detalle)) {
             return response()->json([
-                'message' => 'No se puede eliminar: la ciudad está siendo utilizada por '
-                             . implode(', ', $detalle) . '. Desactívela en lugar de eliminarla.',
+                'message' => 'No se puede eliminar: la ciudad esta siendo utilizada por '
+                             . implode(', ', $detalle) . '. Desactivela en lugar de eliminarla.',
             ], 409);
         }
 
@@ -249,7 +211,7 @@ class CiudadController extends Controller
             'message' => $ciudad->ciu_estado == 1
                 ? 'Ciudad activada correctamente'
                 : 'Ciudad desactivada correctamente',
-            'data'    => $ciudad,
+            'data'    => new CiudadResource($ciudad),
         ], 200);
     }
 }

@@ -6,11 +6,10 @@
   <form [formGroup]="form" (ngSubmit)="guardar()">
     <c-modal-body>
       <div class="row g-3">
-
         <div class="col-12">
           <label cLabel for="tpr_descri">Descripción <span class="text-danger">*</span></label>
           <input cFormControl id="tpr_descri" formControlName="tpr_descri"
-                 placeholder="Ej: Mayorista" maxlength="45" />
+                 placeholder="Ej: Mayorista, Fabricante, Importador" maxlength="45" />
           <div class="text-danger small" *ngIf="campoInvalido('tpr_descri')">
             {{ errorBackend('tpr_descri') || 'La descripción es obligatoria (máx. 45 caracteres).' }}
           </div>
@@ -22,14 +21,7 @@
             <option [ngValue]="1">Activo</option>
             <option [ngValue]="0">Inactivo</option>
           </select>
-          <div class="form-text">
-            Un tipo inactivo deja de ofrecerse al registrar proveedores nuevos, pero los que ya lo tienen asignado no se ven afectados.
-          </div>
-          <div class="text-danger small" *ngIf="errorBackend('tpr_estado')">
-            {{ errorBackend('tpr_estado') }}
-          </div>
         </div>
-
       </div>
     </c-modal-body>
 

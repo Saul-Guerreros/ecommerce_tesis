@@ -13,22 +13,10 @@ export class TiposProveedorService {
 
   getAll(filtros: { search?: string; estado?: string } = {}): Observable<TipoProveedor[]> {
     let params = new HttpParams();
-
     if (filtros.search) params = params.set('search', filtros.search);
-    if (filtros.estado !== undefined && filtros.estado !== '') {
-      params = params.set('estado', filtros.estado);
-    }
+    if (filtros.estado !== undefined && filtros.estado !== '') params = params.set('estado', filtros.estado);
 
-    return this.http
-      .get<{ data: TipoProveedor[] }>(this.apiUrl, { params })
-      .pipe(map((res) => res.data));
-  }
-
-  // Combo para el formulario de proveedor.
-  getSelect(): Observable<TipoProveedor[]> {
-    return this.http
-      .get<{ data: TipoProveedor[] }>(`${this.apiUrl}/select`)
-      .pipe(map((res) => res.data));
+    return this.http.get<{ data: TipoProveedor[] }>(this.apiUrl, { params }).pipe(map((res) => res.data));
   }
 
   create(tipo: Partial<TipoProveedor>): Observable<any> {

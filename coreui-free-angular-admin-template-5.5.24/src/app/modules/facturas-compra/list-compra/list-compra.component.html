@@ -1,0 +1,91 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Facturas de Compra</strong>
+    <button cButton color="primary" (click)="abrirNuevo()">+ Nueva compra</button>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar por N° de factura o proveedor..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroProveedor" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos los proveedores</option>
+          <option *ngFor="let p of proveedores" [ngValue]="p.pro_id">{{ p.pro_razon }}</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="">Todos los estados</option>
+          <option value="1">Confirmada</option>
+          <option value="2">Anulada</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ compras.length }} compra(s) encontrada(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>N°</th><th>Proveedor</th><th>Factura</th><th>Fecha</th>
+          <th class="text-end">Total</th><th class="text-center">Estado</th><th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let c of compras">
+          <td>{{ c.com_id }}</td>
+          <td>{{ c.com_proraz }}</td>
+          <td>{{ c.com_nrodoc }}</td>
+          <td>{{ c.com_fchaem }}</td>
+          <td class="text-end">{{ c.com_total | number:'1.0-2' }}</td>
+          <td class="text-center">
+            <c-badge [color]="c.com_estfac === 1 ? 'success' : 'secondary'">
+              {{ c.com_estfac === 1 ? 'Confirmada' : 'Anulada' }}
+            </c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="secondary" class="me-2 text-white" (click)="abrirVer(c)">Ver</button>
+            <button cButton size="sm" color="danger" class="text-white"
+                    *ngIf="c.com_estfac === 1" (click)="pedirAnular(c)">
+              Anular
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="compras.length === 0"><td colspan="7" class="text-center">No hay compras registradas</td></tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-form-compra
+  [visible]="formModalVisible"
+  [compra]="compraSeleccionada"
+  [soloLectura]="soloLectura"
+  (visibleChange)="formModalVisible = $event"
+  (guardado)="cargar()"
+  (anular)="pedirAnular($event)">
+</app-form-compra>
+
+<!-- Confirmacion de anulacion: mismo modal tanto si se dispara desde el
+     listado como desde el footer del modal Ver (mismo metodo, un solo lugar). -->
+<c-modal [visible]="anularModalVisible" (visibleChange)="anularModalVisible = $event">
+  <c-modal-header><h5 cModalTitle>Confirmar anulación</h5></c-modal-header>
+  <c-modal-body>
+    <p>
+      ¿Está seguro que desea anular la compra <strong>N° {{ compraAAnular?.com_id }}</strong>
+      (factura {{ compraAAnular?.com_nrodoc }})? El stock y el costo promedio ponderado
+      de los productos involucrados se revertirán.
+    </p>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cancelarAnular()">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="confirmarAnular()">Anular</button>
+  </c-modal-footer>
+</c-modal>

@@ -22,11 +22,7 @@ export class FormTipoProveedorComponent implements OnChanges {
   form: FormGroup;
   guardando = false;
 
-  constructor(
-    private fb: FormBuilder,
-    private tiposProveedorService: TiposProveedorService,
-    private toastr: ToastrService
-  ) {
+  constructor(private fb: FormBuilder, private service: TiposProveedorService, private toastr: ToastrService) {
     this.form = this.fb.group({
       tpr_descri: ['', [Validators.required, Validators.maxLength(45)]],
       tpr_estado: [1],
@@ -64,31 +60,27 @@ export class FormTipoProveedorComponent implements OnChanges {
 
     this.guardando = true;
 
-    const datos: Partial<TipoProveedor> = { ...this.form.value };
-
     const peticion = this.esEdicion
-      ? this.tiposProveedorService.update(this.tipoProveedor!.tpr_id!, datos)
-      : this.tiposProveedorService.create(datos);
+      ? this.service.update(this.tipoProveedor!.tpr_id!, this.form.value)
+      : this.service.create(this.form.value);
 
     peticion.subscribe({
       next: (res) => {
-        this.toastr.success(res?.message ?? 'Operacion realizada', 'Exito');
+        this.toastr.success(res?.message ?? 'Operación realizada', 'Éxito');
         this.guardando = false;
         this.guardado.emit();
         this.cerrar();
       },
       error: (err) => {
         this.guardando = false;
-
         if (err.status === 422 && err.error?.errors) {
           Object.keys(err.error.errors).forEach((campo) => {
             this.form.get(campo)?.setErrors({ backend: err.error.errors[campo][0] });
             this.form.get(campo)?.markAsTouched();
           });
-          this.toastr.error('Revise los datos ingresados', 'Validacion');
+          this.toastr.error('Revise los datos ingresados', 'Validación');
           return;
         }
-
         this.toastr.error(err?.error?.message ?? 'No se pudo guardar el tipo de proveedor', 'Error');
       },
     });

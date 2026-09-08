@@ -4,26 +4,21 @@
   </c-modal-header>
 
   <c-modal-body>
-    <p *ngIf="!bloqueado">
+    <p *ngIf="!enUso">
       ¿Está seguro de eliminar el timbrado <strong>{{ timbrado?.tim_numero }}</strong>
-      ({{ timbrado?.tco_descri }} — {{ timbrado?.tim_establec }}-{{ timbrado?.tim_puntexp }})?
-      Esta acción no se puede deshacer.
+      de {{ timbrado?.suc_nombre }}? Esta acción no se puede deshacer.
     </p>
 
     <div class="alert alert-warning mb-0" *ngIf="enUso">
-      El timbrado <strong>{{ timbrado?.tim_numero }}</strong> tiene {{ timbrado?.usos_count }}
-      documento(s) emitido(s) y no puede eliminarse. Utilice el botón <strong>Desactivar</strong>.
-    </div>
-
-    <div class="alert alert-warning mb-0" *ngIf="!enUso && numeracionUsada">
       El timbrado <strong>{{ timbrado?.tim_numero }}</strong> ya tiene numeración utilizada
-      (último emitido: {{ timbrado?.tim_nroact }}). Se conserva como evidencia y no puede eliminarse.
+      (número actual: {{ timbrado?.tim_nroact }}) y no puede eliminarse.
+      Utilice el botón <strong>Desactivar</strong>.
     </div>
   </c-modal-body>
 
   <c-modal-footer>
     <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
-    <button cButton color="danger" class="text-white" *ngIf="!bloqueado" (click)="confirmar.emit()">
+    <button cButton color="danger" class="text-white" *ngIf="!enUso" (click)="confirmar.emit()">
       Eliminar
     </button>
   </c-modal-footer>

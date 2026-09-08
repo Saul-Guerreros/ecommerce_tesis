@@ -11,14 +11,8 @@ class ContactoProveedor extends Model
     public    $timestamps = false;
 
     protected $fillable = [
-        'cpr_proid',
-        'cpr_nombre',
-        'cpr_apellido',
-        'cpr_cargo',
-        'cpr_telef',
-        'cpr_email',
-        'cpr_princi',
-        'cpr_estado',
+        'cpr_proid', 'cpr_nombre', 'cpr_apellido', 'cpr_cargo',
+        'cpr_telef', 'cpr_email', 'cpr_princi', 'cpr_estado',
     ];
 
     protected $casts = [
@@ -26,19 +20,11 @@ class ContactoProveedor extends Model
         'cpr_proid'  => 'integer',
         'cpr_princi' => 'integer',
         'cpr_estado' => 'integer',
-        'cpr_creado' => 'datetime',
     ];
 
     public function proveedor()
     {
         return $this->belongsTo(Proveedor::class, 'cpr_proid', 'pro_id');
-    }
-
-    // Nombre completo para mostrar en listados y combos sin concatenar en
-    // cada plantilla.
-    public function getNombreCompletoAttribute(): string
-    {
-        return trim($this->cpr_nombre . ' ' . ($this->cpr_apellido ?? ''));
     }
 
     public function setCprEmailAttribute($value): void

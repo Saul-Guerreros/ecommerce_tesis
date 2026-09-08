@@ -23,8 +23,8 @@ export const routes: Routes = [
 	    
 
       {
-      path: 'productos',
-      loadChildren: () => import('./views/productos/productos.routes').then((m) => m.routes),
+      path: 'inventario/productos',
+      loadChildren: () => import('./modules/productos/productos.module').then((m) => m.ProductosModule),
       data: { title: 'Productos' },
      },
       {
@@ -64,17 +64,29 @@ export const routes: Routes = [
       },
 
       {
+        path: 'departamentos',
+        loadChildren: () => import('./modules/departamentos/departamentos.module').then(m => m.DepartamentosModule),
+        data: { title: 'Departamentos' },
+      },
+      
+      {
         path: 'ciudades',
         loadChildren: () => import('./modules/ciudades/ciudades.module').then(m => m.CiudadesModule),
         data: { title: 'Ciudades' },
       },
 
       {
-        path: 'departamentos',
-        loadChildren: () => import('./modules/departamentos/departamentos.module').then(m => m.DepartamentosModule),
-        data: { title: 'Departamentos' },
+        path: 'barrios',
+        loadChildren: () => import('./modules/barrios/barrios.module').then(m => m.BarriosModule),
+        data: { title: 'Barrios' },
       },
-      
+
+      {
+        path: 'calles',
+        loadChildren: () => import('./modules/calles/calles.module').then(m => m.CallesModule),
+        data: { title: 'Calles' },
+      },
+
       {
         path: 'depositos',
         loadChildren: () => import('./modules/depositos/depositos.module').then(m => m.DepositosModule),
@@ -100,9 +112,27 @@ export const routes: Routes = [
       },
       
       {
+        path: 'proveedores',
+        loadChildren: () => import('./modules/proveedores/proveedores.module').then(m => m.ProveedoresModule),
+        data: { title: 'Proveedores' },
+      },
+
+      {
         path: 'tipos-proveedor',
         loadChildren: () => import('./modules/tipos-proveedor/tipos-proveedor.module').then(m => m.TiposProveedorModule),
         data: { title: 'Tipos de proveedor' },
+      },
+
+      {
+        path: 'unidades-medida',
+        loadChildren: () => import('./modules/unidades-medida/unidades-medida.module').then(m => m.UnidadesMedidaModule),
+        data: { title: 'Unidades de Medida' },
+      },
+
+      {
+        path: 'facturas-compra',
+        loadChildren: () => import('./modules/facturas-compra/facturas-compra.module').then(m => m.FacturasCompraModule),
+        data: { title: 'Facturas de Compra' },
       },
 
 	  {

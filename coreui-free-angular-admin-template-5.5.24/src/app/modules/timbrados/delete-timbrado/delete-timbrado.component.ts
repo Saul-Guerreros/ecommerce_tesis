@@ -16,19 +16,9 @@ export class DeleteTimbradoComponent {
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() confirmar = new EventEmitter<void>();
 
+  // en_uso viene calculado del backend: tim_nroact != tim_nroini
   get enUso(): boolean {
-    return (this.timbrado?.usos_count ?? 0) > 0;
-  }
-
-  // Aunque no haya documentos en la tabla de ventas, el correlativo avanzado
-  // indica numeración consumida: el backend también bloquea el borrado.
-  get numeracionUsada(): boolean {
-    if (!this.timbrado) return false;
-    return (this.timbrado.tim_nroact ?? 0) >= (this.timbrado.tim_nroini ?? 1);
-  }
-
-  get bloqueado(): boolean {
-    return this.enUso || this.numeracionUsada;
+    return this.timbrado?.en_uso ?? false;
   }
 
   cerrar(): void {

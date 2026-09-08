@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Admin\Configuracion;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Configuracion\DepositoRequest;
+use App\Http\Resources\Configuracion\DepositoResource;
 use App\Models\Configuracion\Deposito;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 
 class DepositoController extends Controller
 {
@@ -18,43 +18,31 @@ class DepositoController extends Controller
      * Se consultan con Schema::hasTable porque se crean en fases posteriores.
      */
     private const DEPENDENCIAS = [
-        'compra_cab'         => ['columna' => 'com_depid', 'etiqueta' => 'compra(s)'],
-        'stock'              => ['columna' => 'sto_depid', 'etiqueta' => 'registro(s) de stock'],
-        'ajuste_inventario'  => ['columna' => 'aji_depid', 'etiqueta' => 'ajuste(s)'],
+        'compra_cab'        => ['columna' => 'com_depid', 'etiqueta' => 'compra(s)'],
+        'stock'             => ['columna' => 'sto_depid', 'etiqueta' => 'registro(s) de stock'],
+        'ajuste_inventario' => ['columna' => 'aji_depid', 'etiqueta' => 'ajuste(s)'],
     ];
 
-    private function rules(Request $request, ?int $id = null): array
+    private function contarUsos(): array
     {
-        return [
-            'dpo_sucid' => 'required|integer|exists:sucursal,suc_id',
-            'dpo_codigo' => [
-                'required',
-                'string',
-                'max:10',
-                // UNIQUE compuesto (dpo_sucid, dpo_codigo): el código se repite
-                // entre sucursales distintas pero no dentro de la misma.
-                Rule::unique('deposito', 'dpo_codigo')
-                    ->where(fn ($q) => $q->where('dpo_sucid', $request->dpo_sucid))
-                    ->ignore($id, 'dpo_id'),
-            ],
-            'dpo_nombre' => 'required|string|max:45',
-            'dpo_descri' => 'nullable|string|max:45',
-            'dpo_princi' => 'nullable|integer|in:0,1',
-            'dpo_estado' => 'nullable|integer|in:0,1',
-        ];
-    }
+        $usos = [];
 
-    private function messages(): array
-    {
-        return [
-            'dpo_sucid.required'  => 'Debe seleccionar la sucursal.',
-            'dpo_sucid.exists'    => 'La sucursal seleccionada no existe.',
-            'dpo_codigo.required' => 'El código del depósito es obligatorio.',
-            'dpo_codigo.unique'   => 'Esa sucursal ya tiene un depósito con ese código.',
-            'dpo_codigo.max'      => 'El código no puede superar los 10 caracteres.',
-            'dpo_nombre.required' => 'El nombre del depósito es obligatorio.',
-            'dpo_nombre.max'      => 'El nombre no puede superar los 45 caracteres.',
-        ];
+        foreach (self::DEPENDENCIAS as $tabla => $info) {
+            if (!Schema::hasTable($tabla)) {
+                continue;
+            }
+
+            $conteos = DB::table($tabla)
+                ->select($info['columna'], DB::raw('COUNT(*) AS total'))
+                ->groupBy($info['columna'])
+                ->pluck('total', $info['columna']);
+
+            foreach ($conteos as $dpoId => $total) {
+                $usos[$dpoId][$tabla] = (int) $total;
+            }
+        }
+
+        return $usos;
     }
 
     /**
@@ -80,10 +68,9 @@ class DepositoController extends Controller
     // GET /api/admin/depositos?search=&sucursal=&estado=
     public function index(Request $request): JsonResponse
     {
-        $query = DB::table('deposito')
-            ->join('sucursal', 'dpo_sucid', '=', 'suc_id')
-            ->join('empresa', 'suc_empid', '=', 'emp_id')
-            ->select('deposito.*', 'sucursal.suc_nombre', 'empresa.emp_razonsocial');
+        // Eager loading explicito: el Resource expone suc_nombre y
+        // emp_razonsocial a traves de whenLoaded() anidado en 'sucursal.empresa'.
+        $query = Deposito::with('sucursal.empresa');
 
         if ($request->filled('search')) {
             $search = '%' . strtolower($request->search) . '%';
@@ -101,25 +88,17 @@ class DepositoController extends Controller
             $query->where('dpo_estado', $request->estado);
         }
 
-        $depositos = $query->orderBy('suc_nombre')
-                           ->orderBy('dpo_princi', 'desc')
+        $depositos = $query->orderBy('dpo_princi', 'desc')
                            ->orderBy('dpo_nombre')
                            ->get();
 
-        // Marca si el depósito ya tiene movimientos, para habilitar o no el borrado.
-        $depositos->each(function ($dpo) {
-            $usos = 0;
+        $usos = $this->contarUsos();
 
-            foreach (self::DEPENDENCIAS as $tabla => $info) {
-                if (Schema::hasTable($tabla)) {
-                    $usos += DB::table($tabla)->where($info['columna'], $dpo->dpo_id)->count();
-                }
-            }
-
-            $dpo->usos_count = $usos;
+        $depositos->each(function ($dpo) use ($usos) {
+            $dpo->usos_count = array_sum($usos[$dpo->dpo_id] ?? []);
         });
 
-        return response()->json(['data' => $depositos], 200);
+        return response()->json(['data' => DepositoResource::collection($depositos)], 200);
     }
 
     /**
@@ -164,25 +143,19 @@ class DepositoController extends Controller
     // GET /api/admin/depositos/{id}
     public function show(int $id): JsonResponse
     {
-        $deposito = Deposito::find($id);
+        $deposito = Deposito::with('sucursal.empresa')->find($id);
 
         if (!$deposito) {
             return response()->json(['message' => 'Depósito no encontrado'], 404);
         }
 
-        return response()->json(['data' => $deposito], 200);
+        return response()->json(['data' => new DepositoResource($deposito)], 200);
     }
 
     // POST /api/admin/depositos
-    public function store(Request $request): JsonResponse
+    public function store(DepositoRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), $this->rules($request), $this->messages());
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $datos = $validator->validated();
+        $datos = $request->validated();
         $datos['dpo_estado'] = $datos['dpo_estado'] ?? 1;
         $datos['dpo_princi'] = $datos['dpo_princi'] ?? 0;
 
@@ -204,14 +177,16 @@ class DepositoController extends Controller
             return Deposito::create($datos);
         });
 
+        $deposito->load('sucursal.empresa');
+
         return response()->json([
             'message' => 'Depósito registrado correctamente',
-            'data'    => $deposito,
+            'data'    => new DepositoResource($deposito),
         ], 201);
     }
 
     // PUT /api/admin/depositos/{id}
-    public function update(Request $request, int $id): JsonResponse
+    public function update(DepositoRequest $request, int $id): JsonResponse
     {
         $deposito = Deposito::find($id);
 
@@ -219,13 +194,7 @@ class DepositoController extends Controller
             return response()->json(['message' => 'Depósito no encontrado'], 404);
         }
 
-        $validator = Validator::make($request->all(), $this->rules($request, $id), $this->messages());
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $datos = $validator->validated();
+        $datos = $request->validated();
 
         // No se permite dejar la sucursal sin depósito principal: si este es el
         // principal actual, solo puede dejar de serlo designando otro.
@@ -254,9 +223,11 @@ class DepositoController extends Controller
             $deposito->update($datos);
         });
 
+        $deposito->load('sucursal.empresa');
+
         return response()->json([
             'message' => 'Depósito actualizado correctamente',
-            'data'    => $deposito->fresh(),
+            'data'    => new DepositoResource($deposito->fresh()->load('sucursal.empresa')),
         ], 200);
     }
 
@@ -326,12 +297,13 @@ class DepositoController extends Controller
 
         $deposito->dpo_estado = $deposito->dpo_estado == 1 ? 0 : 1;
         $deposito->save();
+        $deposito->load('sucursal.empresa');
 
         return response()->json([
             'message' => $deposito->dpo_estado == 1
                 ? 'Depósito activado correctamente'
                 : 'Depósito desactivado correctamente',
-            'data'    => $deposito,
+            'data'    => new DepositoResource($deposito),
         ], 200);
     }
 
@@ -360,9 +332,11 @@ class DepositoController extends Controller
             $deposito->save();
         });
 
+        $deposito->load('sucursal.empresa');
+
         return response()->json([
             'message' => 'Depósito marcado como principal',
-            'data'    => $deposito->fresh(),
+            'data'    => new DepositoResource($deposito->fresh()->load('sucursal.empresa')),
         ], 200);
     }
 }
