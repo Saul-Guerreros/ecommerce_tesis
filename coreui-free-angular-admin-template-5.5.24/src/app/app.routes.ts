@@ -135,6 +135,23 @@ export const routes: Routes = [
         data: { title: 'Facturas de Compra' },
       },
 
+      {
+        path: 'inventario/ajustes',
+        loadChildren: () => import('./modules/ajustes-inventario/ajustes-inventario.module').then(m => m.AjustesInventarioModule),
+        data: { title: 'Ajuste de Inventario' },
+      },
+
+      {
+        path: 'inventario/kardex',
+        loadChildren: () => import('./modules/movimiento_stock/movimiento_stock.module').then(m => m.KardexModule),
+        data: { title: 'Movimiento de Stock' },
+      },
+      {
+        path: 'inventario/stock-actual',
+        loadChildren: () => import('./modules/stock-actual/stock-actual.module').then(m => m.StockActualModule),
+        data: { title: 'Stock Actual' },
+      },
+
 	  {
 
 

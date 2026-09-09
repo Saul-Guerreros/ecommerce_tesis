@@ -1,0 +1,68 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Stock Actual</strong>
+    <span class="fw-bold">Valorizado total: {{ valorTotalInventario | number:'1.0-2' }} Gs.</span>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <select cSelect [(ngModel)]="filtroProducto" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos los productos</option>
+          <option *ngFor="let p of productos" [ngValue]="p.prd_id">{{ p.prd_codinv }} — {{ p.prd_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtroDeposito" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos los depósitos</option>
+          <option *ngFor="let d of depositos" [ngValue]="d.dpo_id">{{ d.dpo_nombre }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtroMarca" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todas las marcas</option>
+          <option *ngFor="let m of marcas" [ngValue]="m.mar_id">{{ m.mar_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex align-items-center">
+        <div class="form-check">
+          <input cFormCheckInput type="checkbox" id="bajoMinimo"
+                 [(ngModel)]="soloBajoMinimo" (ngModelChange)="cargar()" />
+          <label cFormCheckLabel for="bajoMinimo">Solo bajo mínimo</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ stock.length }} registro(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>Producto</th><th>Depósito</th>
+          <th class="text-end">Cantidad</th><th class="text-end">Reservado</th>
+          <th class="text-end">Disponible</th><th class="text-end">C. Promedio</th>
+          <th class="text-end">Valorizado</th><th class="text-center">Alerta</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let s of stock" [class.table-warning]="s.bajo_minimo">
+          <td>{{ s.prd_codinv }} — {{ s.prd_descri }}</td>
+          <td>{{ s.dpo_nombre }}</td>
+          <td class="text-end">{{ s.sto_cantid | number:'1.0-4' }}</td>
+          <td class="text-end">{{ s.sto_reserv | number:'1.0-4' }}</td>
+          <td class="text-end">{{ s.disponible | number:'1.0-4' }}</td>
+          <td class="text-end">{{ s.sto_cosprm | number:'1.0-4' }}</td>
+          <td class="text-end">{{ s.valorizado | number:'1.0-2' }}</td>
+          <td class="text-center">
+            <c-badge color="warning" *ngIf="s.bajo_minimo">Bajo mínimo</c-badge>
+          </td>
+        </tr>
+        <tr *ngIf="stock.length === 0"><td colspan="8" class="text-center">Sin registros de stock</td></tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>

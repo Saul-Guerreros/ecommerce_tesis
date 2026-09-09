@@ -42,6 +42,12 @@ use App\Http\Controllers\Admin\product\ProductoController;
 
 use App\Http\Controllers\Admin\Compras\CompraController;
 
+use App\Http\Controllers\Admin\Compras\AjusteInventarioController;
+
+use App\Http\Controllers\Admin\Compras\MovimientoStockController;
+use App\Http\Controllers\Admin\Compras\StockController;
+
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -203,7 +209,23 @@ Route::group([
     Route::post('compras', [CompraController::class, 'store']);
     Route::patch('compras/{id}/anular', [CompraController::class, 'anular']);
 
-});
+    //--Ajuste Inventario
+    Route::get('ajustes-inventario/config', [AjusteInventarioController::class, 'config']);
+    Route::get('ajustes-inventario', [AjusteInventarioController::class, 'index']);
+    Route::get('ajustes-inventario/{id}', [AjusteInventarioController::class, 'show']);
+    Route::post('ajustes-inventario', [AjusteInventarioController::class, 'store']);
+    Route::patch('ajustes-inventario/{id}/confirmar', [AjusteInventarioController::class, 'confirmar']);
+    Route::patch('ajustes-inventario/{id}/anular', [AjusteInventarioController::class, 'anular']);
+    Route::delete('ajustes-inventario/{id}', [AjusteInventarioController::class, 'destroy']);
+
+    // --- Movimiento_Stock (solo lectura)
+    Route::get('movimientos-stock/config', [MovimientoStockController::class, 'config']);
+    Route::get('movimientos-stock', [MovimientoStockController::class, 'index']);
+
+    // --- Stock_actual (solo lectura)
+    Route::get('stock/config', [StockController::class, 'config']);
+    Route::get('stock', [StockController::class, 'index']);
+    });
 
 
 

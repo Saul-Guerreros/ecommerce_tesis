@@ -11,13 +11,15 @@ class Timbrado extends Model
     public    $timestamps = false;
 
     protected $fillable = [
-        'tim_tcoid', 'tim_sucid', 'tim_numero', 'tim_puntex',
+        'tim_empid', 'tim_tcoid', 'tim_sucid', 'tim_numero',
+        'tim_establec', 'tim_puntexp',
         'tim_fechin', 'tim_fechfn', 'tim_nroini', 'tim_nrofin', 'tim_nroact',
-        'tim_observ', 'tim_estado',
+        'tim_observacion', 'tim_estado',
     ];
 
     protected $casts = [
         'tim_id'     => 'integer',
+        'tim_empid'  => 'integer',
         'tim_tcoid'  => 'integer',
         'tim_sucid'  => 'integer',
         'tim_nroini' => 'integer',
@@ -37,6 +39,14 @@ class Timbrado extends Model
     public function sucursal()
     {
         return $this->belongsTo(Sucursal::class, 'tim_sucid', 'suc_id');
+    }
+
+    /**
+     * Empresa propietaria del timbrado (contexto multiempresa).
+     */
+    public function empresa()
+    {
+        return $this->belongsTo(Empresa::class, 'tim_empid', 'emp_id');
     }
 
     /**

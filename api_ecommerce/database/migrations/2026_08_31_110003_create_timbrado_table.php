@@ -43,9 +43,6 @@ return new class extends Migration
                   ->references('suc_id')->on('sucursal')
                   ->onUpdate('cascade')->onDelete('restrict');
 
-            // Un mismo numero de timbrado cubre varios tipos de comprobante
-            // y puntos de expedicion, pero no se repite dentro de la misma
-            // combinacion.
             $table->unique(
                 ['tim_empid', 'tim_numero', 'tim_tcoid', 'tim_establec', 'tim_puntexp'],
                 'uq_tim_emp_num_tco_est_pex'
@@ -59,7 +56,6 @@ return new class extends Migration
         DB::statement("ALTER TABLE timbrado
             ADD CONSTRAINT ck_tim_estado CHECK (tim_estado IN (0, 1))");
 
-        // Numero de timbrado y codigos: numericos de largo fijo.
         DB::statement("ALTER TABLE timbrado
             ADD CONSTRAINT ck_tim_numero CHECK (tim_numero ~ '^[0-9]{8}$')");
 
@@ -75,14 +71,10 @@ return new class extends Migration
         DB::statement("ALTER TABLE timbrado
             ADD CONSTRAINT ck_tim_rango CHECK (tim_nroini > 0 AND tim_nrofin >= tim_nroini)");
 
-        // El correlativo vive dentro del rango. Arranca en nroini - 1 porque
-        // todavia no se emitio ningun documento.
         DB::statement("ALTER TABLE timbrado
             ADD CONSTRAINT ck_tim_nroact
             CHECK (tim_nroact >= tim_nroini - 1 AND tim_nroact <= tim_nrofin)");
 
-        // Un solo talonario activo por sucursal, tipo de comprobante y punto
-        // de expedicion: si hubiera dos, el sistema no sabria cual numerar.
         DB::statement("CREATE UNIQUE INDEX uq_tim_activo_punto
             ON timbrado (tim_sucid, tim_tcoid, tim_establec, tim_puntexp)
             WHERE tim_estado = 1");

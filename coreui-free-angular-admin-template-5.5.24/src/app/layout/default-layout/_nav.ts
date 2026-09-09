@@ -83,27 +83,26 @@ export const navItems: INavData[] = [
     children: [
     { name: 'Lista de productos', url: '/inventario/productos' },
 
-      {
-        name: 'Marcas',
-        iconComponent: { name: 'cil-tag' },
-        children: [
-          { name: 'Lista de marcas', url: '/brands' },
-          { name: 'Nueva marca', url: '/brands/new' }
-        ]
-      },
-      {
+    {
+      name: 'Marcas',
+      url: '/brands',
+      iconComponent: { name: 'cil-tag' }
+    },
+    
+    {
         name: 'Unidades de Medida',
         iconComponent: { name: 'cil-ruler' },
         url: '/unidades-medida'
       },
-
-      { name: 'Unidades de Medida', url: '/unidades-medida' } // TODO: crear ruta, faltaba en el menú
     ]
   },
   {
     name: 'Ajuste de Inventario',
-    url: '/inventario/ajustes',
-    iconComponent: { name: 'cil-swap-vertical' }
+    iconComponent: { name: 'cil-swap-vertical' },
+    children: [
+      { name: 'Lista de ajustes', url: '/inventario/ajustes' },
+      { name: 'Tipos de ajuste', url: '/inventario/tipos-ajuste' }
+    ]
   },
   {
     name: 'Movimiento de Stock',
