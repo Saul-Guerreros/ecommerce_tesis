@@ -1,0 +1,106 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Depósitos</strong>
+    <button cButton color="primary" (click)="abrirNuevo()">+ Nuevo depósito</button>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar por nombre o código..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroSucursal" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todas las sucursales</option>
+          <option *ngFor="let s of sucursales" [ngValue]="s.suc_id">{{ s.suc_nombre }}</option>
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="">Todos los estados</option>
+          <option value="1">Activo</option>
+          <option value="0">Inactivo</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">
+          Limpiar
+        </button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">
+      {{ depositos.length }} depósito(s) encontrado(s)
+    </div>
+
+    <div class="text-center py-4" *ngIf="cargando">
+      <c-spinner color="primary"></c-spinner>
+    </div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Código</th>
+          <th>Nombre</th>
+          <th>Sucursal</th>
+          <th class="text-center">Principal</th>
+          <th class="text-center">Movimientos</th>
+          <th class="text-center">Estado</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let d of depositos">
+          <td>{{ d.dpo_id }}</td>
+          <td>{{ d.dpo_codigo }}</td>
+          <td>{{ d.dpo_nombre }}</td>
+          <td>{{ d.suc_nombre }}</td>
+          <td class="text-center">
+            <c-badge color="primary" *ngIf="d.dpo_princi === 1">Principal</c-badge>
+            <button cButton size="sm" color="light" *ngIf="d.dpo_princi !== 1 && d.dpo_estado === 1"
+                    (click)="marcarPrincipal(d)">
+              Marcar
+            </button>
+          </td>
+          <td class="text-center">{{ d.usos_count }}</td>
+          <td class="text-center">
+            <c-badge [color]="d.dpo_estado === 1 ? 'success' : 'secondary'">
+              {{ d.dpo_estado === 1 ? 'Activo' : 'Inactivo' }}
+            </c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirEditar(d)">Editar</button>
+            <button cButton size="sm" [color]="d.dpo_estado === 1 ? 'warning' : 'success'"
+                    class="me-2 text-white" (click)="cambiarEstado(d)">
+              {{ d.dpo_estado === 1 ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(d)">Eliminar</button>
+          </td>
+        </tr>
+
+        <tr *ngIf="depositos.length === 0">
+          <td colspan="8" class="text-center">No hay depósitos registrados</td>
+        </tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-form-deposito
+  [visible]="formModalVisible"
+  [deposito]="depositoSeleccionado"
+  (visibleChange)="formModalVisible = $event"
+  (guardado)="cargar()">
+</app-form-deposito>
+
+<app-delete-deposito
+  [visible]="deleteModalVisible"
+  [deposito]="depositoSeleccionado"
+  (visibleChange)="deleteModalVisible = $event"
+  (confirmar)="confirmarEliminar()">
+</app-delete-deposito>

@@ -1,0 +1,56 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar unidad de medida' : 'Nueva unidad de medida' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-md-4">
+          <label cLabel for="umd_codigo">Código <span class="text-danger">*</span></label>
+          <input cFormControl id="umd_codigo" formControlName="umd_codigo"
+                 placeholder="KG" maxlength="5" style="text-transform: uppercase;" />
+          <div class="text-danger small" *ngIf="campoInvalido('umd_codigo')">
+            {{ errorBackend('umd_codigo') || 'Obligatorio (máx. 5 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <label cLabel for="umd_nombre">Nombre <span class="text-danger">*</span></label>
+          <input cFormControl id="umd_nombre" formControlName="umd_nombre"
+                 placeholder="Kilogramo" maxlength="40" />
+          <div class="text-danger small" *ngIf="campoInvalido('umd_nombre')">
+            {{ errorBackend('umd_nombre') || 'Obligatorio (máx. 40 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-6 d-flex align-items-center">
+          <div class="form-check">
+            <input cFormCheckInput type="checkbox" id="umd_decimal"
+                   [checked]="form.value.umd_decimal === 1"
+                   (change)="form.patchValue({ umd_decimal: $any($event.target).checked ? 1 : 0 })" />
+            <label cFormCheckLabel for="umd_decimal">Admite cantidades decimales</label>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="umd_estado">Estado</label>
+          <select cSelect id="umd_estado" formControlName="umd_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

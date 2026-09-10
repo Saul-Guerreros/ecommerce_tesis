@@ -1,0 +1,75 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar empresa' : 'Nueva empresa' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-md-8">
+          <label cLabel for="emp_razonsocial">Razón social <span class="text-danger">*</span></label>
+          <input cFormControl id="emp_razonsocial" formControlName="emp_razonsocial"
+                 placeholder="Ej: Z Informática S.A." maxlength="45" />
+          <div class="text-danger small" *ngIf="campoInvalido('emp_razonsocial')">
+            {{ errorBackend('emp_razonsocial') || 'La razón social es obligatoria (máx. 45 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="emp_ruc">RUC <span class="text-danger">*</span></label>
+          <input cFormControl id="emp_ruc" formControlName="emp_ruc"
+                 placeholder="Ej: 80012345-6" maxlength="15" />
+          <div class="text-danger small" *ngIf="campoInvalido('emp_ruc')">
+            {{ errorBackend('emp_ruc') || 'El RUC es obligatorio (máx. 15 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="emp_telef">Teléfono</label>
+          <input cFormControl id="emp_telef" formControlName="emp_telef" maxlength="20" />
+          <div class="text-danger small" *ngIf="campoInvalido('emp_telef')">
+            {{ errorBackend('emp_telef') || 'Máximo 20 caracteres.' }}
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <label cLabel for="emp_email">Correo electrónico</label>
+          <input cFormControl id="emp_email" formControlName="emp_email"
+                 placeholder="contacto@empresa.com.py" maxlength="60" />
+          <div class="text-danger small" *ngIf="campoInvalido('emp_email')">
+            {{ errorBackend('emp_email') || 'Formato de correo inválido.' }}
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <label cLabel for="emp_actividad">Actividad económica</label>
+          <input cFormControl id="emp_actividad" formControlName="emp_actividad"
+                 placeholder="Ej: Venta de equipos informáticos" maxlength="50" />
+          <div class="text-danger small" *ngIf="campoInvalido('emp_actividad')">
+            {{ errorBackend('emp_actividad') || 'Máximo 50 caracteres.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="emp_estado">Estado</label>
+          <select cSelect id="emp_estado" formControlName="emp_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">
+        Cancelar
+      </button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

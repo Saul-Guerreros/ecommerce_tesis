@@ -25,7 +25,9 @@ class AdminUserSeeder extends Seeder
         $rolAdmin = Rol::where('rol_descri', 'Administrador')->first();
 
         if (! $tipoDocumento || ! $cargo || ! $rolAdmin) {
-            $this->command?->warn('AdminUserSeeder: ejecuta primero CatalogoAuthSeeder y RolPermisoSeeder.');
+            $this->command?->warn(
+                'AdminUserSeeder: ejecuta primero CatalogoAuthSeeder y RolPermisoSeeder.'
+            );
             return;
         }
 

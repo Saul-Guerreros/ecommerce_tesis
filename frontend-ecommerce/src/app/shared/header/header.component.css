@@ -1,0 +1,51 @@
+/* Layout de respaldo para uk-navbar: garantiza que navbar-left y
+   navbar-right queden en la misma fila (extremo izq. / extremo der.)
+   independientemente de si el CSS de UIkit terminó de cargar. */
+
+.uk-navbar-container .uk-container[uk-navbar] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.uk-navbar-left,
+.uk-navbar-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.uk-navbar-right {
+  margin-left: auto;
+}
+
+/* Layout de respaldo para los mega-dropdowns (Categorías, Marcas):
+   uk-grid + uk-child-width-* no se están aplicando, por lo que las
+   listas caen al comportamiento por defecto del navegador (bullets,
+   apiladas verticalmente). Forzamos el grid manualmente. */
+
+.uk-navbar-dropdown-grid,
+.uk-grid-small[uk-grid] {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.uk-navbar-dropdown-grid > li,
+.uk-grid-small[uk-grid] > li {
+  box-sizing: border-box;
+  padding: 10px;
+}
+
+.uk-navbar-dropdown-grid.uk-child-width-1-5 > li {
+  width: 20%;
+}
+
+.uk-grid-small.uk-child-width-1-6 > li {
+  width: 16.6667%;
+}
+

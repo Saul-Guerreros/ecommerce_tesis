@@ -37,7 +37,7 @@ class CatalogoAuthSeeder extends Seeder
 
         foreach ($tiposCliente as $descripcion) {
             TipoCliente::updateOrCreate(
-                ['tpc_descr' => $descripcion],
+                ['tpc_descri' => $descripcion],
                 ['tpc_estado' => 1]
             );
         }

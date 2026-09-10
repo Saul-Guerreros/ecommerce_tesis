@@ -1,0 +1,61 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Unidades de Medida</strong>
+    <button cButton color="primary" (click)="abrirNuevo()">+ Nueva unidad</button>
+  </c-card-header>
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-6">
+        <input cFormControl placeholder="Buscar..." [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="">Todos los estados</option>
+          <option value="1">Activo</option>
+          <option value="0">Inactivo</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ unidades.length }} unidad(es) encontrada(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>#</th><th>Código</th><th>Nombre</th><th class="text-center">Decimales</th>
+          <th class="text-center">En uso</th><th class="text-center">Estado</th><th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let u of unidades">
+          <td>{{ u.umd_id }}</td>
+          <td>{{ u.umd_codigo }}</td>
+          <td>{{ u.umd_nombre }}</td>
+          <td class="text-center">{{ u.umd_decimal === 1 ? 'Sí' : 'No' }}</td>
+          <td class="text-center">{{ u.usos_count }}</td>
+          <td class="text-center">
+            <c-badge [color]="u.umd_estado === 1 ? 'success' : 'secondary'">{{ u.umd_estado === 1 ? 'Activo' : 'Inactivo' }}</c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirEditar(u)">Editar</button>
+            <button cButton size="sm" [color]="u.umd_estado === 1 ? 'warning' : 'success'" class="me-2 text-white" (click)="cambiarEstado(u)">
+              {{ u.umd_estado === 1 ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(u)">Eliminar</button>
+          </td>
+        </tr>
+        <tr *ngIf="unidades.length === 0"><td colspan="7" class="text-center">No hay unidades de medida registradas</td></tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-form-unidad-medida [visible]="formModalVisible" [unidadMedida]="unidadSeleccionada"
+  (visibleChange)="formModalVisible = $event" (guardado)="cargar()"></app-form-unidad-medida>
+
+<app-delete-unidad-medida [visible]="deleteModalVisible" [unidadMedida]="unidadSeleccionada"
+  (visibleChange)="deleteModalVisible = $event" (confirmar)="confirmarEliminar()"></app-delete-unidad-medida>

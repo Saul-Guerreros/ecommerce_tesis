@@ -88,8 +88,7 @@ export class ResetPasswordComponent {
       next: () => {
         this.loading = false;
         this.exito = true;
-      },
-      error: (err) => {
+      },error: (err) => {
         this.loading = false;
         this.errorMsg = 'El código es inválido o ya expiró. Solicita uno nuevo.';
       }

@@ -1,0 +1,25 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>Confirmar eliminación</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <p *ngIf="!enUso">
+      ¿Está seguro de eliminar el tipo de IVA <strong>{{ tipoIva?.tiv_descri }}</strong>
+      ({{ tipoIva?.tiv_tasa }}%)? Esta acción no se puede deshacer.
+    </p>
+
+    <div class="alert alert-warning mb-0" *ngIf="enUso">
+      El tipo de IVA <strong>{{ tipoIva?.tiv_descri }}</strong> ya está aplicado en
+      {{ tipoIva?.usos_count }} registro(s) y no puede eliminarse.
+      Utilice el botón <strong>Desactivar</strong>.
+    </div>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" class="text-white" *ngIf="!enUso" (click)="confirmar.emit()">
+      Eliminar
+    </button>
+  </c-modal-footer>
+</c-modal>

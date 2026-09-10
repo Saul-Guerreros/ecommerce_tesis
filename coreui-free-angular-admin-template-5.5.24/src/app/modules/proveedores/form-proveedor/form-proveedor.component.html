@@ -1,0 +1,179 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>
+      {{ soloLectura ? 'Detalle del proveedor' : (esEdicion ? 'Editar proveedor' : 'Nuevo proveedor') }}
+    </h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-md-4">
+          <label cLabel for="pro_ruc">RUC <span class="text-danger">*</span></label>
+          <input cFormControl id="pro_ruc" formControlName="pro_ruc" maxlength="15" />
+          <div class="text-danger small" *ngIf="campoInvalido('pro_ruc')">
+            {{ errorBackend('pro_ruc') || 'El RUC es obligatorio.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="pro_tprid">Tipo de proveedor <span class="text-danger">*</span></label>
+          <select cSelect id="pro_tprid" formControlName="pro_tprid">
+            <option [ngValue]="null">Seleccione un tipo</option>
+            <option *ngFor="let t of tipos" [ngValue]="t.tpr_id">{{ t.tpr_descri }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('pro_tprid')">
+            {{ errorBackend('pro_tprid') || 'Debe seleccionar el tipo.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="pro_ciuid">Ciudad <span class="text-danger">*</span></label>
+          <select cSelect id="pro_ciuid" formControlName="pro_ciuid">
+            <option [ngValue]="null">Seleccione una ciudad</option>
+            <option *ngFor="let c of ciudades" [ngValue]="c.ciu_id">{{ c.ciu_descri }} ({{ c.dep_descri }})</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('pro_ciuid')">
+            {{ errorBackend('pro_ciuid') || 'Debe seleccionar la ciudad.' }}
+          </div>
+        </div>
+
+        <div class="col-md-7">
+          <label cLabel for="pro_razon">Razón social <span class="text-danger">*</span></label>
+          <input cFormControl id="pro_razon" formControlName="pro_razon" maxlength="150" />
+          <div class="text-danger small" *ngIf="campoInvalido('pro_razon')">
+            {{ errorBackend('pro_razon') || 'La razón social es obligatoria.' }}
+          </div>
+        </div>
+
+        <div class="col-md-5">
+          <label cLabel for="pro_nomfan">Nombre de fantasía</label>
+          <input cFormControl id="pro_nomfan" formControlName="pro_nomfan" maxlength="80" />
+        </div>
+
+        <div class="col-md-8">
+          <label cLabel for="pro_direccion">Dirección</label>
+          <input cFormControl id="pro_direccion" formControlName="pro_direccion" maxlength="100" />
+        </div>
+
+        <div class="col-md-4" *ngIf="esEdicion">
+          <label cLabel for="pro_estado">Estado</label>
+          <select cSelect id="pro_estado" formControlName="pro_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="pro_telef">Teléfono</label>
+          <input cFormControl id="pro_telef" formControlName="pro_telef" maxlength="20" />
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="pro_email">Correo electrónico</label>
+          <input cFormControl id="pro_email" formControlName="pro_email" maxlength="60" />
+          <div class="text-danger small" *ngIf="campoInvalido('pro_email')">
+            {{ errorBackend('pro_email') || 'Formato de correo inválido.' }}
+          </div>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer *ngIf="!soloLectura">
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+
+  <!-- En modo Ver el footer de "Cerrar" va aparte, porque el <form> de
+       arriba oculta el suyo entero (no solo el boton de guardar). -->
+  <c-modal-footer *ngIf="soloLectura">
+    <button cButton color="secondary" (click)="cerrar()">Cerrar</button>
+  </c-modal-footer>
+
+  <!-- ================= CONTACTOS (solo en edicion) ================= -->
+  <c-modal-body *ngIf="esEdicion" class="border-top pt-3">
+    <h6>Contactos del proveedor</h6>
+
+    <div class="text-center py-3" *ngIf="cargandoContactos"><c-spinner size="sm" color="primary"></c-spinner></div>
+
+    <table cTable small striped *ngIf="!cargandoContactos && contactos.length > 0">
+      <thead>
+        <tr>
+          <th>Nombre</th><th>Cargo</th><th>Teléfono</th><th>Email</th>
+          <th class="text-center">Principal</th><th class="text-end" *ngIf="!soloLectura">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let c of contactos">
+          <td>{{ c.cpr_nombre }} {{ c.cpr_apellido }}</td>
+          <td>{{ c.cpr_cargo || '-' }}</td>
+          <td>{{ c.cpr_telef || '-' }}</td>
+          <td>{{ c.cpr_email || '-' }}</td>
+          <td class="text-center">
+            <c-badge color="info" *ngIf="c.cpr_princi === 1">Sí</c-badge>
+          </td>
+          <td class="text-end" *ngIf="!soloLectura">
+            <button cButton size="sm" color="info" class="me-1 text-white" (click)="editarContacto(c)">Editar</button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="pedirEliminarContacto(c)">Eliminar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="text-muted small" *ngIf="!cargandoContactos && contactos.length === 0">
+      Este proveedor todavía no tiene contactos registrados.
+    </p>
+
+    <!-- Confirmacion inline de borrado de contacto: al ser un sub-widget
+         dentro de un modal ya abierto, se evita anidar un segundo c-modal. -->
+    <div class="alert alert-warning d-flex justify-content-between align-items-center" *ngIf="contactoAEliminar">
+      <span>¿Eliminar a <strong>{{ contactoAEliminar.cpr_nombre }} {{ contactoAEliminar.cpr_apellido }}</strong>?</span>
+      <span>
+        <button cButton size="sm" color="secondary" class="me-2" (click)="cancelarEliminarContacto()">Cancelar</button>
+        <button cButton size="sm" color="danger" class="text-white" (click)="confirmarEliminarContacto()">Confirmar</button>
+      </span>
+    </div>
+
+    <!-- Mini-formulario de alta/edicion de contacto: oculto en modo Ver -->
+    <form *ngIf="!soloLectura" [formGroup]="contactoForm" (ngSubmit)="guardarContacto()" class="border rounded p-3 mt-2">
+      <div class="row g-2">
+        <div class="col-md-3">
+          <input cFormControl placeholder="Nombre *" formControlName="cpr_nombre" maxlength="60" />
+        </div>
+        <div class="col-md-3">
+          <input cFormControl placeholder="Apellido *" formControlName="cpr_apellido" maxlength="60" />
+        </div>
+        <div class="col-md-2">
+          <input cFormControl placeholder="Cargo" formControlName="cpr_cargo" maxlength="40" />
+        </div>
+        <div class="col-md-2">
+          <input cFormControl placeholder="Teléfono" formControlName="cpr_telef" maxlength="20" />
+        </div>
+        <div class="col-md-2">
+          <input cFormControl placeholder="Email" formControlName="cpr_email" maxlength="80" />
+        </div>
+
+        <div class="col-md-4 d-flex align-items-center">
+          <div class="form-check">
+            <input cFormCheckInput type="checkbox" id="cpr_princi"
+                   [checked]="contactoForm.value.cpr_princi === 1"
+                   (change)="contactoForm.patchValue({ cpr_princi: $any($event.target).checked ? 1 : 0 })" />
+            <label cFormCheckLabel for="cpr_princi">Contacto principal</label>
+          </div>
+        </div>
+
+        <div class="col-md-8 text-end">
+          <button cButton size="sm" color="primary" type="submit" [disabled]="guardandoContacto">
+            {{ editandoContactoId ? 'Actualizar contacto' : 'Agregar contacto' }}
+          </button>
+        </div>
+      </div>
+    </form>
+  </c-modal-body>
+</c-modal>

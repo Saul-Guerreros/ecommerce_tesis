@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { NgIf } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 
 import {
@@ -77,7 +78,7 @@ export class ForgotPasswordComponent {
         this.loading = false;
         this.enviado = true;
       },
-      error: (err) => {
+      error: (err: HttpErrorResponse) => {
         this.loading = false;
         this.errorMsg = err.error?.message || 'No pudimos enviar el código. Intenta nuevamente.';
       }

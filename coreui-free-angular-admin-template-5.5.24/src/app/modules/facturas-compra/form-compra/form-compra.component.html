@@ -1,0 +1,237 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="xl" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>
+      {{ esNuevo ? 'Nueva compra' : 'Compra N° ' + compra?.com_id }}
+      {{ soloLectura ? ' — Visualizar' : '' }}
+    </h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <form [formGroup]="form">
+
+      <fieldset class="border rounded p-3 mb-3">
+        <legend class="float-none w-auto px-2 fs-6 text-muted">Datos internos</legend>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label cLabel>N° de compra</label>
+            <input cFormControl [value]="compra?.com_id ?? '(se asignará al guardar)'" disabled />
+          </div>
+          <div class="col-md-3">
+            <label cLabel>Usuario</label>
+            <input cFormControl value="—" disabled />
+            <div class="text-muted small">Se completará cuando exista el módulo de sesión (RBAC).</div>
+          </div>
+          <div class="col-md-3">
+            <label cLabel>Sucursal</label>
+            <input cFormControl [value]="sucursalDerivada || '—'" disabled />
+          </div>
+          <div class="col-md-3">
+            <label cLabel for="com_depid">Depósito <span class="text-danger">*</span></label>
+            <select cSelect id="com_depid" formControlName="com_depid">
+              <option [ngValue]="null">Seleccione un depósito</option>
+              <option *ngFor="let d of depositos" [ngValue]="d.dpo_id">{{ d.dpo_nombre }} — {{ d.suc_nombre }}</option>
+            </select>
+            <div class="text-danger small" *ngIf="campoInvalido('com_depid')">
+              {{ errorBackend('com_depid') || 'Debe seleccionar el depósito.' }}
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="border rounded p-3 mb-3">
+        <legend class="float-none w-auto px-2 fs-6 text-muted">Datos del proveedor y la factura</legend>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label cLabel for="com_proid">Proveedor <span class="text-danger">*</span></label>
+            <select cSelect id="com_proid" formControlName="com_proid">
+              <option [ngValue]="null">Seleccione un proveedor</option>
+              <option *ngFor="let p of proveedores" [ngValue]="p.pro_id">{{ p.pro_razon }} ({{ p.pro_ruc }})</option>
+            </select>
+            <div class="text-danger small" *ngIf="campoInvalido('com_proid')">
+              {{ errorBackend('com_proid') || 'Debe seleccionar el proveedor.' }}
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label cLabel for="com_tcoid">Tipo de comprobante <span class="text-danger">*</span></label>
+            <select cSelect id="com_tcoid" formControlName="com_tcoid">
+              <option [ngValue]="null">Seleccione un tipo</option>
+              <option *ngFor="let t of tiposComprobante" [ngValue]="t.tco_id">{{ t.tco_descri }}</option>
+            </select>
+            <div class="text-danger small" *ngIf="campoInvalido('com_tcoid')">
+              {{ errorBackend('com_tcoid') || 'Debe seleccionar el tipo de comprobante.' }}
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label cLabel for="com_nrodoc">N° de factura <span class="text-danger">*</span></label>
+            <input cFormControl id="com_nrodoc" formControlName="com_nrodoc" placeholder="001-001-0000000" />
+            <div class="text-danger small" *ngIf="campoInvalido('com_nrodoc')">
+              {{ errorBackend('com_nrodoc') || 'Formato requerido: 001-001-0000000.' }}
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <label cLabel for="com_timbra">Timbrado (del proveedor)</label>
+            <input cFormControl id="com_timbra" formControlName="com_timbra" maxlength="8" placeholder="00000000" />
+          </div>
+          <div class="col-md-4">
+            <label cLabel for="com_timbvn">Vto. timbrado</label>
+            <input cFormControl type="date" id="com_timbvn" formControlName="com_timbvn" />
+          </div>
+          <div class="col-md-4">
+            <label cLabel for="com_fchaem">Fecha de emisión <span class="text-danger">*</span></label>
+            <input cFormControl type="date" id="com_fchaem" formControlName="com_fchaem" />
+            <div class="text-danger small" *ngIf="campoInvalido('com_fchaem')">
+              {{ errorBackend('com_fchaem') || 'Obligatoria; no puede ser posterior al vencimiento del timbrado.' }}
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <label cLabel for="com_nrorem">N° de remisión</label>
+            <input cFormControl id="com_nrorem" formControlName="com_nrorem" maxlength="15" />
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="border rounded p-3 mb-3">
+        <legend class="float-none w-auto px-2 fs-6 text-muted">Condición de compra</legend>
+        <div class="d-flex gap-4 mb-3">
+          <div class="form-check">
+            <input cFormCheckInput type="radio" id="condContado" [value]="0"
+                   [checked]="form.value.com_condic === 0"
+                   (change)="onCondicionChange(0)" [disabled]="soloLectura || !esNuevo" />
+            <label cFormCheckLabel for="condContado">Contado</label>
+          </div>
+          <div class="form-check">
+            <input cFormCheckInput type="radio" id="condCredito" [value]="1"
+                   [checked]="form.value.com_condic === 1"
+                   (change)="onCondicionChange(1)" [disabled]="soloLectura || !esNuevo" />
+            <label cFormCheckLabel for="condCredito">Crédito</label>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label cLabel for="com_plzdia">Plazo (días)</label>
+            <input cFormControl type="number" id="com_plzdia" formControlName="com_plzdia" min="0" />
+          </div>
+          <div class="col-md-4">
+            <label cLabel for="com_cuotas">Cuotas</label>
+            <input cFormControl type="number" id="com_cuotas" formControlName="com_cuotas" min="0" />
+          </div>
+          <div class="col-md-4">
+            <label cLabel for="com_interv">Intervalo (días)</label>
+            <input cFormControl type="number" id="com_interv" formControlName="com_interv" min="0" />
+          </div>
+        </div>
+        <div class="text-muted small mt-2">
+          Obs: Se habilitan solo si la condición es Crédito.
+        </div>
+      </fieldset>
+
+      <fieldset class="border rounded p-3 mb-3">
+        <legend class="float-none w-auto px-2 fs-6 text-muted">Detalle de ítems</legend>
+
+        <div class="row g-2 align-items-end mb-3" *ngIf="!soloLectura">
+          <div class="col-md-6 position-relative">
+            <label cLabel>Producto <span class="text-danger">*</span></label>
+            <input cFormControl placeholder="Buscar por código o nombre..."
+                   [(ngModel)]="busquedaProducto" [ngModelOptions]="{standalone: true}" />
+            <div class="list-group position-absolute w-100" style="z-index: 20;" *ngIf="productosFiltrados.length > 0 && !productoSeleccionado">
+              <button type="button" class="list-group-item list-group-item-action"
+                      *ngFor="let p of productosFiltrados" (click)="seleccionarProducto(p)">
+                <strong>{{ p.prd_codinv }}</strong> — {{ p.prd_descri }}
+              </button>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <label cLabel>Precio</label>
+            <input cFormControl type="number" [(ngModel)]="nuevoCosto" [ngModelOptions]="{standalone: true}" min="0" step="0.01" />
+          </div>
+          <div class="col-md-2">
+            <label cLabel>Cantidad</label>
+            <input cFormControl type="number" [(ngModel)]="nuevaCantidad" [ngModelOptions]="{standalone: true}" min="0.0001" step="0.0001" />
+          </div>
+          <div class="col-md-2">
+            <button cButton color="primary" variant="outline" class="w-100" type="button" (click)="agregarItem()">
+              + Agregar ítem
+            </button>
+          </div>
+        </div>
+
+        <table cTable small striped>
+          <thead>
+            <tr>
+              <th>Código</th><th>Descripción</th><th class="text-end">Precio</th>
+              <th class="text-end">Cant.</th><th class="text-center">IVA</th>
+              <th class="text-end">Gravado</th><th *ngIf="!soloLectura"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let fila of detalle.controls; let i = index" [formGroup]="$any(fila)">
+              <td>{{ fila.value.prd_codinv }}</td>
+              <td>{{ fila.value.descri }}</td>
+              <td class="text-end">{{ fila.value.costo | number:'1.0-2' }}</td>
+              <td class="text-end">{{ fila.value.canfac | number:'1.0-4' }}</td>
+              <td class="text-center">{{ fila.value.tasa }}%</td>
+              <td class="text-end">{{ (fila.value.costo * fila.value.canfac) | number:'1.0-2' }}</td>
+              <td *ngIf="!soloLectura">
+                <button cButton size="sm" color="danger" variant="ghost" type="button" (click)="quitarItem(i)">✕</button>
+              </td>
+            </tr>
+            <tr *ngIf="detalle.length === 0">
+              <td [attr.colspan]="soloLectura ? 6 : 7" class="text-center text-muted fst-italic">
+                Sin ítems cargados
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="row g-2 mt-2">
+          <div class="col">
+            <label cLabel>Exenta</label>
+            <input cFormControl [value]="totalExenta | number:'1.0-2'" disabled />
+          </div>
+          <div class="col">
+            <label cLabel>Gravada 5%</label>
+            <input cFormControl [value]="totalGrav5 | number:'1.0-2'" disabled />
+          </div>
+          <div class="col">
+            <label cLabel>Gravada 10%</label>
+            <input cFormControl [value]="totalGrav10 | number:'1.0-2'" disabled />
+          </div>
+          <div class="col">
+            <label cLabel>IVA total</label>
+            <input cFormControl [value]="(totalIva5 + totalIva10) | number:'1.0-2'" disabled />
+          </div>
+          <div class="col">
+            <label cLabel>Total</label>
+            <input cFormControl class="fw-bold" [value]="totalGeneral | number:'1.0-2'" disabled />
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="border rounded p-3" *ngIf="!soloLectura || compra?.com_obs">
+        <legend class="float-none w-auto px-2 fs-6 text-muted">Observaciones</legend>
+        <textarea cFormControl formControlName="com_obs" rows="2" maxlength="100"></textarea>
+      </fieldset>
+
+    </form>
+  </c-modal-body>
+
+  <!-- Footer modo Editar (Nuevo) -->
+  <c-modal-footer *ngIf="!soloLectura">
+    <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+    <button cButton color="primary" type="button" (click)="guardar()" [disabled]="guardando">
+      <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+      {{ guardando ? 'Guardando...' : 'Guardar' }}
+    </button>
+  </c-modal-footer>
+
+  <!-- Footer modo Ver -->
+  <c-modal-footer *ngIf="soloLectura" class="d-flex justify-content-between">
+    <button cButton color="secondary" type="button" (click)="cerrar()">Cerrar</button>
+    <button cButton color="danger" class="text-white" type="button"
+            *ngIf="compra?.com_estfac === 1" (click)="solicitarAnular()">
+      Anular
+    </button>
+  </c-modal-footer>
+</c-modal>

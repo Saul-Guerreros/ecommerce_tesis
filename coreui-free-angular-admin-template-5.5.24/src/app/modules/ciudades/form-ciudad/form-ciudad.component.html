@@ -1,0 +1,49 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar ciudad' : 'Nueva ciudad' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-12">
+          <label cLabel for="ciu_depid">Departamento <span class="text-danger">*</span></label>
+          <select cSelect id="ciu_depid" formControlName="ciu_depid">
+            <option [ngValue]="null">-- Seleccione --</option>
+            <option *ngFor="let d of departamentos" [ngValue]="d.dep_id">{{ d.dep_descri }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('ciu_depid')">
+            {{ errorBackend('ciu_depid') || 'Debe seleccionar el departamento.' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="ciu_descri">Nombre de la ciudad <span class="text-danger">*</span></label>
+          <input cFormControl id="ciu_descri" formControlName="ciu_descri"
+                 placeholder="Ej: Capiatá" maxlength="50" />
+          <div class="text-danger small" *ngIf="campoInvalido('ciu_descri')">
+            {{ errorBackend('ciu_descri') || 'El nombre es obligatorio (máx. 50 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="ciu_estado">Estado</label>
+          <select cSelect id="ciu_estado" formControlName="ciu_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

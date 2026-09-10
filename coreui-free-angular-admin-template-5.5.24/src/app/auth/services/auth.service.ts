@@ -1,14 +1,18 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { Router } from '@angular/router';
+
 import { URL_SERVICIOS } from '../../config/config';
 import { User } from '../interfaces/user.model';
 import { LoginResponse } from '../interfaces/login-response.model';
-import { environment } from '../../../environments/environment';
-import { Router } from '@angular/router';
 
 const TOKEN_KEY = 'access_token';
 const USER_KEY = 'auth_user';
+
+export interface MensajeResponse {
+  message: string;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -17,15 +21,16 @@ export class AuthService {
 
   private apiUrl = URL_SERVICIOS;
 
-  // Señal reactiva con el usuario actual (útil para mostrar nombre en el header, etc.)
+  /** Señal reactiva con el usuario actual (header, menús, etc.) */
   currentUser = signal<User | null>(this.getUserFromStorage());
+
+  /** Permisos del usuario actual, derivados de currentUser */
+  permisos = computed<string[]>(() => this.currentUser()?.permisos ?? []);
 
   constructor(private http: HttpClient, private router: Router) {}
 
-  /**
-   * Login del panel administrativo. En el backend solo lo pueden usar
-   * usuarios con rol Administrador o Vendedor (ver AuthController::login).
-   */
+  // ───────────────────────── Sesión ─────────────────────────
+
   login(email: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, { email, password }).pipe(
       tap((res) => this.guardarSesion(res))
@@ -39,28 +44,13 @@ export class AuthService {
     });
   }
 
-  /**
-   * Paso 1 de "olvidé mi contraseña": pide que se envíe un código al email.
-   */
-  forgotPassword(email: string): Observable<{ message: number }> {
-    return this.http.post<{ message: number }>(`${this.apiUrl}/auth/verified_email`, { email });
-  }
+  
 
   /**
    * Paso 2: valida el código recibido por correo (sin cambiar aún la contraseña).
    */
   verifyResetCode(code: string): Observable<{ message: number }> {
     return this.http.post<{ message: number }>(`${this.apiUrl}/auth/verified_code`, { code });
-  }
-
-  /**
-   * Paso 3: aplica la nueva contraseña usando el mismo código validado antes.
-   */
-  resetPassword(code: string, newPassword: string): Observable<{ message: number }> {
-    return this.http.post<{ message: number }>(`${this.apiUrl}/auth/new_password`, {
-      code,
-      new_password: newPassword
-    });
   }
 
   /**
@@ -99,30 +89,54 @@ export class AuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
-  private getUserFromStorage(): User | null {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  }
-
   isLoggedIn(): boolean {
     return !!this.getToken();
   }
 
-  /**
-   * El Administrador siempre pasa (igual que el middleware `permiso` del
-   * backend). Para los demás roles se revisa el array `permisos` que trae
-   * /auth/login y /auth/me.
-   */
+  private getUserFromStorage(): User | null {
+    const raw = localStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as User;
+    } catch {
+      localStorage.removeItem(USER_KEY);
+      return null;
+    }
+  }
+
+  // ─────────────────────── Autorización ───────────────────────
+
+  /** true si el usuario logueado posee el permiso indicado */
   tienePermiso(permiso: string): boolean {
-    const user = this.currentUser();
-    if (!user) return false;
-    if (user.rol === 'Administrador') return true;
-    return (user.permisos ?? []).includes(permiso);
+    return this.permisos().includes(permiso);
   }
 
-  tieneRol(...roles: string[]): boolean {
-    const user = this.currentUser();
-    return !!user && roles.includes(user.rol);
+  /** true si posee AL MENOS UNO de los permisos (criterio del middleware backend) */
+  tieneAlgunPermiso(...permisos: string[]): boolean {
+    return permisos.some((p) => this.tienePermiso(p));
   }
 
+  /** true si posee TODOS los permisos indicados */
+  tieneTodosLosPermisos(...permisos: string[]): boolean {
+    return permisos.every((p) => this.tienePermiso(p));
+  }
+
+  tieneRol(rol: string): boolean {
+    return this.currentUser()?.rol === rol;
+  }
+
+  // ─────────────────── Recuperación de contraseña ───────────────────
+
+  /** Solicita el envío del código de recuperación al correo indicado */
+  forgotPassword(email: string): Observable<MensajeResponse> {
+    return this.http.post<MensajeResponse>(`${this.apiUrl}/auth/forgot-password`, { email });
+  }
+
+  /** Establece la nueva contraseña usando el código recibido por correo */
+  resetPassword(code: string, new_password: string): Observable<MensajeResponse> {
+    return this.http.post<MensajeResponse>(`${this.apiUrl}/auth/reset-password`, {
+      code,
+      new_password
+    });
+  }
 }

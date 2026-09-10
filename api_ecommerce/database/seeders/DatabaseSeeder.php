@@ -12,10 +12,14 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            // Módulo 1 - Autenticación y Perfil
             CatalogoAuthSeeder::class,
-            CatalogoProductoSeeder::class,
             RolPermisoSeeder::class,
             AdminUserSeeder::class,
+
+            // Otros catálogos actuales del sistema
+            TipoComprobanteSeeder::class,
+            UnidadMedidaSeeder::class,
         ]);
     }
 }

@@ -1,0 +1,16 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header><h5 cModalTitle>Confirmar eliminación</h5></c-modal-header>
+  <c-modal-body>
+    <p>
+      ¿Está seguro de eliminar el proveedor <strong>{{ proveedor?.pro_razon }}</strong>
+      (RUC {{ proveedor?.pro_ruc }})?
+    </p>
+    <p class="text-muted small mb-0" *ngIf="(proveedor?.contactos_count ?? 0) > 0">
+      Se eliminarán también sus {{ proveedor?.contactos_count }} contacto(s) registrado(s).
+    </p>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="confirmar.emit()">Eliminar</button>
+  </c-modal-footer>
+</c-modal>

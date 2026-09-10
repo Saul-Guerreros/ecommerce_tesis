@@ -1,0 +1,74 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Empresa</strong>
+    <button cButton color="primary" (click)="abrirNuevo()">+ Nueva empresa</button>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="text-center py-4" *ngIf="cargando">
+      <c-spinner color="primary"></c-spinner>
+    </div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Razón social</th>
+          <th>RUC</th>
+          <th>Teléfono</th>
+          <th>Actividad</th>
+          <th class="text-center">Sucursales</th>
+          <th class="text-center">Estado</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let emp of empresas">
+          <td>{{ emp.emp_id }}</td>
+          <td>{{ emp.emp_razonsocial }}</td>
+          <td>{{ emp.emp_ruc }}</td>
+          <td>{{ emp.emp_telef || '-' }}</td>
+          <td>{{ emp.emp_actividad || '-' }}</td>
+          <td class="text-center">{{ emp.sucursales_count }}</td>
+          <td class="text-center">
+            <c-badge [color]="emp.emp_estado === 1 ? 'success' : 'secondary'">
+              {{ emp.emp_estado === 1 ? 'Activo' : 'Inactivo' }}
+            </c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2 text-white"
+                    (click)="abrirEditar(emp)">Editar</button>
+
+            <button cButton size="sm"
+                    [color]="emp.emp_estado === 1 ? 'warning' : 'success'"
+                    class="me-2 text-white"
+                    (click)="cambiarEstado(emp)">
+              {{ emp.emp_estado === 1 ? 'Desactivar' : 'Activar' }}
+            </button>
+
+            <button cButton size="sm" color="danger" class="text-white"
+                    (click)="abrirEliminar(emp)">Eliminar</button>
+          </td>
+        </tr>
+
+        <tr *ngIf="empresas.length === 0">
+          <td colspan="8" class="text-center">No hay empresas registradas</td>
+        </tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-form-empresa
+  [visible]="formModalVisible"
+  [empresa]="empresaSeleccionada"
+  (visibleChange)="formModalVisible = $event"
+  (guardado)="onGuardado()">
+</app-form-empresa>
+
+<app-delete-empresa
+  [visible]="deleteModalVisible"
+  [empresa]="empresaSeleccionada"
+  (visibleChange)="deleteModalVisible = $event"
+  (confirmar)="confirmarEliminar()">
+</app-delete-empresa>

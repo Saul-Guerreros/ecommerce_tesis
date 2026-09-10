@@ -1,0 +1,98 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Ajustes de Inventario</strong>
+    <button cButton color="primary" (click)="abrirNuevo()">+ Nuevo ajuste</button>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar por referencia..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroDeposito" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos los depósitos</option>
+          <option *ngFor="let d of depositos" [ngValue]="d.dpo_id">{{ d.dpo_nombre }}</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="">Todos los estados</option>
+          <option value="0">Borrador</option>
+          <option value="1">Confirmado</option>
+          <option value="2">Anulado</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ ajustes.length }} ajuste(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>N°</th><th>Tipo</th><th>Depósito</th><th>Fecha</th>
+          <th>Referencia</th><th class="text-center">Estado</th><th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let a of ajustes">
+          <td>{{ a.aji_id }}</td>
+          <td>{{ a.tpa_descri }}</td>
+          <td>{{ a.dpo_nombre }}</td>
+          <td>{{ a.aji_fecha }}</td>
+          <td>{{ a.aji_referencia || '—' }}</td>
+          <td class="text-center">
+            <c-badge [color]="a.aji_estado === 0 ? 'secondary' : a.aji_estado === 1 ? 'success' : 'danger'">
+              {{ a.aji_estado === 0 ? 'Borrador' : a.aji_estado === 1 ? 'Confirmado' : 'Anulado' }}
+            </c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="secondary" class="me-2 text-white" (click)="abrirVer(a)">Ver</button>
+            <button cButton size="sm" color="success" class="me-2 text-white"
+                    *ngIf="a.aji_estado === 0" (click)="pedirConfirmar(a)">
+              Confirmar
+            </button>
+            <button cButton size="sm" color="danger" class="me-2 text-white"
+                    *ngIf="a.aji_estado === 0" (click)="pedirEliminar(a)">
+              Eliminar
+            </button>
+            <button cButton size="sm" color="danger" class="text-white"
+                    *ngIf="a.aji_estado === 1" (click)="pedirAnular(a)">
+              Anular
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="ajustes.length === 0"><td colspan="7" class="text-center">No hay ajustes registrados</td></tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-form-ajuste
+  [visible]="formModalVisible"
+  [ajuste]="ajusteSeleccionado"
+  [soloLectura]="soloLectura"
+  (visibleChange)="formModalVisible = $event"
+  (guardado)="cargar()"
+  (confirmarAjuste)="pedirConfirmar($event)"
+  (anularAjuste)="pedirAnular($event)"
+  (eliminarBorrador)="pedirEliminar($event)">
+</app-form-ajuste>
+
+<!-- Modal de confirmacion generico, sirve para las 3 acciones -->
+<c-modal [visible]="confirmModalVisible" (visibleChange)="confirmModalVisible = $event">
+  <c-modal-header><h5 cModalTitle>{{ tituloAccion }}</h5></c-modal-header>
+  <c-modal-body><p>{{ mensajeAccion }}</p></c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cancelarAccion()">Cancelar</button>
+    <button cButton [color]="accionPendiente === 'confirmar' ? 'success' : 'danger'" class="text-white"
+            (click)="ejecutarAccion()">
+      {{ tituloAccion }}
+    </button>
+  </c-modal-footer>
+</c-modal>

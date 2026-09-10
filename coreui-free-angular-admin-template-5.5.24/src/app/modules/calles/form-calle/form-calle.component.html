@@ -1,0 +1,77 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar calle' : 'Nueva calle' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <!--
+          Este select NO es formControlName: es un filtro visual que solo
+          acota el combo de barrio. cal_barid es el unico dato que se envia
+          al backend; la ciudad se resuelve del lado del servidor via
+          barrio -> ciudad.
+        -->
+        <div class="col-12">
+          <label cLabel for="ciudadFiltro">Ciudad</label>
+          <select cSelect id="ciudadFiltro" name="ciudadFiltro"
+                  [(ngModel)]="ciudadFiltro" [ngModelOptions]="{standalone: true}"
+                  (ngModelChange)="onCiudadFiltroChange()">
+            <option [ngValue]="null">Seleccione una ciudad</option>
+            <option *ngFor="let c of ciudades" [ngValue]="c.ciu_id">
+              {{ c.ciu_descri }} ({{ c.dep_descri }})
+            </option>
+          </select>
+          <div class="text-muted small">
+            Filtra el listado de barrios; no se guarda como dato de la calle.
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="cal_barid">Barrio <span class="text-danger">*</span></label>
+          <select cSelect id="cal_barid" formControlName="cal_barid" [disabled]="!ciudadFiltro">
+            <option [ngValue]="null">
+              {{ ciudadFiltro ? 'Seleccione un barrio' : 'Elija primero la ciudad' }}
+            </option>
+            <option *ngFor="let b of barriosFiltrados" [ngValue]="b.bar_id">{{ b.bar_descri }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('cal_barid')">
+            {{ errorBackend('cal_barid') || 'Debe seleccionar el barrio.' }}
+          </div>
+          <div class="text-muted small" *ngIf="ciudadFiltro && barriosFiltrados.length === 0">
+            Esta ciudad no tiene barrios activos registrados.
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="cal_descri">Nombre de la calle <span class="text-danger">*</span></label>
+          <input cFormControl id="cal_descri" formControlName="cal_descri"
+                 placeholder="Ej: Avda. Mcal. Lopez" maxlength="80" />
+          <div class="text-danger small" *ngIf="campoInvalido('cal_descri')">
+            {{ errorBackend('cal_descri') || 'El nombre es obligatorio (max. 80 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="cal_estado">Estado</label>
+          <select cSelect id="cal_estado" formControlName="cal_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">
+        Cancelar
+      </button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

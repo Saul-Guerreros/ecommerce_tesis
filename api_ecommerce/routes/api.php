@@ -2,24 +2,57 @@
 
 use App\Http\Controllers\Admin\AtributoController;
 use App\Http\Controllers\Admin\product\categorieController;
-use App\Http\Controllers\Admin\product\marcaController;
 use App\Http\Controllers\Admin\SliderController;
 use App\Http\Controllers\Api\CategoriaController;
-use App\Http\Controllers\Api\ProductoController;
-use App\Http\Controllers\Api\UsuarioController;
 use App\Http\Controllers\Admin\Product\VariacionProductoController;
 use App\Http\Controllers\Admin\Product\EspecificacionProductoController;
 use App\Http\Controllers\Admin\Cupone\CuponeController;
 use App\Http\Controllers\Admin\Discount\DiscountController;
 use App\Http\Controllers\Api\PublicacionWebController;
-use App\Http\Controllers\Api\TipoIvaController;
-use App\Http\Controllers\Api\UnidadMedidaController;
 use App\Http\Controllers\Api\VitrinaController;
 use App\Http\Controllers\AuthController;
+
+use App\Http\Controllers\Api\UsuarioController;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\Admin\Configuracion\EmpresaController;
 
+use App\Http\Controllers\Admin\Configuracion\DepartamentoController;
+use App\Http\Controllers\Admin\Configuracion\CiudadController;
+use App\Http\Controllers\Admin\Configuracion\BarrioController;
+use App\Http\Controllers\Admin\Configuracion\CalleController;
+
+use App\Http\Controllers\Admin\Configuracion\SucursalController;
+
+use App\Http\Controllers\Admin\Configuracion\DepositoController;
+
+use App\Http\Controllers\Admin\Cliente\ClienteController;
+
+use App\Http\Controllers\Admin\Compras\TipoIvaController;
+use App\Http\Controllers\Admin\Compras\TipoComprobanteController;
+
+use App\Http\Controllers\Admin\Configuracion\TimbradoController;
+
+use App\Http\Controllers\Admin\Compras\TipoProveedorController;
+use App\Http\Controllers\Admin\Compras\ProveedorController;
+use App\Http\Controllers\Admin\Compras\ContactoProveedorController;
+
+use App\Http\Controllers\Admin\product\MarcaController;
+
+use App\Http\Controllers\Admin\Compras\UnidadMedidaController;
+
+use App\Http\Controllers\Admin\product\ProductoController;
+
+use App\Http\Controllers\Admin\Compras\CompraController;
+
+use App\Http\Controllers\Admin\Compras\AjusteInventarioController;
+
+use App\Http\Controllers\Admin\Compras\MovimientoStockController;
+use App\Http\Controllers\Admin\Compras\StockController;
+
+use App\Http\Controllers\Admin\Auth\RolController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,7 +76,7 @@ Route::group([
 ], function ($router) {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/login', [AuthController::class, 'login'])->name('login');
-     Route::post('/login_ecommerce', [AuthController::class, 'login_ecommerce'])->name('login_ecommerce');
+    Route::post('/login_ecommerce', [AuthController::class, 'login_ecommerce'])->name('login_ecommerce');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::post('/refresh', [AuthController::class, 'refresh'])->name('refresh');
     Route::post('/me', [AuthController::class, 'me'])->name('me');
@@ -89,41 +122,152 @@ Route::group([
    
     Route::resource("discounts", DiscountController::class);
 
+    // Módulo Configuracion: Fase 1 ---
+    Route::patch('empresas/{id}/estado', [EmpresaController::class, 'toggleEstado']);
+    Route::apiResource('empresas', EmpresaController::class);
+
+    //Sucursales
+    Route::get('sucursales/config', [SucursalController::class, 'config']);
+    Route::patch('sucursales/{id}/estado', [SucursalController::class, 'toggleEstado']);
+    Route::apiResource('sucursales', SucursalController::class);// Para Ciudad
+    
+    //Departamentos
+    Route::get('departamentos/select', [DepartamentoController::class, 'select']);
+    Route::patch('departamentos/{id}/estado', [DepartamentoController::class, 'toggleEstado']);
+    Route::apiResource('departamentos', DepartamentoController::class);
+
+    //Ciudades
+    Route::get('ciudades/config', [CiudadController::class, 'config']);
+    Route::get('ciudades/select', [CiudadController::class, 'select']);
+    Route::patch('ciudades/{id}/estado', [CiudadController::class, 'toggleEstado']);
+    Route::apiResource('ciudades', CiudadController::class);
+
+    //Barrios
+    Route::get('barrios/config', [BarrioController::class, 'config']);
+    Route::get('barrios/select', [BarrioController::class, 'select']);
+    Route::patch('barrios/{id}/estado', [BarrioController::class, 'toggleEstado']);
+    Route::apiResource('barrios', BarrioController::class);
+
+    //Calles
+    Route::get('calles/config', [CalleController::class, 'config']);
+    Route::get('calles/select', [CalleController::class, 'select']);
+    Route::patch('calles/{id}/estado', [CalleController::class, 'toggleEstado']);
+    Route::apiResource('calles', CalleController::class);
+
+    Route::get('depositos/config', [DepositoController::class, 'config']);
+    Route::get('depositos/select', [DepositoController::class, 'select']);
+    Route::patch('depositos/{id}/estado', [DepositoController::class, 'toggleEstado']);
+    Route::patch('depositos/{id}/principal', [DepositoController::class, 'marcarPrincipal']);
+    Route::apiResource('depositos', DepositoController::class);
+
+    Route::get("clientes/config", [ClienteController::class, "config"]);
+    Route::get("clientes/buscar-persona", [ClienteController::class, "buscarPersona"]);
+    Route::patch("clientes/{cliente}/estado", [ClienteController::class, "cambiarEstado"]);
+    Route::resource("clientes", ClienteController::class)
+    ->only(['index','store','update','destroy']);
+
+
+    //Para Tipo_iva, Tipo_Comprobante, Timbrado
+    Route::get('tipos-iva/select', [TipoIvaController::class, 'select']);
+    Route::patch('tipos-iva/{id}/estado', [TipoIvaController::class, 'toggleEstado']);
+    Route::apiResource('tipos-iva', TipoIvaController::class);
+
+    Route::get('tipos-comprobante/select', [TipoComprobanteController::class, 'select']);
+    Route::patch('tipos-comprobante/{id}/estado', [TipoComprobanteController::class, 'toggleEstado']);
+    Route::apiResource('tipos-comprobante', TipoComprobanteController::class);
+
+    // --- Timbrados ---
+    Route::get('timbrados/config', [TimbradoController::class, 'config']);
+    Route::get('timbrados/select', [TimbradoController::class, 'select']);
+    Route::patch('timbrados/{id}/estado', [TimbradoController::class, 'toggleEstado']);
+    Route::apiResource('timbrados', TimbradoController::class);
+
+    // --- Modulo Compras: Fase 3 (proveedores) ---
+    //--Tipo_Proveedores
+    Route::get('tipos-proveedor/select', [TipoProveedorController::class, 'select']);
+    Route::patch('tipos-proveedor/{id}/estado', [TipoProveedorController::class, 'toggleEstado']);
+    Route::apiResource('tipos-proveedor', TipoProveedorController::class);
+
+    //--Proveedores y Contactos
+    Route::get('proveedores/config', [ProveedorController::class, 'config']);
+    Route::get('proveedores/select', [ProveedorController::class, 'select']);
+    Route::patch('proveedores/{id}/estado', [ProveedorController::class, 'toggleEstado']);
+    Route::apiResource('proveedores', ProveedorController::class);
+
+    // --- Contactos de proveedor (sin config/select: se usan solo desde
+    //     dentro del formulario de un proveedor puntual) ---
+    Route::patch('contactos-proveedor/{id}/estado', [ContactoProveedorController::class, 'toggleEstado']);
+    Route::apiResource('contactos-proveedor', ContactoProveedorController::class);
+
+    // --- Unidades de medida ---
+    Route::get('unidades-medida/select', [UnidadMedidaController::class, 'select']);
+    Route::patch('unidades-medida/{id}/estado', [UnidadMedidaController::class, 'toggleEstado']);
+    Route::apiResource('unidades-medida', UnidadMedidaController::class);
+
+    // --- Productos ---
+    Route::get('productos/config', [ProductoController::class, 'config']);
+    Route::get('productos/select', [ProductoController::class, 'select']);
+    Route::patch('productos/{id}/estado', [ProductoController::class, 'toggleEstado']);
+    Route::apiResource('productos', ProductoController::class);
+
+    // --- Compras (modulo transaccional: sin apiResource, sin toggleEstado) ---
+    Route::get('compras/config', [CompraController::class, 'config']);
+    Route::get('compras', [CompraController::class, 'index']);
+    Route::get('compras/{id}', [CompraController::class, 'show']);
+    Route::post('compras', [CompraController::class, 'store']);
+    Route::patch('compras/{id}/anular', [CompraController::class, 'anular']);
+
+    //--Ajuste Inventario
+    Route::get('ajustes-inventario/config', [AjusteInventarioController::class, 'config']);
+    Route::get('ajustes-inventario', [AjusteInventarioController::class, 'index']);
+    Route::get('ajustes-inventario/{id}', [AjusteInventarioController::class, 'show']);
+    Route::post('ajustes-inventario', [AjusteInventarioController::class, 'store']);
+    Route::patch('ajustes-inventario/{id}/confirmar', [AjusteInventarioController::class, 'confirmar']);
+    Route::patch('ajustes-inventario/{id}/anular', [AjusteInventarioController::class, 'anular']);
+    Route::delete('ajustes-inventario/{id}', [AjusteInventarioController::class, 'destroy']);
+
+    // --- Movimiento_Stock (solo lectura)
+    Route::get('movimientos-stock/config', [MovimientoStockController::class, 'config']);
+    Route::get('movimientos-stock', [MovimientoStockController::class, 'index']);
+
+    // --- Stock_actual (solo lectura)
+    Route::get('stock/config', [StockController::class, 'config']);
+    Route::get('stock', [StockController::class, 'index']);
+
+    Route::get('roles/config', [RolController::class, 'config']);
+    Route::patch('roles/{id}/estado', [RolController::class, 'toggleEstado']);
+    Route::apiResource('roles', RolController::class);
+
+
+
+    
 });
 
 Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {
-    Route::get('/catalogos', [UsuarioController::class, 'catalogos'])->middleware('permiso:usuarios.ver');
-    Route::get('/', [UsuarioController::class, 'index'])->middleware('permiso:usuarios.ver');
-    Route::get('/{usuario}', [UsuarioController::class, 'show'])->middleware('permiso:usuarios.ver');
-    Route::post('/', [UsuarioController::class, 'store'])->middleware('permiso:usuarios.gestionar');
-    Route::put('/{usuario}', [UsuarioController::class, 'update'])->middleware('permiso:usuarios.gestionar');
-    Route::patch('/{usuario}/estado', [UsuarioController::class, 'cambiarEstado'])->middleware('permiso:usuarios.gestionar');
-});
+    Route::get('/catalogos', [UsuarioController::class, 'catalogos'])
+        ->middleware('permiso:usuarios.ver');
 
-Route::prefix('tienda')->group(function () {
-    Route::get('home', [VitrinaController::class, 'home']);
-    Route::get('producto/{slug}', [VitrinaController::class, 'detalle']);
-	Route::get('sliders', [VitrinaController::class, 'sliders']);
-});
+    Route::get('/', [UsuarioController::class, 'index'])
+        ->middleware('permiso:usuarios.ver');
 
-Route::prefix('productos')->group(function () {
-    Route::get('/', [ProductoController::class, 'index']);
-    Route::post('/', [ProductoController::class, 'store']);
-    Route::get('/{producto}', [ProductoController::class, 'show']);
-    Route::match(['put', 'post'], '/{producto}', [ProductoController::class, 'update']);
-    Route::delete('/{producto}', [ProductoController::class, 'destroy']);
-    //Route::delete('/{producto}/imagenes/{imagen}', [ProductoController::class, 'eliminarImagen']);
+    Route::get('/{usuario}', [UsuarioController::class, 'show'])
+        ->middleware('permiso:usuarios.ver');
 
+    Route::post('/', [UsuarioController::class, 'store'])
+        ->middleware('permiso:usuarios.gestionar');
 
-    Route::get('/{producto}/publicacion', [PublicacionWebController::class, 'show']);
-    Route::post('/{producto}/publicacion', [PublicacionWebController::class, 'guardar']);
-    Route::delete('/{producto}/publicacion/imagenes/{imagen}', [PublicacionWebController::class, 'eliminarImagen']);
+    Route::put('/{usuario}', [UsuarioController::class, 'update'])
+        ->middleware('permiso:usuarios.gestionar');
+
+    Route::patch('/{usuario}/estado', [UsuarioController::class, 'cambiarEstado'])
+        ->middleware('permiso:usuarios.gestionar');
 });
 
 Route::get('publicaciones', [PublicacionWebController::class, 'index']);
 
 Route::apiResource('categorias', categorieController::class);
-Route::apiResource('marcas', marcaController::class);
 
-Route::get('tipos-iva', [TipoIvaController::class, 'index']);
-Route::get('unidades-medida', [UnidadMedidaController::class, 'index']);
+
+Route::get('marcas/select', [MarcaController::class, 'select']);
+Route::patch('marcas/{id}/estado', [MarcaController::class, 'toggleEstado']);
+Route::apiResource('marcas', MarcaController::class);

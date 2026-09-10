@@ -31,6 +31,15 @@ class UsuarioResource extends JsonResource
             'cargo_id' => $funcionario?->fun_crgid,
             'cargo' => $funcionario?->cargo?->crg_descr,
             'fecha_ingreso' => $funcionario?->fun_fecing,
+
+            // Sucursales asignadas, con cual es la principal.
+            'sucursales' => $this->whenLoaded('sucursales', fn () =>
+                $this->sucursales->map(fn ($s) => [
+                    'suc_id'     => $s->suc_id,
+                    'suc_nombre' => $s->suc_nombre,
+                    'principal'  => (int) $s->pivot->uss_princi === 1,
+                ])
+            ),
         ];
     }
 }

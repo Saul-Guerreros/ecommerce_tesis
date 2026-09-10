@@ -1,0 +1,135 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar producto' : 'Nuevo producto' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-md-8">
+          <label cLabel for="prd_descri">Nombre del producto <span class="text-danger">*</span></label>
+          <input cFormControl id="prd_descri" formControlName="prd_descri" maxlength="150" />
+          <div class="text-danger small" *ngIf="campoInvalido('prd_descri')">
+            {{ errorBackend('prd_descri') || 'El nombre es obligatorio (máx. 150 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="prd_codinv">Código de inventario <span class="text-danger">*</span></label>
+          <input cFormControl id="prd_codinv" formControlName="prd_codinv" maxlength="45" />
+          <div class="text-danger small" *ngIf="campoInvalido('prd_codinv')">
+            {{ errorBackend('prd_codinv') || 'Obligatorio y único.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="prd_marid">Marca <span class="text-danger">*</span></label>
+          <select cSelect id="prd_marid" formControlName="prd_marid">
+            <option [ngValue]="null">Seleccione una marca</option>
+            <option *ngFor="let m of marcas" [ngValue]="m.mar_id">{{ m.mar_descri }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('prd_marid')">
+            {{ errorBackend('prd_marid') || 'Debe seleccionar la marca.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="prd_tivid">Tipo de IVA <span class="text-danger">*</span></label>
+          <select cSelect id="prd_tivid" formControlName="prd_tivid">
+            <option [ngValue]="null">Seleccione el IVA</option>
+            <option *ngFor="let t of tiposIva" [ngValue]="t.tiv_id">{{ t.tiv_descri }} ({{ t.tiv_tasa }}%)</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('prd_tivid')">
+            {{ errorBackend('prd_tivid') || 'Debe seleccionar el tipo de IVA.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="prd_umdid">Unidad de medida <span class="text-danger">*</span></label>
+          <select cSelect id="prd_umdid" formControlName="prd_umdid">
+            <option [ngValue]="null">Seleccione la unidad</option>
+            <option *ngFor="let u of unidades" [ngValue]="u.umd_id">{{ u.umd_nombre }} ({{ u.umd_codigo }})</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('prd_umdid')">
+            {{ errorBackend('prd_umdid') || 'Debe seleccionar la unidad de medida.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="prd_prevta">Precio de venta (Gs.) <span class="text-danger">*</span></label>
+          <input cFormControl type="number" id="prd_prevta" formControlName="prd_prevta" min="0" step="0.01" />
+          <div class="text-danger small" *ngIf="campoInvalido('prd_prevta')">
+            {{ errorBackend('prd_prevta') || 'Obligatorio, no puede ser negativo.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="prd_margen">Margen de referencia (%)</label>
+          <input cFormControl type="number" id="prd_margen" formControlName="prd_margen" min="0" step="0.01" placeholder="Ej: 30" />
+          <div class="text-danger small" *ngIf="campoInvalido('prd_margen')">
+            {{ errorBackend('prd_margen') || 'No puede ser negativo.' }}
+          </div>
+          <div class="text-muted small">
+            Usado para sugerir precio sobre el costo promedio ponderado. No modifica el precio de venta por sí solo.
+          </div>
+        </div>
+
+        <div class="col-md-4" *ngIf="producto?.precio_sugerido">
+          <label cLabel>Precio sugerido (Gs.)</label>
+          <input cFormControl [value]="producto?.precio_sugerido" disabled />
+          <div class="text-muted small">Costo promedio × (1 + margen). Aplicarlo es manual.</div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="prd_stkmin">Stock mínimo <span class="text-danger">*</span></label>
+          <input cFormControl type="number" id="prd_stkmin" formControlName="prd_stkmin" min="0" step="0.0001" />
+          <div class="text-danger small" *ngIf="campoInvalido('prd_stkmin')">
+            {{ errorBackend('prd_stkmin') || 'Obligatorio, no puede ser negativo.' }}
+          </div>
+          <div class="text-muted small">Cantidad que dispara alerta de reposición.</div>
+        </div>
+
+        <!--
+          Stock actual: SOLO LECTURA. No es un FormControl del formGroup,
+          no viaja en el payload de guardar() aunque se intente forzar por
+          consola. Se actualiza unicamente cuando se confirma o anula una
+          compra (CompraService), es la suma en TODOS los depositos.
+        -->
+        <div class="col-md-4">
+          <label cLabel>Stock actual (todos los depósitos)</label>
+          <input cFormControl [value]="producto?.stock_actual ?? 0" disabled />
+          <div class="text-muted small">
+            Se actualiza automáticamente al confirmar o anular una compra.
+          </div>
+        </div>
+
+        <div class="col-md-6 d-flex align-items-center">
+          <div class="form-check">
+            <input cFormCheckInput type="checkbox" id="prd_afestk"
+                   [checked]="form.value.prd_afestk === 1"
+                   (change)="form.patchValue({ prd_afestk: $any($event.target).checked ? 1 : 0 })" />
+            <label cFormCheckLabel for="prd_afestk">Afecta stock al venderse</label>
+          </div>
+        </div>
+
+        <div class="col-md-6" *ngIf="esEdicion">
+          <label cLabel for="prd_estado">Estado</label>
+          <select cSelect id="prd_estado" formControlName="prd_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

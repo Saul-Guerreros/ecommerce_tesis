@@ -67,8 +67,6 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            // Modelo de autenticacion alineado al modulo de Seguridad y Acceso
-            // del DER: tabla `usuario` (antes `users`).
             'model' => App\Models\Usuario::class,
         ],
     ],

@@ -11,7 +11,6 @@ import { SliderPublicoService } from '../../core/services/slider-publico.service
 
 declare const UIkit: any;
 
-
 @Component({
   selector: 'app-home',
   standalone: true,
@@ -19,6 +18,7 @@ declare const UIkit: any;
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })
+
 export class HomeComponent implements OnInit {
 
   productosDestacados: Producto[] = [];

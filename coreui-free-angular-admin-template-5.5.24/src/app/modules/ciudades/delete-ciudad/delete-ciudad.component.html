@@ -1,0 +1,24 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>Confirmar eliminación</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <p *ngIf="!enUso">
+      ¿Está seguro de eliminar la ciudad <strong>{{ ciudad?.ciu_descri }}</strong>?
+      Esta acción no se puede deshacer.
+    </p>
+
+    <div class="alert alert-warning mb-0" *ngIf="enUso">
+      La ciudad <strong>{{ ciudad?.ciu_descri }}</strong> está en uso ({{ detalleUsos }})
+      y no puede eliminarse. Utilice el botón <strong>Desactivar</strong>.
+    </div>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" class="text-white" *ngIf="!enUso" (click)="confirmar.emit()">
+      Eliminar
+    </button>
+  </c-modal-footer>
+</c-modal>

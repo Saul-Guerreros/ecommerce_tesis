@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+
 import { authGuard } from './auth/guards/auth.guard';
 import { permissionGuard } from './auth/guards/permission.guard';
 
@@ -16,6 +17,7 @@ export const routes: Routes = [
     data: {
       title: 'Home'
     },
+
     children: [
       {
         path: 'dashboard',
@@ -24,8 +26,8 @@ export const routes: Routes = [
 	    
 
       {
-      path: 'productos',
-      loadChildren: () => import('./views/productos/productos.routes').then((m) => m.routes),
+      path: 'inventario/productos',
+      loadChildren: () => import('./modules/productos/productos.module').then((m) => m.ProductosModule),
       data: { title: 'Productos' },
      },
 	 {
@@ -46,14 +48,14 @@ export const routes: Routes = [
       {
         path: 'atributos',
         loadChildren: () => import('./views/atributos/atributos.routes').then((m) => m.ATRIBUTOS_ROUTES),
-         canActivate: [permissionGuard('atributos.ver')],
       },
+
       {
         path: 'usuarios',
-        loadChildren: () => import('./views/usuarios/usuarios.routes').then((m) => m.USUARIOS_ROUTES),
-        // Solo Administrador (Vendedor no tiene 'usuarios.ver', ver RolPermisoSeeder).
-        canActivate: [permissionGuard('usuarios.ver')],
+        loadChildren: () => import('./modules/usuarios/usuarios.module').then(m => m.UsuariosModule),
+        data: { title: 'Usuarios' },
       },
+      
       {
         path: 'sliders',
         loadChildren: () => import('./views/sliders/sliders.routes').then((m) => m.SLIDERS_ROUTES),
@@ -62,11 +64,125 @@ export const routes: Routes = [
         path: 'cupones',
         loadChildren: () => import('./views/cupones/routes').then((m) => m.routes),
       },
-	    {
-		    path: 'discounts',
-		    loadChildren: () => import('./views/discounts/routes').then((m) => m.routes),
-	    },
+      
+      {
+        path: 'empresas',
+        loadChildren: () => import('./modules/Configuracion/empresas.module').then(m => m.EmpresasModule),
+        data: { title: 'Empresa' },
+      },
 
+
+      {
+        path: 'sucursales',
+        loadChildren: () => import('./modules/sucursales/sucursales.module').then(m => m.SucursalesModule),
+        data: { title: 'Sucursales' },
+      },
+
+      {
+        path: 'departamentos',
+        loadChildren: () => import('./modules/departamentos/departamentos.module').then(m => m.DepartamentosModule),
+        data: { title: 'Departamentos' },
+      },
+      
+      {
+        path: 'ciudades',
+        loadChildren: () => import('./modules/ciudades/ciudades.module').then(m => m.CiudadesModule),
+        data: { title: 'Ciudades' },
+      },
+
+      {
+        path: 'barrios',
+        loadChildren: () => import('./modules/barrios/barrios.module').then(m => m.BarriosModule),
+        data: { title: 'Barrios' },
+      },
+
+      {
+        path: 'calles',
+        loadChildren: () => import('./modules/calles/calles.module').then(m => m.CallesModule),
+        data: { title: 'Calles' },
+      },
+
+      {
+        path: 'depositos',
+        loadChildren: () => import('./modules/depositos/depositos.module').then(m => m.DepositosModule),
+        data: { title: 'Depósitos' },
+      },
+
+      {
+        path: 'timbrados',
+        loadChildren: () => import('./modules/timbrados/timbrados.module').then(m => m.TimbradosModule),
+        data: { title: 'Timbrados' },
+      },
+
+      {
+        path: 'tipos-comprobante',
+        loadChildren: () => import('./modules/tipos-comprobante/tipos-comprobante.module').then(m => m.TiposComprobanteModule),
+        data: { title: 'Tipos de comprobante' },
+      },
+
+      {
+        path: 'tipos-iva',
+        loadChildren: () => import('./modules/tipos-iva/tipos-iva.module').then(m => m.TiposIvaModule),
+        data: { title: 'Tipos de IVA' },
+      },
+      
+      {
+        path: 'proveedores',
+        loadChildren: () => import('./modules/proveedores/proveedores.module').then(m => m.ProveedoresModule),
+        data: { title: 'Proveedores' },
+      },
+
+      {
+        path: 'tipos-proveedor',
+        loadChildren: () => import('./modules/tipos-proveedor/tipos-proveedor.module').then(m => m.TiposProveedorModule),
+        data: { title: 'Tipos de proveedor' },
+      },
+
+      {
+        path: 'unidades-medida',
+        loadChildren: () => import('./modules/unidades-medida/unidades-medida.module').then(m => m.UnidadesMedidaModule),
+        data: { title: 'Unidades de Medida' },
+      },
+
+      {
+        path: 'facturas-compra',
+        loadChildren: () => import('./modules/facturas-compra/facturas-compra.module').then(m => m.FacturasCompraModule),
+        data: { title: 'Facturas de Compra' },
+      },
+
+      {
+        path: 'inventario/ajustes',
+        loadChildren: () => import('./modules/ajustes-inventario/ajustes-inventario.module').then(m => m.AjustesInventarioModule),
+        data: { title: 'Ajuste de Inventario' },
+      },
+
+      {
+        path: 'inventario/kardex',
+        loadChildren: () => import('./modules/movimiento_stock/movimiento_stock.module').then(m => m.KardexModule),
+        data: { title: 'Movimiento de Stock' },
+      },
+      {
+        path: 'inventario/stock-actual',
+        loadChildren: () => import('./modules/stock-actual/stock-actual.module').then(m => m.StockActualModule),
+        data: { title: 'Stock Actual' },
+      },
+
+      {
+        path: 'roles',
+        loadChildren: () => import('./modules/roles/roles.module').then(m => m.RolesModule),
+        data: { title: 'Roles' },
+      },
+
+	  {
+
+
+
+
+
+      //Fuera del FrontEnd
+		path: 'discounts',
+		loadChildren: () => import('./views/discounts/routes').then((m) => m.routes),
+	   },
       {
         path: 'theme',
         loadChildren: () => import('./views/theme/routes').then((m) => m.routes)
@@ -126,6 +242,7 @@ export const routes: Routes = [
       title: 'Login Page'
     }
   },
+
   {
     path: 'forgot-password',
     loadComponent: () => import('./views/pages/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent),
@@ -133,6 +250,7 @@ export const routes: Routes = [
       title: 'Forgot Password'
     }
   },
+
   {
     path: 'reset-password',
     loadComponent: () => import('./views/pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),
@@ -140,15 +258,15 @@ export const routes: Routes = [
       title: 'Reset Password'
     }
   },
-  {
-    path: 'register',
-    loadComponent: () => import('./views/pages/register/register.component').then(m => m.RegisterComponent),
-    // No es auto-registro publico: crea un usuario funcionario (Admin/Vendedor),
-    // por eso exige login + el mismo permiso que el modal "+ Nuevo Usuario".
-    canActivate: [authGuard, permissionGuard('usuarios.gestionar')],
-    data: {
-      title: 'Register Page'
-    }
-  },
+
+{
+  path: 'register',
+  loadComponent: () => import('./views/pages/register/register.component').then(m => m.RegisterComponent),
+  canActivate: [authGuard, permissionGuard('usuarios.gestionar')],
+  data: {
+    title: 'Register Page'
+  }
+},
+
   { path: '**', redirectTo: 'dashboard' }
 ];

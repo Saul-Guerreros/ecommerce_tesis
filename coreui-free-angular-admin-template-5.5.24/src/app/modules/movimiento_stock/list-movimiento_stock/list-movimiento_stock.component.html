@@ -1,0 +1,66 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Movimiento de Stock (Kardex)</strong></c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroProducto" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos los productos</option>
+          <option *ngFor="let p of productos" [ngValue]="p.prd_id">{{ p.prd_codinv }} — {{ p.prd_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtroDeposito" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos los depósitos</option>
+          <option *ngFor="let d of depositos" [ngValue]="d.dpo_id">{{ d.dpo_nombre }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtroTipo" (ngModelChange)="cargar()">
+          <option value="">Entradas y salidas</option>
+          <option value="E">Solo entradas</option>
+          <option value="S">Solo salidas</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input cFormControl type="date" [(ngModel)]="filtroDesde" (ngModelChange)="cargar()" placeholder="Desde" />
+      </div>
+      <div class="col-md-2">
+        <input cFormControl type="date" [(ngModel)]="filtroHasta" (ngModelChange)="cargar()" placeholder="Hasta" />
+      </div>
+      <div class="col-md-1">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ movimientos.length }} movimiento(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover small *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>Fecha</th><th>Producto</th><th>Depósito</th><th class="text-center">Tipo</th>
+          <th class="text-end">Cantidad</th><th class="text-end">Costo unit.</th>
+          <th class="text-end">Saldo cant.</th><th>Origen</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let m of movimientos">
+          <td>{{ m.mst_fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td>{{ m.prd_codinv }} — {{ m.prd_descri }}</td>
+          <td>{{ m.dpo_nombre }}</td>
+          <td class="text-center">
+            <c-badge [color]="m.mst_tipo === 'E' ? 'success' : 'danger'">
+              {{ m.mst_tipo === 'E' ? 'Entrada' : 'Salida' }}
+            </c-badge>
+          </td>
+          <td class="text-end">{{ m.mst_cantid | number:'1.0-4' }}</td>
+          <td class="text-end">{{ m.mst_cosuni | number:'1.0-4' }}</td>
+          <td class="text-end">{{ m.mst_salcan | number:'1.0-4' }}</td>
+          <td>{{ m.origen }}</td>
+        </tr>
+        <tr *ngIf="movimientos.length === 0"><td colspan="8" class="text-center">Sin movimientos registrados</td></tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>

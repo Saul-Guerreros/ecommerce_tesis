@@ -75,6 +75,23 @@ class Usuario extends Authenticatable implements JWTSubject
         return $this->hasMany(TokenVerificacion::class, 'tkv_usuid', 'usu_id');
     }
 
+        public function usuarioSucursales()
+    {
+        return $this->hasMany(UsuarioSucursal::class, 'uss_usuid', 'usu_id');
+    }
+
+    public function sucursales()
+    {
+        return $this->belongsToMany(
+            \App\Models\Configuracion\Sucursal::class,
+            'usuario_sucursal',
+            'uss_usuid',
+            'uss_sucid',
+            'usu_id',
+            'suc_id'
+        )->withPivot('uss_princi', 'uss_estado');
+    }
+
     // ----- Helpers de permisos -----
 
     public function tienePermiso(string $permisoDescri): bool

@@ -2,5 +2,6 @@ export const environment = {
     //cambiar por lal hosting 
     URL_BACKEND: 'http://127.0.0.1:8000/',
     URL_SERVICIOS: 'http://127.0.0.1:8000/api',
-    URL_FRONTED: 'https://localhost:4200'
+    URL_FRONTED: 'https://localhost:4200',
+     production: false,
 };
