@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -12,20 +11,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // \App\Models\User::factory(10)->create();
-
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
         $this->call([
-                //AdminUserSeeder::class,
-                TipoDocumentoSeeder::class,
-                TipoClienteSeeder::class,
-                TipoComprobanteSeeder::class,
-                UnidadMedidaSeeder::class,
-            ]);
-            
+            // Módulo 1 - Autenticación y Perfil
+            CatalogoAuthSeeder::class,
+            RolPermisoSeeder::class,
+            AdminUserSeeder::class,
 
+            // Otros catálogos actuales del sistema
+            TipoComprobanteSeeder::class,
+            UnidadMedidaSeeder::class,
+        ]);
     }
 }

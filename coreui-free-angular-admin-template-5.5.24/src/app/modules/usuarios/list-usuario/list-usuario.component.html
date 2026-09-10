@@ -1,0 +1,87 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Usuarios</strong>
+    <button cButton color="primary" (click)="abrirNuevo()">+ Nuevo usuario</button>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar por nombre, apellido, cédula o email..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroRolId" (ngModelChange)="cargar(1)">
+          <option [ngValue]="null">Todos los roles</option>
+          <option *ngFor="let r of roles" [ngValue]="r.rol_id">{{ r.rol_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar(1)">
+          <option value="">Todos los estados</option>
+          <option value="ACTIVO">Activo</option>
+          <option value="INACTIVO">Inactivo</option>
+          <option value="BLOQUEADO">Bloqueado</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ total }} usuario(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>Nombre</th><th>Cédula</th><th>Email</th><th>Cargo</th><th>Rol</th>
+          <th>Sucursales</th><th class="text-center">Estado</th><th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let u of usuarios">
+          <td>{{ u.persona.nombre_completo || (u.persona.nombre1 + ' ' + u.persona.apellido1) }}</td>
+          <td>{{ u.persona.cedula }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.cargo }}</td>
+          <td>{{ u.rol }}</td>
+          <td>
+            <span *ngFor="let s of u.sucursales; let last = last">
+              {{ s.suc_nombre }}<strong *ngIf="s.principal"> (Princ.)</strong>{{ !last ? ', ' : '' }}
+            </span>
+          </td>
+          <td class="text-center">
+            <c-badge [color]="colorEstado(u.estado)">{{ u.estado }}</c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirEditar(u)">Editar</button>
+
+            <div cDropdown class="d-inline-block" *ngIf="!esMiPropioUsuario(u)">
+              <button cButton cDropdownToggle size="sm" color="secondary">Estado</button>
+              <ul cDropdownMenu>
+                <li><a cDropdownItem (click)="cambiarEstado(u, 'ACTIVO')" *ngIf="u.estado !== 'ACTIVO'">Activar</a></li>
+                <li><a cDropdownItem (click)="cambiarEstado(u, 'INACTIVO')" *ngIf="u.estado !== 'INACTIVO'">Desactivar</a></li>
+                <li><a cDropdownItem (click)="cambiarEstado(u, 'BLOQUEADO')" *ngIf="u.estado !== 'BLOQUEADO'">Bloquear</a></li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+        <tr *ngIf="usuarios.length === 0"><td colspan="8" class="text-center">No hay usuarios registrados</td></tr>
+      </tbody>
+    </table>
+
+    <nav *ngIf="!cargando && lastPage > 1">
+      <ul cPagination>
+        <li cPageItem [disabled]="currentPage === 1"><a cPageLink (click)="cambiarPagina(currentPage - 1)">Anterior</a></li>
+        <li cPageItem *ngFor="let p of pagesArray" [active]="p === currentPage">
+          <a cPageLink (click)="cambiarPagina(p)">{{ p }}</a>
+        </li>
+        <li cPageItem [disabled]="currentPage === lastPage"><a cPageLink (click)="cambiarPagina(currentPage + 1)">Siguiente</a></li>
+      </ul>
+    </nav>
+  </c-card-body>
+</c-card>
+
+<app-form-usuario [visible]="formModalVisible" [usuario]="usuarioSeleccionado"
+  (visibleChange)="formModalVisible = $event" (guardado)="cargar()"></app-form-usuario>

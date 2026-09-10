@@ -1,14 +1,18 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { Router } from '@angular/router';
+
 import { URL_SERVICIOS } from '../../config/config';
 import { User } from '../interfaces/user.model';
 import { LoginResponse } from '../interfaces/login-response.model';
-import { environment } from '../../../environments/environment';
-import { Router } from '@angular/router';
 
 const TOKEN_KEY = 'access_token';
 const USER_KEY = 'auth_user';
+
+export interface MensajeResponse {
+  message: string;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -17,10 +21,15 @@ export class AuthService {
 
   private apiUrl = URL_SERVICIOS;
 
-  // Señal reactiva con el usuario actual (útil para mostrar nombre en el header, etc.)
+  /** Señal reactiva con el usuario actual (header, menús, etc.) */
   currentUser = signal<User | null>(this.getUserFromStorage());
 
+  /** Permisos del usuario actual, derivados de currentUser */
+  permisos = computed<string[]>(() => this.currentUser()?.permisos ?? []);
+
   constructor(private http: HttpClient, private router: Router) {}
+
+  // ───────────────────────── Sesión ─────────────────────────
 
   login(email: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, { email, password }).pipe(
@@ -50,13 +59,54 @@ export class AuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
-  private getUserFromStorage(): User | null {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  }
-
   isLoggedIn(): boolean {
     return !!this.getToken();
   }
 
+  private getUserFromStorage(): User | null {
+    const raw = localStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as User;
+    } catch {
+      localStorage.removeItem(USER_KEY);
+      return null;
+    }
+  }
+
+  // ─────────────────────── Autorización ───────────────────────
+
+  /** true si el usuario logueado posee el permiso indicado */
+  tienePermiso(permiso: string): boolean {
+    return this.permisos().includes(permiso);
+  }
+
+  /** true si posee AL MENOS UNO de los permisos (criterio del middleware backend) */
+  tieneAlgunPermiso(...permisos: string[]): boolean {
+    return permisos.some((p) => this.tienePermiso(p));
+  }
+
+  /** true si posee TODOS los permisos indicados */
+  tieneTodosLosPermisos(...permisos: string[]): boolean {
+    return permisos.every((p) => this.tienePermiso(p));
+  }
+
+  tieneRol(rol: string): boolean {
+    return this.currentUser()?.rol === rol;
+  }
+
+  // ─────────────────── Recuperación de contraseña ───────────────────
+
+  /** Solicita el envío del código de recuperación al correo indicado */
+  forgotPassword(email: string): Observable<MensajeResponse> {
+    return this.http.post<MensajeResponse>(`${this.apiUrl}/auth/forgot-password`, { email });
+  }
+
+  /** Establece la nueva contraseña usando el código recibido por correo */
+  resetPassword(code: string, new_password: string): Observable<MensajeResponse> {
+    return this.http.post<MensajeResponse>(`${this.apiUrl}/auth/reset-password`, {
+      code,
+      new_password
+    });
+  }
 }

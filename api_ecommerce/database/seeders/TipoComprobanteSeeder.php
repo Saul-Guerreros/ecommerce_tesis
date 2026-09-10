@@ -15,11 +15,11 @@ class TipoComprobanteSeeder extends Seeder
     public function run(): void
     {
         $tipos = [
-            ['tco_codigo' => 'FAC', 'tco_descri' => 'Factura',          'tco_ambito' => 'V', 'tco_reqtim' => 1, 'tco_afecstk' => 1],
-            ['tco_codigo' => 'NCR', 'tco_descri' => 'Nota de Crédito',  'tco_ambito' => 'V', 'tco_reqtim' => 1, 'tco_afecstk' => 1],
-            ['tco_codigo' => 'NDB', 'tco_descri' => 'Nota de Débito',   'tco_ambito' => 'V', 'tco_reqtim' => 1, 'tco_afecstk' => 0],
-            ['tco_codigo' => 'REM', 'tco_descri' => 'Remisión',         'tco_ambito' => 'V', 'tco_reqtim' => 1, 'tco_afecstk' => 1],
-            ['tco_codigo' => 'AUF', 'tco_descri' => 'Autofactura',      'tco_ambito' => 'C', 'tco_reqtim' => 1, 'tco_afecstk' => 1],
+            ['tco_codigo' => '001', 'tco_descri' => 'Factura',         'tco_ambito' => 'V', 'tco_reqtim' => 1, 'tco_afecstk' => -1],
+            ['tco_codigo' => '002', 'tco_descri' => 'Nota de Crédito', 'tco_ambito' => 'V', 'tco_reqtim' => 1, 'tco_afecstk' => 1],
+            ['tco_codigo' => '003', 'tco_descri' => 'Nota de Débito',  'tco_ambito' => 'V', 'tco_reqtim' => 1, 'tco_afecstk' => 0],
+            ['tco_codigo' => '004', 'tco_descri' => 'Remisión',        'tco_ambito' => 'V', 'tco_reqtim' => 1, 'tco_afecstk' => 0],
+            ['tco_codigo' => '005', 'tco_descri' => 'Autofactura',     'tco_ambito' => 'C', 'tco_reqtim' => 1, 'tco_afecstk' => 1],
         ];
 
         foreach ($tipos as $tipo) {

@@ -11,9 +11,8 @@ class TipoCliente extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'tpc_descri',
+        'tpc_descr',
         'tpc_estado',
-        'tpc_creado',
     ];
 
     public function clientes()

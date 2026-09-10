@@ -9,6 +9,9 @@ use App\Http\Controllers\Admin\Product\EspecificacionProductoController;
 use App\Http\Controllers\Admin\Cupone\CuponeController;
 use App\Http\Controllers\Admin\Discount\DiscountController;
 use App\Http\Controllers\AuthController;
+
+use App\Http\Controllers\Api\UsuarioController;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +50,7 @@ use App\Http\Controllers\Admin\Compras\AjusteInventarioController;
 use App\Http\Controllers\Admin\Compras\MovimientoStockController;
 use App\Http\Controllers\Admin\Compras\StockController;
 
+use App\Http\Controllers\Admin\Auth\RolController;
 
 /*
 |--------------------------------------------------------------------------
@@ -225,9 +229,35 @@ Route::group([
     // --- Stock_actual (solo lectura)
     Route::get('stock/config', [StockController::class, 'config']);
     Route::get('stock', [StockController::class, 'index']);
-    });
+
+    Route::get('roles/config', [RolController::class, 'config']);
+    Route::patch('roles/{id}/estado', [RolController::class, 'toggleEstado']);
+    Route::apiResource('roles', RolController::class);
 
 
+
+    
+});
+
+Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {
+    Route::get('/catalogos', [UsuarioController::class, 'catalogos'])
+        ->middleware('permiso:usuarios.ver');
+
+    Route::get('/', [UsuarioController::class, 'index'])
+        ->middleware('permiso:usuarios.ver');
+
+    Route::get('/{usuario}', [UsuarioController::class, 'show'])
+        ->middleware('permiso:usuarios.ver');
+
+    Route::post('/', [UsuarioController::class, 'store'])
+        ->middleware('permiso:usuarios.gestionar');
+
+    Route::put('/{usuario}', [UsuarioController::class, 'update'])
+        ->middleware('permiso:usuarios.gestionar');
+
+    Route::patch('/{usuario}/estado', [UsuarioController::class, 'cambiarEstado'])
+        ->middleware('permiso:usuarios.gestionar');
+});
 
 Route::apiResource('categorias', categorieController::class);
 

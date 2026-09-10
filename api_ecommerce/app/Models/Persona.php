@@ -20,22 +20,12 @@ class Persona extends Model
         'per_estciv',
         'per_fechna',
         'per_estado',
-        'per_cread',
     ];
 
-    protected $casts = [
-        'per_fechna' => 'date:Y-m-d',
-        'per_estado' => 'integer',
-    ];
-
-    public function tipoDocumento()
+    // Una persona puede ser funcionario y cliente a la vez
+    public function funcionario()
     {
-        return $this->belongsTo(TipoDocumento::class, 'per_tpdid', 'tpd_id');
-    }
-
-    public function contactos()
-    {
-        return $this->hasMany(Contacto::class, 'con_perid', 'per_id');
+        return $this->hasOne(Funcionario::class, 'fun_perid', 'per_id');
     }
 
     public function cliente()
@@ -43,14 +33,34 @@ class Persona extends Model
         return $this->hasOne(Cliente::class, 'cli_perid', 'per_id');
     }
 
-    // Descomentar cuando exista el modelo Funcionario
-    // public function funcionario()
-    // {
-    //     return $this->hasOne(Funcionario::class, 'fun_perid', 'per_id');
-    // }
+    public function usuario()
+    {
+        return $this->hasOne(Usuario::class, 'usu_perid', 'per_id');
+    }
 
+    public function tipoDocumento()
+    {
+        return $this->belongsTo(TipoDocumento::class, 'per_tpdid', 'tpd_id');
+    }
+
+    public function direcciones()
+    {
+        return $this->hasMany(Direccion::class, 'dir_perid', 'per_id');
+    }
+
+    public function direccionPredeterminada()
+    {
+        return $this->hasOne(Direccion::class, 'dir_perid', 'per_id')->where('dir_predet', 1);
+    }
+
+    public function contactos()
+    {
+        return $this->hasMany(Contacto::class, 'con_perid', 'per_id');
+    }
+
+    // Accesor de conveniencia para nombre completo
     public function getNombreCompletoAttribute(): string
     {
-        return trim("{$this->per_nombr1} {$this->per_apell1}");
+        return trim("{$this->per_nombr1} {$this->per_nombr2} {$this->per_apell1} {$this->per_apell2}");
     }
 }

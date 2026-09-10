@@ -125,19 +125,17 @@ export const navItems: INavData[] = [
   {
     name: 'Funcionarios',
     iconComponent: { name: 'cil-people' },
-    children: [
-      { name: 'Lista de funcionarios', url: '/funcionarios' },
-      { name: 'Nuevo funcionario', url: '/funcionarios/new' }
-    ]
+    url: '/funcionarios'
+    
   },
   {
     name: 'Clientes',
     iconComponent: { name: 'cil-user' },
-    children: [
-      { name: 'Lista de clientes', url: '/clientes' },
-      { name: 'Nuevo cliente', url: '/clientes/new' }
-    ]
+    
+    url: '/clientes' 
+    
   },
+  
   {
     name: 'Cargos',
     url: '/cargos',
@@ -161,22 +159,21 @@ export const navItems: INavData[] = [
     title: true,
     name: 'Seguridad y Acceso'
   },
+
   {
     name: 'Usuarios',
     iconComponent: { name: 'cil-lock-locked' },
-    children: [
-      { name: 'Lista de usuarios', url: '/usuarios' },
-      { name: 'Nuevo usuario', url: '/usuarios/new' }
-    ]
+    
+     url: '/usuarios' 
+  
   },
+  
   {
     name: 'Roles',
-    iconComponent: { name: 'cil-shield-alt' },
-    children: [
-      { name: 'Lista de roles', url: '/roles' },
-      { name: 'Nuevo rol', url: '/roles/new' }
-    ]
+    url: '/roles',
+    iconComponent: { name: 'cil-shield-alt' }
   },
+
   {
     name: 'Permisos',
     url: '/permisos',

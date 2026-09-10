@@ -1,5 +1,8 @@
 import { Routes } from '@angular/router';
 
+import { authGuard } from './auth/guards/auth.guard';
+import { permissionGuard } from './auth/guards/permission.guard';
+
 export const routes: Routes = [
   {
     path: '',
@@ -9,7 +12,7 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./layout').then(m => m.DefaultLayoutComponent),
-    
+    canActivate: [authGuard],
 
     data: {
       title: 'Home'
@@ -41,6 +44,13 @@ export const routes: Routes = [
         path: 'atributos',
         loadChildren: () => import('./views/atributos/atributos.routes').then((m) => m.ATRIBUTOS_ROUTES),
       },
+
+      {
+        path: 'usuarios',
+        loadChildren: () => import('./modules/usuarios/usuarios.module').then(m => m.UsuariosModule),
+        data: { title: 'Usuarios' },
+      },
+      
       {
         path: 'sliders',
         loadChildren: () => import('./views/sliders/sliders.routes').then((m) => m.SLIDERS_ROUTES),
@@ -152,9 +162,19 @@ export const routes: Routes = [
         data: { title: 'Stock Actual' },
       },
 
+      {
+        path: 'roles',
+        loadChildren: () => import('./modules/roles/roles.module').then(m => m.RolesModule),
+        data: { title: 'Roles' },
+      },
+
 	  {
 
 
+
+
+
+      //Fuera del FrontEnd
 		path: 'discounts',
 		loadChildren: () => import('./views/discounts/routes').then((m) => m.routes),
 	   },
@@ -217,12 +237,31 @@ export const routes: Routes = [
       title: 'Login Page'
     }
   },
+
   {
-    path: 'register',
-    loadComponent: () => import('./views/pages/register/register.component').then(m => m.RegisterComponent),
+    path: 'forgot-password',
+    loadComponent: () => import('./views/pages/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent),
     data: {
-      title: 'Register Page'
+      title: 'Forgot Password'
     }
   },
+
+  {
+    path: 'reset-password',
+    loadComponent: () => import('./views/pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),
+    data: {
+      title: 'Reset Password'
+    }
+  },
+
+{
+  path: 'register',
+  loadComponent: () => import('./views/pages/register/register.component').then(m => m.RegisterComponent),
+  canActivate: [authGuard, permissionGuard('usuarios.gestionar')],
+  data: {
+    title: 'Register Page'
+  }
+},
+
   { path: '**', redirectTo: 'dashboard' }
 ];

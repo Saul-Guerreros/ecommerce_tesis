@@ -1,0 +1,51 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar rol' : 'Nuevo rol' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label cLabel for="rol_descri">Nombre del rol <span class="text-danger">*</span></label>
+          <input cFormControl id="rol_descri" formControlName="rol_descri" maxlength="45" />
+          <div class="text-danger small" *ngIf="campoInvalido('rol_descri')">
+            {{ errorBackend('rol_descri') || 'El nombre es obligatorio (máx. 45 caracteres).' }}
+          </div>
+          <div class="text-muted small" *ngIf="esEdicion">
+            Si es "Administrador", "Vendedor" o "Cliente" no se puede renombrar — sí se pueden editar sus permisos.
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="rol_estado">Estado</label>
+          <select cSelect id="rol_estado" formControlName="rol_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+
+        <div class="col-12">
+          <label cLabel>Permisos</label>
+          <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+            <div class="form-check" *ngFor="let p of permisos">
+              <input cFormCheckInput type="checkbox" [id]="'perm-' + p.prm_id"
+                     [checked]="estaSeleccionado(p.prm_id)"
+                     (change)="alternarPermiso(p.prm_id, $event)" />
+              <label cFormCheckLabel [for]="'perm-' + p.prm_id">{{ p.prm_descri }}</label>
+            </div>
+            <div class="text-muted small" *ngIf="permisos.length === 0">Cargando permisos...</div>
+          </div>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

@@ -1,0 +1,119 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar usuario' : 'Nuevo usuario' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-md-6">
+          <label cLabel for="nombre1">Primer nombre <span class="text-danger">*</span></label>
+          <input cFormControl id="nombre1" formControlName="nombre1" maxlength="45" />
+          <div class="text-danger small" *ngIf="campoInvalido('nombre1')">
+            {{ errorBackend('nombre1') || 'Obligatorio.' }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel for="nombre2">Segundo nombre</label>
+          <input cFormControl id="nombre2" formControlName="nombre2" maxlength="45" />
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="apellido1">Primer apellido <span class="text-danger">*</span></label>
+          <input cFormControl id="apellido1" formControlName="apellido1" maxlength="50" />
+          <div class="text-danger small" *ngIf="campoInvalido('apellido1')">
+            {{ errorBackend('apellido1') || 'Obligatorio.' }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel for="apellido2">Segundo apellido</label>
+          <input cFormControl id="apellido2" formControlName="apellido2" maxlength="50" />
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="cedula">Cédula <span class="text-danger">*</span></label>
+          <input cFormControl id="cedula" formControlName="cedula" maxlength="50" />
+          <div class="text-danger small" *ngIf="campoInvalido('cedula')">
+            {{ errorBackend('cedula') || 'Obligatoria y única.' }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel for="fecha_nacimiento">Fecha de nacimiento</label>
+          <input cFormControl type="date" id="fecha_nacimiento" formControlName="fecha_nacimiento" />
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="cargo_id">Cargo <span class="text-danger">*</span></label>
+          <select cSelect id="cargo_id" formControlName="cargo_id">
+            <option [ngValue]="null">Selecciona un cargo</option>
+            <option *ngFor="let c of cargos" [ngValue]="c.crg_id">{{ c.crg_descr }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('cargo_id')">
+            {{ errorBackend('cargo_id') || 'Debe seleccionar el cargo.' }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel for="rol_id">Rol <span class="text-danger">*</span></label>
+          <select cSelect id="rol_id" formControlName="rol_id">
+            <option [ngValue]="null">Selecciona un rol</option>
+            <option *ngFor="let r of roles" [ngValue]="r.rol_id">{{ r.rol_descri }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('rol_id')">
+            {{ errorBackend('rol_id') || 'Debe seleccionar el rol.' }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="email">Email <span class="text-danger">*</span></label>
+          <input cFormControl type="email" id="email" formControlName="email" />
+          <div class="text-danger small" *ngIf="campoInvalido('email')">
+            {{ errorBackend('email') || 'Email obligatorio y único.' }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel for="password">Contraseña <span class="text-danger" *ngIf="!esEdicion">*</span></label>
+          <input cFormControl type="password" id="password" formControlName="password"
+                 [placeholder]="esEdicion ? 'Dejar vacío para no cambiar' : 'Mínimo 8 caracteres'" />
+          <div class="text-danger small" *ngIf="campoInvalido('password')">
+            {{ errorBackend('password') }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel>Sucursales asignadas <span class="text-danger">*</span></label>
+          <div class="border rounded p-3" style="max-height: 220px; overflow-y: auto;">
+            <div class="form-check" *ngFor="let s of sucursales">
+              <input cFormCheckInput type="checkbox" [id]="'suc-' + s.suc_id"
+                     [checked]="sucursalesSeleccionadas.has(s.suc_id)"
+                     (change)="alternarSucursal(s.suc_id, $event)" />
+              <label cFormCheckLabel [for]="'suc-' + s.suc_id">{{ s.suc_nombre }}</label>
+            </div>
+            <div class="text-muted small" *ngIf="sucursales.length === 0">Cargando sucursales...</div>
+          </div>
+        </div>
+
+        <!-- Solo aparece si hay mas de una sucursal tildada -->
+        <div class="col-12" *ngIf="mostrarSelectorPrincipal">
+          <label cLabel>Sucursal principal <span class="text-danger">*</span></label>
+          <select cSelect [(ngModel)]="sucursalPrincipal" [ngModelOptions]="{standalone: true}">
+            <option [ngValue]="null">Seleccione la sucursal principal</option>
+            <option *ngFor="let s of sucursales" [ngValue]="s.suc_id"
+                    [hidden]="!sucursalesSeleccionadas.has(s.suc_id)">
+              {{ s.suc_nombre }}
+            </option>
+          </select>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

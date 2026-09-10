@@ -14,7 +14,6 @@ class TipoDocumento extends Model
         'tpd_codigo',
         'tpd_descri',
         'tpd_estado',
-        'tpd_creado',
     ];
 
     public function personas()
