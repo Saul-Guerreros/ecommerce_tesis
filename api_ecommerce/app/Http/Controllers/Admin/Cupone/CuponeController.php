@@ -30,7 +30,7 @@ class CuponeController extends Controller
         // truena en silencio para el frontend (por eso "no aparecen los
         // registros" aunque si existan en la BD).
         $cupones = Cupone::where("code","like","%".$request->search."%")
-            ->with(['products.product', 'categories.categorie', 'brands.brand'])
+            ->with(['products.product.publicacionWeb', 'categories.categorie', 'brands.brand'])
             ->orderBy("id","desc")
             ->paginate(25);
 
@@ -50,7 +50,7 @@ class CuponeController extends Controller
         // de productos vacia. Si quieres filtrar solo productos activos,
         // agrega de nuevo ->where("prd_estado", TU_VALOR_DE_ACTIVO) una vez
         // que confirmes cual es ese valor en tu tabla "producto".
-        $products = Producto::orderBy("prd_id","desc")->get();
+        $products = Producto::with('publicacionWeb')->orderBy("prd_id","desc")->get();
 
         // "Primer nivel" = categorias sin padre (cat_idpadr es NULL).
         // Si prefieres usar el nivel explicito, cambia por: ->where("cat_nivel", 1)
@@ -63,7 +63,9 @@ class CuponeController extends Controller
             "products" => $products->map(function($product) {
                 return [
                     "id" => $product->prd_id,
-                    "title" => $product->prd_titulo,
+                    // prd_titulo se movió a publicacion_web.pub_titulo; si el
+                    // producto todavía no fue publicado, se muestra su código.
+                    "title" => $product->publicacionWeb?->pub_titulo ?? $product->prd_codinv,
                 ];
             }),
             "categories" => $categories->map(function($categorie) {

@@ -11,6 +11,10 @@ use App\Http\Controllers\Admin\Product\VariacionProductoController;
 use App\Http\Controllers\Admin\Product\EspecificacionProductoController;
 use App\Http\Controllers\Admin\Cupone\CuponeController;
 use App\Http\Controllers\Admin\Discount\DiscountController;
+use App\Http\Controllers\Api\PublicacionWebController;
+use App\Http\Controllers\Api\TipoIvaController;
+use App\Http\Controllers\Api\UnidadMedidaController;
+use App\Http\Controllers\Api\VitrinaController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -78,6 +82,8 @@ Route::group([
     Route::put('especificaciones/{id}', [EspecificacionProductoController::class, 'update']);
     Route::delete('especificaciones/{id}', [EspecificacionProductoController::class, 'destroy']);
 	
+	Route::post('especificaciones/duplicar', [EspecificacionProductoController::class, 'duplicar']);
+	
 	Route::get("cupones/config", [CuponeController::class, "config"]);
     Route::resource("cupones", CuponeController::class);
    
@@ -94,16 +100,30 @@ Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {
     Route::patch('/{usuario}/estado', [UsuarioController::class, 'cambiarEstado'])->middleware('permiso:usuarios.gestionar');
 });
 
+Route::prefix('tienda')->group(function () {
+    Route::get('home', [VitrinaController::class, 'home']);
+    Route::get('producto/{slug}', [VitrinaController::class, 'detalle']);
+	Route::get('sliders', [VitrinaController::class, 'sliders']);
+});
+
 Route::prefix('productos')->group(function () {
     Route::get('/', [ProductoController::class, 'index']);
     Route::post('/', [ProductoController::class, 'store']);
     Route::get('/{producto}', [ProductoController::class, 'show']);
     Route::match(['put', 'post'], '/{producto}', [ProductoController::class, 'update']);
     Route::delete('/{producto}', [ProductoController::class, 'destroy']);
-    Route::delete('/{producto}/imagenes/{imagen}', [ProductoController::class, 'eliminarImagen']);
+    //Route::delete('/{producto}/imagenes/{imagen}', [ProductoController::class, 'eliminarImagen']);
 
-    
+
+    Route::get('/{producto}/publicacion', [PublicacionWebController::class, 'show']);
+    Route::post('/{producto}/publicacion', [PublicacionWebController::class, 'guardar']);
+    Route::delete('/{producto}/publicacion/imagenes/{imagen}', [PublicacionWebController::class, 'eliminarImagen']);
 });
+
+Route::get('publicaciones', [PublicacionWebController::class, 'index']);
 
 Route::apiResource('categorias', categorieController::class);
 Route::apiResource('marcas', marcaController::class);
+
+Route::get('tipos-iva', [TipoIvaController::class, 'index']);
+Route::get('unidades-medida', [UnidadMedidaController::class, 'index']);

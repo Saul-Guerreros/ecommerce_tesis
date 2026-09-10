@@ -45,14 +45,31 @@ export class CreateSliderComponent {
       sld_enlace: [''],
       sld_orden: [0],
       sld_tipo: [1],
+      sld_posicion: [null],
       sld_estado: [1],
       sld_color: ['#000000'],
     });
   }
 
-  ngOnInit(): void {
-    this.loadProductos();
-  }
+	  ngOnInit(): void {
+	  this.loadProductos();
+	  this.calcularSiguienteOrden();
+	  this.form.get('sld_tipo')!.valueChanges.subscribe(() => this.calcularSiguienteOrden());
+	}
+	
+	private calcularSiguienteOrden(): void {
+  this.sliderService.list(1, '').subscribe((resp: any) => {
+    const tipoActual = Number(this.form.value.sld_tipo);
+    const existentes = (resp.sliders || []).filter(
+      (s: any) => Number(s.sld_tipo) === tipoActual
+    );
+    const maxOrden = existentes.reduce(
+      (max: number, s: any) => Math.max(max, Number(s.sld_orden) || 0),
+      0
+    );
+    this.form.patchValue({ sld_orden: maxOrden + 1 });
+  });
+ }
 
   loadProductos(): void {
     this.sliderService.listProductos(this.productoSearch).subscribe((resp: any) => {
@@ -78,6 +95,11 @@ export class CreateSliderComponent {
     if (this.form.invalid || !this.file) {
       this.form.markAllAsTouched();
       this.errorMsg = 'Completa los campos obligatorios (*) y sube una imagen';
+      return;
+    }
+
+    if (Number(this.form.value.sld_tipo) === 2 && !this.form.value.sld_posicion) {
+      this.errorMsg = 'Elige si el banner secundario va a la izquierda o a la derecha';
       return;
     }
 

@@ -74,6 +74,15 @@ export class ListSliderComponent implements OnInit {
   searchTo(): void {
     this.loadList(1);
   }
+  
+  tipoLabel(tipo: number): string {
+    switch (Number(tipo)) {
+      case 1: return 'Principal';
+      case 2: return 'Secundario';
+      case 3: return 'Terciario';
+      default: return '—';
+    }
+  }
 
   changePage(page: number): void {
     if (page < 1 || page > this.totalPages) return;

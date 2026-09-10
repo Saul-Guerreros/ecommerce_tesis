@@ -2,7 +2,7 @@
 
 namespace App\Models\Product;
 
-use App\Models\Producto;
+use App\Models\PublicacionWeb;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -16,7 +16,7 @@ class EspecificacionProducto extends Model
 
     protected $fillable = [
         'esp_atbid',
-        'esp_proid',
+        'esp_pubid',
         'esp_prpid',
         'esp_valibr',
         'esp_valnum',
@@ -33,9 +33,9 @@ class EspecificacionProducto extends Model
         });
     }
 
-    public function producto()
+    public function publicacionWeb()
     {
-        return $this->belongsTo(Producto::class, 'esp_proid', 'prd_id');
+        return $this->belongsTo(PublicacionWeb::class, 'esp_pubid', 'pub_id');
     }
 
     public function atributo()

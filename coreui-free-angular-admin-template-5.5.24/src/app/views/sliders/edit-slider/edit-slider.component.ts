@@ -48,6 +48,7 @@ export class EditSliderComponent implements OnInit {
       sld_enlace: [''],
       sld_orden: [0],
       sld_tipo: [1],
+      sld_posicion: [null],
       sld_estado: [1],
       sld_color: ['#000000'],
     });
@@ -67,6 +68,7 @@ export class EditSliderComponent implements OnInit {
         sld_enlace: s.sld_enlace,
         sld_orden: s.sld_orden,
         sld_tipo: s.sld_tipo,
+        sld_posicion: s.sld_posicion,
         sld_estado: s.sld_estado,
         sld_color: s.sld_color || '#000000',
       });
@@ -107,6 +109,11 @@ export class EditSliderComponent implements OnInit {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.errorMsg = 'Completa los campos obligatorios (*)';
+      return;
+    }
+
+    if (Number(this.form.value.sld_tipo) === 2 && !this.form.value.sld_posicion) {
+      this.errorMsg = 'Elige si el banner secundario va a la izquierda o a la derecha';
       return;
     }
 

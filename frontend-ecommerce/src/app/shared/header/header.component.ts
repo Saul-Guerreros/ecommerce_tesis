@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../pages/auth/service/auth.service';
 
@@ -14,8 +14,10 @@ export class HeaderComponent {
 
   constructor(public authService: AuthService) {}
 
+  // Leer el signal dentro del getter deja el template suscrito a él:
+  // al cambiar la sesión, Angular refresca la vista por su cuenta.
   get isLoggedIn(): boolean {
-    return this.authService.isLoggedIn();
+    return this.authService.sesion();
   }
 
   get userName(): string {

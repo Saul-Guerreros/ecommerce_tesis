@@ -36,7 +36,8 @@ class CuponeResource extends JsonResource
                     }
                     return [
                         "id" => $product_aux->product->prd_id,
-                        "title" => $product_aux->product->prd_titulo,
+                        // prd_titulo se movió a publicacion_web.pub_titulo
+                        "title" => $product_aux->product->publicacionWeb?->pub_titulo ?? $product_aux->product->prd_codinv,
                         "id_aux" => $product_aux->id,
                     ];
                 })

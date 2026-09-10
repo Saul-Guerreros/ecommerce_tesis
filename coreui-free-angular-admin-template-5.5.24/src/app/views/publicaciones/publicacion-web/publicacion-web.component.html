@@ -1,0 +1,258 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <div>
+      <strong>Publicación Web</strong>
+      <c-spinner size="sm" *ngIf="cargando" class="ms-2"></c-spinner>
+    </div>
+    <c-badge [color]="badgeEstado(publicacion.pub_estado).color" *ngIf="publicacion">
+      {{ badgeEstado(publicacion.pub_estado).texto }}
+    </c-badge>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row mb-4" *ngIf="producto">
+      <div class="col-md-6">
+        <label cLabel class="fw-semibold">Producto (SKU)</label>
+        <input cFormControl type="text" [value]="producto.prd_codinv" disabled />
+      </div>
+      <div class="col-md-6">
+        <label cLabel class="fw-semibold">Precio</label>
+        <input cFormControl type="text" [value]="producto.prd_precio" disabled />
+      </div>
+    </div>
+
+    <div class="alert alert-danger" *ngIf="error">{{ error }}</div>
+    <div class="alert alert-success" *ngIf="mensaje">{{ mensaje }}</div>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label cLabel for="pub_catid">Categoría</label>
+          <select cSelect id="pub_catid" formControlName="pub_catid">
+            <option [ngValue]="null" disabled>Selecciona...</option>
+            <option *ngFor="let c of categorias" [ngValue]="c.cat_id">{{ c.cat_nombre }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="form.get('pub_catid')?.touched && form.get('pub_catid')?.invalid">
+            Selecciona una categoría.
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="pub_estado">Estado</label>
+          <select cSelect id="pub_estado" formControlName="pub_estado">
+            <option [ngValue]="0">Borrador (no visible en la tienda)</option>
+            <option [ngValue]="1">Publicado (visible en la tienda)</option>
+            <option [ngValue]="2">Archivado (se retira de la tienda sin borrar la ficha)</option>
+          </select>
+          <div class="alert alert-warning py-2 px-3 mt-2 mb-0 small" *ngIf="form.value.pub_estado !== 1">
+            Con este estado, el producto <strong>no va a aparecer en ninguna sección del ecommerce</strong> —
+            ni siquiera en las que tildaste abajo (Destacado/Trending) — hasta que elijas "Publicado".
+          </div>
+        </div>
+
+        <div class="col-12">
+          <hr />
+          <h6 class="text-muted">Secciones del home</h6>
+          <p class="text-body-secondary small">
+            Elegí en qué secciones manuales de la página principal aparece este producto. "New Arrivals" (por fecha
+            de publicación) y "Discount Products"/"Deal of The Day" (por campañas activas en
+            <a routerLink="/discounts/list">Descuentos</a>) se resuelven solos — no hace falta tildarlos acá.
+          </p>
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-check">
+            <input
+              cFormCheckInput
+              type="checkbox"
+              id="featured_activo"
+              [checked]="seccionActiva('featured')"
+              (change)="onToggleSeccion('featured', $any($event.target).checked)"
+            />
+            <label cFormCheckLabel for="featured_activo">Featured Products</label>
+          </div>
+          <input
+            *ngIf="seccionActiva('featured')"
+            cFormControl
+            class="mt-2"
+            type="number"
+            min="1"
+			max="4"
+            placeholder="Orden (1 = primero)"
+            formControlName="featured_orden"
+          />
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-check">
+            <input
+              cFormCheckInput
+              type="checkbox"
+              id="trending_activo"
+              [checked]="seccionActiva('trending')"
+              (change)="onToggleSeccion('trending', $any($event.target).checked)"
+            />
+            <label cFormCheckLabel for="trending_activo">Trending Products</label>
+          </div>
+          <input
+            *ngIf="seccionActiva('trending')"
+            cFormControl
+            class="mt-2"
+            type="number"
+            min="1"
+			max="4"
+            placeholder="Orden (1 = primero)"
+            formControlName="trending_orden"
+          />
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-check">
+            <input
+              cFormCheckInput
+              type="checkbox"
+              id="selling_activo"
+              [checked]="seccionActiva('selling')"
+              (change)="onToggleSeccion('selling', $any($event.target).checked)"
+            />
+            <label cFormCheckLabel for="selling_activo">Selling Products</label>
+          </div>
+          <input
+            *ngIf="seccionActiva('selling')"
+            cFormControl
+            class="mt-2"
+            type="number"
+            min="1"
+			max="4"
+            placeholder="Orden (1 = primero)"
+            formControlName="selling_orden"
+          />
+          <div class="form-text text-warning" *ngIf="seccionActiva('selling')">
+            Manual y temporal: todavía no hay ventas reales para calcular esto solo.
+          </div>
+        </div>
+
+        <div class="col-12">
+          <a
+            cButton
+            color="warning"
+            variant="outline"
+            size="sm"
+            [routerLink]="['/discounts/register']"
+            [queryParams]="{ producto_id: productoId }"
+          >
+            Crear oferta para este producto
+            <svg cIcon name="cilArrowRight" size="sm"></svg>
+          </a>
+          <span class="text-body-secondary small ms-2">
+            Para que aparezca en "Discount Products" o "Deal of The Day".
+          </span>
+        </div>
+
+			<div class="mb-3" *ngIf="puedeCopiarDelPadre">
+			<button cButton size="sm" color="secondary" variant="outline" type="button"
+				[disabled]="copiando" (click)="copiarDelPadre()">
+				<svg cIcon name="cilCopy"></svg>
+				{{ copiando ? 'Copiando...' : 'Copiar categoría/descripción del modelo original' }}
+			</button>
+			<div class="form-text">Después ajustá el título para diferenciarlo (ej: agregar "- Rojo").</div>
+			</div>
+
+        <div class="col-12">
+          <label cLabel for="pub_titulo">Título para la tienda</label>
+          <input cFormControl id="pub_titulo" formControlName="pub_titulo" placeholder="Como lo va a ver el cliente" />
+          <div class="text-danger small" *ngIf="form.get('pub_titulo')?.touched && form.get('pub_titulo')?.hasError('required')">
+            El título es obligatorio.
+          </div>
+          <div class="text-danger small" *ngIf="form.get('pub_titulo')?.touched && form.get('pub_titulo')?.hasError('maxlength')">
+            El título no puede superar los 150 caracteres.
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="pub_prevta">Precio de venta (web)</label>
+          <input cFormControl type="number" step="0.01" min="0" id="pub_prevta" formControlName="pub_prevta" placeholder="Dejar vacío para no mostrar precio propio" />
+          <div class="form-text">
+            Precio mostrado en la tienda. Puede diferir del precio de inventario ({{ producto?.prd_precio | currency }}) para ofertas o redondeo comercial.
+          </div>
+          <div class="text-danger small" *ngIf="form.get('pub_prevta')?.touched && form.get('pub_prevta')?.hasError('min')">
+            El precio no puede ser negativo.
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="pub_slug">URL amigable (slug)</label>
+          <input cFormControl id="pub_slug" formControlName="pub_slug" placeholder="se-genera-solo-desde-el-titulo" />
+          <div class="form-text">Dejar vacío para que se genere automáticamente a partir del título.</div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="pub_descwb">Descripción para la web</label>
+          <textarea cFormControl id="pub_descwb" rows="4" formControlName="pub_descwb" placeholder="Descripción de marketing / SEO, distinta de la descripción interna del producto"></textarea>
+        </div>
+
+        <div class="col-12">
+          <hr />
+          <h6 class="text-muted">SEO (buscadores)</h6>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="pub_meta_titulo">Meta título</label>
+          <input cFormControl id="pub_meta_titulo" formControlName="pub_meta_titulo" placeholder="Título para Google (si difiere del título de la tienda)" />
+          <div class="text-danger small" *ngIf="form.get('pub_meta_titulo')?.touched && form.get('pub_meta_titulo')?.hasError('maxlength')">
+            Máximo 160 caracteres.
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="pub_meta_descripcion">Meta descripción</label>
+          <textarea cFormControl id="pub_meta_descripcion" rows="2" formControlName="pub_meta_descripcion" placeholder="Descripción que aparece en los resultados de búsqueda"></textarea>
+          <div class="text-danger small" *ngIf="form.get('pub_meta_descripcion')?.touched && form.get('pub_meta_descripcion')?.hasError('maxlength')">
+            Máximo 320 caracteres.
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="imagenes">Imágenes</label>
+          <input cFormControl type="file" id="imagenes" multiple accept="image/*" (change)="onArchivosSeleccionados($event)" />
+          <div class="form-text">Puedes seleccionar varias imágenes a la vez, o repetir la selección para seguir agregando más.</div>
+
+          <div class="d-flex flex-wrap gap-2 mt-2" *ngIf="publicacion?.imagenes?.length">
+            <div class="position-relative" *ngFor="let img of publicacion?.imagenes">
+              <img [src]="obtenerUrlImagen(img.img_url)" width="80" height="80" style="object-fit: cover; border-radius: 4px;" />
+              <span *ngIf="img.img_princi" cBadge color="primary" class="position-absolute bottom-0 start-0" style="font-size: 9px;">Principal</span>
+              <button
+                type="button"
+                class="btn-close btn-close-white bg-danger rounded-circle position-absolute top-0 end-0"
+                style="width: 16px; height: 16px; font-size: 8px;"
+                (click)="quitarImagenExistente(img.img_id)"
+                title="Eliminar imagen"
+              ></button>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-2" *ngIf="previews.length">
+            <div class="position-relative" *ngFor="let p of previews; let i = index">
+              <img [src]="p" width="80" height="80" style="object-fit: cover; border-radius: 4px;" />
+              <button
+                type="button"
+                class="btn-close btn-close-white bg-danger rounded-circle position-absolute top-0 end-0"
+                style="width: 16px; height: 16px; font-size: 8px;"
+                (click)="quitarImagenNueva(i)"
+                title="Quitar imagen"
+              ></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex justify-content-between">
+        <a cButton color="secondary" routerLink="/publicaciones">Volver al listado</a>
+        <button type="submit" cButton color="primary" [disabled]="guardando">
+          <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+          {{ textoBotonGuardar }}
+        </button>
+      </div>
+    </form>
+  </c-card-body>
+</c-card>

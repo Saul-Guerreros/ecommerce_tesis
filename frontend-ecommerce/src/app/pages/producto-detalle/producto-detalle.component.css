@@ -1,0 +1,23 @@
+/*
+ * La plantilla original (tm-variation-color) pinta un círculo de color liso
+ * porque ahí las variantes son colores puros conocidos de antemano. Acá cada
+ * variante es un producto real con su propia foto, así que el swatch
+ * muestra una miniatura circular de esa foto en vez de un color inventado.
+ */
+.tm-variation-swatch {
+  display: block;
+  width: 26px;
+  height: 26px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.tm-quantity-input {
+  cursor: default;
+}
+
+/* La tabla de especificaciones no necesita el margen inferior por defecto
+ * de .uk-table cuando es lo último dentro del tab. */
+.tm-product-description :last-child {
+  margin-bottom: 0;
+}

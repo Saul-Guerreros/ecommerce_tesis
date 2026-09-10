@@ -1,0 +1,270 @@
+<main>
+  <!-- Loading -->
+  <section class="uk-section uk-section-small" *ngIf="cargando">
+    <div class="uk-container uk-text-center" style="padding: 80px 0;">
+      <div uk-spinner="ratio: 2"></div>
+    </div>
+  </section>
+
+  <!-- Not found -->
+  <section class="uk-section uk-section-small" *ngIf="!cargando && noEncontrado">
+    <div class="uk-container uk-text-center" style="padding: 60px 0;">
+      <h1 class="uk-margin-remove-bottom">Product not found</h1>
+      <p class="uk-text-meta">We couldn't find the product you're looking for. It may have been unpublished or the link is wrong.</p>
+      <a class="uk-button uk-button-primary" routerLink="/">Back to home</a>
+    </div>
+  </section>
+
+  <!-- Detail -->
+  <section class="uk-section uk-section-small" *ngIf="!cargando && producto">
+    <div class="uk-container">
+      <div class="uk-grid-medium uk-child-width-1-1" uk-grid="">
+
+        <!-- Breadcrumb + title -->
+        <div class="uk-text-center">
+          <ul class="uk-breadcrumb uk-flex-center uk-margin-remove">
+            <li><a routerLink="/">Home</a></li>
+            <li *ngIf="producto.categoria"><span>{{ producto.categoria }}</span></li>
+            <li><span>{{ producto.titulo }}</span></li>
+          </ul>
+          <h1 class="uk-margin-small-top uk-margin-remove-bottom">{{ producto.titulo }}</h1>
+        </div>
+
+        <div>
+          <div class="uk-grid-medium uk-child-width-1-1" uk-grid="">
+            <div>
+              <div class="uk-card uk-card-default uk-card-small tm-ignore-container">
+                <div class="uk-grid-small uk-grid-collapse uk-grid-match" uk-grid="">
+
+                  <!-- Gallery -->
+                  <div class="uk-width-1-1 uk-width-expand@m">
+                    <div class="uk-card-body">
+                      <div class="tm-ratio tm-ratio-4-3">
+                        <a class="tm-media-box tm-media-box-zoom" [href]="imagenActual" uk-lightbox="">
+                          <figure class="tm-media-box-wrap">
+                            <img [src]="imagenActual" [alt]="producto.titulo" fetchpriority="high" loading="eager" />
+                          </figure>
+                        </a>
+                      </div>
+
+                      <ul
+                        class="uk-grid-small uk-child-width-1-5 uk-grid uk-margin-small-top"
+                        uk-grid=""
+                        *ngIf="galeria.length > 1"
+                      >
+                        <li *ngFor="let img of galeria; let i = index; trackBy: trackByIndice">
+                          <div class="tm-ratio tm-ratio-1-1">
+                            <a
+                              class="tm-media-box tm-media-box-frame"
+                              [class.uk-active]="i === imagenActivaIndex"
+                              href="javascript:void(0)"
+                              (click)="seleccionarImagen(i)"
+                            >
+                              <figure class="tm-media-box-wrap">
+                                <img [src]="imagenMiniatura(img)" [alt]="producto.titulo" loading="lazy" />
+                              </figure>
+                            </a>
+                          </div>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Info column -->
+                  <div class="uk-width-1-1 uk-width-1-3@m tm-product-info">
+                    <div class="uk-card-body">
+                      <div class="uk-text-meta uk-margin-small-bottom" *ngIf="producto.marca">
+                        {{ producto.marca }}
+                      </div>
+
+                      <div class="uk-margin">
+                        <div class="uk-grid-small uk-flex-middle" uk-grid="">
+                          <div class="uk-flex uk-flex-middle uk-text-meta">
+                            SKU: {{ producto.sku }}
+                          </div>
+                          <div *ngIf="producto.descuento_pct">
+                            <span class="uk-label uk-label-danger">-{{ producto.descuento_pct }}%</span>
+                          </div>
+                        </div>
+                        <div class="uk-margin-xsmall-top uk-text-meta" *ngIf="!producto.rating">
+                          No reviews yet
+                        </div>
+                      </div>
+
+                      <!-- Colors -->
+                      <div class="uk-margin" *ngIf="coloresParaMostrar.length > 0">
+                        <div class="uk-text-small uk-margin-xsmall-bottom">Color</div>
+                        <ul class="uk-subnav uk-subnav-pill tm-variations">
+                          <li
+                            *ngFor="let color of coloresParaMostrar; trackBy: trackByColor"
+                            [class.uk-active]="esColorActivo(color)"
+                          >
+                            <a
+                              [routerLink]="color.slug ? ['/producto', color.slug] : null"
+                              [attr.uk-tooltip]="color.titulo"
+                            >
+                              <img [src]="imagenColor(color)" [alt]="color.titulo" class="tm-variation-swatch" />
+                            </a>
+                          </li>
+                        </ul>
+                      </div>
+
+                      <!-- Price + qty + actions -->
+                      <div class="uk-margin">
+                        <div class="uk-padding-small uk-background-primary-lighten uk-border-rounded">
+                          <div class="uk-grid-small uk-child-width-1-1" uk-grid="">
+                            <div>
+                              <del class="uk-text-meta" *ngIf="producto.descuento_pct">
+                                {{ producto.precio_original | currency }}
+                              </del>
+                              <div class="tm-product-price">{{ producto.precio_final | currency }}</div>
+                              <div class="uk-text-meta uk-margin-xsmall-top" *ngIf="cantidad > 1">
+                                Subtotal ({{ cantidad }}): {{ subtotal | currency }}
+                              </div>
+                            </div>
+                            <div>
+                              <div class="uk-grid-small uk-flex-middle" uk-grid="">
+                                <div>
+                                  <a
+                                    href="javascript:void(0)"
+                                    (click)="decrementarCantidad()"
+                                    uk-icon="icon: minus; ratio: .75"
+                                  ></a>
+                                  <input
+                                    class="uk-input tm-quantity-input"
+                                    maxlength="3"
+                                    type="text"
+                                    readonly
+                                    [value]="cantidad"
+                                  />
+                                  <a
+                                    href="javascript:void(0)"
+                                    (click)="incrementarCantidad()"
+                                    uk-icon="icon: plus; ratio: .75"
+                                  ></a>
+                                </div>
+                                <div>
+                                  <button
+                                    class="uk-button uk-button-primary tm-product-add-button tm-shine"
+                                    [disabled]="sinStock"
+                                    (click)="agregarAlCarrito()"
+                                  >
+                                    {{ sinStock ? 'out of stock' : 'add to cart' }}
+                                  </button>
+                                </div>
+                                <div class="uk-width-auto uk-width-expand@s uk-flex uk-flex-middle uk-text-meta">
+                                  <a
+                                    href="javascript:void(0)"
+                                    class="uk-margin-small-right"
+                                    [class.tm-action-button-active]="favoritoActivo"
+                                    (click)="toggleFavorito()"
+                                    uk-tooltip="Add to favorites"
+                                  ><span uk-icon="heart"></span></a>
+                                  <a
+                                    href="javascript:void(0)"
+                                    [class.tm-action-button-active]="compararActivo"
+                                    (click)="toggleComparar()"
+                                    uk-tooltip="Add to compare"
+                                  ><span uk-icon="copy"></span></a>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div
+                          class="uk-text-meta uk-margin-xsmall-top"
+                          *ngIf="stockDisponible !== null && !sinStock"
+                        >
+                          {{ stockDisponible }} in stock
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tabs: Description / Specifications -->
+                <header>
+                  <nav class="tm-product-nav" id="description">
+                    <ul class="uk-subnav uk-subnav-pill uk-margin-remove">
+                      <li [class.uk-active]="tabActiva === 'descripcion'">
+                        <a href="javascript:void(0)" (click)="seleccionarTab('descripcion')">Description</a>
+                      </li>
+                      <li
+                        *ngIf="especificaciones.length > 0"
+                        [class.uk-active]="tabActiva === 'especificaciones'"
+                      >
+                        <a href="javascript:void(0)" (click)="seleccionarTab('especificaciones')">Specifications</a>
+                      </li>
+                    </ul>
+                  </nav>
+                </header>
+
+                <div class="uk-card-body tm-product-description">
+                  <div *ngIf="tabActiva === 'descripcion'">
+                    <p *ngIf="descripcion" [innerText]="descripcion"></p>
+                    <p class="uk-text-meta" *ngIf="!descripcion">
+                      No description available for this product yet.
+                    </p>
+                  </div>
+
+                  <div *ngIf="tabActiva === 'especificaciones' && especificaciones.length > 0">
+                    <table class="uk-table uk-table-divider uk-table-justify uk-table-responsive uk-margin-remove">
+                      <tbody>
+                        <tr *ngFor="let esp of especificaciones">
+                          <th class="uk-width-medium">{{ esp.atributo }}</th>
+                          <td class="uk-table-expand">{{ esp.valor }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Related products -->
+            <div *ngIf="relacionados.length > 0">
+              <div class="uk-flex uk-flex-middle uk-flex-between uk-flex-wrap uk-margin">
+                <h2 class="uk-margin-remove">You may also like</h2>
+              </div>
+              <ul
+                class="uk-grid-small uk-child-width-1-2 uk-child-width-1-4@s uk-grid-medium"
+                uk-grid=""
+              >
+                <li *ngFor="let rel of relacionados; trackBy: trackByRelacionado">
+                  <article class="tm-product-card uk-height-1-1">
+                    <div class="tm-product-card-media">
+                      <div class="tm-ratio tm-ratio-4-3">
+                        <a class="tm-media-box" [routerLink]="['/producto', rel.slug]">
+                          <div class="tm-product-card-labels" *ngIf="rel.descuento_pct">
+                            <span class="uk-label uk-label-danger">-{{ rel.descuento_pct }}%</span>
+                          </div>
+                          <figure class="tm-media-box-wrap">
+                            <img [alt]="rel.titulo" decoding="async" loading="lazy" [src]="imagenRelacionado(rel)" />
+                          </figure>
+                        </a>
+                      </div>
+                    </div>
+                    <div class="tm-product-card-body">
+                      <div class="tm-product-card-info">
+                        <div class="uk-text-meta uk-margin-xsmall-bottom">{{ rel.categoria }}</div>
+                        <h3 class="tm-product-card-title">
+                          <a class="uk-link-heading" [routerLink]="['/producto', rel.slug]">{{ rel.titulo }}</a>
+                        </h3>
+                      </div>
+                      <div class="tm-product-card-shop">
+                        <div class="tm-product-card-prices">
+                          <del class="uk-text-meta" *ngIf="rel.descuento_pct">{{ rel.precio_original | currency }}</del>
+                          <div class="tm-product-card-price">{{ rel.precio_final | currency }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>

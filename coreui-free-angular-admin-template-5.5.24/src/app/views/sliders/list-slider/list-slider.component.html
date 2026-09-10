@@ -41,7 +41,7 @@
           </td>
           <td>{{ slider.sld_prdid }}</td>
           <td>{{ slider.sld_orden }}</td>
-          <td>{{ slider.sld_tipo }}</td>
+          <td>{{ tipoLabel(slider.sld_tipo) }}</td>
           <td>
             <c-badge color="success" *ngIf="slider.sld_estado == 1">Activo</c-badge>
             <c-badge color="danger" *ngIf="slider.sld_estado == 2">Inactivo</c-badge>

@@ -67,6 +67,14 @@ export class ProductVariationsService {
       )
     );
   }
+  
+  
+  duplicarEspecificaciones(productoIdOrigen: number, productoIdDestino: number): Observable<ApiMessageResponse> {
+  return this.wrap(this.http.post<ApiMessageResponse>(`${this.apiUrl}/especificaciones/duplicar`, {
+    producto_id_origen: productoIdOrigen,
+    producto_id_destino: productoIdDestino,
+  }));
+  }
 
   createEspecificacion(data: any): Observable<ApiMessageResponse & { especificaciones: Especificacion[] }> {
     return this.wrap(this.http.post<any>(`${this.apiUrl}/especificaciones`, data));
