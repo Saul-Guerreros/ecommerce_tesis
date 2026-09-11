@@ -56,8 +56,8 @@ productoPadreSeleccionado: Producto | null = null;
       prd_descri: ['', [Validators.required]],
       // null en vez de 0: así el input numérico nace vacío y no hay que borrar
       // un "0" cada vez que el usuario quiere escribir su propio monto/cantidad.
-      prd_precio: [null as number | null, [Validators.required, Validators.min(0)]],
-      prd_stock: [null as number | null, [Validators.required, Validators.min(0)]],
+      prd_prevta: [null as number | null, [Validators.required, Validators.min(0)]],
+      prd_margen: [null as number | null, [Validators.min(0)]],
       prd_stkmin: [null as number | null, [Validators.required, Validators.min(0)]],
       prd_marid: [null as number | null, [Validators.required]],
       prd_tivid: [null as number | null, [Validators.required]],
@@ -108,8 +108,8 @@ productoPadreSeleccionado: Producto | null = null;
       this.form.patchValue({
         prd_codinv: duplicando ? '' : this.producto.prd_codinv, // el código SIEMPRE es único, nunca se copia
         prd_descri: this.producto.prd_descri,
-        prd_precio: this.producto.prd_precio,
-        prd_stock: duplicando ? 0 : this.producto.prd_stock,     // stock arranca en 0, no hereda el del original
+        prd_prevta: this.producto.prd_prevta,
+        prd_margen: this.producto.prd_margen ?? null,
         prd_stkmin: this.producto.prd_stkmin,
         prd_marid: this.producto.prd_marid,
         prd_tivid: this.producto.prd_tivid,
@@ -126,8 +126,8 @@ productoPadreSeleccionado: Producto | null = null;
       this.form.reset({
         prd_codinv: '',
         prd_descri: '',
-        prd_precio: null,
-        prd_stock: null,
+        prd_prevta: null,
+        prd_margen: null,
         prd_stkmin: null,
         prd_marid: null,
         prd_tivid: null,

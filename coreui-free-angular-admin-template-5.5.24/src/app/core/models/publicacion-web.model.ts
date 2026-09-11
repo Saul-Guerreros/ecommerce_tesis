@@ -18,7 +18,7 @@ export interface EspecificacionResumen {
 export interface ProductoResumen {
   prd_id: number;
   prd_codinv: string;
-  prd_precio: number;
+  prd_prevta: number;
   prd_estado: number;
 }
 

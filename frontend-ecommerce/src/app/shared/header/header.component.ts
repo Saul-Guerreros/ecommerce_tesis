@@ -7,7 +7,6 @@ import { CookieService } from 'ngx-cookie-service';
 import { CartService } from '../../pages/home/service/cart.service';
 import { ToastrService } from 'ngx-toastr';
 
-declare var $:any;
 @Component({
   selector: 'app-header',
   standalone: true,

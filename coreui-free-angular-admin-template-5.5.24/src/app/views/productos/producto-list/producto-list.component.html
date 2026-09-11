@@ -66,10 +66,10 @@
           <td>{{ p.prd_descri }}</td>
           <td>{{ p.marca?.mar_descri }}</td>
           <td>{{ p.tipo_iva?.tiv_descri }}</td>
-          <td class="text-end">{{ p.prd_precio | currency }}</td>
+          <td class="text-end">{{ p.prd_prevta | currency }}</td>
           <td class="text-center">
             <span *ngIf="p.prd_afestk; else sinStock" [class.text-danger]="p.stock_bajo" [class.fw-bold]="p.stock_bajo">
-              {{ p.prd_stock }}
+              {{ p.stock_actual ?? 0 }}
             </span>
             <ng-template #sinStock><span class="text-muted">—</span></ng-template>
           </td>

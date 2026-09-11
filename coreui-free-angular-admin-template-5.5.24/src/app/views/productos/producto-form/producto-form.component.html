@@ -62,24 +62,21 @@
         </div>
 
         <div class="col-md-4">
-          <label cLabel for="prd_precio">Precio</label>
-          <input cFormControl type="number" step="0.01" min="0" id="prd_precio" formControlName="prd_precio" placeholder="0.00" />
-          <div class="text-danger small" *ngIf="form.get('prd_precio')?.touched && form.get('prd_precio')?.hasError('required')">
-            El precio es obligatorio.
+          <label cLabel for="prd_prevta">Precio de venta</label>
+          <input cFormControl type="number" step="0.01" min="0" id="prd_prevta" formControlName="prd_prevta" placeholder="0.00" />
+          <div class="text-danger small" *ngIf="form.get('prd_prevta')?.touched && form.get('prd_prevta')?.hasError('required')">
+            El precio de venta es obligatorio.
           </div>
-          <div class="text-danger small" *ngIf="form.get('prd_precio')?.touched && form.get('prd_precio')?.hasError('min')">
-            El precio no puede ser negativo.
+          <div class="text-danger small" *ngIf="form.get('prd_prevta')?.touched && form.get('prd_prevta')?.hasError('min')">
+            El precio de venta no puede ser negativo.
           </div>
         </div>
 
         <div class="col-md-4">
-          <label cLabel for="prd_stock">Stock actual</label>
-          <input cFormControl type="number" min="0" id="prd_stock" formControlName="prd_stock" placeholder="0" />
-          <div class="text-danger small" *ngIf="form.get('prd_stock')?.touched && form.get('prd_stock')?.hasError('required')">
-            El stock es obligatorio.
-          </div>
-          <div class="text-danger small" *ngIf="form.get('prd_stock')?.touched && form.get('prd_stock')?.hasError('min')">
-            El stock no puede ser negativo.
+          <label cLabel for="prd_margen">Margen (opcional)</label>
+          <input cFormControl type="number" step="0.0001" min="0" id="prd_margen" formControlName="prd_margen" placeholder="Sugerido según costo promedio" />
+          <div class="text-danger small" *ngIf="form.get('prd_margen')?.touched && form.get('prd_margen')?.hasError('min')">
+            El margen no puede ser negativo.
           </div>
         </div>
 

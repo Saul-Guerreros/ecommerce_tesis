@@ -16,7 +16,7 @@ export interface PublicacionFiltros {
   providedIn: 'root',
 })
 export class PublicacionWebService {
-  private readonly productosUrl = `${environment.apiUrl}/productos`;
+  private readonly productosUrl = `${environment.apiUrl}/admin/productos`;
 
   constructor(private http: HttpClient) {}
 

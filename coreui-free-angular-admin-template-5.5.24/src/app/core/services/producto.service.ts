@@ -20,7 +20,7 @@ export interface ProductoFiltros {
   providedIn: 'root',
 })
 export class ProductoService {
-  private readonly baseUrl = `${environment.apiUrl}/productos`;
+  private readonly baseUrl = `${environment.apiUrl}/admin/productos`;
 
   constructor(private http: HttpClient) {}
 

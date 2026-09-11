@@ -27,7 +27,7 @@ class PublicacionWebResource extends JsonResource
             'producto' => $this->whenLoaded('producto', fn () => [
                 'prd_id'     => $this->producto->prd_id,
                 'prd_codinv' => $this->producto->prd_codinv,
-                'prd_precio' => (float) $this->producto->prd_precio,
+                'prd_prevta' => $this->producto->prd_prevta !== null ? (float) $this->producto->prd_prevta : null,
                 'prd_estado' => $this->producto->prd_estado,
             ]),
 

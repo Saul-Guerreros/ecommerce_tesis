@@ -46,8 +46,8 @@ export interface Producto {
   prd_umdid: number;
   prd_codinv: string;
   prd_descri: string;
-  prd_precio: number;
-  prd_stock: number;
+  prd_prevta: number;
+  prd_margen?: number | null;
   prd_stkmin: number;
   prd_estado: number; // 1 activo, 0 inactivo (estado de INVENTARIO, no de publicación)
   prd_afestk: boolean; // si el producto afecta stock (ej. un servicio no afecta)
@@ -58,6 +58,8 @@ export interface Producto {
   // null = el producto todavía no fue publicado en la web.
   publicacion_web?: PublicacionWebResumen | null;
   stock_bajo?: boolean;
+  stock_actual?: number | null;
+  precio_sugerido?: number | null;
 }
 
 export interface PaginacionMeta {
@@ -76,5 +78,3 @@ export interface ProductoResponse {
   message?: string;
   data: Producto;
 }
-
-

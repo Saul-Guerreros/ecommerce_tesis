@@ -88,6 +88,15 @@ Route::group([
 
 });
 
+// Rutas públicas del ecommerce (sin auth), consumidas por frontend-ecommerce.
+Route::group([
+    'prefix' => 'tienda',
+], function ($router) {
+    Route::get('home', [VitrinaController::class, 'home']);
+    Route::get('sliders', [VitrinaController::class, 'sliders']);
+    Route::get('producto/{slug}', [VitrinaController::class, 'detalle']);
+});
+
 Route::group([
     'prefix' => 'admin'
 ], function ($router) {
@@ -209,6 +218,11 @@ Route::group([
     Route::get('productos/select', [ProductoController::class, 'select']);
     Route::patch('productos/{id}/estado', [ProductoController::class, 'toggleEstado']);
     Route::apiResource('productos', ProductoController::class);
+
+    // --- Publicación Web (ficha pública de un producto) ---
+    Route::get('productos/{producto}/publicacion', [PublicacionWebController::class, 'show']);
+    Route::post('productos/{producto}/publicacion', [PublicacionWebController::class, 'guardar']);
+    Route::delete('productos/{producto}/publicacion/imagenes/{imagen}', [PublicacionWebController::class, 'eliminarImagen']);
 
     // --- Compras (modulo transaccional: sin apiResource, sin toggleEstado) ---
     Route::get('compras/config', [CompraController::class, 'config']);
