@@ -172,7 +172,9 @@
               <td class="text-end">{{ fila.value.costo | number:'1.0-2' }}</td>
               <td class="text-end">{{ fila.value.canfac | number:'1.0-4' }}</td>
               <td class="text-center">{{ fila.value.tasa }}%</td>
-              <td class="text-end">{{ (fila.value.costo * fila.value.canfac) | number:'1.0-2' }}</td>
+              <td class="text-end">
+                {{ (soloLectura ? fila.value.gravada : (fila.value.costo * fila.value.canfac)) | number:'1.0-2' }}
+              </td>
               <td *ngIf="!soloLectura">
                 <button cButton size="sm" color="danger" variant="ghost" type="button" (click)="quitarItem(i)">✕</button>
               </td>
@@ -185,28 +187,31 @@
           </tbody>
         </table>
 
-        <div class="row g-2 mt-2">
-          <div class="col">
-            <label cLabel>Exenta</label>
-            <input cFormControl [value]="totalExenta | number:'1.0-2'" disabled />
-          </div>
-          <div class="col">
-            <label cLabel>Gravada 5%</label>
-            <input cFormControl [value]="totalGrav5 | number:'1.0-2'" disabled />
-          </div>
-          <div class="col">
-            <label cLabel>Gravada 10%</label>
-            <input cFormControl [value]="totalGrav10 | number:'1.0-2'" disabled />
-          </div>
-          <div class="col">
-            <label cLabel>IVA total</label>
-            <input cFormControl [value]="(totalIva5 + totalIva10) | number:'1.0-2'" disabled />
-          </div>
-          <div class="col">
-            <label cLabel>Total</label>
-            <input cFormControl class="fw-bold" [value]="totalGeneral | number:'1.0-2'" disabled />
-          </div>
-        </div>
+      
+      <div class="row g-2 mt-2">
+      <div class="col">
+        <label cLabel>Exenta</label>
+        <input cFormControl [value]="(soloLectura ? compra?.com_exenta : totalExenta) | number:'1.0-2'" disabled />
+      </div>
+      <div class="col">
+        <label cLabel>Gravada 5%</label>
+        <input cFormControl [value]="(soloLectura ? compra?.com_grav5 : totalGrav5) | number:'1.0-2'" disabled />
+      </div>
+      <div class="col">
+        <label cLabel>Gravada 10%</label>
+        <input cFormControl [value]="(soloLectura ? compra?.com_grav10 : totalGrav10) | number:'1.0-2'" disabled />
+      </div>
+      <div class="col">
+        <label cLabel>IVA total</label>
+        <input cFormControl [value]="(soloLectura ? ((compra?.com_iva5 ?? 0) + (compra?.com_iva10 ?? 0)) : (totalIva5 + totalIva10)) | number:'1.0-2'" disabled />
+      </div>
+      <div class="col">
+        <label cLabel>Total</label>
+        <input cFormControl class="fw-bold" [value]="(soloLectura ? compra?.com_total : totalGeneral) | number:'1.0-2'" disabled />
+      </div>
+    </div>
+
+
       </fieldset>
 
       <fieldset class="border rounded p-3" *ngIf="!soloLectura || compra?.com_obs">

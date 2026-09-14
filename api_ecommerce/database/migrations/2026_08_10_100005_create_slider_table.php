@@ -24,6 +24,9 @@ use Illuminate\Support\Facades\Schema;
  *    que agrega solo las columnas nuevas. No uses ambas migraciones sobre
  *    la misma base de datos.
  */
+
+
+
 return new class extends Migration
 {
     public function up(): void

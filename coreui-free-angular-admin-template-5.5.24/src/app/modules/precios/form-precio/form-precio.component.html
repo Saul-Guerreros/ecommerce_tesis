@@ -1,0 +1,60 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Gestión de precio — {{ precio?.prd_descri }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label cLabel>Costo promedio actual (Gs.)</label>
+          <input cFormControl [value]="precio?.costo_promedio ?? 'Sin compras todavía'" disabled />
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="prd_margen">Markup (%) <span class="text-danger">*</span></label>
+          <input cFormControl type="number" id="prd_margen" formControlName="prd_margen"
+                 min="0" max="1000" step="0.01" (blur)="redondearMargen()" />
+          <div class="text-danger small" *ngIf="campoInvalido('prd_margen')">
+            {{ errorBackend('prd_margen') || 'Obligatorio, entre 0 y 1000.' }}
+          </div>
+        </div>
+
+        <ng-container *ngIf="calculo as c; else sinCosto">
+          <div class="col-md-4">
+            <label cLabel>Ganancia (Gs.)</label>
+            <input cFormControl [value]="c.ganancia | number:'1.0-2'" disabled />
+          </div>
+          <div class="col-md-4">
+            <label cLabel>Precio de venta sin IVA (Gs.)</label>
+            <input cFormControl [value]="c.sinIva | number:'1.0-2'" disabled />
+          </div>
+          <div class="col-md-4">
+            <label cLabel>IVA {{ precio?.tiv_tasa }}% (Gs.)</label>
+            <input cFormControl [value]="c.iva | number:'1.0-2'" disabled />
+          </div>
+          <div class="col-12">
+            <label cLabel>Precio final de venta (Gs.)</label>
+            <input cFormControl class="fw-bold" [value]="(c.final | number:'1.0-2') + ' Gs.'" disabled />
+          </div>
+        </ng-container>
+        <ng-template #sinCosto>
+          <div class="col-12">
+            <div class="text-muted small">
+              Todavía no se puede calcular el precio final: este producto no tiene ninguna compra confirmada.
+              El markup se guarda igual, y se va a aplicar solo apenas se registre la primera compra.
+            </div>
+          </div>
+        </ng-template>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : 'Guardar' }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

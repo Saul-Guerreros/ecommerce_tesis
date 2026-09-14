@@ -28,6 +28,7 @@ export class ListProductoComponent implements OnInit {
   private searchSubject = new Subject<string>();
 
   formModalVisible = false;
+  soloLectura = false;
   deleteModalVisible = false;
   productoSeleccionado: Producto | null = null;
 
@@ -65,11 +66,19 @@ export class ListProductoComponent implements OnInit {
 
   abrirNuevo(): void {
     this.productoSeleccionado = null;
+    this.soloLectura = false;
+    this.formModalVisible = true;
+  }
+
+  abrirVer(p: Producto): void {
+    this.productoSeleccionado = { ...p };
+    this.soloLectura = true;
     this.formModalVisible = true;
   }
 
   abrirEditar(p: Producto): void {
     this.productoSeleccionado = { ...p };
+    this.soloLectura = false;
     this.formModalVisible = true;
   }
 

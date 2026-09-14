@@ -1,0 +1,217 @@
+<div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+<!-- ========== MODO VER (solo lectura) ========== -->
+<c-card class="mb-4" *ngIf="modoVer && !cargando && compra">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Compra N° {{ compra.com_id }} — {{ compra.com_nrodoc }}</strong>
+    <c-badge [color]="compra.com_estfac === 1 ? 'success' : 'secondary'">
+      {{ compra.com_estfac === 1 ? 'Confirmada' : 'Anulada' }}
+    </c-badge>
+  </c-card-header>
+  <c-card-body>
+    <div class="row g-3 mb-4">
+      <div class="col-md-4"><strong>Proveedor:</strong> {{ compra.com_proraz }} ({{ compra.com_proruc }})</div>
+      <div class="col-md-4"><strong>Fecha de emisión:</strong> {{ compra.com_fchaem | date:'dd/MM/yyyy' }}</div>
+      <div class="col-md-4"><strong>Condición:</strong> {{ compra.com_condic === 1 ? 'Crédito' : 'Contado' }}</div>
+      <div class="col-md-4"><strong>Depósito:</strong> {{ compra.deposito?.dpo_nombre }}</div>
+      <div class="col-md-4"><strong>Timbrado:</strong> {{ compra.com_timbra || '—' }}</div>
+      <div class="col-md-4"><strong>N° de remisión:</strong> {{ compra.com_nrorem || '—' }}</div>
+    </div>
+
+    <table cTable striped bordered small>
+      <thead>
+        <tr>
+          <th>Producto</th><th class="text-end">Costo unit.</th>
+          <th class="text-end">Facturado</th><th class="text-end">Recibido</th>
+          <th class="text-end">Gravada</th><th class="text-end">IVA</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let d of compra.detalle">
+          <td>{{ d.descri }}</td>
+          <td class="text-end">{{ d.costo | number:'1.0-4' }}</td>
+          <td class="text-end">{{ d.canfac }}</td>
+          <td class="text-end">{{ d.canrec }}</td>
+          <td class="text-end">{{ d.gravada | number:'1.0-2' }}</td>
+          <td class="text-end">{{ d.iva | number:'1.0-2' }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="row g-2 justify-content-end mt-3">
+      <div class="col-md-3"><strong>Total:</strong> {{ compra.com_total | number:'1.0-2' }} Gs.</div>
+    </div>
+  </c-card-body>
+  <c-card-footer class="text-end">
+    <button cButton color="secondary" (click)="cancelar()">Volver</button>
+  </c-card-footer>
+</c-card>
+
+<!-- ========== MODO ALTA ========== -->
+<c-card class="mb-4" *ngIf="!modoVer">
+  <c-card-header><strong>Nueva factura de compra</strong></c-card-header>
+
+  <form [formGroup]="formCab" (ngSubmit)="guardar()">
+    <c-card-body>
+
+      <div class="alert alert-danger" *ngIf="erroresBackend">
+        <div *ngFor="let campo of erroresBackend | keyvalue">{{ campo.value[0] }}</div>
+      </div>
+
+      <!-- Datos de la factura -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label cLabel>Proveedor <span class="text-danger">*</span></label>
+          <select cSelect formControlName="com_proid">
+            <option [ngValue]="null">Seleccione un proveedor</option>
+            <option *ngFor="let p of proveedores" [ngValue]="p.pro_id">{{ p.pro_razon }} ({{ p.pro_ruc }})</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel>Depósito destino <span class="text-danger">*</span></label>
+          <select cSelect formControlName="com_depid" (change)="onDepositoChange($any($event.target).value)">
+            <option [ngValue]="null">Seleccione un depósito</option>
+            <option *ngFor="let d of depositos" [ngValue]="d.dpo_id">{{ d.dpo_nombre }} ({{ d.suc_nombre }})</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel>Tipo de comprobante <span class="text-danger">*</span></label>
+          <select cSelect formControlName="com_tcoid">
+            <option [ngValue]="null">Seleccione</option>
+            <option *ngFor="let t of tiposComprobante" [ngValue]="t.tco_id">{{ t.tco_descri }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label cLabel>N° de factura <span class="text-danger">*</span></label>
+          <input cFormControl formControlName="com_nrodoc" placeholder="001-001-0000123" />
+          <div class="text-danger small" *ngIf="formCab.get('com_nrodoc')?.invalid && formCab.get('com_nrodoc')?.touched">
+            Formato 001-001-0000000.
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <label cLabel>Timbrado</label>
+          <input cFormControl formControlName="com_timbra" maxlength="8" />
+        </div>
+
+        <div class="col-md-3">
+          <label cLabel>Vto. timbrado</label>
+          <input cFormControl type="date" formControlName="com_timbvn" />
+        </div>
+
+        <div class="col-md-3">
+          <label cLabel>Fecha de emisión <span class="text-danger">*</span></label>
+          <input cFormControl type="date" formControlName="com_fchaem" />
+        </div>
+
+        <div class="col-md-3">
+          <label cLabel>N° de remisión</label>
+          <input cFormControl formControlName="com_nrorem" />
+        </div>
+
+        <div class="col-md-3">
+          <label cLabel>Condición <span class="text-danger">*</span></label>
+          <select cSelect formControlName="com_condic">
+            <option [ngValue]="0">Contado</option>
+            <option [ngValue]="1">Crédito</option>
+          </select>
+        </div>
+
+        <ng-container *ngIf="formCab.get('com_condic')?.value === 1">
+          <div class="col-md-3">
+            <label cLabel>Plazo (días)</label>
+            <input cFormControl type="number" formControlName="com_plzdia" />
+          </div>
+          <div class="col-md-3">
+            <label cLabel>Cuotas <span class="text-danger">*</span></label>
+            <input cFormControl type="number" formControlName="com_cuotas" />
+          </div>
+          <div class="col-md-3">
+            <label cLabel>Intervalo (días)</label>
+            <input cFormControl type="number" formControlName="com_interv" />
+          </div>
+        </ng-container>
+
+        <div class="col-md-6">
+          <label cLabel>Observaciones</label>
+          <input cFormControl formControlName="com_obs" maxlength="100" />
+        </div>
+      </div>
+
+      <!-- Buscador de productos -->
+      <hr />
+      <h6>Detalle de productos</h6>
+      <div class="col-md-6 mb-2 position-relative">
+        <input cFormControl placeholder="Buscar producto por nombre o código..." [(ngModel)]="busquedaProducto"
+               [ngModelOptions]="{ standalone: true }" />
+        <div class="list-group position-absolute w-100" style="z-index: 10;" *ngIf="productosFiltrados.length">
+          <button type="button" class="list-group-item list-group-item-action" *ngFor="let p of productosFiltrados"
+                  (click)="agregarLinea(p)">
+            {{ p.prd_codinv }} — {{ p.prd_descri }}
+          </button>
+        </div>
+      </div>
+
+      <!-- FormArray de lineas -->
+      <table cTable striped bordered small formArrayName="detalle">
+        <thead>
+          <tr>
+            <th>Producto</th><th style="width: 110px;">Costo unit.</th>
+            <th style="width: 100px;">Cant. fact.</th><th style="width: 100px;">Cant. rec.</th>
+            <th style="width: 90px;">Desc. %</th><th style="width: 100px;">Desc. Gs.</th>
+            <th class="text-end">Gravada</th><th class="text-end">IVA</th>
+            <th class="text-end">Total línea</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let g of detalleArray.controls; let i = index" [formGroupName]="i">
+            <td>{{ g.value.descri }}</td>
+            <td><input cFormControl type="number" step="0.0001" formControlName="costo" /></td>
+            <td><input cFormControl type="number" step="0.0001" formControlName="canfac" /></td>
+            <td>
+              <div class="d-flex gap-1">
+                <input cFormControl type="number" step="0.0001" formControlName="canrec" />
+                <button cButton size="sm" color="secondary" variant="outline" type="button"
+                        title="Copiar cantidad facturada" (click)="copiarCantidad(i)">=</button>
+              </div>
+            </td>
+            <td><input cFormControl type="number" step="0.01" formControlName="despor" /></td>
+            <td><input cFormControl type="number" step="0.01" formControlName="descto" /></td>
+            <td class="text-end align-middle">{{ calcularLinea(g.value).gravada | number:'1.0-2' }}</td>
+            <td class="text-end align-middle">{{ calcularLinea(g.value).iva | number:'1.0-2' }}</td>
+            <td class="text-end align-middle">{{ calcularLinea(g.value).total | number:'1.0-2' }}</td>
+            <td class="align-middle">
+              <button cButton size="sm" color="danger" class="text-white" type="button" (click)="quitarLinea(i)">✕</button>
+            </td>
+          </tr>
+          <tr *ngIf="detalleArray.length === 0">
+            <td colspan="10" class="text-center text-muted">Busque un producto arriba para agregarlo</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Totales (previsualizacion) -->
+      <div class="row justify-content-end g-2 mt-3">
+        <div class="col-md-3 text-end">Exenta: {{ totales.exenta | number:'1.0-2' }}</div>
+        <div class="col-md-3 text-end">Gravada 5%: {{ totales.grav5 | number:'1.0-2' }}</div>
+        <div class="col-md-3 text-end">Gravada 10%: {{ totales.grav10 | number:'1.0-2' }}</div>
+      </div>
+      <div class="row justify-content-end g-2">
+        <div class="col-md-3 text-end">IVA 5%: {{ totales.iva5 | number:'1.0-2' }}</div>
+        <div class="col-md-3 text-end">IVA 10%: {{ totales.iva10 | number:'1.0-2' }}</div>
+        <div class="col-md-3 text-end"><strong>Total: {{ totales.total | number:'1.0-2' }} Gs.</strong></div>
+      </div>
+    </c-card-body>
+
+    <c-card-footer class="text-end">
+      <button cButton color="secondary" type="button" [disabled]="guardando" (click)="cancelar()">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando" class="ms-2">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : 'Registrar compra' }}
+      </button>
+    </c-card-footer>
+  </form>
+</c-card>

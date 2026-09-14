@@ -108,21 +108,26 @@ class TimbradoController extends Controller
 
     // POST /api/admin/timbrados
     public function store(TimbradoRequest $request): JsonResponse
-    {
-        $datos = $request->validated();
-        $datos['tim_estado'] = $datos['tim_estado'] ?? 1;
-        // tim_nroact se inicializa igual al inicio de rango: el primer
-        // documento emitido con este timbrado usara tim_nroini.
-        $datos['tim_nroact'] = $datos['tim_nroini'];
+{
+    $datos = $request->validated();
 
-        $timbrado = Timbrado::create($datos);
-        $timbrado->load(['tipoComprobante', 'sucursal']);
+    // tim_empid se deriva de la sucursal seleccionada, no del usuario logueado:
+    // Usuario no tiene relación directa con empresa (ver Usuario::sucursales()).
+    $datos['tim_empid'] = DB::table('sucursal')
+        ->where('suc_id', $datos['tim_sucid'])
+        ->value('suc_empid');
 
-        return response()->json([
-            'message' => 'Timbrado registrado correctamente',
-            'data'    => new TimbradoResource($timbrado),
-        ], 201);
-    }
+    $datos['tim_estado'] = $datos['tim_estado'] ?? 1;
+    $datos['tim_nroact'] = $datos['tim_nroini'];
+
+    $timbrado = Timbrado::create($datos);
+    $timbrado->load(['tipoComprobante', 'sucursal']);
+
+    return response()->json([
+        'message' => 'Timbrado registrado correctamente',
+        'data'    => new TimbradoResource($timbrado),
+    ], 201);
+}
 
     // PUT /api/admin/timbrados/{id}
     public function update(TimbradoRequest $request, int $id): JsonResponse

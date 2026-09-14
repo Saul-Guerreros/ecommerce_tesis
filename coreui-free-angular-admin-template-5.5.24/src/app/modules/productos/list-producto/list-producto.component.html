@@ -52,11 +52,14 @@
             <c-badge [color]="p.prd_estado === 1 ? 'success' : 'secondary'">{{ p.prd_estado === 1 ? 'Activo' : 'Inactivo' }}</c-badge>
           </td>
           <td class="text-end">
-            <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirEditar(p)">Editar</button>
-            <button cButton size="sm" [color]="p.prd_estado === 1 ? 'warning' : 'success'" class="me-2 text-white" (click)="cambiarEstado(p)">
-              {{ p.prd_estado === 1 ? 'Desactivar' : 'Activar' }}
-            </button>
-            <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(p)">Eliminar</button>
+            <div class="d-flex justify-content-end gap-1 flex-wrap">
+              <button cButton size="sm" color="secondary" variant="outline" (click)="abrirVer(p)">Ver</button>
+              <button cButton size="sm" color="info" class="text-white" (click)="abrirEditar(p)">Editar</button>
+              <button cButton size="sm" [color]="p.prd_estado === 1 ? 'warning' : 'success'" class="text-white" (click)="cambiarEstado(p)">
+                {{ p.prd_estado === 1 ? 'Desactivar' : 'Activar' }}
+              </button>
+              <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(p)">Eliminar</button>
+            </div>
           </td>
         </tr>
         <tr *ngIf="productos.length === 0"><td colspan="9" class="text-center">No hay productos registrados</td></tr>
@@ -65,7 +68,7 @@
   </c-card-body>
 </c-card>
 
-<app-form-producto [visible]="formModalVisible" [producto]="productoSeleccionado"
+<app-form-producto [visible]="formModalVisible" [producto]="productoSeleccionado" [soloLectura]="soloLectura"
   (visibleChange)="formModalVisible = $event" (guardado)="cargar()"></app-form-producto>
 
 <app-delete-producto [visible]="deleteModalVisible" [producto]="productoSeleccionado"

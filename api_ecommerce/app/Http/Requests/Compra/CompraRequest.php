@@ -58,41 +58,59 @@ class CompraRequest extends FormRequest
      * controlador, igual que en los demas Request del proyecto.
      */
     public function withValidator(Validator $validator): void
-    {
-        $validator->after(function (Validator $validator) {
-            // Proveedor activo
-            if ($this->filled('com_proid')) {
-                $activo = DB::table('proveedor')
-                    ->where('pro_id', $this->com_proid)
-                    ->value('pro_estado');
+{
+    $validator->after(function (Validator $validator) {
+        // Proveedor activo
+        if ($this->filled('com_proid')) {
+            $activo = DB::table('proveedor')
+                ->where('pro_id', $this->com_proid)
+                ->value('pro_estado');
 
-                if ($activo !== null && (int) $activo !== 1) {
-                    $validator->errors()->add('com_proid', 'El proveedor seleccionado está inactivo.');
-                }
+            if ($activo !== null && (int) $activo !== 1) {
+                $validator->errors()->add('com_proid', 'El proveedor seleccionado está inactivo.');
+            }
+        }
+
+        // NUEVO: numero de factura duplicado para el mismo proveedor +
+        // timbrado. Refleja en Laravel la misma regla que ya existe como
+        // UNIQUE en PostgreSQL (uq_com_doc_por_proveedor), para no dejar
+        // que el error llegue crudo como un 500 de SQL.
+        if ($this->filled('com_proid') && $this->filled('com_nrodoc')) {
+            $yaExiste = DB::table('compra_cab')
+                ->where('com_proid', $this->com_proid)
+                ->where('com_timbra', $this->com_timbra)
+                ->where('com_nrodoc', $this->com_nrodoc)
+                ->exists();
+
+            if ($yaExiste) {
+                $validator->errors()->add(
+                    'com_nrodoc',
+                    'Ya existe una compra registrada con ese número de factura para este proveedor y timbrado.'
+                );
+            }
+        }
+
+        // Timbrado vigente: fecha de emision no puede ser posterior al vencimiento
+        if ($this->filled('com_timbvn') && $this->filled('com_fchaem')) {
+            if ($this->com_fchaem > $this->com_timbvn) {
+                $validator->errors()->add('com_fchaem', 'La fecha de emisión es posterior al vencimiento del timbrado.');
+            }
+        }
+
+        // Productos activos (uno por uno, para señalar cual esta mal)
+        foreach ((array) $this->input('detalle', []) as $i => $linea) {
+            if (empty($linea['prd_id'])) {
+                continue;
             }
 
-            // Timbrado vigente: fecha de emision no puede ser posterior al vencimiento
-            if ($this->filled('com_timbvn') && $this->filled('com_fchaem')) {
-                if ($this->com_fchaem > $this->com_timbvn) {
-                    $validator->errors()->add('com_fchaem', 'La fecha de emisión es posterior al vencimiento del timbrado.');
-                }
+            $activo = DB::table('producto')->where('prd_id', $linea['prd_id'])->value('prd_estado');
+
+            if ($activo !== null && (int) $activo !== 1) {
+                $validator->errors()->add("detalle.$i.prd_id", 'Uno de los productos seleccionados está inactivo.');
             }
-
-            // Productos activos (uno por uno, para señalar cual esta mal)
-            foreach ((array) $this->input('detalle', []) as $i => $linea) {
-                if (empty($linea['prd_id'])) {
-                    continue;
-                }
-
-                $activo = DB::table('producto')->where('prd_id', $linea['prd_id'])->value('prd_estado');
-
-                if ($activo !== null && (int) $activo !== 1) {
-                    $validator->errors()->add("detalle.$i.prd_id", 'Uno de los productos seleccionados está inactivo.');
-                }
-            }
-        });
-    }
-
+        }
+    });
+}
     public function messages(): array
     {
         return [

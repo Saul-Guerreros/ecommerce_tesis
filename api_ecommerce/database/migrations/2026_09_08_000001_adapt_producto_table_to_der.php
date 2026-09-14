@@ -33,9 +33,12 @@ return new class extends Migration
             $table->renameColumn('prd_precio', 'prd_prevta');
         });
 
+        // prd_prevta queda NULLABLE, SIN default: el producto nace sin
+        // precio de venta. Recien se completa cuando existe una compra
+        // confirmada (CompraService) o una edicion desde Gestion de
+        // Precios (PrecioService). Nunca se fuerza un valor "inventado"
+        // como 0 al crear el producto.
         DB::statement("ALTER TABLE producto ALTER COLUMN prd_prevta TYPE DECIMAL(14,2)");
-        DB::statement("ALTER TABLE producto ALTER COLUMN prd_prevta SET NOT NULL");
-        DB::statement("ALTER TABLE producto ALTER COLUMN prd_prevta SET DEFAULT 0");
 
         // 5) Nuevas columnas del DER
         Schema::table('producto', function (Blueprint $table) {

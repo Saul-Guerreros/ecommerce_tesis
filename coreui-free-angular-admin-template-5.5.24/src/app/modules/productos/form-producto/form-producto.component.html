@@ -1,6 +1,6 @@
 <c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg" backdrop="static">
   <c-modal-header>
-    <h5 cModalTitle>{{ esEdicion ? 'Editar producto' : 'Nuevo producto' }}</h5>
+    <h5 cModalTitle>{{ soloLectura ? 'Ver producto' : (esEdicion ? 'Editar producto' : 'Nuevo producto') }}</h5>
   </c-modal-header>
 
   <form [formGroup]="form" (ngSubmit)="guardar()">
@@ -56,29 +56,28 @@
           </div>
         </div>
 
+        <!--
+          Margen y precio de venta: SOLO LECTURA en este formulario. No son
+          FormControl, no viajan en guardar() aunque se fuerce por consola.
+          Al crear el producto quedan vacios (todavia no hay compra); se
+          completan solos al confirmar la primera compra, y de ahi en mas
+          se editan unicamente desde Gestion de Precios.
+        -->
         <div class="col-md-4">
-          <label cLabel for="prd_prevta">Precio de venta (Gs.) <span class="text-danger">*</span></label>
-          <input cFormControl type="number" id="prd_prevta" formControlName="prd_prevta" min="0" step="0.01" />
-          <div class="text-danger small" *ngIf="campoInvalido('prd_prevta')">
-            {{ errorBackend('prd_prevta') || 'Obligatorio, no puede ser negativo.' }}
-          </div>
+          <label cLabel>Margen vigente (%)</label>
+          <input cFormControl [value]="producto?.prd_margen ?? '— (sin definir)'" disabled />
         </div>
 
         <div class="col-md-4">
-          <label cLabel for="prd_margen">Margen de referencia (%)</label>
-          <input cFormControl type="number" id="prd_margen" formControlName="prd_margen" min="0" step="0.01" placeholder="Ej: 30" />
-          <div class="text-danger small" *ngIf="campoInvalido('prd_margen')">
-            {{ errorBackend('prd_margen') || 'No puede ser negativo.' }}
-          </div>
-          <div class="text-muted small">
-            Usado para sugerir precio sobre el costo promedio ponderado. No modifica el precio de venta por sí solo.
-          </div>
+          <label cLabel>Precio de venta vigente (Gs.)</label>
+          <input cFormControl [value]="(producto?.prd_prevta | number:'1.0-2') ?? '— (sin definir)'" disabled />
         </div>
 
-        <div class="col-md-4" *ngIf="producto?.precio_sugerido">
-          <label cLabel>Precio sugerido (Gs.)</label>
-          <input cFormControl [value]="producto?.precio_sugerido" disabled />
-          <div class="text-muted small">Costo promedio × (1 + margen). Aplicarlo es manual.</div>
+        <div class="col-md-4" *ngIf="esEdicion">
+          <div class="text-muted small mt-4 pt-2">
+            El costo, margen y precio se definen en <strong>Gestión de Precios</strong>
+            tras registrar la primera compra del producto.
+          </div>
         </div>
 
         <div class="col-md-4">
@@ -108,6 +107,7 @@
           <div class="form-check">
             <input cFormCheckInput type="checkbox" id="prd_afestk"
                    [checked]="form.value.prd_afestk === 1"
+                   [disabled]="soloLectura"
                    (change)="form.patchValue({ prd_afestk: $any($event.target).checked ? 1 : 0 })" />
             <label cFormCheckLabel for="prd_afestk">Afecta stock al venderse</label>
           </div>
@@ -125,8 +125,10 @@
     </c-modal-body>
 
     <c-modal-footer>
-      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
-      <button cButton color="primary" type="submit" [disabled]="guardando">
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">
+        {{ soloLectura ? 'Cerrar' : 'Cancelar' }}
+      </button>
+      <button cButton color="primary" type="submit" [disabled]="guardando" *ngIf="!soloLectura">
         <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
         {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
       </button>

@@ -113,18 +113,29 @@ class CompraService
      * hay base para calcular nada, y forzar un valor inventado violaria
      * la regla de "no inventar datos".
      */
-    private function recalcularPrecioVenta(int $productoId, float $costoPromedio): void
-    {
-        $producto = Producto::find($productoId);
+    
 
-        if (!$producto || $producto->prd_margen === null) {
-            return;
-        }
+    /**
+ * precio_sin_iva = costo_promedio * (1 + margen/100)
+ * prd_prevta     = precio_sin_iva * (1 + tasa_iva/100)   <-- precio FINAL, con IVA
+ * Si el producto no tiene margen definido, no se toca el precio: no hay
+ * base para calcular nada.
+ */
+private function recalcularPrecioVenta(int $productoId, float $costoPromedio): void
+{
+    $producto = Producto::with('tipoIva')->find($productoId);
 
-        $margen = (float) $producto->prd_margen;
-        $producto->prd_prevta = round($costoPromedio * (1 + $margen / 100), 2);
-        $producto->save();
+    if (!$producto || $producto->prd_margen === null) {
+        return;
     }
+
+    $margen       = (float) $producto->prd_margen;
+    $tasaIva      = (float) ($producto->tipoIva->tiv_tasa ?? 0);
+    $precioSinIva = $costoPromedio * (1 + $margen / 100);
+
+    $producto->prd_prevta = round($precioSinIva * (1 + $tasaIva / 100), 2);
+    $producto->save();
+}
 
     /**
      * Anula una compra confirmada. Solo se permite si NINGUNA linea de la

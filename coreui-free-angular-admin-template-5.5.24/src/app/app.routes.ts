@@ -146,6 +146,12 @@ export const routes: Routes = [
       },
 
       {
+        path: 'precios',
+        loadChildren: () => import('./modules/precios/precios.module').then(m => m.PreciosModule),
+        data: { title: 'Gestión de Precios' },
+      },
+
+      {
         path: 'inventario/ajustes',
         loadChildren: () => import('./modules/ajustes-inventario/ajustes-inventario.module').then(m => m.AjustesInventarioModule),
         data: { title: 'Ajuste de Inventario' },
@@ -168,6 +174,11 @@ export const routes: Routes = [
         data: { title: 'Roles' },
       },
 
+      {
+        path: 'inventario/tipos-ajuste',
+        loadChildren: () => import('./modules/tipos-ajuste/tipos-ajuste.module').then(m => m.TiposAjusteModule),
+        data: { title: 'Tipos de ajuste' },
+      },
 	  {
 
 

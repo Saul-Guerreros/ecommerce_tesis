@@ -52,6 +52,11 @@ use App\Http\Controllers\Admin\Compras\StockController;
 
 use App\Http\Controllers\Admin\Auth\RolController;
 
+use App\Http\Controllers\Admin\product\PrecioController;
+
+use App\Http\Controllers\Admin\Compras\TipoAjusteController;
+
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -87,6 +92,7 @@ Route::group([
 });
 
 Route::group([
+     'middleware' => ['auth:api'],   // <- solo agregar esta línea
     'prefix' => 'admin'
 ], function ($router) {
     Route::get('sliders-productos', [SliderController::class, 'productos']);
@@ -234,9 +240,14 @@ Route::group([
     Route::patch('roles/{id}/estado', [RolController::class, 'toggleEstado']);
     Route::apiResource('roles', RolController::class);
 
+    //Precios
+    Route::get('precios', [PrecioController::class, 'index']);
+    Route::patch('precios/{id}', [PrecioController::class, 'update']);
 
+    Route::get('tipos-ajuste/select', [TipoAjusteController::class, 'select']);
+    Route::patch('tipos-ajuste/{id}/estado', [TipoAjusteController::class, 'toggleEstado']);
+    Route::apiResource('tipos-ajuste', TipoAjusteController::class);
 
-    
 });
 
 Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {

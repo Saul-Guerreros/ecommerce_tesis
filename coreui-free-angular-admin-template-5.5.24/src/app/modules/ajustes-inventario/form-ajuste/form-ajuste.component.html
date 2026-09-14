@@ -123,8 +123,8 @@
               <td class="text-end">{{ fila.value.cantfis | number:'1.0-4' }}</td>
               <td class="text-center">
                 <c-badge *ngIf="fila.value.cantsis !== null"
-                         [color]="(fila.value.cantfis - fila.value.cantsis) > 0 ? 'success' : (fila.value.cantfis - fila.value.cantsis) < 0 ? 'danger' : 'secondary'">
-                  {{ (fila.value.cantfis - fila.value.cantsis) > 0 ? '+' : '' }}{{ fila.value.cantfis - fila.value.cantsis }}
+                        [color]="fila.value.diferencia > 0 ? 'success' : fila.value.diferencia < 0 ? 'danger' : 'secondary'">
+                  {{ fila.value.diferencia > 0 ? '+' : '' }}{{ fila.value.diferencia }}
                 </c-badge>
                 <span class="text-muted" *ngIf="fila.value.cantsis === null">se calcula al confirmar</span>
               </td>

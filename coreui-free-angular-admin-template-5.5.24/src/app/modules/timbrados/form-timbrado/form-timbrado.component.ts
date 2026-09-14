@@ -31,16 +31,17 @@ export class FormTimbradoComponent implements OnInit, OnChanges {
     private toastr: ToastrService
   ) {
     this.form = this.fb.group({
-      tim_tcoid:  [null, [Validators.required]],
-      tim_sucid:  [null, [Validators.required]],
-      tim_numero: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(8)]],
-      tim_puntex: ['', [Validators.required, Validators.pattern(/^[0-9]{3}$/)]],
-      tim_fechin: ['', [Validators.required]],
-      tim_fechfn: ['', [Validators.required]],
-      tim_nroini: [null, [Validators.required, Validators.min(1)]],
-      tim_nrofin: [null, [Validators.required]],
-      tim_observ: ['', [Validators.maxLength(100)]],
-      tim_estado: [1],
+      tim_tcoid:       [null, [Validators.required]],
+      tim_sucid:       [null, [Validators.required]],
+      tim_numero:      ['', [Validators.required, Validators.minLength(8), Validators.maxLength(8)]],
+      tim_establec:    ['', [Validators.required, Validators.pattern(/^[0-9]{3}$/)]],
+      tim_puntexp:     ['', [Validators.required, Validators.pattern(/^[0-9]{3}$/)]],
+      tim_fechin:      ['', [Validators.required]],
+      tim_fechfn:      ['', [Validators.required]],
+      tim_nroini:      [null, [Validators.required, Validators.min(1)]],
+      tim_nrofin:      [null, [Validators.required]],
+      tim_observacion: ['', [Validators.maxLength(150)]],
+      tim_estado:      [1],
     });
   }
 
@@ -61,16 +62,17 @@ export class FormTimbradoComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible) {
       this.form.reset({
-        tim_tcoid:  this.timbrado?.tim_tcoid ?? null,
-        tim_sucid:  this.timbrado?.tim_sucid ?? null,
-        tim_numero: this.timbrado?.tim_numero ?? '',
-        tim_puntex: this.timbrado?.tim_puntex ?? '',
-        tim_fechin: this.timbrado?.tim_fechin ?? '',
-        tim_fechfn: this.timbrado?.tim_fechfn ?? '',
-        tim_nroini: this.timbrado?.tim_nroini ?? null,
-        tim_nrofin: this.timbrado?.tim_nrofin ?? null,
-        tim_observ: this.timbrado?.tim_observ ?? '',
-        tim_estado: this.timbrado?.tim_estado ?? 1,
+        tim_tcoid:       this.timbrado?.tim_tcoid ?? null,
+        tim_sucid:       this.timbrado?.tim_sucid ?? null,
+        tim_numero:      this.timbrado?.tim_numero ?? '',
+        tim_establec:    this.timbrado?.tim_establec ?? '',
+        tim_puntexp:     this.timbrado?.tim_puntexp ?? '',
+        tim_fechin:      this.timbrado?.tim_fechin ?? '',
+        tim_fechfn:      this.timbrado?.tim_fechfn ?? '',
+        tim_nroini:      this.timbrado?.tim_nroini ?? null,
+        tim_nrofin:      this.timbrado?.tim_nrofin ?? null,
+        tim_observacion: this.timbrado?.tim_observacion ?? '',
+        tim_estado:      this.timbrado?.tim_estado ?? 1,
       });
       this.guardando = false;
     }
@@ -97,7 +99,7 @@ export class FormTimbradoComponent implements OnInit, OnChanges {
     // editable, lo gestiona el backend.
     const datos: Partial<Timbrado> = {
       ...this.form.value,
-      tim_observ: this.form.value.tim_observ || null,
+      tim_observacion: this.form.value.tim_observacion || null,
     };
 
     const peticion = this.esEdicion

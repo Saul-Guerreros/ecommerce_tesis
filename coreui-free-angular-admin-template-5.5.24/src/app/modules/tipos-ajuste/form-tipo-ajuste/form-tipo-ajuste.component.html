@@ -1,0 +1,56 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header><h5 cModalTitle>{{ esEdicion ? 'Editar tipo de ajuste' : 'Nuevo tipo de ajuste' }}</h5></c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label cLabel for="tpa_codig">Código <span class="text-danger">*</span></label>
+          <input cFormControl id="tpa_codig" formControlName="tpa_codig" placeholder="Ej: MER" maxlength="10" />
+          <div class="text-danger small" *ngIf="campoInvalido('tpa_codig')">
+            {{ errorBackend('tpa_codig') || 'El código es obligatorio (máx. 10 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <label cLabel for="tpa_descri">Descripción <span class="text-danger">*</span></label>
+          <input cFormControl id="tpa_descri" formControlName="tpa_descri" placeholder="Ej: Merma" maxlength="60" />
+          <div class="text-danger small" *ngIf="campoInvalido('tpa_descri')">
+            {{ errorBackend('tpa_descri') || 'La descripción es obligatoria (máx. 60 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="tpa_natura">Naturaleza <span class="text-danger">*</span></label>
+          <select cSelect id="tpa_natura" formControlName="tpa_natura">
+            <option value="P">Positivo (sobrante)</option>
+            <option value="N">Negativo (faltante)</option>
+          </select>
+        </div>
+
+        <div class="col-md-6 d-flex align-items-end">
+          <div class="form-check">
+            <input cFormCheckInput type="checkbox" id="tpa_reqcom" formControlName="tpa_reqcom" [value]="1" />
+            <label cFormCheckLabel for="tpa_reqcom">Requiere comprobante</label>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="tpa_estado">Estado</label>
+          <select cSelect id="tpa_estado" formControlName="tpa_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>
