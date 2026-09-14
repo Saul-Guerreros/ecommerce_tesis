@@ -1,5 +1,5 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { URL_BACKEND } from '../../config/config';
@@ -11,7 +11,7 @@ import {
 import { ProductoVitrina } from '../../core/models/vitrina.model';
 import { ProductoDetalleService } from '../../core/services/producto-detalle.service';
 
-type TabDetalle = 'descripcion' | 'especificaciones';
+type TabDetalle = 'descripcion' | 'especificaciones' | 'resenas';
 
 @Component({
   selector: 'app-producto-detalle',
@@ -30,6 +30,7 @@ export class ProductoDetalleComponent implements OnInit {
   especificaciones: EspecificacionDetalle[] = [];
   coloresDisponibles: ColorDisponible[] = [];
   relacionados: ProductoVitrina[] = [];
+  sucursalesPickup: string[] = [];
 
   slugActual: string | null = null;
   imagenActivaIndex = 0;
@@ -39,8 +40,11 @@ export class ProductoDetalleComponent implements OnInit {
   favoritoActivo = false;
   compararActivo = false;
 
-  // Mismo placeholder que usa el home cuando un producto todavía no
-  // tiene imagen cargada, para que el detalle se vea consistente.
+  // Visor de zoom propio (no depende de uk-lightbox, que en este proyecto
+  // no reacciona de forma confiable sobre nodos que Angular inserta
+  // dinámicamente después de que UIkit ya arrancó).
+  zoomAbierto = false;
+
   readonly imagenFallback =
     'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22600%22%20height%3D%22450%22%20viewBox%3D%220%200%20600%20450%22%3E%3Crect%20width%3D%22600%22%20height%3D%22450%22%20fill%3D%22%23e9e9e9%22/%3E%3Ctext%20x%3D%22300%22%20y%3D%22235%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%2222%22%20fill%3D%22%23999%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ESin%20imagen%3C/text%3E%3C/svg%3E';
 
@@ -51,9 +55,6 @@ export class ProductoDetalleComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // paramMap (no snapshot) para que al navegar de un color/relacionado a
-    // otro producto sin salir de esta misma ruta, Angular reutilice el
-    // componente pero vuelva a cargar todo con el slug nuevo.
     this.route.paramMap.subscribe((params) => {
       const slug = params.get('slug');
       if (slug) {
@@ -63,13 +64,11 @@ export class ProductoDetalleComponent implements OnInit {
   }
 
   private cargarProducto(slug: string): void {
-    // Se resetea todo (incluido producto = null) para que el *ngIf del
-    // template desmonte y vuelva a montar la galería/relacionados desde
-    // cero con cada producto nuevo, en vez de mutar el mismo DOM.
     this.cargando = true;
     this.noEncontrado = false;
     this.producto = null;
     this.slugActual = slug;
+    this.zoomAbierto = false;
 
     this.productoDetalleService.obtener(slug).subscribe({
       next: (res) => {
@@ -79,6 +78,7 @@ export class ProductoDetalleComponent implements OnInit {
         this.especificaciones = res.data.especificaciones ?? [];
         this.coloresDisponibles = res.data.colores_disponibles ?? [];
         this.relacionados = res.data.relacionados ?? [];
+        this.sucursalesPickup = res.data.sucursales_pickup ?? [];
 
         this.imagenActivaIndex = 0;
         this.cantidad = 1;
@@ -91,7 +91,8 @@ export class ProductoDetalleComponent implements OnInit {
           window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
         }
       },
-      error: () => {
+         error: (err) => {
+        console.error('Error cargando producto:', err);
         this.cargando = false;
         this.noEncontrado = true;
       },
@@ -99,10 +100,9 @@ export class ProductoDetalleComponent implements OnInit {
   }
 
   // ---------------------------------------------------------------
-  // Imágenes
+  // Imágenes / zoom
   // ---------------------------------------------------------------
 
-  /** Resuelve URL absoluta igual que el resto del sitio (ver home.component). */
   private resolverImagen(url: string | null | undefined): string {
     if (!url) {
       return this.imagenFallback;
@@ -136,11 +136,40 @@ export class ProductoDetalleComponent implements OnInit {
     this.imagenActivaIndex = indice;
   }
 
+  abrirZoom(): void {
+    this.zoomAbierto = true;
+  }
+
+  cerrarZoom(): void {
+    this.zoomAbierto = false;
+  }
+
+  zoomAnterior(): void {
+    if (this.galeria.length < 2) {
+      return;
+    }
+    this.imagenActivaIndex =
+      (this.imagenActivaIndex - 1 + this.galeria.length) % this.galeria.length;
+  }
+
+  zoomSiguiente(): void {
+    if (this.galeria.length < 2) {
+      return;
+    }
+    this.imagenActivaIndex = (this.imagenActivaIndex + 1) % this.galeria.length;
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.zoomAbierto) {
+      this.cerrarZoom();
+    }
+  }
+
   // ---------------------------------------------------------------
   // Stock y cantidad
   // ---------------------------------------------------------------
 
-  /** null = no controla stock (siempre disponible según el inventario). */
   get stockDisponible(): number | null {
     if (!this.producto?.controla_stock) {
       return null;
@@ -170,6 +199,31 @@ export class ProductoDetalleComponent implements OnInit {
     return (this.producto?.precio_final ?? 0) * this.cantidad;
   }
 
+  get disponibilidadDetalle(): string {
+    if (this.stockDisponible !== null) {
+      return `${this.stockDisponible} unit${this.stockDisponible === 1 ? '' : 's'} available`;
+    }
+    return 'Ready to order';
+  }
+
+  // ---------------------------------------------------------------
+  // Descripción / especificaciones (resumen)
+  // ---------------------------------------------------------------
+
+  get parrafosDescripcion(): string[] {
+    if (!this.descripcion) {
+      return [];
+    }
+    return this.descripcion
+      .split(/\r?\n+/)
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+  }
+
+  get especificacionesResumen(): EspecificacionDetalle[] {
+    return this.especificaciones.slice(0, 4);
+  }
+
   // ---------------------------------------------------------------
   // Acciones
   // ---------------------------------------------------------------
@@ -178,13 +232,7 @@ export class ProductoDetalleComponent implements OnInit {
     if (!this.producto || this.sinStock) {
       return;
     }
-    // Todavía no hay un servicio de carrito real conectado al backend:
-    // por ahora esto solo da feedback visual, igual que el resto del
-    // sitio (los botones "add to cart" del home tampoco persisten nada).
-    this.toastr.success(
-      `${this.cantidad} × ${this.producto.titulo}`,
-      'Added to cart'
-    );
+    this.toastr.success(`${this.cantidad} × ${this.producto.titulo}`, 'Added to cart');
   }
 
   toggleFavorito(): void {
@@ -205,16 +253,14 @@ export class ProductoDetalleComponent implements OnInit {
     this.tabActiva = tab;
   }
 
+  verEspecificacionesCompletas(): void {
+    this.seleccionarTab('especificaciones');
+  }
+
   esColorActivo(color: ColorDisponible): boolean {
     return !!color.slug && color.slug === this.slugActual;
   }
 
-  /**
-   * colores_disponibles solo trae los OTROS colores (el backend excluye a
-   * propósito el producto actual). Para pintar la fila completa de swatches
-   * con el activo incluido, se antepone el propio producto como una opción
-   * más, marcada como tal.
-   */
   get coloresParaMostrar(): ColorDisponible[] {
     if (!this.producto || this.coloresDisponibles.length === 0) {
       return [];

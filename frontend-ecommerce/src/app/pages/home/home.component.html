@@ -163,7 +163,7 @@
             <article class="tm-product-card uk-height-1-1">
               <div class="tm-product-card-media">
                 <div class="tm-ratio tm-ratio-4-3">
-                  <a class="tm-media-box" href="product.html">
+                   <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
                     <div class="tm-product-card-labels" *ngIf="producto.descuento_pct">
                       <span class="uk-label uk-label-danger">-{{ producto.descuento_pct }}%</span>
                     </div>
@@ -177,7 +177,7 @@
                 <div class="tm-product-card-info">
                   <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
                   <h3 class="tm-product-card-title">
-                    <a class="uk-link-heading" href="product.html">{{ producto.titulo }}</a>
+                    <a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a>
                   </h3>
                 </div>
                 <div class="tm-product-card-shop">
@@ -227,7 +227,7 @@
 
       <!-- Banner secundario izquierdo (estilo Black Friday) -->
       <div class="promo-col promo-col-lg" *ngIf="slidersSecundariosIzquierda.length > 0">
-        <div id="slider-secundario-izq" uk-slider="finite: true; autoplay: true; autoplay-interval: 5000">
+        <div id="slider-secundario-izq" uk-slider="autoplay: true; autoplay-interval: 5000">
           <div class="uk-slider-container uk-position-relative">
             <ul class="uk-slider-items uk-child-width-1-1">
               <li *ngFor="let slider of slidersSecundariosIzquierda; trackBy: trackBySlider">
@@ -266,7 +266,7 @@
 
       <!-- Banner secundario derecho -->
       <div class="promo-col promo-col-sm" *ngIf="slidersSecundariosDerecha.length > 0">
-        <div id="slider-secundario-der" uk-slider="finite: true; autoplay: true; autoplay-interval: 5000">
+        <div id="slider-secundario-der" uk-slider="autoplay: true; autoplay-interval: 5000">
           <div class="uk-slider-container uk-position-relative">
             <ul class="uk-slider-items uk-child-width-1-1">
               <li *ngFor="let slider of slidersSecundariosDerecha; trackBy: trackBySlider">
@@ -326,7 +326,7 @@
                 <article class="tm-product-card uk-height-1-1">
                   <div class="tm-product-card-media">
                     <div class="tm-ratio tm-ratio-4-3">
-                      <a class="tm-media-box" href="product.html">
+                      <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
                         <div class="tm-product-card-labels" *ngIf="producto.descuento_pct">
                           <span class="uk-label uk-label-danger">-{{ producto.descuento_pct }}%</span>
                         </div>
@@ -339,7 +339,7 @@
                   <div class="tm-product-card-body">
                     <div class="tm-product-card-info">
                       <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
-                      <h3 class="tm-product-card-title"><a class="uk-link-heading" href="product.html">{{ producto.titulo }}</a></h3>
+                    <h3 class="tm-product-card-title"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h3>
                       <div class="uk-margin-xsmall-top">
                         <del class="uk-text-meta" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</del>
                         <span class="uk-text-bolder">{{ producto.precio_final | currency }}</span>
@@ -382,7 +382,7 @@
         <!-- Product spotlight slider -->
         <section class="uk-section uk-section-small" *ngIf="slidersTerciarios.length > 0">
           <div class="uk-container">
-            <div uk-slider="finite: true; autoplay: true; autoplay-interval: 7000">
+            <div id="slider-terciario" uk-slider="autoplay: true; autoplay-interval: 7000">
               <div class="uk-position-relative uk-visible-toggle">
                 <ul class="uk-slider-items uk-child-width-1-1">
                   <li *ngFor="let slider of slidersTerciarios; trackBy: trackBySlider">
@@ -497,7 +497,7 @@
                 <article class="tm-product-card uk-height-1-1">
                   <div class="tm-product-card-media">
                     <div class="tm-ratio tm-ratio-4-3">
-                      <a class="tm-media-box" href="product.html">
+                    <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
                         <div class="tm-product-card-labels"><span class="uk-label uk-label-success">New</span></div>
                         <figure class="tm-media-box-wrap">
                           <img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" />
@@ -508,7 +508,7 @@
                   <div class="tm-product-card-body">
                     <div class="tm-product-card-info">
                       <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
-                      <h3 class="tm-product-card-title"><a class="uk-link-heading" href="product.html">{{ producto.titulo }}</a></h3>
+                       <h3 class="tm-product-card-title"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h3>
                     </div>
                     <div class="tm-product-card-shop">
                       <div class="tm-product-card-prices"><div class="tm-product-card-price">{{ producto.precio_final | currency }}</div></div>
@@ -541,10 +541,10 @@
                 <h3 class="uk-h4 uk-margin-remove-bottom">Discount Products</h3>
                 <ul class="uk-list uk-margin-remove">
                   <li class="uk-flex" style="gap:14px;padding:10px 0;border-bottom:1px solid #eee;" *ngFor="let producto of enOferta; trackBy: trackByVitrina">
-                    <span class="uk-flex-none" style="width:64px;"><img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" style="width:64px;height:64px;object-fit:contain;" /></span>
+                     <a class="uk-flex-none" style="width:64px;" [routerLink]="['/producto', producto.slug]"><img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" style="width:64px;height:64px;object-fit:contain;" /></a>
                     <div>
                       <div class="uk-text-meta uk-text-xsmall">{{ producto.categoria }}</div>
-                      <h4 class="uk-margin-remove uk-text-small">{{ producto.titulo }}</h4>
+                      <h4 class="uk-margin-remove uk-text-small"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h4>
                       <div>
                         <del class="uk-text-meta uk-text-xsmall" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</del>
                         <span class="uk-text-bolder">{{ producto.precio_final | currency }}</span>
@@ -560,12 +560,14 @@
                 <h3 class="uk-h4 uk-margin-remove-bottom">Featured Products</h3>
                 <ul class="uk-list uk-margin-remove">
                   <li class="uk-flex" style="gap:14px;padding:10px 0;border-bottom:1px solid #eee;" *ngFor="let producto of destacados; trackBy: trackByVitrina">
-                    <span class="uk-flex-none" style="width:64px;"><img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" style="width:64px;height:64px;object-fit:contain;" /></span>
+                   
+				    <a class="uk-flex-none" style="width:64px;" [routerLink]="['/producto', producto.slug]"><img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" style="width:64px;height:64px;object-fit:contain;" /></a>
                     <div>
                       <div class="uk-text-meta uk-text-xsmall">{{ producto.categoria }}</div>
-                      <h4 class="uk-margin-remove uk-text-small">{{ producto.titulo }}</h4>
+                      <h4 class="uk-margin-remove uk-text-small"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h4>
                       <div class="uk-text-bolder">{{ producto.precio_final | currency }}</div>
                     </div>
+					
                   </li>
                   <li *ngIf="destacados.length === 0" class="uk-text-meta uk-text-small">Todavía no hay productos destacados.</li>
                 </ul>
@@ -575,12 +577,14 @@
                 <h3 class="uk-h4 uk-margin-remove-bottom">Selling Products</h3>
                 <ul class="uk-list uk-margin-remove">
                   <li class="uk-flex" style="gap:14px;padding:10px 0;border-bottom:1px solid #eee;" *ngFor="let producto of masVendidos; trackBy: trackByVitrina">
-                    <span class="uk-flex-none" style="width:64px;"><img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" style="width:64px;height:64px;object-fit:contain;" /></span>
+                   
+			     <a class="uk-flex-none" style="width:64px;" [routerLink]="['/producto', producto.slug]"><img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" style="width:64px;height:64px;object-fit:contain;" /></a>
                     <div>
                       <div class="uk-text-meta uk-text-xsmall">{{ producto.categoria }}</div>
-                      <h4 class="uk-margin-remove uk-text-small">{{ producto.titulo }}</h4>
+                      <h4 class="uk-margin-remove uk-text-small"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h4>
                       <div class="uk-text-bolder">{{ producto.precio_final | currency }}</div>
                     </div>
+					
                   </li>
                   <li *ngIf="masVendidos.length === 0" class="uk-text-meta uk-text-small">Todavía no hay productos más vendidos.</li>
                 </ul>

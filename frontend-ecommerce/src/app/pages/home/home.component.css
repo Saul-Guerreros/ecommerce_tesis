@@ -154,11 +154,6 @@
   width: auto;
   height: auto;
   display: inline-block;
-  /* PARCHE para banners JPG (sin canal alfa): darken toma el pixel mas
-     oscuro entre imagen y fondo, asi el blanco del JPG desaparece contra
-     el color del slide. Lo ideal es subir el banner en PNG/WebP con fondo
-     transparente y borrar esta linea. */
-  mix-blend-mode: darken;
 }
 @media (min-width: 960px) {
   .hero-v2-thumb { text-align: right; }
@@ -777,6 +772,15 @@
   margin: 4px 0;
 }
 
+.promo-story-img {
+  max-width: 100%;
+  max-height: 200px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.4));
+  transition: transform 0.4s ease;
+}
+
 .promo-story-badge {
   flex: 0 0 auto;
   display: flex;
@@ -814,14 +818,7 @@
   align-items: center;
   justify-content: center;
 }
-.promo-story-img {
-  max-width: 100%;
-  max-height: 110px;
-  width: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.4));
-  transition: transform 0.4s ease;
-}
+
 .promo-story:hover .promo-story-img { transform: scale(1.05); }
 
 /* ---- CTA ---- */

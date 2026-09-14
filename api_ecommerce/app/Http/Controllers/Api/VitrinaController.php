@@ -40,7 +40,7 @@ class VitrinaController extends Controller
         $limite = min((int) $request->query('limite', 12), 24);
  
     $nuevos = PublicacionWeb::publicadas()
-        ->with(['producto.marca', 'categoria', 'imagenes'])
+        ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
         ->orderByDesc('pub_creado')
         ->limit($limite)
         ->get()
@@ -48,21 +48,21 @@ class VitrinaController extends Controller
  
     $destacados = PublicacionWeb::publicadas()
         ->destacadas()
-        ->with(['producto.marca', 'categoria', 'imagenes'])
+        ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
         ->limit($limite)
         ->get()
         ->map(fn (PublicacionWeb $pub) => $this->formatearProducto($pub));
  
     $trending = PublicacionWeb::publicadas()
         ->trending()
-        ->with(['producto.marca', 'categoria', 'imagenes'])
+        ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
         ->limit($limite)
         ->get()
         ->map(fn (PublicacionWeb $pub) => $this->formatearProducto($pub));
  
     $masVendidos = PublicacionWeb::publicadas()
         ->selling()
-        ->with(['producto.marca', 'categoria', 'imagenes'])
+        ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
         ->limit($limite)
         ->get()
         ->map(fn (PublicacionWeb $pub) => $this->formatearProducto($pub));
@@ -127,7 +127,7 @@ class VitrinaController extends Controller
 
         $formateados = PublicacionWeb::publicadas()
             ->whereIn('pub_prdid', $descuentosPorProducto->keys())
-            ->with(['producto.marca', 'categoria', 'imagenes'])
+            ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
             ->get()
             ->map(function (PublicacionWeb $pub) use ($descuentosPorProducto) {
                 $precioBase = (float) ($pub->pub_prevta ?? $pub->producto->prd_precio);
@@ -244,11 +244,31 @@ class VitrinaController extends Controller
             'descuento_pct' => $descuentoPct,
             'oferta_fin' => $ofertaFin,
             'es_flash' => $esFlash,
-            // Todavía no existe un módulo de reseñas: se manda null a
+                       // Todavía no existe un módulo de reseñas: se manda null a
             // propósito para que el frontend NO invente estrellas ni
             // cantidad de reseñas falsas.
             'rating' => null,
+            // Inventario real: ya no existe prd_stock (ver migración
+            // adapt_producto_table_to_der), así que se suma la tabla stock.
+            // controla_stock = false significa "no se controla stock para
+            // este producto" (prd_afestk = 0), no "sin datos".
+            'stock' => $this->stockDisponible($producto),
+            'controla_stock' => (bool) $producto->prd_afestk,
         ];
+    }
+	
+	
+    /**
+     * Suma de stock físico menos reservas, en todos los depósitos.
+     * prd_stock ya no existe en producto (migración
+     * adapt_producto_table_to_der): el inventario se deriva de la
+     * relación Producto::stock() -> Compras\Stock.
+     */
+    private function stockDisponible(Producto $producto): float
+    {
+        return (float) $producto->stock->sum(
+            fn ($s) => (float) $s->sto_cantid - (float) $s->sto_reserv
+        );
     }
 
     private function imagenPrincipal(PublicacionWeb $pub): ?string
@@ -271,47 +291,78 @@ class VitrinaController extends Controller
         ];
     }
 
-    // GET /api/tienda/producto/{slug} — público
-public function detalle(string $slug): JsonResponse
-{
-    $pub = PublicacionWeb::publicadas()
-        ->where('pub_slug', $slug)
-        ->with(['producto.marca', 'producto.padre.publicacionWeb', 'categoria', 'imagenes'])
-        ->firstOrFail();
+   // GET /api/tienda/producto/{slug} — público
+    public function detalle(string $slug): JsonResponse
+    {
+        $pub = PublicacionWeb::publicadas()
+            ->where('pub_slug', $slug)
+            ->with(['producto.marca', 'producto.stock.deposito.sucursal', 'producto.padre.publicacionWeb', 'categoria', 'imagenes'])
+            ->firstOrFail();
 
-    $producto = $pub->producto;
+        $producto = $pub->producto;
 
-    $especificaciones = EspecificacionProducto::with(['atributo', 'propiedad'])
-        ->where('esp_pubid', $pub->pub_id)
-        ->get()
-        ->map(fn ($e) => [
-            'atributo' => $e->atributo?->atb_nombre,
-            'valor' => $e->esp_valibr
-                ?? $e->esp_valnum
-                ?? $e->propiedad?->prp_nombre,
+        $especificaciones = EspecificacionProducto::with(['atributo', 'propiedad'])
+            ->where('esp_pubid', $pub->pub_id)
+            ->get()
+            ->map(fn ($e) => [
+                'atributo' => $e->atributo?->atb_nombre,
+                'valor' => $e->esp_valibr
+                    ?? $e->esp_valnum
+                    ?? $e->propiedad?->prp_nombre,
+            ]);
+
+        // "Otros colores": el propio modelo base + todos sus hijos, salvo este mismo producto
+        $grupoId = $producto->prd_padre_id ?? $producto->prd_id;
+
+        $coloresDisponibles = Producto::query()
+            ->where(fn ($q) => $q->where('prd_id', $grupoId)->orWhere('prd_padre_id', $grupoId))
+            ->where('prd_id', '!=', $producto->prd_id)
+            ->whereHas('publicacionWeb', fn ($q) => $q->publicadas())
+            ->with('publicacionWeb.imagenes')
+            ->get()
+            ->map(fn (Producto $p) => [
+                'slug' => $p->publicacionWeb->pub_slug,
+                'titulo' => $p->publicacionWeb->pub_titulo,
+                'imagen' => $this->imagenPrincipal($p->publicacionWeb),
+            ]);
+
+        // Galería completa (no solo la principal): la relación imagenes()
+        // ya viene ordenada por img_orden.
+        $galeria = $pub->imagenes
+            ->map(fn ($img) => asset('storage/'.$img->img_url))
+            ->values();
+
+        // Retiro en sucursal: nombres reales de las sucursales que HOY
+        // tienen stock disponible de este producto (cantidad - reservado > 0).
+        $sucursalesPickup = $producto->stock
+            ->filter(fn ($s) => ((float) $s->sto_cantid - (float) $s->sto_reserv) > 0)
+            ->map(fn ($s) => $s->deposito?->sucursal?->suc_nombre)
+            ->filter()
+            ->unique()
+            ->values();
+
+        // Relacionados: otras publicaciones de la misma categoría (si tiene una asignada).
+        $relacionados = $pub->pub_catid
+            ? PublicacionWeb::publicadas()
+                ->where('pub_catid', $pub->pub_catid)
+                ->where('pub_id', '!=', $pub->pub_id)
+                ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
+                ->limit(8)
+                ->get()
+                ->map(fn (PublicacionWeb $p) => $this->formatearProducto($p))
+            : collect();
+
+        return response()->json([
+            'data' => [
+                'producto' => $this->formatearProducto($pub),
+                // pub_descwb: puede venir null si no se completó todavía.
+                'descripcion' => $pub->pub_descwb,
+                'galeria' => $galeria,
+                'especificaciones' => $especificaciones,
+                'colores_disponibles' => $coloresDisponibles,
+                'relacionados' => $relacionados,
+                'sucursales_pickup' => $sucursalesPickup,
+            ],
         ]);
-
-    // "Otros colores": el propio modelo base + todos sus hijos, salvo este mismo producto
-    $grupoId = $producto->prd_padre_id ?? $producto->prd_id;
-
-    $coloresDisponibles = Producto::query()
-        ->where(fn ($q) => $q->where('prd_id', $grupoId)->orWhere('prd_padre_id', $grupoId))
-        ->where('prd_id', '!=', $producto->prd_id)
-        ->whereHas('publicacionWeb', fn ($q) => $q->publicadas())
-        ->with('publicacionWeb.imagenes')
-        ->get()
-        ->map(fn (Producto $p) => [
-            'slug' => $p->publicacionWeb->pub_slug,
-            'titulo' => $p->publicacionWeb->pub_titulo,
-            'imagen' => $this->imagenPrincipal($p->publicacionWeb),
-        ]);
-
-    return response()->json([
-        'data' => [
-            'producto' => $this->formatearProducto($pub),
-            'especificaciones' => $especificaciones,
-            'colores_disponibles' => $coloresDisponibles,
-        ],
-    ]);
-}
+    }
 }

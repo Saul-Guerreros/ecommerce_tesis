@@ -36,5 +36,7 @@ export interface ProductoDetalleResponse {
     especificaciones: EspecificacionDetalle[];
     colores_disponibles: ColorDisponible[];
     relacionados: ProductoVitrina[];
+    // Nombres de sucursales con stock disponible (>0) de este producto ahora mismo.
+    sucursales_pickup: string[];
   };
 }

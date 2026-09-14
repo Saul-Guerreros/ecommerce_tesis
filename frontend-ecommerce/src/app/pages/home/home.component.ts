@@ -1,5 +1,6 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, OnInit, afterNextRender } from '@angular/core';
+import { RouterModule } from '@angular/router';
 import { DomSanitizer, SafeHtml, SafeStyle } from '@angular/platform-browser';
 import { Producto } from '../../core/models/producto.model';
 import { ProductoPublicoService } from '../../core/services/producto-publico.service';
@@ -14,7 +15,7 @@ declare const UIkit: any;
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, CurrencyPipe],
+    imports: [CommonModule, CurrencyPipe, RouterModule],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })
