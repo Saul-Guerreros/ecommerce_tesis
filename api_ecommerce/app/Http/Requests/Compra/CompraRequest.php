@@ -48,6 +48,13 @@ class CompraRequest extends FormRequest
             'detalle.*.tasa'       => ['nullable', 'numeric', 'min:0'],
             'detalle.*.gravada'    => ['nullable', 'numeric', 'min:0'],
             'detalle.*.iva'        => ['nullable', 'numeric', 'min:0'],
+
+            'com_exenta' => ['required', 'numeric', 'min:0'],
+            'com_grav5'  => ['required', 'numeric', 'min:0'],
+            'com_grav10' => ['required', 'numeric', 'min:0'],
+            'com_iva5'   => ['required', 'numeric', 'min:0'],
+            'com_iva10'  => ['required', 'numeric', 'min:0'],
+            'com_total'  => ['required', 'numeric', 'min:0'],
         ];
     }
 

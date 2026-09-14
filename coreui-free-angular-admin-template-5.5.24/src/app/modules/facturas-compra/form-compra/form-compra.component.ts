@@ -182,7 +182,10 @@ constructor(
   seleccionarProducto(p: ProductoBusqueda): void {
     this.productoSeleccionado = p;
     this.busquedaProducto = `${p.prd_codinv} — ${p.prd_descri}`;
-    this.nuevoCosto = p.prd_prevta;
+    // El costo SIEMPRE se digita a mano, desde la factura física del
+    // proveedor. Nunca se autocompleta (ni con precio de venta, ni con
+    // costo promedio, ni con ningún otro dato del sistema).
+    this.nuevoCosto = null;
   }
 
   agregarItem(): void {
