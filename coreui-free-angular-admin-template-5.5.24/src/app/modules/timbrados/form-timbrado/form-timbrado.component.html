@@ -47,11 +47,20 @@
         </div>
 
         <div class="col-md-2">
-          <label cLabel for="tim_puntex">Punto expedición <span class="text-danger">*</span></label>
-          <input cFormControl id="tim_puntex" formControlName="tim_puntex"
+          <label cLabel for="tim_establec">Establecimiento <span class="text-danger">*</span></label>
+          <input cFormControl id="tim_establec" formControlName="tim_establec"
                  placeholder="001" maxlength="3" />
-          <div class="text-danger small" *ngIf="campoInvalido('tim_puntex')">
-            {{ errorBackend('tim_puntex') || '3 dígitos (ej: 001).' }}
+          <div class="text-danger small" *ngIf="campoInvalido('tim_establec')">
+            {{ errorBackend('tim_establec') || '3 dígitos (ej: 001).' }}
+          </div>
+        </div>
+
+        <div class="col-md-2">
+          <label cLabel for="tim_puntexp">Punto expedición <span class="text-danger">*</span></label>
+          <input cFormControl id="tim_puntexp" formControlName="tim_puntexp"
+                 placeholder="001" maxlength="3" />
+          <div class="text-danger small" *ngIf="campoInvalido('tim_puntexp')">
+            {{ errorBackend('tim_puntexp') || '3 dígitos (ej: 001).' }}
           </div>
         </div>
 
@@ -103,8 +112,8 @@
         </div>
 
         <div class="col-12">
-          <label cLabel for="tim_observ">Observaciones</label>
-          <textarea cFormControl id="tim_observ" formControlName="tim_observ" rows="2" maxlength="100"></textarea>
+          <label cLabel for="tim_observacion">Observaciones</label>
+          <textarea cFormControl id="tim_observacion" formControlName="tim_observacion" rows="2" maxlength="150"></textarea>
         </div>
 
       </div>

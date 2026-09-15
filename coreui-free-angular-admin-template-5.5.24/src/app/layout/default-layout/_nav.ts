@@ -86,7 +86,7 @@ export const navItems: INavData[] = [
     {
       name: 'Marcas',
       url: '/brands',
-      iconComponent: { name: 'cil-tag' }
+      //iconComponent: { name: 'cil-tag' }
     },
     
     {
@@ -96,6 +96,13 @@ export const navItems: INavData[] = [
       },
     ]
   },
+  
+  {
+    name: 'Gestión de Precios',
+    url: '/precios',
+    iconComponent: { name: 'cil-dollar' }
+  },
+
   {
     name: 'Ajuste de Inventario',
     iconComponent: { name: 'cil-swap-vertical' },
@@ -193,13 +200,13 @@ export const navItems: INavData[] = [
   {
     name: 'Roles',
     url: '/roles',
-    iconComponent: { name: 'cil-shield-alt' }
+    iconComponent: { name:'cil-shield-alt' }
   },
 
   {
     name: 'Permisos',
     url: '/permisos',
-    iconComponent: { name: 'cil-key' }
+    iconComponent: { name: 'cil-check-circle' }
   },
   {
     name: 'Auditoría',
@@ -234,8 +241,8 @@ export const navItems: INavData[] = [
     ]
   },
   {
-    name: 'Timbrados y Comprobantes',
-    iconComponent: { name: 'cil-receipt' },
+    name: 'Comprobantes',
+    iconComponent: { name: 'cil-spreadsheet' },
     children: [
       { name: 'Timbrados', url: '/timbrados' },
       { name: 'Tipos de comprobante', url: '/tipos-comprobante' },

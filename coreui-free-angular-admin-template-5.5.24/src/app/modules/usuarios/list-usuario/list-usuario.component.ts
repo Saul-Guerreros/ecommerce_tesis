@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import {
-  BadgeModule, ButtonModule, CardModule, DropdownComponent, DropdownItemDirective,
+  BadgeModule, ButtonModule, CardModule, DropdownItemDirective,
   DropdownMenuDirective, DropdownToggleDirective, FormModule, PaginationModule,
   SpinnerModule, TableModule,
 } from '@coreui/angular';
@@ -19,7 +19,7 @@ import { AuthService } from '../../../auth/services/auth.service';
   imports: [
     CommonModule, FormsModule, CardModule, TableModule, ButtonModule, BadgeModule,
     SpinnerModule, FormModule, PaginationModule,
-    DropdownComponent, DropdownToggleDirective, DropdownMenuDirective, DropdownItemDirective,
+   DropdownToggleDirective, DropdownMenuDirective, DropdownItemDirective,
     FormUsuarioComponent,
   ],
   templateUrl: './list-usuario.component.html'

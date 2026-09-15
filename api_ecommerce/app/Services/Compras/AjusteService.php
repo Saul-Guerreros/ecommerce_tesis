@@ -3,7 +3,7 @@
 namespace App\Services\Compras;
 
 use App\Models\Producto;
-use App\Models\Compras\{AjusteInventario, AjusteInventarioDetalle, Stock, MovimientoStock};
+use App\Models\Compras\{AjusteInventario, AjusteInventarioDetalle, Stock, MovimientoStock, TipoAjuste};
 use Illuminate\Support\Facades\{DB, Auth};
 
 class AjusteService
@@ -56,10 +56,10 @@ class AjusteService
         }
 
         return DB::transaction(function () use ($ajuste) {
-            $ajuste->load('detalle');
+            $ajuste->load(['detalle', 'tipoAjuste']);
 
             foreach ($ajuste->detalle as $detalle) {
-                $this->aplicarDiferencia($detalle, $ajuste->aji_depid);
+                $this->aplicarDiferencia($detalle, $ajuste->aji_depid, $ajuste->tipoAjuste);
             }
 
             $ajuste->aji_estado = AjusteInventario::ESTADO_CONFIRMADO;
@@ -71,7 +71,33 @@ class AjusteService
         });
     }
 
-    private function aplicarDiferencia(AjusteInventarioDetalle $detalle, int $depositoId): void
+    /**
+     * Exige que el signo de la diferencia calculada (sobrante->Positivo,
+     * faltante->Negativo) coincida con tpa_natura ('P'/'N') del tipo
+     * elegido en la cabecera. Evita confirmar, por ejemplo, un ajuste
+     * tipado como "Merma" (N) cuando el conteo físico en realidad dio
+     * un sobrante.
+     */
+    private function validarNaturaleza(AjusteInventarioDetalle $detalle, TipoAjuste $tipoAjuste, float $diferencia): void
+    {
+        $naturalezaCalculada = $diferencia > 0 ? 'P' : 'N';
+
+        if ($naturalezaCalculada === $tipoAjuste->tpa_natura) {
+            return;
+        }
+
+        $producto = $detalle->producto?->prd_descri ?? "producto #{$detalle->aid_prdid}";
+
+        throw new \DomainException(
+            "El tipo de ajuste \"{$tipoAjuste->tpa_descri}\" espera un ajuste "
+            . ($tipoAjuste->tpa_natura === 'P' ? 'positivo (sobrante)' : 'negativo (faltante)')
+            . ", pero el conteo físico de \"{$producto}\" resultó en "
+            . ($naturalezaCalculada === 'P' ? 'un sobrante' : 'un faltante')
+            . '. Verifique el conteo o cambie el tipo de ajuste.'
+        );
+    }
+
+    private function aplicarDiferencia(AjusteInventarioDetalle $detalle, int $depositoId, TipoAjuste $tipoAjuste): void
     {
         $stock = Stock::where('sto_prdid', $detalle->aid_prdid)
                       ->where('sto_depid', $depositoId)
@@ -101,6 +127,8 @@ class AjusteService
             $detalle->save();
             return;
         }
+
+        $this->validarNaturaleza($detalle, $tipoAjuste, $diferencia);
 
         if ($diferencia > 0) {
             // Sobrante -> Entrada. Requiere costo para calcular el CPP.

@@ -60,7 +60,6 @@ import {
   cilList,
   cilListNumbered,
   cilLocationPin,
-  cilLockLocked,
   cilMagnifyingGlass,
   cilMap,
   cilMediaPlay,
@@ -94,7 +93,33 @@ import {
   cilUser,
   cilUserFemale,
   cilUserFollow,
-  cilUserUnfollow
+  cilUserUnfollow,
+
+  // Lo agregado para el Software E-commerce
+             // Campaña de Descuento (ya en tu nav, faltaba acá)
+  cilBriefcase,       // Cargos
+  cilBuilding,        // Datos de la Empresa
+  cilCart,            // Gestión de Compras
+  cilCheckCircle,     // Tokens de Verificación
+  cilCompass,         // Barrios
+      // Ir a la Tienda (ya en tu nav, faltaba acá)
+  cilFolder,          // Categorías
+  cilGift,            // Cupones
+  cilHistory,         // Movimiento de Stock / Auditoría
+  cilImage,           // Sliders
+  cilInstitution,     // Sucursales
+               // Permisos
+
+           // Unidades de Medida
+  cilScreenDesktop,   // Sesiones Activas
+  cilShieldAlt,       // Roles
+  cilSwapVertical,    // Ajuste de Inventario
+  cilTag,             // Marcas
+  cilTruck,           // Proveedores
+  cilWarning,         // Intentos de Sesión
+  cilBadge,
+  cilLockLocked
+
 } from '@coreui/icons';
 
 import { signet } from './signet';
@@ -162,7 +187,6 @@ export const iconSubset = {
   cilList,
   cilListNumbered,
   cilLocationPin,
-  cilLockLocked,
   cilMagnifyingGlass,
   cilMap,
   cilMediaPlay,
@@ -198,7 +222,27 @@ export const iconSubset = {
   cilUserFollow,
   cilUserUnfollow,
   logo,
-  signet
+  signet,
+  
+  //Lo agregado para el Sistema E-commerce
+  cilBriefcase,
+  cilBuilding,
+  cilCart,
+  cilCheckCircle,
+  cilCompass,
+  cilFolder,
+  cilGift,
+  cilHistory,
+  cilImage,
+  cilInstitution,
+  cilScreenDesktop,
+  cilShieldAlt,
+  cilSwapVertical,
+  cilTag,
+  cilTruck,
+  cilWarning,
+  cilBadge,
+  cilLockLocked
 };
 
 export enum IconSubset {

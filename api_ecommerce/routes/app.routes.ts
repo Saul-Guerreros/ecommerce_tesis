@@ -21,4 +21,5 @@ export const routes: Routes = [
         path: 'cambiar-credenciales',
         component: ForgotPasswordComponent
     }
+    
 ];

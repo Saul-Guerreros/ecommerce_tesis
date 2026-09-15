@@ -61,3 +61,14 @@ export interface ProductoConfig {
   tipos_iva: TipoIvaOption[];
   unidades: UnidadMedidaOption[];
 }
+
+// Version liviana de Producto para el buscador de compras/ventas.
+// Viene de GET /productos/select.
+export interface ProductoSelect {
+  prd_id: number;
+  prd_codinv: string;
+  prd_descri: string;
+  prd_prevta: number | null;
+  prd_tivid: number;
+  tiv_tasa: number;
+}

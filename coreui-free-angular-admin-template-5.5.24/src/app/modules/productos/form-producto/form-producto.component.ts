@@ -15,6 +15,7 @@ import { ProductosService } from '../service/productos.service';
 export class FormProductoComponent implements OnInit, OnChanges {
   @Input() visible = false;
   @Input() producto: Producto | null = null;
+  @Input() soloLectura = false;
 
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() guardado = new EventEmitter<void>();
@@ -31,14 +32,15 @@ export class FormProductoComponent implements OnInit, OnChanges {
     private service: ProductosService,
     private toastr: ToastrService
   ) {
+    // prd_prevta y prd_margen NO son FormControl: son de solo lectura acá
+    // (el backend los ignora si llegan). El producto nace sin precio; se
+    // completan desde Gestion de Precios recien cuando hay costo real.
     this.form = this.fb.group({
       prd_marid:  [null, [Validators.required]],
       prd_tivid:  [null, [Validators.required]],
       prd_umdid:  [null, [Validators.required]],
       prd_codinv: ['', [Validators.required, Validators.maxLength(45)]],
       prd_descri: ['', [Validators.required, Validators.maxLength(150)]],
-      prd_prevta: [null, [Validators.required, Validators.min(0)]],
-      prd_margen: [null, [Validators.min(0)]],
       prd_stkmin: [null, [Validators.required, Validators.min(0)]],
       prd_afestk: [1],
       prd_estado: [1],
@@ -68,13 +70,17 @@ export class FormProductoComponent implements OnInit, OnChanges {
         prd_umdid:  this.producto?.prd_umdid ?? null,
         prd_codinv: this.producto?.prd_codinv ?? '',
         prd_descri: this.producto?.prd_descri ?? '',
-        prd_prevta: this.producto?.prd_prevta ?? null,
-        prd_margen: this.producto?.prd_margen ?? null,
         prd_stkmin: this.producto?.prd_stkmin ?? null,
         prd_afestk: this.producto?.prd_afestk ?? 1,
         prd_estado: this.producto?.prd_estado ?? 1,
       });
       this.guardando = false;
+
+      if (this.soloLectura) {
+        this.form.disable();
+      } else {
+        this.form.enable();
+      }
     }
   }
 
@@ -95,8 +101,6 @@ export class FormProductoComponent implements OnInit, OnChanges {
 
     this.guardando = true;
 
-    // form.value nunca incluye stock_actual: no es un FormControl, no se
-    // puede editar desde este formulario aunque se quisiera.
     const peticion = this.esEdicion
       ? this.service.update(this.producto!.prd_id!, this.form.value)
       : this.service.create(this.form.value);

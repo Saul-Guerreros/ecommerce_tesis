@@ -3,13 +3,14 @@ export interface Timbrado {
   tim_tcoid: number | null;
   tim_sucid: number | null;
   tim_numero: string;
-  tim_puntex: string;
+  tim_establec: string;
+  tim_puntexp: string;
   tim_fechin: string;   // 'YYYY-MM-DD'
   tim_fechfn: string;
   tim_nroini: number | null;
   tim_nrofin: number | null;
   tim_nroact?: number;   // solo lectura, lo gestiona el sistema
-  tim_observ?: string | null;
+  tim_observacion?: string | null;
   tim_estado?: number;
   tim_creado?: string;
 

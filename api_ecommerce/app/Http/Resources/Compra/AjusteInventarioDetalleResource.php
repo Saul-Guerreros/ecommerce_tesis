@@ -22,4 +22,16 @@ class AjusteInventarioDetalleResource extends JsonResource
             'prd_descri' => $this->whenLoaded('producto', fn () => $this->producto->prd_descri),
         ];
     }
+
+    public function toArray($request)
+{
+    return [
+        'aid_id'      => $this->aid_id,
+        'aid_cantsis' => $this->aid_cantsis,
+        'aid_cantfis' => $this->aid_cantfis,
+        'diferencia'  => $this->aid_cantfis - $this->aid_cantsis, // ← esto es nuevo
+        // ...resto de campos, incluí también la unidad de medida del producto:
+        'umd_decimal' => $this->producto->unidadMedida->umd_decimal,
+    ];
+}
 }

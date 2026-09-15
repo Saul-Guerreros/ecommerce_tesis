@@ -115,6 +115,7 @@ export class FormAjusteComponent implements OnInit, OnChanges {
           cantfis:    linea.aid_cantfis,
           costo:      linea.aid_costo,
           obs:        linea.aid_obs,
+          diferencia: linea.diferencia,   // NUEVO — ya viene calculado con bcsub()
         })));
 
         this.form.disable();
@@ -135,6 +136,7 @@ export class FormAjusteComponent implements OnInit, OnChanges {
       cantfis:    [linea.cantfis ?? 0],
       costo:      [linea.costo ?? null],
       obs:        [linea.obs ?? ''],
+      diferencia: [linea.diferencia ?? null],   // NUEVO
     });
   }
 

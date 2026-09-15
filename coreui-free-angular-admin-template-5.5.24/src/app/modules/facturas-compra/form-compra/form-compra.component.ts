@@ -44,29 +44,29 @@ export class FormCompraComponent implements OnInit, OnChanges {
   nuevoCosto: number | null = null;
   nuevaCantidad: number | null = null;
 
-  constructor(
-    private fb: FormBuilder,
-    private service: ComprasService,
-    private toastr: ToastrService
-  ) {
-    this.form = this.fb.group({
-      com_proid:  [null, [Validators.required]],
-      com_depid:  [null, [Validators.required]],
-      com_tcoid:  [null, [Validators.required]],
-      com_timbra: ['', [Validators.maxLength(8)]],
-      com_timbvn: [''],
-      com_nrodoc: ['', [Validators.required, Validators.pattern(/^\d{3}-\d{3}-\d{7}$/)]],
-      com_fchaem: ['', [Validators.required]],
-      com_nrorem: [''],
-      com_condic: [0],
-      com_plzdia: [0],
-      com_cuotas: [0],
-      com_interv: [0],
-      com_fchvto: [''],
-      com_obs:    [''],
-      detalle:    this.fb.array([]),
-    });
-  }
+constructor(
+  private fb: FormBuilder,
+  private service: ComprasService,
+  private toastr: ToastrService
+) {
+  this.form = this.fb.group({
+    com_proid:  [null, [Validators.required]],
+    com_depid:  [null, [Validators.required]],
+    com_tcoid:  [null, [Validators.required]],
+    com_timbra: ['', [Validators.maxLength(8)]],     // <-- ESTA LÍNEA
+    com_timbvn: [''],
+    com_nrodoc: ['', [Validators.required, Validators.pattern(/^\d{3}-\d{3}-\d{7}$/)]],
+    com_fchaem: ['', [Validators.required]],
+    com_nrorem: [''],
+    com_condic: [0],
+    com_plzdia: [0],
+    com_cuotas: [0],
+    com_interv: [0],
+    com_fchvto: [''],
+    com_obs:    [''],
+    detalle:    this.fb.array([]),
+  });
+}
 
   ngOnInit(): void {
     this.service.getConfig().subscribe({
@@ -143,6 +143,8 @@ export class FormCompraComponent implements OnInit, OnChanges {
           canfac:     linea.cmd_canfac,
           canrec:     linea.cmd_canrec,
           tiv_id:     linea.cmd_tivid,
+          gravada:    linea.cmd_gravada,   // NUEVO
+          iva:        linea.cmd_iva,        // NUEVO
         })));
 
         this.form.disable();
@@ -166,6 +168,12 @@ export class FormCompraComponent implements OnInit, OnChanges {
       canfac:     [linea.canfac ?? 0],
       canrec:     [linea.canrec ?? linea.canfac ?? 0],
       tiv_id:     [linea.tiv_id ?? null],
+      // Solo se completan al cargar una compra EXISTENTE (modo Ver): son los
+      // valores reales que el backend calculo y grabo (CompraDetalle::cmd_gravada/
+      // cmd_iva). En modo Nuevo quedan en 0 y no se usan para nada — la vista
+      // muestra el calculo en vivo via los getters totalXxx.
+      gravada: [linea.gravada ?? 0],
+      iva:     [linea.iva ?? 0],
     });
   }
 
@@ -174,7 +182,10 @@ export class FormCompraComponent implements OnInit, OnChanges {
   seleccionarProducto(p: ProductoBusqueda): void {
     this.productoSeleccionado = p;
     this.busquedaProducto = `${p.prd_codinv} — ${p.prd_descri}`;
-    this.nuevoCosto = p.prd_prevta;
+    // El costo SIEMPRE se digita a mano, desde la factura física del
+    // proveedor. Nunca se autocompleta (ni con precio de venta, ni con
+    // costo promedio, ni con ningún otro dato del sistema).
+    this.nuevoCosto = null;
   }
 
   agregarItem(): void {

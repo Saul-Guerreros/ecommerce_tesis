@@ -1,0 +1,21 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header><h5 cModalTitle>Confirmar anulación</h5></c-modal-header>
+  <c-modal-body>
+    <p>
+      ¿Anular la compra <strong>{{ compra?.com_nrodoc }}</strong>
+      de <strong>{{ compra?.com_proraz }}</strong>?
+    </p>
+    <div class="alert alert-warning mb-0">
+      El stock y el costo promedio ponderado que esta compra generó se revertirán.
+      Si algún producto tuvo movimientos posteriores (otra compra, un ajuste), la
+      anulación se bloqueará para no invalidar esos cálculos.
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()" [disabled]="anulando">Cancelar</button>
+    <button cButton color="danger" class="text-white" [disabled]="anulando" (click)="confirmar()">
+      <c-spinner size="sm" *ngIf="anulando" class="me-2"></c-spinner>
+      {{ anulando ? 'Anulando...' : 'Anular' }}
+    </button>
+  </c-modal-footer>
+</c-modal>
