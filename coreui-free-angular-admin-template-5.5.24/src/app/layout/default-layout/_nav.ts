@@ -98,6 +98,12 @@ export const navItems: INavData[] = [
   },
   
   {
+  name: 'Configuración de Precios',
+  url: '/configuracion-precio',
+  iconComponent: { name: 'cil-settings' }
+  },
+
+  {
     name: 'Gestión de Precios',
     url: '/precios',
     iconComponent: { name: 'cil-dollar' }

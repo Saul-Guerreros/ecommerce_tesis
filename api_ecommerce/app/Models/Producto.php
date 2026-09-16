@@ -22,8 +22,11 @@ class Producto extends Model
         'prd_tivid',
         'prd_umdid',
         'prd_codinv',
-        'prd_prevta',
-        'prd_margen',
+        'prd_pvtmin',
+        'prd_pvtmay',
+        'prd_marmin',
+        'prd_marmaj',
+        'prd_canminmaj',
         'prd_descri',
         'prd_stkmin',
         'prd_afestk',
@@ -31,16 +34,19 @@ class Producto extends Model
     ];
 
     protected $casts = [
-        'prd_id'      => 'integer',
-        'prd_marid'   => 'integer',
-        'prd_tivid'   => 'integer',
-        'prd_umdid'   => 'integer',
-        'prd_prevta'  => 'decimal:2',
-        'prd_margen'  => 'decimal:4',
-        'prd_stkmin'  => 'decimal:4',
-        'prd_afestk'  => 'integer',
-        'prd_estado'  => 'integer',
-        'prd_creado'  => 'datetime',
+        'prd_id'          => 'integer',
+        'prd_marid'       => 'integer',
+        'prd_tivid'       => 'integer',
+        'prd_umdid'       => 'integer',
+        'prd_pvtmin'      => 'decimal:2',
+        'prd_pvtmay'      => 'decimal:2',
+        'prd_marmin'      => 'decimal:4',
+        'prd_marmaj'      => 'decimal:4',
+        'prd_canminmaj'   => 'decimal:4',
+        'prd_stkmin'      => 'decimal:4',
+        'prd_afestk'      => 'integer',
+        'prd_estado'      => 'integer',
+        'prd_creado'      => 'datetime',
     ];
 
     public function marca(): BelongsTo
@@ -66,5 +72,11 @@ class Producto extends Model
     public function stock(): HasMany
     {
         return $this->hasMany(\App\Models\Compras\Stock::class, 'sto_prdid', 'prd_id');
+    }
+
+    // Para ProductoEquivalencias
+    public function equivalencias(): HasMany
+    {
+        return $this->hasMany(\App\Models\Compras\ProductoEquivalencia::class, 'peq_prdid', 'prd_id');
     }
 }

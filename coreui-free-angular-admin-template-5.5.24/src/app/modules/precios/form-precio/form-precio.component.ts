@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
-import { Precio } from '../models/precio.model';
+import { Precio, ActualizarPrecioPayload, OrigenMargen } from '../models/precio.model';
 import { PreciosService } from '../service/precios.service';
 
 @Component({
@@ -27,49 +27,74 @@ export class FormPrecioComponent implements OnChanges {
     private service: PreciosService,
     private toastr: ToastrService
   ) {
-    // max 1000: un markup de "100000%" es un error de tipeo, no un negocio
-    // real. Ajustable si algun rubro lo necesita mas alto.
+    // max 1000: un markup de "100000%" es un error de tipeo, no un
+    // negocio real (mismo criterio que ya tenías).
     this.form = this.fb.group({
-      prd_margen: [null, [Validators.required, Validators.min(0), Validators.max(1000)]],
+      origenMinorista: ['general' as OrigenMargen],
+      valorMinorista: [null as number | null, [Validators.min(0), Validators.max(1000)]],
+      origenMayorista: ['general' as OrigenMargen],
+      valorMayorista: [null as number | null, [Validators.min(0), Validators.max(1000)]],
+      origenUmbral: ['general' as OrigenMargen],
+      valorUmbral: [null as number | null, [Validators.min(1)]],
     });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['visible'] && this.visible) {
-      this.form.reset({ prd_margen: this.precio?.prd_margen ?? null });
+    if (changes['visible'] && this.visible && this.precio) {
+      this.form.reset({
+        origenMinorista: this.precio.minorista.origen,
+        valorMinorista: this.precio.minorista.origen === 'individual' ? this.precio.minorista.margen : null,
+        origenMayorista: this.precio.mayorista.origen,
+        valorMayorista: this.precio.mayorista.origen === 'individual' ? this.precio.mayorista.margen : null,
+        origenUmbral: this.precio.umbral_mayorista.origen,
+        valorUmbral:
+          this.precio.umbral_mayorista.origen === 'individual' ? this.precio.umbral_mayorista.cantidad : null,
+      });
       this.guardando = false;
     }
-  }
-
-  // Redondea a 2 decimales apenas el usuario termina de escribir (blur),
-  // asi nunca se manda al backend algo como 30.45678.
-  redondearMargen(): void {
-    const valor = this.form.value.prd_margen;
-    if (valor === null || valor === '') return;
-    this.form.patchValue({ prd_margen: Math.round(Number(valor) * 100) / 100 });
   }
 
   private round2(n: number): number {
     return Math.round(n * 100) / 100;
   }
 
-  // Previsualizacion en vivo de los 4 campos automaticos que pide el
-  // ejemplo del txt. null si todavia no hay costo (producto nunca comprado).
-  get calculo(): { ganancia: number; sinIva: number; iva: number; final: number } | null {
+  // Redondea a 2 decimales apenas el usuario termina de escribir (blur),
+  // igual que redondearMargen() original pero reutilizable para los 3 campos.
+  redondear(campo: 'valorMinorista' | 'valorMayorista' | 'valorUmbral'): void {
+    const valor = this.form.value[campo];
+    if (valor === null || valor === '') return;
+    this.form.patchValue({ [campo]: this.round2(Number(valor)) });
+  }
+
+  // Previsualizacion en vivo (igual que el "calculo" original), ahora
+  // separada por tier: usa el override si está activo, o si no, el
+  // margen efectivo que ya trae el producto desde el backend.
+  private calcular(margenEfectivo: number | null): { ganancia: number; sinIva: number; iva: number; final: number } | null {
     const costo = this.precio?.costo_promedio;
-    const margen = this.form.value.prd_margen;
     const tasa = this.precio?.tiv_tasa ?? 0;
 
-    if (costo === null || costo === undefined || margen === null || margen === '') {
+    if (costo === null || costo === undefined || margenEfectivo === null) {
       return null;
     }
 
-    const ganancia = this.round2(costo * (Number(margen) / 100));
-    const sinIva   = this.round2(costo + ganancia);
-    const iva      = this.round2(sinIva * (tasa / 100));
-    const final    = this.round2(sinIva + iva);
+    const ganancia = this.round2(costo * (margenEfectivo / 100));
+    const sinIva = this.round2(costo + ganancia);
+    const iva = this.round2(sinIva * (tasa / 100));
+    const final = this.round2(sinIva + iva);
 
     return { ganancia, sinIva, iva, final };
+  }
+
+  get calculoMinorista() {
+    const v = this.form.value;
+    const margen = v.origenMinorista === 'individual' ? v.valorMinorista : this.precio?.minorista.margen ?? null;
+    return this.calcular(margen);
+  }
+
+  get calculoMayorista() {
+    const v = this.form.value;
+    const margen = v.origenMayorista === 'individual' ? v.valorMayorista : this.precio?.mayorista.margen ?? null;
+    return this.calcular(margen);
   }
 
   campoInvalido(campo: string): boolean {
@@ -87,9 +112,17 @@ export class FormPrecioComponent implements OnChanges {
       return;
     }
 
+    const v = this.form.value;
+
+    const payload: ActualizarPrecioPayload = {
+      prd_marmin: v.origenMinorista === 'individual' ? v.valorMinorista : null,
+      prd_marmaj: v.origenMayorista === 'individual' ? v.valorMayorista : null,
+      prd_canminmaj: v.origenUmbral === 'individual' ? v.valorUmbral : null,
+    };
+
     this.guardando = true;
 
-    this.service.update(this.precio.prd_id, this.form.value.prd_margen).subscribe({
+    this.service.update(this.precio.prd_id, payload).subscribe({
       next: (res) => {
         this.toastr.success(res?.message ?? 'Precio actualizado', 'Éxito');
         this.guardando = false;
@@ -99,9 +132,15 @@ export class FormPrecioComponent implements OnChanges {
       error: (err) => {
         this.guardando = false;
         if (err.status === 422 && err.error?.errors) {
-          Object.keys(err.error.errors).forEach((campo) => {
-            this.form.get(campo)?.setErrors({ backend: err.error.errors[campo][0] });
-            this.form.get(campo)?.markAsTouched();
+          const mapa: Record<string, string> = {
+            prd_marmin: 'valorMinorista',
+            prd_marmaj: 'valorMayorista',
+            prd_canminmaj: 'valorUmbral',
+          };
+          Object.keys(err.error.errors).forEach((campoBackend) => {
+            const campoForm = mapa[campoBackend] ?? campoBackend;
+            this.form.get(campoForm)?.setErrors({ backend: err.error.errors[campoBackend][0] });
+            this.form.get(campoForm)?.markAsTouched();
           });
           this.toastr.error('Revise los datos ingresados', 'Validación');
           return;

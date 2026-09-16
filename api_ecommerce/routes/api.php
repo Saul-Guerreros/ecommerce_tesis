@@ -56,6 +56,9 @@ use App\Http\Controllers\Admin\product\PrecioController;
 
 use App\Http\Controllers\Admin\Compras\TipoAjusteController;
 
+use App\Http\Controllers\Admin\Compras\ProductoEquivalenciaController;
+
+use App\Http\Controllers\Admin\product\ConfiguracionPrecioController;
 
 /*
 |--------------------------------------------------------------------------
@@ -211,6 +214,11 @@ Route::group([
     Route::get('productos/select', [ProductoController::class, 'select']);
     Route::patch('productos/{id}/estado', [ProductoController::class, 'toggleEstado']);
     Route::apiResource('productos', ProductoController::class);
+    
+    // --- Equivalencias de unidad por producto (sin config/select: se usan
+    //solo desde dentro del formulario de un producto puntual) ---
+    Route::patch('producto-equivalencias/{id}/estado', [ProductoEquivalenciaController::class, 'toggleEstado']);
+    Route::apiResource('producto-equivalencias', ProductoEquivalenciaController::class)->except(['show']);
 
     // --- Compras (modulo transaccional: sin apiResource, sin toggleEstado) ---
     Route::get('compras/config', [CompraController::class, 'config']);
@@ -248,6 +256,10 @@ Route::group([
     Route::patch('tipos-ajuste/{id}/estado', [TipoAjusteController::class, 'toggleEstado']);
     Route::apiResource('tipos-ajuste', TipoAjusteController::class);
 
+    // Configuración general de precios (singleton: solo show/update)
+    Route::get('configuracion-precio', [ConfiguracionPrecioController::class, 'show']);
+    Route::patch('configuracion-precio', [ConfiguracionPrecioController::class, 'update']);
+ 
 });
 
 Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {
@@ -268,6 +280,7 @@ Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {
 
     Route::patch('/{usuario}/estado', [UsuarioController::class, 'cambiarEstado'])
         ->middleware('permiso:usuarios.gestionar');
+        
 });
 
 Route::apiResource('categorias', categorieController::class);

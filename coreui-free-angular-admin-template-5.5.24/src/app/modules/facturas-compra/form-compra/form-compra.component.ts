@@ -9,6 +9,11 @@ import {
 } from '../models/compra.model';
 import { ComprasService } from '../service/compras.service';
 
+// nuevos imports
+import { EquivalenciasService } from '../../productos/service/equivalencias.service';
+import { ProductoEquivalencia } from '../../productos/models/producto.model';
+import { UnidadCompraOption } from '../models/compra.model';
+
 /**
  * Modal unico con dos modos: Nuevo (formulario editable, sin com_id) y Ver
  * (solo lectura). No existe modo "Editar" sobre una compra ya confirmada:
@@ -44,10 +49,17 @@ export class FormCompraComponent implements OnInit, OnChanges {
   nuevoCosto: number | null = null;
   nuevaCantidad: number | null = null;
 
+  // nueva propiedad de la clase
+unidadesDisponibles: UnidadCompraOption[] = [];
+unidadSeleccionada: UnidadCompraOption | null = null;
+
+
 constructor(
   private fb: FormBuilder,
   private service: ComprasService,
+  private equivalenciasService: EquivalenciasService,   // <- nuevo
   private toastr: ToastrService
+  
 ) {
   this.form = this.fb.group({
     com_proid:  [null, [Validators.required]],
@@ -137,8 +149,10 @@ constructor(
         (this.compra.detalle ?? []).forEach((linea: any) => this.detalle.push(this.filaDetalle({
           prd_id:     linea.cmd_prdid,
           prd_codinv: linea.prd_codinv ?? '',
+          umd_id:     linea.cmd_umdid,
+          umd_codigo: linea.umd_codigo ?? '',
           descri:     linea.cmd_descri,
-          costo:      linea.cmd_costo,
+          precun:     linea.cmd_precun,
           tasa:       linea.cmd_tasa,
           canfac:     linea.cmd_canfac,
           canrec:     linea.cmd_canrec,
@@ -162,8 +176,10 @@ constructor(
     return this.fb.group({
       prd_id:     [linea.prd_id ?? null],
       prd_codinv: [linea.prd_codinv ?? ''],
+      umd_id:     [linea.umd_id ?? null],
+      umd_codigo: [linea.umd_codigo ?? ''],
       descri:     [linea.descri ?? ''],
-      costo:      [linea.costo ?? 0],
+      precun:     [linea.precun ?? 0],
       tasa:       [linea.tasa ?? 0],
       canfac:     [linea.canfac ?? 0],
       canrec:     [linea.canrec ?? linea.canfac ?? 0],
@@ -180,44 +196,62 @@ constructor(
   // ==================== Toolbar: agregar item ====================
 
   seleccionarProducto(p: ProductoBusqueda): void {
-    this.productoSeleccionado = p;
-    this.busquedaProducto = `${p.prd_codinv} — ${p.prd_descri}`;
-    // El costo SIEMPRE se digita a mano, desde la factura física del
-    // proveedor. Nunca se autocompleta (ni con precio de venta, ni con
-    // costo promedio, ni con ningún otro dato del sistema).
-    this.nuevoCosto = null;
-  }
+  this.productoSeleccionado = p;
+  this.busquedaProducto = `${p.prd_codinv} — ${p.prd_descri}`;
+  this.nuevoCosto = null; // (podés renombrar esto a nuevoPrecun si preferís consistencia total)
+
+  this.unidadesDisponibles = [{ umd_id: p.prd_umdid, umd_codigo: p.umd_codigo ?? 'Unidad', umd_nombre: p.umd_codigo ?? 'Unidad', factor: 1 }];
+  this.unidadSeleccionada = this.unidadesDisponibles[0];
+
+  this.equivalenciasService.getByProducto(p.prd_id).subscribe({
+    next: (eqs: ProductoEquivalencia[]) => {
+      eqs.filter(e => e.peq_estado === 1).forEach(e => {
+        this.unidadesDisponibles.push({
+          umd_id: e.peq_umdid,
+          umd_codigo: e.umd_codigo ?? '',
+          umd_nombre: e.umd_nombre ?? '',
+          factor: e.peq_factor,
+        });
+      });
+    },
+    error: () => {}, // sin equivalencias no es un error, el producto solo se compra en su unidad base
+  });
+}
+
+seleccionarUnidad(u: UnidadCompraOption): void {
+  this.unidadSeleccionada = u;
+}
+
+// Ayuda visual en el toolbar: "2 Caja x 12 = 24 unidades ingresarán a stock"
+get cantidadConvertida(): number {
+  const factor = this.unidadSeleccionada?.factor ?? 1;
+  return (this.nuevaCantidad ?? 0) * factor;
+}
 
   agregarItem(): void {
-    if (!this.productoSeleccionado) {
-      this.toastr.error('Busque y seleccione un producto', 'Falta producto');
-      return;
-    }
-    if (!this.nuevoCosto || this.nuevoCosto <= 0) {
-      this.toastr.error('El precio debe ser mayor a 0', 'Precio inválido');
-      return;
-    }
-    if (!this.nuevaCantidad || this.nuevaCantidad <= 0) {
-      this.toastr.error('La cantidad debe ser mayor a 0', 'Cantidad inválida');
-      return;
-    }
+  if (!this.productoSeleccionado) { this.toastr.error('Busque y seleccione un producto', 'Falta producto'); return; }
+  if (!this.unidadSeleccionada)   { this.toastr.error('Seleccione la unidad de compra', 'Falta unidad'); return; }
+  if (!this.nuevoCosto || this.nuevoCosto <= 0) { this.toastr.error('El precio debe ser mayor a 0', 'Precio inválido'); return; }
+  if (!this.nuevaCantidad || this.nuevaCantidad <= 0) { this.toastr.error('La cantidad debe ser mayor a 0', 'Cantidad inválida'); return; }
 
-    const p = this.productoSeleccionado;
-    const tasa = p.tiv_tasa ?? 0;
+  const p = this.productoSeleccionado;
+  const tasa = p.tiv_tasa ?? 0;
 
-    this.detalle.push(this.filaDetalle({
-      prd_id: p.prd_id,
-      prd_codinv: p.prd_codinv,
-      descri: p.prd_descri,
-      costo: this.nuevoCosto,
-      tasa,
-      canfac: this.nuevaCantidad,
-      canrec: this.nuevaCantidad,
-      tiv_id: p.prd_tivid ?? null,
-    }));
+  this.detalle.push(this.filaDetalle({
+    prd_id: p.prd_id,
+    prd_codinv: p.prd_codinv,
+    umd_id: this.unidadSeleccionada.umd_id,
+    umd_codigo: this.unidadSeleccionada.umd_codigo,
+    descri: p.prd_descri,
+    precun: this.nuevoCosto,
+    tasa,
+    canfac: this.nuevaCantidad,
+    canrec: this.nuevaCantidad,
+    tiv_id: p.prd_tivid ?? null,
+  }));
 
-    this.limpiarToolbarItem();
-  }
+  this.limpiarToolbarItem();
+}
 
   quitarItem(i: number): void {
     this.detalle.removeAt(i);
@@ -233,7 +267,7 @@ constructor(
   // ==================== Subtotales reactivos ====================
 
   private gravadoLinea(fila: any): number {
-    return (Number(fila.costo) || 0) * (Number(fila.canfac) || 0);
+    return (Number(fila.precun) || 0) * (Number(fila.canfac) || 0);
   }
 
   get totalExenta(): number {
@@ -313,9 +347,10 @@ constructor(
       com_total:  this.totalGeneral,
       detalle: this.detalle.value.map((l: any) => ({
         prd_id: l.prd_id,
+        umd_id: l.umd_id,     // <- faltaba
         tiv_id: l.tiv_id,
         descri: l.descri,
-        costo: l.costo,
+        precun: l.precun,     // <- antes decía "costo: l.costo" (campo inexistente)
         tasa: l.tasa,
         gravada: this.gravadoLinea(l),
         iva: this.gravadoLinea(l) * (Number(l.tasa) / 100),

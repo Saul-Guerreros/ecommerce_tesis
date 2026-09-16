@@ -38,9 +38,10 @@ class CompraRequest extends FormRequest
             // Detalle: al menos 1 linea, cada una con sus propias reglas.
             'detalle'              => ['required', 'array', 'min:1'],
             'detalle.*.prd_id'     => ['required', 'integer', 'exists:producto,prd_id'],
+            'detalle.*.umd_id'     => ['required', 'integer', 'exists:unidad_medida,umd_id'],
             'detalle.*.tiv_id'     => ['required', 'integer', 'exists:tipo_iva,tiv_id'],
             'detalle.*.descri'     => ['required', 'string', 'max:150'],
-            'detalle.*.costo'      => ['required', 'numeric', 'min:0.0001'],
+            'detalle.*.precun'     => ['required', 'numeric', 'min:0.0001'],
             'detalle.*.canfac'     => ['required', 'numeric', 'min:0.0001'],
             'detalle.*.canrec'     => ['required', 'numeric', 'min:0'],
             'detalle.*.despor'     => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -106,18 +107,37 @@ class CompraRequest extends FormRequest
 
         // Productos activos (uno por uno, para señalar cual esta mal)
         foreach ((array) $this->input('detalle', []) as $i => $linea) {
-            if (empty($linea['prd_id'])) {
-                continue;
-            }
+        if (empty($linea['prd_id'])) {
+            continue;
+        }
 
-            $activo = DB::table('producto')->where('prd_id', $linea['prd_id'])->value('prd_estado');
+        $producto = DB::table('producto')->where('prd_id', $linea['prd_id'])->first();
 
-            if ($activo !== null && (int) $activo !== 1) {
-                $validator->errors()->add("detalle.$i.prd_id", 'Uno de los productos seleccionados está inactivo.');
+        if ($producto && (int) $producto->prd_estado !== 1) {
+            $validator->errors()->add("detalle.$i.prd_id", 'Uno de los productos seleccionados está inactivo.');
+        }
+
+        // Si la unidad elegida NO es la unidad de stock del producto, debe
+        // existir una equivalencia activa que diga cuantas unidades de stock
+        // representa (ver Fase A: producto_equivalencia).
+        if ($producto && !empty($linea['umd_id']) && (int) $linea['umd_id'] !== (int) $producto->prd_umdid) {
+            $existe = DB::table('producto_equivalencia')
+                ->where('peq_prdid', $linea['prd_id'])
+                ->where('peq_umdid', $linea['umd_id'])
+                ->where('peq_estado', 1)
+                ->exists();
+
+            if (!$existe) {
+                $validator->errors()->add(
+                    "detalle.$i.umd_id",
+                    'Esa unidad no tiene una equivalencia activa registrada para este producto.'
+                );
             }
         }
-    });
-}
+    }
+        });
+    }
+
     public function messages(): array
     {
         return [
@@ -133,8 +153,8 @@ class CompraRequest extends FormRequest
             'detalle.required'    => 'Debe cargar al menos un ítem.',
             'detalle.min'         => 'Debe cargar al menos un ítem.',
             'detalle.*.prd_id.required' => 'Falta seleccionar el producto en una de las líneas.',
-            'detalle.*.costo.required'  => 'Falta el costo en una de las líneas.',
-            'detalle.*.costo.min'       => 'El costo debe ser mayor a 0.',
+            'detalle.*.precun.required' => 'Falta el precio en una de las líneas.',
+            'detalle.*.precun.min'      => 'El precio debe ser mayor a 0.',
             'detalle.*.canfac.required' => 'Falta la cantidad facturada en una de las líneas.',
             'detalle.*.canfac.min'      => 'La cantidad facturada debe ser mayor a 0.',
         ];

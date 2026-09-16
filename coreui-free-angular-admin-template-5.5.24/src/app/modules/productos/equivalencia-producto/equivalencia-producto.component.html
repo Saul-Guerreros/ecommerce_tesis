@@ -1,0 +1,45 @@
+<div>
+  <table cTable small striped class="mb-2">
+    <thead>
+      <tr>
+        <th>Unidad alternativa</th>
+        <th class="text-end">Equivale a</th>
+        <th *ngIf="!soloLectura"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let eq of equivalencias">
+        <td>{{ eq.umd_nombre }} ({{ eq.umd_codigo }})</td>
+        <td class="text-end">{{ eq.peq_factor }} unidades</td>
+        <td *ngIf="!soloLectura">
+          <button cButton size="sm" color="danger" variant="ghost" type="button" (click)="eliminar(eq)">✕</button>
+        </td>
+      </tr>
+      <tr *ngIf="!cargando && equivalencias.length === 0">
+        <td [attr.colspan]="soloLectura ? 2 : 3" class="text-center text-muted fst-italic">
+          Este producto se compra únicamente en su unidad de stock.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="row g-2 align-items-end" *ngIf="!soloLectura">
+    <div class="col-md-5">
+      <select class="form-select" [(ngModel)]="nuevaUnidad" [ngModelOptions]="{standalone: true}">
+        <option [ngValue]="null">Unidad alternativa...</option>
+        <option *ngFor="let u of unidadesDisponibles" [ngValue]="u.umd_id">{{ u.umd_nombre }} ({{ u.umd_codigo }})</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <input cFormControl type="number" placeholder="Ej: 12" min="0.0001" step="0.0001"
+             [(ngModel)]="nuevoFactor" [ngModelOptions]="{standalone: true}" />
+      <div class="text-muted small">Unidades de stock por 1 unidad alternativa</div>
+    </div>
+    <div class="col-md-3">
+      <button cButton color="primary" variant="outline" class="w-100" type="button"
+              [disabled]="guardando" (click)="agregar()">
+        + Agregar
+      </button>
+    </div>
+  </div>
+</div>

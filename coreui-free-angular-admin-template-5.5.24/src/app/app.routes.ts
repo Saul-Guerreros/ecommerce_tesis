@@ -179,6 +179,17 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/tipos-ajuste/tipos-ajuste.module').then(m => m.TiposAjusteModule),
         data: { title: 'Tipos de ajuste' },
       },
+
+      {
+        path: 'configuracion-precio',
+        loadChildren: () =>
+          import('./modules/configuracion-precio/configuracion-precio.module').then(
+            (m) => m.ConfiguracionPrecioModule
+          ),
+        data: { title: 'Configuración de Precios' },
+      },
+
+
 	  {
 
 

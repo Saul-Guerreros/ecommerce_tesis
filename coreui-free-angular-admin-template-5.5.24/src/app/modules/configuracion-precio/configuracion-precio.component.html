@@ -1,0 +1,42 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Configuración General de Precios</strong></c-card-header>
+
+  <c-card-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label cLabel for="cpr_marmin">Margen minorista general (%)</label>
+          <input cFormControl type="number" id="cpr_marmin" formControlName="cpr_marmin" min="0" max="1000" step="0.01" />
+          <div class="text-danger small" *ngIf="campoInvalido('cpr_marmin')">
+            {{ errorBackend('cpr_marmin') || 'Obligatorio, entre 0 y 1000.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="cpr_marmaj">Margen mayorista general (%)</label>
+          <input cFormControl type="number" id="cpr_marmaj" formControlName="cpr_marmaj" min="0" max="1000" step="0.01" />
+          <div class="text-danger small" *ngIf="campoInvalido('cpr_marmaj')">
+            {{ errorBackend('cpr_marmaj') || 'Obligatorio, entre 0 y 1000.' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="cpr_canminmaj">Cantidad mínima mayorista general</label>
+          <input cFormControl type="number" id="cpr_canminmaj" formControlName="cpr_canminmaj" min="1" step="1" />
+          <div class="text-danger small" *ngIf="campoInvalido('cpr_canminmaj')">
+            {{ errorBackend('cpr_canminmaj') || 'Obligatorio, al menos 1 unidad.' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button cButton color="primary" type="submit" [disabled]="guardando">
+          <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+          {{ guardando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </c-card-body>
+</c-card>

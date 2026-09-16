@@ -4,10 +4,15 @@ namespace App\Services\Compras;
 
 use App\Models\Producto;
 use App\Models\Compras\{AjusteInventario, AjusteInventarioDetalle, Stock, MovimientoStock, TipoAjuste};
+use App\Services\Precio\PriceService;
 use Illuminate\Support\Facades\{DB, Auth};
 
 class AjusteService
 {
+    public function __construct(private readonly PriceService $priceService)
+    {
+    }
+
     /**
      * Crea el ajuste en estado Borrador. NO toca stock todavia -- es
      * el "conteo fisico" cargado, pendiente de revision.
@@ -199,17 +204,21 @@ class AjusteService
         $detalle->save();
     }
 
+    /**
+     * Delega en PriceService el cálculo de prd_pvtmin/prd_pvtmay a partir
+     * del nuevo costo promedio -- igual patrón que CompraService. Ya no
+     * depende de prd_margen (no existe más) ni se corta si el producto no
+     * tiene override individual: siempre hay al menos el margen general.
+     */
     private function recalcularPrecioVenta(int $productoId, float $costoPromedio): void
     {
-        $producto = Producto::find($productoId);
+        $producto = Producto::with('tipoIva')->find($productoId);
 
-        if (!$producto || $producto->prd_margen === null) {
+        if (!$producto) {
             return;
         }
 
-        $margen = (float) $producto->prd_margen;
-        $producto->prd_prevta = round($costoPromedio * (1 + $margen / 100), 2);
-        $producto->save();
+        $this->priceService->aplicarPrecios($producto, $costoPromedio);
     }
 
     /**

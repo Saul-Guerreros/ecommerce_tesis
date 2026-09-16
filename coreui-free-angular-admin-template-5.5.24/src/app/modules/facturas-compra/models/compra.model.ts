@@ -1,19 +1,23 @@
 export interface CompraDetalle {
   cmd_id?: number;
   prd_id: number | null;
+  umd_id: number | null;   // unidad elegida para ESTA linea
   tiv_id: number | null;
   descri: string;
-  costo: number | null;
+
+  precun: number | null;   // precio por 1 umd_id (lo que dice la factura)
   despor?: number;
   descto?: number;
-  tasa: number;          // tasa de IVA de esa linea (viene del producto)
+  tasa: number;             // tasa de IVA de esa linea (viene del producto)
   gravada?: number;
   iva?: number;
-  canfac: number | null;
-  canrec: number | null; // en esta version, canrec = canfac (sin recepcion parcial)
+
+  canfac: number | null;   // cantidad en umd_id (ej. 2 cajas)
+  canrec: number | null;   // idem, cantidad recibida
 
   // solo para mostrar en la grilla, no se envian
   prd_codinv?: string;
+  umd_codigo?: string;     // solo lectura, para el listado
 }
 
 export interface Compra {
@@ -95,4 +99,13 @@ export interface ProductoBusqueda {
   prd_prevta: number;
   prd_tivid?: number;
   tiv_tasa?: number;
+  prd_umdid: number;      // unidad de stock del producto (unidad base)
+  umd_codigo?: string;    // nombre/codigo de esa unidad, solo lectura
+}
+
+export interface UnidadCompraOption {
+  umd_id: number;
+  umd_codigo: string;
+  umd_nombre: string;
+  factor: number;   // 1 para la unidad base; el de producto_equivalencia para las alternativas
 }
