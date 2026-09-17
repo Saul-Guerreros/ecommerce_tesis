@@ -12,24 +12,27 @@ class CompraDetalle extends Model
     public    $timestamps = false;
 
     protected $fillable = [
-        'cmd_comid', 'cmd_prdid', 'cmd_tivid', 'cmd_nroprd', 'cmd_descri',
-        'cmd_costo', 'cmd_despor', 'cmd_descto', 'cmd_tasa', 'cmd_gravada', 'cmd_iva',
+        'cmd_comid', 'cmd_prdid', 'cmd_umdid', 'cmd_factconv', 'cmd_tivid', 'cmd_nroprd', 'cmd_descri',
+        'cmd_costo', 'cmd_precun', 'cmd_despor', 'cmd_descto', 'cmd_tasa', 'cmd_gravada', 'cmd_iva',
         'cmd_canfac', 'cmd_canrec',
     ];
 
     protected $casts = [
-        'cmd_id'      => 'integer',
-        'cmd_comid'   => 'integer',
-        'cmd_prdid'   => 'integer',
-        'cmd_tivid'   => 'integer',
-        'cmd_costo'   => 'decimal:4',
-        'cmd_despor'  => 'decimal:2',
-        'cmd_descto'  => 'decimal:2',
-        'cmd_tasa'    => 'decimal:2',
-        'cmd_gravada' => 'decimal:2',
-        'cmd_iva'     => 'decimal:2',
-        'cmd_canfac'  => 'decimal:4',
-        'cmd_canrec'  => 'decimal:4',
+        'cmd_id'       => 'integer',
+        'cmd_comid'    => 'integer',
+        'cmd_prdid'    => 'integer',
+        'cmd_umdid'    => 'integer',
+        'cmd_factconv' => 'decimal:4',
+        'cmd_tivid'    => 'integer',
+        'cmd_costo'    => 'decimal:4',
+        'cmd_precun'   => 'decimal:4',
+        'cmd_despor'   => 'decimal:2',
+        'cmd_descto'   => 'decimal:2',
+        'cmd_tasa'     => 'decimal:2',
+        'cmd_gravada'  => 'decimal:2',
+        'cmd_iva'      => 'decimal:2',
+        'cmd_canfac'   => 'decimal:4',
+        'cmd_canrec'   => 'decimal:4',
     ];
 
     public function compraCab()
@@ -40,6 +43,11 @@ class CompraDetalle extends Model
     public function producto()
     {
         return $this->belongsTo(Producto::class, 'cmd_prdid', 'prd_id');
+    }
+
+    public function unidadMedida()
+    {
+        return $this->belongsTo(UnidadMedida::class, 'cmd_umdid', 'umd_id');
     }
 
     public function tipoIva()

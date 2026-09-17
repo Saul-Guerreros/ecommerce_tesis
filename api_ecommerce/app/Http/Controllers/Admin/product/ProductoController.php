@@ -6,6 +6,8 @@ use App\Http\Requests\product\ProductoRequest;
 use App\Http\Resources\product\ProductoResource;
 use App\Http\Controllers\Controller;
 use App\Models\Producto;
+use App\Models\Compras\ProductoEquivalencia;
+use App\Services\Precio\PriceService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +20,10 @@ class ProductoController extends Controller
         'compra_detalle' => ['columna' => 'cmd_prdid', 'etiqueta' => 'compra(s) registrada(s)'],
         'stock'          => ['columna' => 'sto_prdid', 'etiqueta' => 'registro(s) de stock'],
     ];
+
+    public function __construct(private readonly PriceService $priceService)
+    {
+    }
 
     private function contarUsos(): array
     {
@@ -43,9 +49,10 @@ class ProductoController extends Controller
 
     /**
      * Adjunta stock_actual (suma en todos los depositos) y precio_sugerido
-     * (costo promedio ponderado GLOBAL x margen) a una coleccion o modelo
-     * de Producto. Se hace con UNA sola consulta agregada por lote, no una
-     * consulta por producto, para no generar N+1 en el listado.
+     * (costo promedio ponderado GLOBAL x margen minorista EFECTIVO) a una
+     * coleccion o modelo de Producto. Se hace con UNA sola consulta
+     * agregada por lote, no una consulta por producto, para no generar
+     * N+1 en el listado.
      *
      * Si la tabla 'stock' todavia no existe (antes de correr las
      * migraciones de Compra), deja ambos campos en null -- el Resource los
@@ -77,9 +84,13 @@ class ProductoController extends Controller
 
             $producto->stock_actual = $cantidadTotal;
 
-            if ($fila && $cantidadTotal > 0 && $producto->prd_margen !== null) {
+            // Antes se pedia prd_margen !== null (margen INDIVIDUAL
+            // obligatorio). Ahora siempre hay margen -- el general como
+            // piso -- asi que precio_sugerido solo depende de si hay stock.
+            if ($fila && $cantidadTotal > 0) {
                 $costoPromedioGlobal = ((float) $fila->costo_total) / $cantidadTotal;
-                $producto->precio_sugerido = round($costoPromedioGlobal * (1 + ((float) $producto->prd_margen) / 100), 2);
+                $margenEfectivo = $this->priceService->margenEfectivo($producto, 'minorista');
+                $producto->precio_sugerido = round($costoPromedioGlobal * (1 + $margenEfectivo / 100), 2);
             } else {
                 $producto->precio_sugerido = null;
             }
@@ -180,16 +191,16 @@ class ProductoController extends Controller
     }
 
     // GET /api/admin/productos/select
-    // GET /api/admin/productos/select
     public function select(): JsonResponse
     {
-        $productos = Producto::with('tipoIva')
+        $productos = Producto::with(['tipoIva', 'unidadMedida'])
             ->where('prd_estado', 1)
             ->orderBy('prd_descri')
-            ->get(['prd_id', 'prd_codinv', 'prd_descri', 'prd_prevta', 'prd_tivid']);
+            ->get(['prd_id', 'prd_codinv', 'prd_descri', 'prd_pvtmin', 'prd_pvtmay', 'prd_tivid', 'prd_umdid']);
 
         $productos->each(function ($p) {
             $p->tiv_tasa = $p->tipoIva?->tiv_tasa;
+            $p->umd_codigo = $p->unidadMedida?->umd_codigo;
         });
 
         return response()->json(['data' => $productos], 200);
@@ -216,7 +227,30 @@ class ProductoController extends Controller
         $datos['prd_estado'] = $datos['prd_estado'] ?? 1;
         $datos['prd_afestk'] = $datos['prd_afestk'] ?? 1;
 
-        $producto = Producto::create($datos);
+        // No son columnas de "producto" -- se usan aparte para la
+        // equivalencia inicial y no deben llegar a Producto::create()
+        // (Eloquent los ignoraria igual por no estar en $fillable, pero
+        // se sacan explicitamente para que $datos refleje solo el producto).
+        $tieneEquivCompra = (bool) ($datos['tiene_equiv_compra'] ?? false);
+        $peqUmdid  = $datos['peq_umdid']  ?? null;
+        $peqFactor = $datos['peq_factor'] ?? null;
+        unset($datos['tiene_equiv_compra'], $datos['peq_umdid'], $datos['peq_factor']);
+
+        $producto = DB::transaction(function () use ($datos, $tieneEquivCompra, $peqUmdid, $peqFactor) {
+            $producto = Producto::create($datos);
+
+            if ($tieneEquivCompra) {
+                ProductoEquivalencia::create([
+                    'peq_prdid'  => $producto->prd_id,
+                    'peq_umdid'  => $peqUmdid,
+                    'peq_factor' => $peqFactor,
+                    'peq_estado' => 1,
+                ]);
+            }
+
+            return $producto;
+        });
+
         $producto->load(['marca', 'tipoIva', 'unidadMedida']);
         $producto = $this->conStock($producto);
 

@@ -81,7 +81,7 @@ class CompraController extends Controller
     // GET /api/admin/compras/{id}
     public function show(int $id): JsonResponse
     {
-      $compra = CompraCab::with(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto'])->find($id);
+    $compra = CompraCab::with(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto', 'detalle.unidadMedida'])->find($id);
 
         if (!$compra) {
             return response()->json(['message' => 'Compra no encontrada'], 404);
@@ -103,7 +103,7 @@ class CompraController extends Controller
         $datos['com_proraz'] = $proveedor->pro_razon;
 
         $compra = $this->service->store($datos, $lineas);
-        $compra->load(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto']);
+       $compra->load(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto', 'detalle.unidadMedida']);
 
         return response()->json([
             'message' => 'Compra registrada correctamente. Stock y costo promedio actualizados.',
@@ -126,8 +126,7 @@ class CompraController extends Controller
             return response()->json(['message' => $e->getMessage()], 409);
         }
 
-        $compra->load(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto']);
-
+        $compra->load(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto', 'detalle.unidadMedida']);
         return response()->json([
             'message' => 'Compra anulada correctamente. Stock revertido.',
             'data'    => new CompraCabResource($compra),

@@ -35,7 +35,7 @@
       <thead>
         <tr>
           <th>#</th><th>Código</th><th>Nombre</th><th>Marca</th><th>Unidad</th>
-          <th class="text-end">P. Venta</th><th class="text-center">Stock</th>
+          <th class="text-center">Stock</th>
           <th class="text-center">Estado</th><th class="text-end">Acciones</th>
         </tr>
       </thead>
@@ -46,7 +46,6 @@
           <td>{{ p.prd_descri }}</td>
           <td>{{ p.mar_descri }}</td>
           <td>{{ p.umd_codigo }}</td>
-          <td class="text-end">{{ p.prd_prevta | number:'1.0-2' }}</td>
           <td class="text-center">{{ p.stock_actual }}</td>
           <td class="text-center">
             <c-badge [color]="p.prd_estado === 1 ? 'success' : 'secondary'">{{ p.prd_estado === 1 ? 'Activo' : 'Inactivo' }}</c-badge>
@@ -62,7 +61,7 @@
             </div>
           </td>
         </tr>
-        <tr *ngIf="productos.length === 0"><td colspan="9" class="text-center">No hay productos registrados</td></tr>
+        <tr *ngIf="productos.length === 0"><td colspan="8" class="text-center">No hay productos registrados</td></tr>
       </tbody>
     </table>
   </c-card-body>

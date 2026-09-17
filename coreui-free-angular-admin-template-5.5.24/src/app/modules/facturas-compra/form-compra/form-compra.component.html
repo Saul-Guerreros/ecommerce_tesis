@@ -131,7 +131,7 @@
         <legend class="float-none w-auto px-2 fs-6 text-muted">Detalle de ítems</legend>
 
         <div class="row g-2 align-items-end mb-3" *ngIf="!soloLectura">
-          <div class="col-md-6 position-relative">
+          <div class="col-md-4 position-relative">
             <label cLabel>Producto <span class="text-danger">*</span></label>
             <input cFormControl placeholder="Buscar por código o nombre..."
                    [(ngModel)]="busquedaProducto" [ngModelOptions]="{standalone: true}" />
@@ -141,6 +141,17 @@
                 <strong>{{ p.prd_codinv }}</strong> — {{ p.prd_descri }}
               </button>
             </div>
+          </div>
+          <!-- NUEVO: combo de unidad de compra -->
+          <div class="col-md-2">
+            <label cLabel>Unidad</label>
+            <select class="form-select"
+                    [ngModel]="unidadSeleccionada"
+                    (ngModelChange)="seleccionarUnidad($event)"
+                    [ngModelOptions]="{standalone: true}"
+                    [disabled]="!productoSeleccionado">
+              <option *ngFor="let u of unidadesDisponibles" [ngValue]="u">{{ u.umd_codigo }}</option>
+            </select>
           </div>
           <div class="col-md-2">
             <label cLabel>Precio</label>
@@ -154,6 +165,13 @@
             <button cButton color="primary" variant="outline" class="w-100" type="button" (click)="agregarItem()">
               + Agregar ítem
             </button>
+          </div>
+          <!-- NUEVO: aviso de conversión -->
+          <div class="col-12" *ngIf="unidadSeleccionada && unidadSeleccionada.factor !== 1">
+            <small class="text-medium-emphasis">
+              {{ nuevaCantidad || 0 }} {{ unidadSeleccionada.umd_codigo }} × {{ unidadSeleccionada.factor }} =
+              {{ cantidadConvertida }} unidades ingresarán a stock
+            </small>
           </div>
         </div>
 
@@ -169,11 +187,13 @@
             <tr *ngFor="let fila of detalle.controls; let i = index" [formGroup]="$any(fila)">
               <td>{{ fila.value.prd_codinv }}</td>
               <td>{{ fila.value.descri }}</td>
-              <td class="text-end">{{ fila.value.costo | number:'1.0-2' }}</td>
+              <!-- CAMBIO: costo -> precun / umd_codigo -->
+              <td class="text-end">{{ fila.value.precun | number:'1.0-2' }} / {{ fila.value.umd_codigo }}</td>
               <td class="text-end">{{ fila.value.canfac | number:'1.0-4' }}</td>
               <td class="text-center">{{ fila.value.tasa }}%</td>
               <td class="text-end">
-                {{ (soloLectura ? fila.value.gravada : (fila.value.costo * fila.value.canfac)) | number:'1.0-2' }}
+                <!-- CAMBIO: costo -> precun en el cálculo de gravado -->
+                {{ (soloLectura ? fila.value.gravada : (fila.value.precun * fila.value.canfac)) | number:'1.0-2' }}
               </td>
               <td *ngIf="!soloLectura">
                 <button cButton size="sm" color="danger" variant="ghost" type="button" (click)="quitarItem(i)">✕</button>
@@ -187,30 +207,28 @@
           </tbody>
         </table>
 
-      
-      <div class="row g-2 mt-2">
-      <div class="col">
-        <label cLabel>Exenta</label>
-        <input cFormControl [value]="(soloLectura ? compra?.com_exenta : totalExenta) | number:'1.0-2'" disabled />
-      </div>
-      <div class="col">
-        <label cLabel>Gravada 5%</label>
-        <input cFormControl [value]="(soloLectura ? compra?.com_grav5 : totalGrav5) | number:'1.0-2'" disabled />
-      </div>
-      <div class="col">
-        <label cLabel>Gravada 10%</label>
-        <input cFormControl [value]="(soloLectura ? compra?.com_grav10 : totalGrav10) | number:'1.0-2'" disabled />
-      </div>
-      <div class="col">
-        <label cLabel>IVA total</label>
-        <input cFormControl [value]="(soloLectura ? ((compra?.com_iva5 ?? 0) + (compra?.com_iva10 ?? 0)) : (totalIva5 + totalIva10)) | number:'1.0-2'" disabled />
-      </div>
-      <div class="col">
-        <label cLabel>Total</label>
-        <input cFormControl class="fw-bold" [value]="(soloLectura ? compra?.com_total : totalGeneral) | number:'1.0-2'" disabled />
-      </div>
-    </div>
-
+        <div class="row g-2 mt-2">
+          <div class="col">
+            <label cLabel>Exenta</label>
+            <input cFormControl [value]="(soloLectura ? compra?.com_exenta : totalExenta) | number:'1.0-2'" disabled />
+          </div>
+          <div class="col">
+            <label cLabel>Gravada 5%</label>
+            <input cFormControl [value]="(soloLectura ? compra?.com_grav5 : totalGrav5) | number:'1.0-2'" disabled />
+          </div>
+          <div class="col">
+            <label cLabel>Gravada 10%</label>
+            <input cFormControl [value]="(soloLectura ? compra?.com_grav10 : totalGrav10) | number:'1.0-2'" disabled />
+          </div>
+          <div class="col">
+            <label cLabel>IVA total</label>
+            <input cFormControl [value]="(soloLectura ? ((compra?.com_iva5 ?? 0) + (compra?.com_iva10 ?? 0)) : (totalIva5 + totalIva10)) | number:'1.0-2'" disabled />
+          </div>
+          <div class="col">
+            <label cLabel>Total</label>
+            <input cFormControl class="fw-bold" [value]="(soloLectura ? compra?.com_total : totalGeneral) | number:'1.0-2'" disabled />
+          </div>
+        </div>
 
       </fieldset>
 

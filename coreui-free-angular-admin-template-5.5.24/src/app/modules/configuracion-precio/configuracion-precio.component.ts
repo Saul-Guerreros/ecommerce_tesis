@@ -1,0 +1,90 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ButtonModule, CardModule, FormModule, SpinnerModule } from '@coreui/angular';
+import { ToastrService } from 'ngx-toastr';
+import { ConfiguracionPrecioService } from './service/configuracion-precio.service';
+
+@Component({
+  selector: 'app-configuracion-precio',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, ButtonModule, CardModule, FormModule, SpinnerModule],
+  templateUrl: './configuracion-precio.component.html',
+})
+export class ConfiguracionPrecioComponent implements OnInit {
+  form: FormGroup;
+  cargando = true;
+  guardando = false;
+
+  constructor(
+    private fb: FormBuilder,
+    private service: ConfiguracionPrecioService,
+    private toastr: ToastrService
+  ) {
+    this.form = this.fb.group({
+      cpr_marmin: [null, [Validators.required, Validators.min(0), Validators.max(1000)]],
+      cpr_marmaj: [null, [Validators.required, Validators.min(0), Validators.max(1000)]],
+      cpr_canminmaj: [null, [Validators.required, Validators.min(1)]],
+    });
+  }
+
+  ngOnInit(): void {
+    this.cargar();
+  }
+
+  private cargar(): void {
+    this.cargando = true;
+    this.service.getConfig().subscribe({
+      next: (data) => {
+        this.form.patchValue(data);
+        this.cargando = false;
+      },
+      error: () => {
+        this.toastr.error('No se pudo cargar la configuración general de precios', 'Error');
+        this.cargando = false;
+      },
+    });
+  }
+
+  campoInvalido(campo: string): boolean {
+    const c = this.form.get(campo);
+    return !!c && c.invalid && (c.touched || c.dirty);
+  }
+
+  errorBackend(campo: string): string | null {
+    return this.form.get(campo)?.errors?.['backend'] ?? null;
+  }
+
+  // Al guardar, el backend recalcula TODOS los productos que usan el
+  // margen general (los que tienen override individual no se tocan).
+  guardar(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    this.guardando = true;
+
+    this.service.update(this.form.value).subscribe({
+      next: (res) => {
+        this.toastr.success(
+          res?.message ?? 'Configuración actualizada. Se recalcularon los productos que usan el margen general.',
+          'Éxito'
+        );
+        this.guardando = false;
+      },
+      error: (err) => {
+        this.guardando = false;
+        if (err.status === 422 && err.error?.errors) {
+          Object.keys(err.error.errors).forEach((campo) => {
+            this.form.get(campo)?.setErrors({ backend: err.error.errors[campo][0] });
+            this.form.get(campo)?.markAsTouched();
+          });
+          this.toastr.error('Revise los datos ingresados', 'Validación');
+          return;
+        }
+        this.toastr.error(err?.error?.message ?? 'No se pudo guardar la configuración', 'Error');
+      },
+    });
+  }
+}

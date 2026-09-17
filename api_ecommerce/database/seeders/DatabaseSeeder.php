@@ -16,7 +16,8 @@ class DatabaseSeeder extends Seeder
             CatalogoAuthSeeder::class,
             RolPermisoSeeder::class,
             AdminUserSeeder::class,
-
+            ConfiguracionPrecioSeeder::class,
+            
             // Otros catálogos actuales del sistema
             TipoComprobanteSeeder::class,
             UnidadMedidaSeeder::class,

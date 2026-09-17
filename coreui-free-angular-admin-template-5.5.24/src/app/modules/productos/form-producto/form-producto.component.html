@@ -57,26 +57,13 @@
         </div>
 
         <!--
-          Margen y precio de venta: SOLO LECTURA en este formulario. No son
-          FormControl, no viajan en guardar() aunque se fuerce por consola.
-          Al crear el producto quedan vacios (todavia no hay compra); se
-          completan solos al confirmar la primera compra, y de ahi en mas
-          se editan unicamente desde Gestion de Precios.
+          El costo, margen y precio de venta (minorista y mayorista) ya no
+          se muestran acá: se gestionan enteramente en Gestión de Precios,
+          una vez que el producto tiene al menos una compra registrada.
         -->
-        <div class="col-md-4">
-          <label cLabel>Margen vigente (%)</label>
-          <input cFormControl [value]="producto?.prd_margen ?? '— (sin definir)'" disabled />
-        </div>
-
-        <div class="col-md-4">
-          <label cLabel>Precio de venta vigente (Gs.)</label>
-          <input cFormControl [value]="(producto?.prd_prevta | number:'1.0-2') ?? '— (sin definir)'" disabled />
-        </div>
-
-        <div class="col-md-4" *ngIf="esEdicion">
-          <div class="text-muted small mt-4 pt-2">
-            El costo, margen y precio se definen en <strong>Gestión de Precios</strong>
-            tras registrar la primera compra del producto.
+        <div class="col-12" *ngIf="esEdicion">
+          <div class="text-muted small">
+            El costo, el margen y el precio de venta se gestionan desde <strong>Gestión de Precios</strong>.
           </div>
         </div>
 
@@ -122,6 +109,67 @@
         </div>
 
       </div>
+
+      <fieldset class="border rounded p-3 mt-3" *ngIf="!esEdicion">
+        <legend class="float-none w-auto px-2 fs-6 text-muted">¿Tiene unidad alternativa de compra?</legend>
+
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="form-check form-check-inline">
+              <input cFormCheckInput type="radio" id="tiene_equiv_no" name="tiene_equiv_compra"
+                     [value]="false" formControlName="tiene_equiv_compra" />
+              <label cFormCheckLabel for="tiene_equiv_no">No</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input cFormCheckInput type="radio" id="tiene_equiv_si" name="tiene_equiv_compra"
+                     [value]="true" formControlName="tiene_equiv_compra" />
+              <label cFormCheckLabel for="tiene_equiv_si">Sí</label>
+            </div>
+          </div>
+
+          <ng-container *ngIf="form.value.tiene_equiv_compra">
+            <div class="col-md-6">
+              <label cLabel for="peq_umdid">Unidad alternativa <span class="text-danger">*</span></label>
+              <select cSelect id="peq_umdid" formControlName="peq_umdid">
+                <option [ngValue]="null">Seleccione la unidad alternativa</option>
+                <option *ngFor="let u of unidadesAlternativasDisponibles" [ngValue]="u.umd_id">
+                  {{ u.umd_nombre }} ({{ u.umd_codigo }})
+                </option>
+              </select>
+              <div class="text-danger small" *ngIf="campoInvalido('peq_umdid')">
+                {{ errorBackend('peq_umdid') || 'Debe seleccionar la unidad alternativa.' }}
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label cLabel for="peq_factor">Equivalencia <span class="text-danger">*</span></label>
+              <input cFormControl type="number" id="peq_factor" formControlName="peq_factor"
+                     min="0.0001" step="0.0001" />
+              <div class="text-danger small" *ngIf="campoInvalido('peq_factor')">
+                {{ errorBackend('peq_factor') || 'Debe ser un número mayor a 0.' }}
+              </div>
+              <div class="text-muted small">
+                Cuántas unidades de {{ producto?.umd_nombre || 'stock' }} equivalen a 1 de la unidad alternativa.
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </fieldset>
+
+      <fieldset class="border rounded p-3 mt-3" *ngIf="esEdicion">
+          <legend class="float-none w-auto px-2 fs-6 text-muted">Unidades alternativas de compra</legend>
+          <div class="text-muted small mb-2">
+            Además de comprarse por {{ producto?.umd_nombre }} (su unidad de stock), este producto
+            puede facturarse en otras presentaciones (ej. Caja). El sistema convierte automáticamente
+            al confirmar la compra.
+          </div>
+          <app-equivalencia-producto
+            [productoId]="producto?.prd_id ?? null"
+            [unidadBaseId]="producto?.prd_umdid ?? null"
+            [unidades]="unidades"
+            [soloLectura]="soloLectura">
+          </app-equivalencia-producto>
+        </fieldset>
     </c-modal-body>
 
     <c-modal-footer>

@@ -16,8 +16,12 @@
       <thead>
         <tr>
           <th>Código</th><th>Producto</th>
-          <th class="text-end">Costo promedio</th><th class="text-end">Margen</th>
-          <th class="text-end">Precio de venta</th><th class="text-end">Acción</th>
+          <th class="text-end">Costo promedio</th>
+          <th class="text-end">Markup minorista</th>
+          <th class="text-end">Precio minorista</th>
+          <th class="text-end">Markup mayorista</th>
+          <th class="text-end">Precio mayorista</th>
+          <th class="text-end">Acción</th>
         </tr>
       </thead>
       <tbody>
@@ -25,13 +29,23 @@
           <td>{{ p.prd_codinv }}</td>
           <td>{{ p.prd_descri }}</td>
           <td class="text-end">{{ p.costo_promedio !== null ? (p.costo_promedio | number:'1.0-2') : '—' }}</td>
-          <td class="text-end">{{ p.prd_margen !== null ? (p.prd_margen + '%') : '—' }}</td>
-          <td class="text-end">{{ p.prd_prevta !== null ? (p.prd_prevta | number:'1.0-2') : '—' }}</td>
+          <td class="text-end">
+            {{ p.minorista.margen }}%
+            <span class="badge bg-secondary ms-1" *ngIf="p.minorista.origen === 'general'">general</span>
+            <span class="badge bg-info ms-1" *ngIf="p.minorista.origen === 'individual'">individual</span>
+          </td>
+          <td class="text-end">{{ p.minorista.precio !== null ? (p.minorista.precio | number:'1.0-2') : '—' }}</td>
+          <td class="text-end">
+            {{ p.mayorista.margen }}%
+            <span class="badge bg-secondary ms-1" *ngIf="p.mayorista.origen === 'general'">general</span>
+            <span class="badge bg-info ms-1" *ngIf="p.mayorista.origen === 'individual'">individual</span>
+          </td>
+          <td class="text-end">{{ p.mayorista.precio !== null ? (p.mayorista.precio | number:'1.0-2') : '—' }}</td>
           <td class="text-end">
             <button cButton size="sm" color="info" class="text-white" (click)="abrirEditar(p)">Editar</button>
           </td>
         </tr>
-        <tr *ngIf="precios.length === 0"><td colspan="6" class="text-center">No hay productos activos</td></tr>
+        <tr *ngIf="precios.length === 0"><td colspan="8" class="text-center">No hay productos activos</td></tr>
       </tbody>
     </table>
   </c-card-body>

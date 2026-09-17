@@ -6,10 +6,12 @@ import { ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/an
 import { Producto, MarcaOption, TipoIvaOption, UnidadMedidaOption } from '../models/producto.model';
 import { ProductosService } from '../service/productos.service';
 
+import { EquivalenciaProductoComponent } from '../equivalencia-producto/equivalencia-producto.component';
+
 @Component({
   selector: 'app-form-producto',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonModule, FormModule, ModalModule, SpinnerModule],
+  imports: [CommonModule, ReactiveFormsModule, ButtonModule, FormModule, ModalModule, SpinnerModule, EquivalenciaProductoComponent],  
   templateUrl: './form-producto.component.html',
 })
 export class FormProductoComponent implements OnInit, OnChanges {
@@ -32,9 +34,10 @@ export class FormProductoComponent implements OnInit, OnChanges {
     private service: ProductosService,
     private toastr: ToastrService
   ) {
-    // prd_prevta y prd_margen NO son FormControl: son de solo lectura acá
-    // (el backend los ignora si llegan). El producto nace sin precio; se
-    // completan desde Gestion de Precios recien cuando hay costo real.
+    // El costo, margen y precio de venta ya NO se muestran en este
+    // formulario: viven enteramente en Gestión de Precios (minorista y
+    // mayorista, con override por producto). Este form solo maneja los
+    // datos propios del producto.
     this.form = this.fb.group({
       prd_marid:  [null, [Validators.required]],
       prd_tivid:  [null, [Validators.required]],
@@ -44,7 +47,42 @@ export class FormProductoComponent implements OnInit, OnChanges {
       prd_stkmin: [null, [Validators.required, Validators.min(0)]],
       prd_afestk: [1],
       prd_estado: [1],
+
+      // Equivalencia inicial: solo se usa en modo creación (ver template).
+      // En edición viaja siempre en false/null y el backend los ignora.
+      tiene_equiv_compra: [false],
+      peq_umdid:  [null],
+      peq_factor: [null],
     });
+
+    // Alterna los validadores de peq_umdid/peq_factor segun tiene_equiv_compra.
+    this.form.get('tiene_equiv_compra')!.valueChanges.subscribe((tiene) => {
+      this.actualizarValidadoresEquivalencia(!!tiene);
+    });
+  }
+
+  private actualizarValidadoresEquivalencia(tiene: boolean): void {
+    const umd = this.form.get('peq_umdid')!;
+    const factor = this.form.get('peq_factor')!;
+
+    if (tiene) {
+      umd.setValidators([Validators.required]);
+      factor.setValidators([Validators.required, Validators.min(0.0001)]);
+    } else {
+      umd.clearValidators();
+      factor.clearValidators();
+      umd.setValue(null);
+      factor.setValue(null);
+    }
+    umd.updateValueAndValidity({ emitEvent: false });
+    factor.updateValueAndValidity({ emitEvent: false });
+  }
+
+  // Unidades ofrecibles como alternativa: todo el catálogo MENOS la unidad
+  // de stock ya elegida en prd_umdid (misma regla que valida el backend).
+  get unidadesAlternativasDisponibles(): UnidadMedidaOption[] {
+    const base = this.form.value.prd_umdid;
+    return this.unidades.filter((u) => u.umd_id !== base);
   }
 
   ngOnInit(): void {
@@ -73,7 +111,14 @@ export class FormProductoComponent implements OnInit, OnChanges {
         prd_stkmin: this.producto?.prd_stkmin ?? null,
         prd_afestk: this.producto?.prd_afestk ?? 1,
         prd_estado: this.producto?.prd_estado ?? 1,
+
+        // Solo aplica al crear: siempre arranca en "No" (requisito 2),
+        // y en edición no se usa (el CRUD de equivalencias ya lo maneja).
+        tiene_equiv_compra: false,
+        peq_umdid:  null,
+        peq_factor: null,
       });
+      this.actualizarValidadoresEquivalencia(false);
       this.guardando = false;
 
       if (this.soloLectura) {

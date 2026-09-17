@@ -4,10 +4,15 @@ namespace App\Services\Compras;
 
 use App\Models\Producto;
 use App\Models\Compras\{CompraCab, CompraDetalle, Stock, MovimientoStock};
+use App\Services\Precio\PriceService;
 use Illuminate\Support\Facades\{DB, Auth};
 
 class CompraService
 {
+    public function __construct(private readonly PriceService $priceService)
+    {
+    }
+
     /**
      * Guarda la factura completa (cabecera + detalle) e impacta el stock
      * en la MISMA transaccion: en este flujo no existe un paso de
@@ -22,24 +27,31 @@ class CompraService
             $compra = CompraCab::create($datosCab);
 
             foreach ($lineas as $orden => $linea) {
+                [$factor, $costoUnitStock] = $this->resolverConversion(
+                    $linea['prd_id'], $linea['umd_id'], (float) $linea['precun']
+                );
+
                 $detalle = CompraDetalle::create([
-                    'cmd_comid'   => $compra->com_id,
-                    'cmd_prdid'   => $linea['prd_id'],
-                    'cmd_tivid'   => $linea['tiv_id'],
-                    'cmd_nroprd'  => $orden + 1,
-                    'cmd_descri'  => $linea['descri'],
-                    'cmd_costo'   => $linea['costo'],
-                    'cmd_despor'  => $linea['despor']  ?? 0,
-                    'cmd_descto'  => $linea['descto']  ?? 0,
-                    'cmd_tasa'    => $linea['tasa']    ?? 0,
-                    'cmd_gravada' => $linea['gravada'] ?? 0,
-                    'cmd_iva'     => $linea['iva']     ?? 0,
-                    'cmd_canfac'  => $linea['canfac'],
-                    'cmd_canrec'  => $linea['canrec'],
+                    'cmd_comid'    => $compra->com_id,
+                    'cmd_prdid'    => $linea['prd_id'],
+                    'cmd_umdid'    => $linea['umd_id'],
+                    'cmd_factconv' => $factor,
+                    'cmd_tivid'    => $linea['tiv_id'],
+                    'cmd_nroprd'   => $orden + 1,
+                    'cmd_descri'   => $linea['descri'],
+                    'cmd_precun'   => $linea['precun'],
+                    'cmd_costo'    => $costoUnitStock,               // <- lo que ya consume registrarEntrada()
+                    'cmd_despor'   => $linea['despor']  ?? 0,
+                    'cmd_descto'   => $linea['descto']  ?? 0,
+                    'cmd_tasa'     => $linea['tasa']    ?? 0,
+                    'cmd_gravada'  => $linea['gravada'] ?? 0,
+                    'cmd_iva'      => $linea['iva']     ?? 0,
+                    'cmd_canfac'   => round($linea['canfac'] * $factor, 4), // convertido a unidad de STOCK
+                    'cmd_canrec'   => round($linea['canrec'] * $factor, 4), // idem
                 ]);
 
                 if ((float) $detalle->cmd_canrec > 0) {
-                    $this->registrarEntrada($detalle, $datosCab['com_depid']);
+                    $this->registrarEntrada($detalle, $datosCab['com_depid']); // <- SIN CAMBIOS
                 }
             }
 
@@ -48,9 +60,39 @@ class CompraService
     }
 
     /**
+     * Resuelve el factor producto-unidad y el costo por unidad de STOCK a
+     * partir del precio unitario facturado en la unidad elegida. Si la
+     * unidad elegida es la unidad de stock del producto, el factor es 1 (no
+     * necesita fila en producto_equivalencia).
+     */
+    private function resolverConversion(int $productoId, int $unidadId, float $precioUnitario): array
+    {
+        $producto = Producto::findOrFail($productoId);
+
+        if ($unidadId === (int) $producto->prd_umdid) {
+            $factor = 1.0;
+        } else {
+            $equivalencia = \App\Models\Compras\ProductoEquivalencia::where('peq_prdid', $productoId)
+                ->where('peq_umdid', $unidadId)
+                ->where('peq_estado', 1)
+                ->first();
+
+            // CompraRequest ya valido que exista; esto es una segunda barrera
+            // por si algo cambio entre la validacion y el guardado.
+            if (!$equivalencia) {
+                throw new \DomainException('No existe una equivalencia activa para la unidad seleccionada.');
+            }
+
+            $factor = (float) $equivalencia->peq_factor;
+        }
+
+        return [$factor, round($precioUnitario / $factor, 4)];
+    }
+
+    /**
      * Inserta el movimiento de Entrada, recalcula el CPP en 'stock' y
-     * recalcula producto.prd_prevta. Se llama una vez por linea con
-     * cantidad recibida > 0.
+     * recalcula producto.prd_pvtmin/prd_pvtmay. Se llama una vez por
+     * linea con cantidad recibida > 0.
      */
     private function registrarEntrada(CompraDetalle $detalle, int $depositoId): void
     {
@@ -108,42 +150,29 @@ class CompraService
     }
 
     /**
-     * prd_prevta = sto_cosprm * (1 + prd_margen / 100).
-     * Si el producto no tiene margen definido, no se toca el precio: no
-     * hay base para calcular nada, y forzar un valor inventado violaria
-     * la regla de "no inventar datos".
+     * Delega en PriceService el cálculo de prd_pvtmin/prd_pvtmay a partir
+     * del nuevo costo promedio. Ya no se corta si el producto no tiene
+     * margen individual: siempre hay al menos el margen general
+     * (ConfiguracionPrecio), así que el precio SIEMPRE se puede calcular.
      */
-    
+    private function recalcularPrecioVenta(int $productoId, float $costoPromedio): void
+    {
+        $producto = Producto::with('tipoIva')->find($productoId);
 
-    /**
- * precio_sin_iva = costo_promedio * (1 + margen/100)
- * prd_prevta     = precio_sin_iva * (1 + tasa_iva/100)   <-- precio FINAL, con IVA
- * Si el producto no tiene margen definido, no se toca el precio: no hay
- * base para calcular nada.
- */
-private function recalcularPrecioVenta(int $productoId, float $costoPromedio): void
-{
-    $producto = Producto::with('tipoIva')->find($productoId);
+        if (!$producto) {
+            return;
+        }
 
-    if (!$producto || $producto->prd_margen === null) {
-        return;
+        $this->priceService->aplicarPrecios($producto, $costoPromedio);
     }
 
-    $margen       = (float) $producto->prd_margen;
-    $tasaIva      = (float) ($producto->tipoIva->tiv_tasa ?? 0);
-    $precioSinIva = $costoPromedio * (1 + $margen / 100);
-
-    $producto->prd_prevta = round($precioSinIva * (1 + $tasaIva / 100), 2);
-    $producto->save();
-}
-
     /**
-     * Anula una compra confirmada. Solo se permite si NINGUNA linea de la
-     * compra tiene movimientos de stock posteriores (para cualquier otro
-     * origen: otra compra, un ajuste, etc.) — si los hay, deshacer esta
-     * entrada dejaria el CPP posterior calculado sobre una base que ya no
-     * existe. En ese caso se bloquea con un mensaje explicando cual
-     * producto lo impide.
+     * Anula una compra confirmada. Por cada linea, genera un contraasiento
+     * (salida a fecha actual) que resta del stock ACTUAL la cantidad que
+     * esta compra habia ingresado. Se bloquea linea por linea solo si el
+     * stock disponible ya no alcanza (es decir, parte de esa mercaderia
+     * ya fue vendida/consumida), con un mensaje indicando que producto lo
+     * impide.
      */
     public function anular(CompraCab $compra): CompraCab
     {
@@ -171,6 +200,19 @@ private function recalcularPrecioVenta(int $productoId, float $costoPromedio): v
         });
     }
 
+    /**
+     * Anula el efecto en stock de una entrada por compra generando un
+     * CONTRAASIENTO hacia adelante (fecha actual), en vez de reconstruir
+     * el estado historico. El Kardex nunca se reescribe: se agrega un
+     * movimiento de salida nuevo, igual que se haria con una nota de
+     * credito sobre una factura de venta.
+     *
+     * Se bloquea solo si el stock ACTUAL no alcanza para restar la
+     * cantidad que esta compra habia ingresado (es decir, si parte de
+     * esa mercaderia ya fue consumida por ventas, otros ajustes, etc.).
+     * No importa si hubo movimientos posteriores; importa si fisicamente
+     * queda suficiente cantidad para devolver.
+     */
     private function revertirEntrada(CompraDetalle $detalle, int $depositoId): void
     {
         $entrada = MovimientoStock::where('mst_cmdid', $detalle->cmd_id)
@@ -181,41 +223,27 @@ private function recalcularPrecioVenta(int $productoId, float $costoPromedio): v
             return;
         }
 
-        // Regla de seguridad: si existe CUALQUIER movimiento posterior a
-        // esta entrada para el mismo producto+deposito, no se puede anular
-        // sin invalidar el CPP calculado despues de ese punto.
-        $hayPosteriores = MovimientoStock::where('mst_stprid', $detalle->cmd_prdid)
-            ->where('mst_stdeid', $depositoId)
-            ->where('mst_id', '>', $entrada->mst_id)
-            ->exists();
-
-        if ($hayPosteriores) {
-            throw new \DomainException(
-                "No se puede anular: el producto \"{$detalle->cmd_descri}\" tiene movimientos de stock posteriores a esta compra."
-            );
-        }
-
         $stock = Stock::where('sto_prdid', $detalle->cmd_prdid)
                       ->where('sto_depid', $depositoId)
                       ->lockForUpdate()
                       ->firstOrFail();
 
-        // Como confirmamos que esta ES la ultima entrada, el estado previo
-        // es exactamente el saldo del movimiento anterior (o cero si esta
-        // fue la primera vez que se compro este producto).
-        $anterior = MovimientoStock::where('mst_stprid', $detalle->cmd_prdid)
-            ->where('mst_stdeid', $depositoId)
-            ->where('mst_id', '<', $entrada->mst_id)
-            ->orderByDesc('mst_id')
-            ->first();
+        $cantidadARevertir = (float) $detalle->cmd_canrec;
 
-        $cantidadRestaurada = $anterior ? (float) $anterior->mst_salcan : 0;
-        $costoRestaurado    = $anterior && $cantidadRestaurada > 0
-            ? round(((float) $anterior->mst_salcos) / $cantidadRestaurada, 4)
-            : 0;
+        if ((float) $stock->sto_cantid < $cantidadARevertir) {
+            throw new \DomainException(
+                "No se puede anular: el producto \"{$detalle->cmd_descri}\" no tiene stock suficiente " .
+                "({$stock->sto_cantid} disponible, se necesitan {$cantidadARevertir})."
+            );
+        }
 
-        $stock->sto_cantid = $cantidadRestaurada;
-        $stock->sto_cosprm = $costoRestaurado;
+        // El CPP (costo promedio ponderado) no se recalcula al retirar
+        // unidades al costo promedio actual: matematicamente, restar
+        // cantidad no altera el promedio de lo que queda. Solo cambia
+        // sto_cantid.
+        $nuevaCantidad = (float) $stock->sto_cantid - $cantidadARevertir;
+
+        $stock->sto_cantid = $nuevaCantidad;
         $stock->sto_actual = now();
         $stock->save();
 
@@ -225,15 +253,15 @@ private function recalcularPrecioVenta(int $productoId, float $costoPromedio): v
             'mst_revid'  => $entrada->mst_id,
             'mst_fecha'  => now(),
             'mst_tipo'   => 'S',
-            'mst_cantid' => $detalle->cmd_canrec,
-            'mst_cosuni' => $entrada->mst_cosuni,
-            'mst_salcan' => $cantidadRestaurada,
-            'mst_salcos' => round($cantidadRestaurada * $costoRestaurado, 4),
+            'mst_cantid' => $cantidadARevertir,
+            'mst_cosuni' => $stock->sto_cosprm,
+            'mst_salcan' => $nuevaCantidad,
+            'mst_salcos' => round($nuevaCantidad * $stock->sto_cosprm, 4),
             'mst_obs'    => 'Reversa por anulación de compra',
             'mst_stprid' => $detalle->cmd_prdid,
             'mst_stdeid' => $depositoId,
         ]);
 
-        $this->recalcularPrecioVenta($detalle->cmd_prdid, $costoRestaurado);
+        // No se llama recalcularPrecioVenta(): sto_cosprm no cambio.
     }
 }
