@@ -92,16 +92,6 @@ class CompraService
 
             return $compra->load('detalle');
 
-            $cuotasPagadas = CuotaCompra::where('cuo_comid', $compra->com_id)
-                ->where('cuo_estado', CuotaCompra::ESTADO_PAGADA)
-                ->exists();
-
-            if ($cuotasPagadas) {
-                throw new \DomainException('No se puede anular: ya existen cuotas pagadas para esta compra.');
-            }
-
-            CuotaCompra::where('cuo_comid', $compra->com_id)->delete();
-
         });
     }
 

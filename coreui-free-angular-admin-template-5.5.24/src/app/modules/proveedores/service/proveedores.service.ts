@@ -2,13 +2,14 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Proveedor, ProveedorConfig, Contacto } from '../models/proveedor.model';
+import { Proveedor, ProveedorConfig, Contacto, TimbradoProveedor, TipoComprobanteOption } from '../models/proveedor.model';
 import { environment } from '../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ProveedoresService {
   private apiUrl = `${environment.apiUrl}/admin/proveedores`;
   private contactosUrl = `${environment.apiUrl}/admin/contactos-proveedor`;
+  private timbradosUrl = `${environment.apiUrl}/admin/timbrados-proveedor`;
 
   constructor(private http: HttpClient) {}
 
@@ -68,4 +69,34 @@ export class ProveedoresService {
   toggleEstadoContacto(id: number): Observable<any> {
     return this.http.patch(`${this.contactosUrl}/${id}/estado`, {});
   }
+
+    // --- Timbrados (sub-recurso, se gestiona desde el propio form-proveedor) ---
+
+  getConfigTimbrados(): Observable<TipoComprobanteOption[]> {
+    return this.http
+      .get<{ tipos_comprobante: TipoComprobanteOption[] }>(`${this.timbradosUrl}/config`)
+      .pipe(map((res) => res.tipos_comprobante));
+  }
+
+  getTimbrados(proveedorId: number): Observable<TimbradoProveedor[]> {
+    const params = new HttpParams().set('proveedor', String(proveedorId));
+    return this.http.get<{ data: TimbradoProveedor[] }>(this.timbradosUrl, { params }).pipe(map((res) => res.data));
+  }
+
+  createTimbrado(timbrado: Partial<TimbradoProveedor>): Observable<any> {
+    return this.http.post(this.timbradosUrl, timbrado);
+  }
+
+  updateTimbrado(id: number, timbrado: Partial<TimbradoProveedor>): Observable<any> {
+    return this.http.put(`${this.timbradosUrl}/${id}`, timbrado);
+  }
+
+  deleteTimbrado(id: number): Observable<any> {
+    return this.http.delete(`${this.timbradosUrl}/${id}`);
+  }
+
+  toggleEstadoTimbrado(id: number): Observable<any> {
+    return this.http.patch(`${this.timbradosUrl}/${id}/estado`, {});
+  }
+
 }

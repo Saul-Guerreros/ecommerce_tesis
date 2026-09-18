@@ -176,4 +176,99 @@
       </div>
     </form>
   </c-modal-body>
+  <!-- ================= TIMBRADOS (solo en edicion) ================= -->
+  <c-modal-body *ngIf="esEdicion" class="border-top pt-3">
+    <h6>Timbrados del proveedor</h6>
+
+    <div class="text-center py-3" *ngIf="cargandoTimbrados"><c-spinner size="sm" color="primary"></c-spinner></div>
+
+    <table cTable small striped *ngIf="!cargandoTimbrados && timbrados.length > 0">
+      <thead>
+        <tr>
+          <th>Timbrado</th><th>Tipo</th><th>Vigencia</th>
+          <th class="text-center">Situación</th><th class="text-center">Compras</th>
+          <th class="text-end" *ngIf="!soloLectura">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let t of timbrados" [class.table-active]="t.tpv_id === editandoTimbradoId">
+          <td class="fw-semibold">{{ t.tpv_numero }}</td>
+          <td>{{ t.tco_descri }}</td>
+          <td>{{ fmt(t.tpv_fechin) }} – {{ fmt(t.tpv_fechfn) }}</td>
+          <td class="text-center">
+            <c-badge [color]="situacionTimbrado(t).color">{{ situacionTimbrado(t).texto }}</c-badge>
+          </td>
+          <td class="text-center">{{ t.compras_count ?? 0 }}</td>
+          <td class="text-end text-nowrap" *ngIf="!soloLectura">
+            <!-- Editar y Eliminar solo si no esta usado en compras -->
+            <ng-container *ngIf="!timbradoEnUso(t)">
+              <button cButton size="sm" color="info" class="me-1 text-white" (click)="editarTimbrado(t)">Editar</button>
+              <button cButton size="sm" color="danger" class="me-1 text-white" (click)="pedirEliminarTimbrado(t)">Eliminar</button>
+            </ng-container>
+            <button cButton size="sm" [color]="t.tpv_estado === 1 ? 'secondary' : 'success'" class="text-white"
+                    (click)="cambiarEstadoTimbrado(t)">
+              {{ t.tpv_estado === 1 ? 'Desactivar' : 'Activar' }}
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="text-muted small" *ngIf="!cargandoTimbrados && timbrados.length === 0">
+      Este proveedor todavía no tiene timbrados registrados.
+    </p>
+
+    <div class="alert alert-warning d-flex justify-content-between align-items-center" *ngIf="timbradoAEliminar">
+      <span>¿Eliminar el timbrado <strong>{{ timbradoAEliminar.tpv_numero }}</strong>?</span>
+      <span>
+        <button cButton size="sm" color="secondary" class="me-2" (click)="cancelarEliminarTimbrado()">Cancelar</button>
+        <button cButton size="sm" color="danger" class="text-white" (click)="confirmarEliminarTimbrado()">Confirmar</button>
+      </span>
+    </div>
+
+    <!-- Mini-formulario de alta/edicion: oculto en modo Ver -->
+    <form *ngIf="!soloLectura" [formGroup]="timbradoForm" (ngSubmit)="guardarTimbrado()" class="border rounded p-3 mt-2">
+      <div class="row g-2 align-items-start">
+        <div class="col-md-3">
+          <label cLabel class="small">Tipo <span class="text-danger">*</span></label>
+          <select cSelect formControlName="tpv_tcoid">
+            <option [ngValue]="null">Seleccione</option>
+            <option *ngFor="let tc of tiposComprobante" [ngValue]="tc.tco_id">{{ tc.tco_descri }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_tcoid')">
+            {{ errorBackendTimbrado('tpv_tcoid') || 'Obligatorio.' }}
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label cLabel class="small">N° timbrado <span class="text-danger">*</span></label>
+          <input cFormControl formControlName="tpv_numero" maxlength="8" placeholder="00000000" />
+          <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_numero')">
+            {{ errorBackendTimbrado('tpv_numero') || 'Hasta 8 dígitos.' }}
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label cLabel class="small">Inicio vigencia <span class="text-danger">*</span></label>
+          <input cFormControl type="date" formControlName="tpv_fechin" />
+          <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_fechin')">
+            {{ errorBackendTimbrado('tpv_fechin') || 'Obligatorio.' }}
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label cLabel class="small">Vencimiento <span class="text-danger">*</span></label>
+          <input cFormControl type="date" formControlName="tpv_fechfn" />
+          <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_fechfn')">
+            {{ errorBackendTimbrado('tpv_fechfn') || 'Obligatorio.' }}
+          </div>
+        </div>
+        <div class="col-12 text-end">
+          <button cButton size="sm" color="secondary" variant="ghost" type="button" class="me-2"
+                  *ngIf="editandoTimbradoId" (click)="resetearFormTimbrado()">Cancelar edición</button>
+          <button cButton size="sm" color="primary" type="submit" [disabled]="guardandoTimbrado">
+            <c-spinner size="sm" *ngIf="guardandoTimbrado" class="me-1"></c-spinner>
+            {{ editandoTimbradoId ? 'Actualizar timbrado' : 'Agregar timbrado' }}
+          </button>
+        </div>
+      </div>
+    </form>
+  </c-modal-body>
 </c-modal>

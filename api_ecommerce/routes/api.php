@@ -68,6 +68,9 @@ use App\Http\Controllers\Admin\Compras\CuentaPorPagarController;
 
 use App\Http\Controllers\Admin\Compras\LibroCompraController;
 
+use App\Http\Controllers\Admin\Compras\TimbradoProveedorController;
+
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -211,6 +214,15 @@ Route::group([
     //     dentro del formulario de un proveedor puntual) ---
     Route::patch('contactos-proveedor/{id}/estado', [ContactoProveedorController::class, 'toggleEstado']);
     Route::apiResource('contactos-proveedor', ContactoProveedorController::class);
+
+    Route::get('timbrados-proveedor', [TimbradoProveedorController::class, 'index']);
+    Route::post('timbrados-proveedor', [TimbradoProveedorController::class, 'store']);
+    Route::patch('timbrados-proveedor/{id}/estado', [TimbradoProveedorController::class, 'toggleEstado']);
+
+    // --- Timbrados de proveedor (sub-recurso de Proveedor) ---
+    Route::get('timbrados-proveedor/config', [TimbradoProveedorController::class, 'config']);
+    Route::patch('timbrados-proveedor/{id}/estado', [TimbradoProveedorController::class, 'toggleEstado']);
+    Route::apiResource('timbrados-proveedor', TimbradoProveedorController::class)->except('show');
 
     // --- Unidades de medida ---
     Route::get('unidades-medida/select', [UnidadMedidaController::class, 'select']);

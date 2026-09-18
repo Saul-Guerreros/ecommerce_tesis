@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Compra\CompraRequest;
 use App\Http\Resources\Compra\CompraCabResource;
 use App\Models\Compras\CompraCab;
+use App\Models\Compras\TimbradoProveedor;
 use App\Services\Compras\CompraService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,12 +54,19 @@ class CompraController extends Controller
             ->orderBy('pro_razon')
             ->get(['pro_id', 'pro_razon', 'pro_ruc']);
 
+        // NUEVO: sucursales activas; el deposito se filtra por sucursal en Angular.
+        $sucursales = DB::table('sucursal')
+            ->where('suc_estado', 1)
+            ->orderBy('suc_nombre')
+            ->get(['suc_id', 'suc_nombre']);
+
         $depositos = DB::table('deposito')
             ->join('sucursal', 'dpo_sucid', '=', 'suc_id')
             ->where('dpo_estado', 1)
+            ->where('suc_estado', 1)
             ->orderByDesc('dpo_princi')
             ->orderBy('dpo_nombre')
-            ->get(['dpo_id', 'dpo_nombre', 'dpo_sucid', 'suc_nombre']);
+            ->get(['dpo_id', 'dpo_nombre', 'dpo_sucid', 'dpo_princi', 'suc_nombre']);
 
         $tiposComprobante = DB::table('tipo_comprobante')
             ->where('tco_estado', 1)
@@ -72,6 +80,7 @@ class CompraController extends Controller
 
         return response()->json([
             'proveedores'        => $proveedores,
+            'sucursales'         => $sucursales,
             'depositos'          => $depositos,
             'tipos_comprobante'  => $tiposComprobante,
             'tipos_iva'          => $tiposIva,
@@ -101,6 +110,13 @@ class CompraController extends Controller
         $proveedor = DB::table('proveedor')->where('pro_id', $datos['com_proid'])->first();
         $datos['com_proruc'] = $proveedor->pro_ruc;
         $datos['com_proraz'] = $proveedor->pro_razon;
+
+        // Snapshot del timbrado: numero y vencimiento se COPIAN desde
+        // timbrado_proveedor (ya validado en CompraRequest), nunca se
+        // aceptan escritos a mano desde el frontend.
+        $timbrado = !empty($datos['com_tpvid']) ? TimbradoProveedor::find($datos['com_tpvid']) : null;
+        $datos['com_timbra'] = $timbrado?->tpv_numero;
+        $datos['com_timbvn'] = $timbrado?->tpv_fechfn?->toDateString();
 
         $compra = $this->service->store($datos, $lineas);
        $compra->load(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto', 'detalle.unidadMedida']);

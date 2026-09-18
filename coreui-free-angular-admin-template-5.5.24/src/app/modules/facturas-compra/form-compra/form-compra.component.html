@@ -22,17 +22,30 @@
             <div class="text-muted small">Se completará cuando exista el módulo de sesión (RBAC).</div>
           </div>
           <div class="col-md-3">
-            <label cLabel>Sucursal</label>
-            <input cFormControl [value]="sucursalDerivada || '—'" disabled />
+            <label cLabel for="com_sucid">Sucursal <span class="text-danger">*</span></label>
+            <input *ngIf="soloLectura" cFormControl [value]="compra?.suc_nombre || '—'" disabled />
+            <select *ngIf="!soloLectura" cSelect id="com_sucid" formControlName="com_sucid">
+              <option [ngValue]="null">Seleccione una sucursal</option>
+              <option *ngFor="let s of sucursales" [ngValue]="s.suc_id">{{ s.suc_nombre }}</option>
+            </select>
+            <div class="text-danger small" *ngIf="campoInvalido('com_sucid')">
+              {{ errorBackend('com_sucid') || 'Debe seleccionar la sucursal.' }}
+            </div>
           </div>
           <div class="col-md-3">
             <label cLabel for="com_depid">Depósito <span class="text-danger">*</span></label>
-            <select cSelect id="com_depid" formControlName="com_depid">
-              <option [ngValue]="null">Seleccione un depósito</option>
-              <option *ngFor="let d of depositos" [ngValue]="d.dpo_id">{{ d.dpo_nombre }} — {{ d.suc_nombre }}</option>
+            <input *ngIf="soloLectura" cFormControl [value]="compra?.dpo_nombre || '—'" disabled />
+            <select *ngIf="!soloLectura" cSelect id="com_depid" formControlName="com_depid">
+              <option [ngValue]="null">
+                {{ form.get('com_sucid')?.value ? 'Seleccione un depósito' : 'Primero elija la sucursal' }}
+              </option>
+              <option *ngFor="let d of depositosFiltrados" [ngValue]="d.dpo_id">{{ d.dpo_nombre }}</option>
             </select>
             <div class="text-danger small" *ngIf="campoInvalido('com_depid')">
               {{ errorBackend('com_depid') || 'Debe seleccionar el depósito.' }}
+            </div>
+            <div class="text-muted small" *ngIf="!soloLectura && form.get('com_sucid')?.value && depositosFiltrados.length === 0">
+              La sucursal no tiene depósitos activos.
             </div>
           </div>
         </div>
@@ -69,19 +82,84 @@
             </div>
           </div>
 
+          <!-- Timbrado del proveedor: filtrado por proveedor + tipo -->
           <div class="col-md-4">
-            <label cLabel for="com_timbra">Timbrado (del proveedor)</label>
-            <input cFormControl id="com_timbra" formControlName="com_timbra" maxlength="8" placeholder="00000000" />
+            <label cLabel for="com_tpvid">
+              Timbrado (del proveedor) <span class="text-danger" *ngIf="requiereTimbrado">*</span>
+            </label>
+            <input *ngIf="soloLectura" cFormControl [value]="compra?.com_timbra || '—'" disabled />
+            <ng-container *ngIf="!soloLectura">
+              <div class="d-flex gap-2">
+                <select cSelect id="com_tpvid" formControlName="com_tpvid">
+                  <option [ngValue]="null">
+                    {{ !form.get('com_proid')?.value || !form.get('com_tcoid')?.value
+                        ? 'Elija proveedor y tipo'
+                        : (!requiereTimbrado ? 'No requiere timbrado'
+                        : (cargandoTimbrados ? 'Cargando...'
+                        : (timbrados.length ? 'Seleccione un timbrado' : 'Sin timbrados registrados'))) }}
+                  </option>
+                  <option *ngFor="let t of timbrados" [ngValue]="t.tpv_id">
+                   {{ t.tpv_numero }}{{ timbradoVencidoHoy(t) ? ' (vencido)' : '' }}
+                  </option>
+                </select>
+                <button cButton color="secondary" variant="outline" type="button" title="Registrar timbrado del proveedor"
+                        [disabled]="!form.get('com_proid')?.value || !form.get('com_tcoid')?.value || !requiereTimbrado"
+                        (click)="abrirNuevoTimbrado()">+</button>
+              </div>
+            </ng-container>
+            <div class="text-danger small" *ngIf="campoInvalido('com_tpvid')">
+              {{ errorBackend('com_tpvid') || 'Seleccione el timbrado impreso en la factura.' }}
+            </div>
           </div>
+
           <div class="col-md-4">
-            <label cLabel for="com_timbvn">Vto. timbrado</label>
-            <input cFormControl type="date" id="com_timbvn" formControlName="com_timbvn" />
+            <label cLabel>Vto. timbrado</label>
+            <input cFormControl [value]="vtoTimbrado || '—'" disabled />
+            <div class="text-muted small" *ngIf="!soloLectura && timbradoSeleccionado">
+              Vigencia: {{ fmt(timbradoSeleccionado.tpv_fechin) }} al {{ fmt(timbradoSeleccionado.tpv_fechfn) }}
+            </div>
           </div>
+
           <div class="col-md-4">
             <label cLabel for="com_fchaem">Fecha de emisión <span class="text-danger">*</span></label>
-            <input cFormControl type="date" id="com_fchaem" formControlName="com_fchaem" />
+            <input cFormControl type="date" id="com_fchaem" formControlName="com_fchaem" [max]="hoy" />
+            <div class="text-muted small" *ngIf="!soloLectura">La fecha impresa en la factura (puede ser anterior a hoy).</div>
             <div class="text-danger small" *ngIf="campoInvalido('com_fchaem')">
-              {{ errorBackend('com_fchaem') || 'Obligatoria; no puede ser posterior al vencimiento del timbrado.' }}
+              {{ errorBackend('com_fchaem') || 'La fecha de emisión es obligatoria.' }}
+            </div>
+            <div class="text-danger small" *ngIf="!soloLectura && errorFecha && (form.get('com_fchaem')?.touched || form.get('com_fchaem')?.dirty)">
+              {{ errorFecha }}
+            </div>
+          </div>
+
+          <!-- Alta rápida de timbrado del proveedor -->
+          <div class="col-12" *ngIf="mostrarNuevoTimbrado && !soloLectura">
+            <div class="border rounded p-3 bg-body-tertiary" [formGroup]="timbradoForm">
+              <div class="fw-semibold mb-2">Nuevo timbrado del proveedor</div>
+              <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                  <label cLabel>N° timbrado *</label>
+                  <input cFormControl formControlName="tpv_numero" maxlength="8" placeholder="00000000" />
+                </div>
+                <div class="col-md-3">
+                  <label cLabel>Inicio vigencia *</label>
+                  <input cFormControl type="date" formControlName="tpv_fechin" />
+                </div>
+                <div class="col-md-3">
+                  <label cLabel>Vencimiento *</label>
+                  <input cFormControl type="date" formControlName="tpv_fechfn" />
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                  <button cButton color="primary" type="button" class="flex-fill"
+                          [disabled]="guardandoTimbrado" (click)="guardarNuevoTimbrado()">
+                    {{ guardandoTimbrado ? '...' : 'Guardar' }}
+                  </button>
+                  <button cButton color="secondary" variant="ghost" type="button" (click)="mostrarNuevoTimbrado = false">✕</button>
+                </div>
+              </div>
+              <div class="text-danger small mt-1" *ngIf="timbradoForm.invalid && timbradoForm.touched">
+                Complete todos los campos (solo dígitos).
+              </div>
             </div>
           </div>
 
@@ -136,8 +214,10 @@
           <div class="col-md-4 position-relative">
             <label cLabel>Producto <span class="text-danger">*</span></label>
             <input cFormControl placeholder="Buscar por código o nombre..."
-                   [(ngModel)]="busquedaProducto" [ngModelOptions]="{standalone: true}" />
-            <div class="list-group position-absolute w-100" style="z-index: 20;" *ngIf="productosFiltrados.length > 0 && !productoSeleccionado">
+                   autocomplete="off"
+                   [ngModel]="busquedaProducto" (ngModelChange)="onBusquedaChange($event)"
+                   [ngModelOptions]="{standalone: true}" />
+            <div class="list-group position-absolute w-100" style="z-index: 20;" *ngIf="productosFiltrados.length > 0">
               <button type="button" class="list-group-item list-group-item-action"
                       *ngFor="let p of productosFiltrados" (click)="seleccionarProducto(p)">
                 <strong>{{ p.prd_codinv }}</strong> — {{ p.prd_descri }}

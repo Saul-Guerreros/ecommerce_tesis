@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Compra;
 
+use App\Models\Compras\TimbradoProveedor;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Validator;
@@ -17,14 +18,18 @@ class CompraRequest extends FormRequest
     {
         return [
             'com_proid' => ['required', 'integer', 'exists:proveedor,pro_id'],
-            'com_depid' => ['required', 'integer', 'exists:deposito,dpo_id'],
             'com_sucid' => ['required', 'integer', 'exists:sucursal,suc_id'],
+            'com_depid' => ['required', 'integer', 'exists:deposito,dpo_id'],
             'com_tcoid' => ['required', 'integer', 'exists:tipo_comprobante,tco_id'],
 
-            'com_timbra' => ['nullable', 'string', 'size:8'],
-            'com_timbvn' => ['nullable', 'date'],
+            // CAMBIO: ya no se reciben com_timbra / com_timbvn escritos a mano.
+            // Se recibe el ID del timbrado del proveedor y el controlador
+            // copia numero y vencimiento como snapshot.
+            'com_tpvid'  => ['nullable', 'integer', 'exists:timbrado_proveedor,tpv_id'],
+
             'com_nrodoc' => ['required', 'string', 'regex:/^\d{3}-\d{3}-\d{7}$/'],
-            'com_fchaem' => ['required', 'date'],
+            // CAMBIO: no se permiten fechas futuras (depende de APP_TIMEZONE).
+            'com_fchaem' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'com_nrorem' => ['nullable', 'string', 'max:15'],
 
             'com_condic' => ['required', 'integer', 'in:0,1'],
@@ -35,7 +40,6 @@ class CompraRequest extends FormRequest
 
             'com_obs' => ['nullable', 'string', 'max:100'],
 
-            // Detalle: al menos 1 linea, cada una con sus propias reglas.
             'detalle'              => ['required', 'array', 'min:1'],
             'detalle.*.prd_id'     => ['required', 'integer', 'exists:producto,prd_id'],
             'detalle.*.umd_id'     => ['required', 'integer', 'exists:unidad_medida,umd_id'],
@@ -59,97 +63,167 @@ class CompraRequest extends FormRequest
         ];
     }
 
-    /**
-     * Validaciones que dependen de otros registros (proveedor activo,
-     * timbrado vigente, productos activos): siguen siendo validacion de
-     * FORMA/consistencia del payload, por eso van aca y no en el
-     * controlador, igual que en los demas Request del proyecto.
-     */
     public function withValidator(Validator $validator): void
-{
-    $validator->after(function (Validator $validator) {
-        // Proveedor activo
-        if ($this->filled('com_proid')) {
-            $activo = DB::table('proveedor')
-                ->where('pro_id', $this->com_proid)
-                ->value('pro_estado');
+    {
+        $validator->after(function (Validator $validator) {
+            $this->validarProveedor($validator);
+            $this->validarSucursalDeposito($validator);
+            $timbrado = $this->validarTipoYTimbrado($validator);
+            $this->validarDuplicado($validator, $timbrado);
+            $this->validarDetalle($validator);
+        });
+    }
 
-            if ($activo !== null && (int) $activo !== 1) {
-                $validator->errors()->add('com_proid', 'El proveedor seleccionado está inactivo.');
-            }
-        }
+    // ------------------------------------------------------------------
 
-        // NUEVO: numero de factura duplicado para el mismo proveedor +
-        // timbrado. Refleja en Laravel la misma regla que ya existe como
-        // UNIQUE en PostgreSQL (uq_com_doc_por_proveedor), para no dejar
-        // que el error llegue crudo como un 500 de SQL.
-        if ($this->filled('com_proid') && $this->filled('com_nrodoc')) {
-            $yaExiste = DB::table('compra_cab')
-                ->where('com_proid', $this->com_proid)
-                ->where('com_timbra', $this->com_timbra)
-                ->where('com_nrodoc', $this->com_nrodoc)
-                ->exists();
+    private function validarProveedor(Validator $v): void
+    {
+        if (!$this->filled('com_proid')) return;
 
-            if ($yaExiste) {
-                $validator->errors()->add(
-                    'com_nrodoc',
-                    'Ya existe una compra registrada con ese número de factura para este proveedor y timbrado.'
-                );
-            }
-        }
+        $estado = DB::table('proveedor')->where('pro_id', $this->com_proid)->value('pro_estado');
 
-        // Timbrado vigente: fecha de emision no puede ser posterior al vencimiento
-        if ($this->filled('com_timbvn') && $this->filled('com_fchaem')) {
-            if ($this->com_fchaem > $this->com_timbvn) {
-                $validator->errors()->add('com_fchaem', 'La fecha de emisión es posterior al vencimiento del timbrado.');
-            }
-        }
-
-        // Productos activos (uno por uno, para señalar cual esta mal)
-        foreach ((array) $this->input('detalle', []) as $i => $linea) {
-        if (empty($linea['prd_id'])) {
-            continue;
-        }
-
-        $producto = DB::table('producto')->where('prd_id', $linea['prd_id'])->first();
-
-        if ($producto && (int) $producto->prd_estado !== 1) {
-            $validator->errors()->add("detalle.$i.prd_id", 'Uno de los productos seleccionados está inactivo.');
-        }
-
-        // Si la unidad elegida NO es la unidad de stock del producto, debe
-        // existir una equivalencia activa que diga cuantas unidades de stock
-        // representa (ver Fase A: producto_equivalencia).
-        if ($producto && !empty($linea['umd_id']) && (int) $linea['umd_id'] !== (int) $producto->prd_umdid) {
-            $existe = DB::table('producto_equivalencia')
-                ->where('peq_prdid', $linea['prd_id'])
-                ->where('peq_umdid', $linea['umd_id'])
-                ->where('peq_estado', 1)
-                ->exists();
-
-            if (!$existe) {
-                $validator->errors()->add(
-                    "detalle.$i.umd_id",
-                    'Esa unidad no tiene una equivalencia activa registrada para este producto.'
-                );
-            }
+        if ($estado !== null && (int) $estado !== 1) {
+            $v->errors()->add('com_proid', 'El proveedor seleccionado está inactivo.');
         }
     }
-        });
+
+    /** Sucursal activa y deposito activo PERTENECIENTE a esa sucursal. */
+    private function validarSucursalDeposito(Validator $v): void
+    {
+        if ($this->filled('com_sucid')) {
+            $estado = DB::table('sucursal')->where('suc_id', $this->com_sucid)->value('suc_estado');
+            if ($estado !== null && (int) $estado !== 1) {
+                $v->errors()->add('com_sucid', 'La sucursal seleccionada está inactiva.');
+            }
+        }
+
+        if (!$this->filled('com_depid')) return;
+
+        $deposito = DB::table('deposito')->where('dpo_id', $this->com_depid)->first();
+        if (!$deposito) return;
+
+        if ((int) $deposito->dpo_estado !== 1) {
+            $v->errors()->add('com_depid', 'El depósito seleccionado está inactivo.');
+        }
+
+        if ($this->filled('com_sucid') && (int) $deposito->dpo_sucid !== (int) $this->com_sucid) {
+            $v->errors()->add('com_depid', 'El depósito no pertenece a la sucursal seleccionada.');
+        }
+    }
+
+    /**
+     * Proveedor -> Tipo -> Timbrado -> Fecha emision.
+     * Devuelve el timbrado validado (o null) para reutilizarlo.
+     */
+    private function validarTipoYTimbrado(Validator $v): ?TimbradoProveedor
+    {
+        if (!$this->filled('com_tcoid')) return null;
+
+        $tipo = DB::table('tipo_comprobante')->where('tco_id', $this->com_tcoid)->first();
+        if (!$tipo) return null;
+
+        if ((int) $tipo->tco_estado !== 1) {
+            $v->errors()->add('com_tcoid', 'El tipo de comprobante está inactivo.');
+        }
+
+        if (!$this->filled('com_tpvid')) {
+            if ((int) $tipo->tco_reqtim === 1) {
+                $v->errors()->add('com_tpvid', 'Este tipo de comprobante requiere seleccionar el timbrado del proveedor.');
+            }
+            return null;
+        }
+
+        $timbrado = TimbradoProveedor::find($this->com_tpvid);
+        if (!$timbrado) return null;
+
+        if ($timbrado->tpv_proid !== (int) $this->com_proid) {
+            $v->errors()->add('com_tpvid', 'El timbrado no pertenece al proveedor seleccionado.');
+            return null;
+        }
+
+        if ($timbrado->tpv_tcoid !== (int) $this->com_tcoid) {
+            $v->errors()->add('com_tpvid', 'El timbrado no corresponde al tipo de comprobante seleccionado.');
+            return null;
+        }
+
+        if ($timbrado->tpv_estado !== 1) {
+            $v->errors()->add('com_tpvid', 'El timbrado seleccionado está desactivado.');
+        }
+
+        if ($this->filled('com_fchaem') && !$timbrado->cubreFecha($this->com_fchaem)) {
+            $v->errors()->add(
+                'com_fchaem',
+                'La fecha de emisión está fuera de la vigencia del timbrado ('
+                . $timbrado->tpv_fechin->format('d/m/Y') . ' al ' . $timbrado->tpv_fechfn->format('d/m/Y') . ').'
+            );
+        }
+
+        return $timbrado;
+    }
+
+    /** Misma regla que el indice parcial uq_com_doc_confirmado. */
+    private function validarDuplicado(Validator $v, ?TimbradoProveedor $timbrado): void
+    {
+        if (!$this->filled('com_proid') || !$this->filled('com_tcoid') || !$this->filled('com_nrodoc')) return;
+
+        $yaExiste = DB::table('compra_cab')
+            ->where('com_proid', $this->com_proid)
+            ->where('com_tcoid', $this->com_tcoid)
+            ->where('com_nrodoc', $this->com_nrodoc)
+            ->where('com_estfac', 1)
+            ->when(
+                $timbrado,
+                fn ($q) => $q->where('com_timbra', $timbrado->tpv_numero),
+                fn ($q) => $q->whereNull('com_timbra')
+            )
+            ->exists();
+
+        if ($yaExiste) {
+            $v->errors()->add('com_nrodoc', 'Esta factura ya fue registrada para este proveedor.');
+        }
+    }
+
+    private function validarDetalle(Validator $v): void
+    {
+        foreach ((array) $this->input('detalle', []) as $i => $linea) {
+            if (empty($linea['prd_id'])) continue;
+
+            $producto = DB::table('producto')->where('prd_id', $linea['prd_id'])->first();
+            if (!$producto) continue;
+
+            if ((int) $producto->prd_estado !== 1) {
+                $v->errors()->add("detalle.$i.prd_id", 'Uno de los productos seleccionados está inactivo.');
+            }
+
+            if (!empty($linea['umd_id']) && (int) $linea['umd_id'] !== (int) $producto->prd_umdid) {
+                $existe = DB::table('producto_equivalencia')
+                    ->where('peq_prdid', $linea['prd_id'])
+                    ->where('peq_umdid', $linea['umd_id'])
+                    ->where('peq_estado', 1)
+                    ->exists();
+
+                if (!$existe) {
+                    $v->errors()->add("detalle.$i.umd_id", 'Esa unidad no tiene una equivalencia activa registrada para este producto.');
+                }
+            }
+        }
     }
 
     public function messages(): array
     {
         return [
-            'com_proid.required' => 'Debe seleccionar el proveedor.',
-            'com_proid.exists'   => 'El proveedor seleccionado no existe.',
-            'com_depid.required' => 'Debe seleccionar el depósito.',
-            'com_sucid.required' => 'Falta la sucursal.',
-            'com_tcoid.required' => 'Debe seleccionar el tipo de comprobante.',
+            'com_proid.required'  => 'Debe seleccionar el proveedor.',
+            'com_proid.exists'    => 'El proveedor seleccionado no existe.',
+            'com_sucid.required'  => 'Debe seleccionar la sucursal.',
+            'com_depid.required'  => 'Debe seleccionar el depósito.',
+            'com_tcoid.required'  => 'Debe seleccionar el tipo de comprobante.',
+            'com_tpvid.exists'    => 'El timbrado seleccionado no existe.',
             'com_nrodoc.required' => 'El número de factura es obligatorio.',
             'com_nrodoc.regex'    => 'El número de factura debe tener el formato 001-001-0000000.',
             'com_fchaem.required' => 'La fecha de emisión es obligatoria.',
-            'com_cuotas.required_if' => 'Debe indicar la cantidad de cuotas cuando la condición es Crédito.',
+            'com_fchaem.date_format'     => 'La fecha de emisión no es válida.',
+            'com_fchaem.before_or_equal' => 'La fecha de emisión no puede ser posterior a hoy.',
+            'com_cuotas.required_if'     => 'Debe indicar la cantidad de cuotas cuando la condición es Crédito.',
             'detalle.required'    => 'Debe cargar al menos un ítem.',
             'detalle.min'         => 'Debe cargar al menos un ítem.',
             'detalle.*.prd_id.required' => 'Falta seleccionar el producto en una de las líneas.',

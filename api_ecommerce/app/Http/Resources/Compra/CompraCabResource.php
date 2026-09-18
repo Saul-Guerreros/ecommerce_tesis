@@ -15,6 +15,7 @@ class CompraCabResource extends JsonResource
             'com_depid'  => $this->com_depid,
             'com_sucid'  => $this->com_sucid,
             'com_tcoid'  => $this->com_tcoid,
+            'com_tpvid'  => $this->com_tpvid,
             'com_proruc' => $this->com_proruc,
             'com_proraz' => $this->com_proraz,
             'com_timbra' => $this->com_timbra,

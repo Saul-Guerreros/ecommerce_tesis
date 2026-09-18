@@ -26,11 +26,12 @@ export interface Compra {
   com_depid: number | null;
   com_sucid?: number | null;   // derivado del deposito elegido, solo lectura
   com_tcoid: number | null;
+  com_tpvid?: number | null;   // NUEVO: timbrado del proveedor elegido
 
   com_proruc?: string;
   com_proraz?: string;
-  com_timbra: string | null;
-  com_timbvn: string | null;
+  com_timbra?: string | null;  // snapshot (solo lectura, lo arma el backend)
+  com_timbvn?: string | null;  // snapshot (solo lectura, lo arma el backend)
   com_nrodoc: string;
   com_fchaem: string;
   com_nrorem?: string | null;
@@ -66,11 +67,37 @@ export interface ProveedorOption {
   pro_ruc: string;
 }
 
+export interface SucursalOption {
+  suc_id: number;
+  suc_nombre: string;
+}
+
 export interface DepositoOption {
   dpo_id: number;
   dpo_nombre: string;
   dpo_sucid: number;
+  dpo_princi?: number;
   suc_nombre: string;
+}
+
+/** Timbrado de un proveedor (comprobantes que RECIBIMOS). */
+export interface TimbradoProveedorOption {
+  tpv_id: number;
+  tpv_proid: number;
+  tpv_tcoid: number;
+  tpv_numero: string;
+  tpv_fechin: string;   // YYYY-MM-DD
+  tpv_fechfn: string;   // YYYY-MM-DD
+  tpv_estado: number;
+  tco_descri?: string;
+}
+
+export interface NuevoTimbradoProveedor {
+  tpv_proid: number;
+  tpv_tcoid: number;
+  tpv_numero: string;
+  tpv_fechin: string;
+  tpv_fechfn: string;
 }
 
 export interface TipoComprobanteOption {
@@ -87,6 +114,7 @@ export interface TipoIvaOption {
 
 export interface CompraConfig {
   proveedores: ProveedorOption[];
+  sucursales: SucursalOption[];
   depositos: DepositoOption[];
   tipos_comprobante: TipoComprobanteOption[];
   tipos_iva: TipoIvaOption[];

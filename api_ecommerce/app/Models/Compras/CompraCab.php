@@ -2,7 +2,6 @@
 // app/Models/Compras/CompraCab.php
 namespace App\Models\Compras;
 
-use App\Models\Compra\Proveedor;
 use App\Models\Configuracion\{Sucursal, Deposito};
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,7 +18,7 @@ class CompraCab extends Model
     const CONDICION_CREDITO = 1;
 
     protected $fillable = [
-        'com_proid', 'com_depid', 'com_sucid', 'com_usuid', 'com_tcoid',
+        'com_proid', 'com_depid', 'com_sucid', 'com_usuid', 'com_tcoid', 'com_tpvid',
         'com_proruc', 'com_proraz', 'com_timbra', 'com_timbvn',
         'com_nrodoc', 'com_fchaem', 'com_nrorem',
         'com_condic', 'com_plzdia', 'com_cuotas', 'com_interv', 'com_fchvto',
@@ -29,6 +28,7 @@ class CompraCab extends Model
 
     protected $casts = [
         'com_id'     => 'integer',
+        'com_tpvid'  => 'integer',
         'com_fchaem' => 'date',
         'com_fchvto' => 'date',
         'com_timbvn' => 'date',
@@ -61,6 +61,11 @@ class CompraCab extends Model
     public function tipoComprobante()
     {
         return $this->belongsTo(TipoComprobante::class, 'com_tcoid', 'tco_id');
+    }
+
+    public function timbradoProveedor()
+    {
+        return $this->belongsTo(TimbradoProveedor::class, 'com_tpvid', 'tpv_id');
     }
 
     public function detalle()
