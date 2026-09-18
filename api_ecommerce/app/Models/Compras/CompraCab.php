@@ -15,6 +15,9 @@ class CompraCab extends Model
     const ESTADO_CONFIRMADA = 1;
     const ESTADO_ANULADA    = 2;
 
+    const CONDICION_CONTADO = 0;
+    const CONDICION_CREDITO = 1;
+
     protected $fillable = [
         'com_proid', 'com_depid', 'com_sucid', 'com_usuid', 'com_tcoid',
         'com_proruc', 'com_proraz', 'com_timbra', 'com_timbvn',
@@ -63,5 +66,10 @@ class CompraCab extends Model
     public function detalle()
     {
         return $this->hasMany(CompraDetalle::class, 'cmd_comid', 'com_id');
+    }
+
+    public function cuotas()
+    {
+        return $this->hasMany(CuotaCompra::class, 'cuo_comid', 'com_id');
     }
 }

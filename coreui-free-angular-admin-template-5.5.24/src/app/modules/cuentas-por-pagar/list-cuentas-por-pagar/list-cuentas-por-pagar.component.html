@@ -1,0 +1,67 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Cuentas por Pagar</strong></c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar por N° de factura o proveedor..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroProveedor" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos los proveedores</option>
+          <option *ngFor="let p of proveedores" [ngValue]="p.pro_id">{{ p.pro_razon }}</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="0">Con saldo pendiente</option>
+          <option value="todas">Todas las facturas a crédito</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ facturas.length }} factura(s) encontrada(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>Proveedor</th><th>Factura</th><th>Próx. vencimiento</th>
+          <th class="text-center">Cuotas pagadas</th><th class="text-end">Saldo pendiente</th><th class="text-end">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let f of facturas">
+          <td>{{ f.com_proraz }}</td>
+          <td>{{ f.com_nrodoc }}</td>
+          <td>{{ f.cuo_provencim ?? '-' }}</td>
+          <td class="text-center">
+            <c-badge [color]="f.cuo_pendientes > 0 ? 'warning' : 'success'">
+              {{ f.cuo_total - f.cuo_pendientes }}/{{ f.cuo_total }}
+            </c-badge>
+          </td>
+          <td class="text-end">{{ f.cuo_saldo | number:'1.0-2' }}</td>
+          <td class="text-end">
+            <button cButton size="sm" color="primary" (click)="abrirDetalle(f)">Ver Cuotas</button>
+          </td>
+        </tr>
+        <tr *ngIf="facturas.length === 0"><td colspan="6" class="text-center">No hay facturas a crédito registradas</td></tr>
+      </tbody>
+    </table>
+
+    <div class="text-end fw-bold mt-2" *ngIf="!cargando">
+      Total pendiente: {{ totalPendienteGeneral | number:'1.0-2' }}
+    </div>
+  </c-card-body>
+</c-card>
+
+<app-detalle-cuotas-pagar
+  [visible]="detalleVisible"
+  [factura]="facturaSeleccionada"
+  (visibleChange)="detalleVisible = $event"
+  (pagoRegistrado)="onPagoRegistrado()">
+</app-detalle-cuotas-pagar>

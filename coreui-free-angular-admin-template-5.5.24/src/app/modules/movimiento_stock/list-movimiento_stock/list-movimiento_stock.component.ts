@@ -59,4 +59,21 @@ export class ListKardexComponent implements OnInit {
     this.filtroHasta = '';
     this.cargar();
   }
+  etiquetaTipo(tipo: string): string {
+  switch (tipo) {
+    case 'E': return 'Entrada';
+    case 'S': return 'Salida';
+    case 'A': return 'Ajuste (NC)';
+    default:  return tipo;
+  }
+}
+
+colorTipo(tipo: string): string {
+  switch (tipo) {
+    case 'E': return 'success';
+    case 'S': return 'danger';
+    case 'A': return 'warning';
+    default:  return 'secondary';
+  }
+}
 }

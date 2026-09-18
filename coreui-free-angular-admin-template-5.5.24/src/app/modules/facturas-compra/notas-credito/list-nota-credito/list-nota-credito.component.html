@@ -1,0 +1,47 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg">
+  <c-modal-header>
+    <h5 cModalTitle>Historial de Notas de Crédito — Compra N° {{ compra?.com_id }} ({{ compra?.com_nrodoc }})</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <div class="text-center py-3" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <div *ngIf="!cargando">
+      <div *ngFor="let n of notas" class="border rounded p-3 mb-3">
+        <div class="d-flex justify-content-between">
+          <strong>NC N° {{ n.ncr_numero }}</strong>
+          <span class="text-muted">{{ n.ncr_fecha }}</span>
+        </div>
+        <div class="text-muted small mb-2">{{ n.ncr_motivo }}</div>
+
+        <table cTable small striped>
+          <thead>
+            <tr>
+              <th>Producto</th><th class="text-end">Cantidad</th>
+              <th class="text-end">Gravado</th><th class="text-center">IVA</th><th class="text-end">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of n.detalle">
+              <td>{{ d.cmd_descri }}</td>
+              <td class="text-end">{{ d.dnc_cantidad | number:'1.0-4' }}</td>
+              <td class="text-end">{{ d.dnc_base_gravada | number:'1.0-2' }}</td>
+              <td class="text-center">{{ d.dnc_iva | number:'1.0-2' }}</td>
+              <td class="text-end">{{ d.dnc_total | number:'1.0-2' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="text-end fw-bold">Total NC: {{ n.ncr_total | number:'1.0-2' }}</div>
+      </div>
+
+      <div *ngIf="notas.length === 0" class="text-center text-muted fst-italic py-3">
+        Esta compra todavía no tiene Notas de Crédito registradas
+      </div>
+    </div>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" type="button" (click)="cerrar()">Cerrar</button>
+  </c-modal-footer>
+</c-modal>

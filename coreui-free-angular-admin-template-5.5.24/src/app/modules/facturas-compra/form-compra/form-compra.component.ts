@@ -50,8 +50,10 @@ export class FormCompraComponent implements OnInit, OnChanges {
   nuevaCantidad: number | null = null;
 
   // nueva propiedad de la clase
-unidadesDisponibles: UnidadCompraOption[] = [];
-unidadSeleccionada: UnidadCompraOption | null = null;
+  unidadesDisponibles: UnidadCompraOption[] = [];
+  unidadSeleccionada: UnidadCompraOption | null = null;
+
+  nuevoDescuento: number | null = null;
 
 
 constructor(
@@ -71,9 +73,9 @@ constructor(
     com_fchaem: ['', [Validators.required]],
     com_nrorem: [''],
     com_condic: [0],
-    com_plzdia: [0],
-    com_cuotas: [0],
-    com_interv: [0],
+    com_plzdia: [null],
+    com_cuotas: [null],
+    com_interv: [null],
     com_fchvto: [''],
     com_obs:    [''],
     detalle:    this.fb.array([]),
@@ -134,9 +136,9 @@ constructor(
           com_fchaem: this.compra.com_fchaem,
           com_nrorem: this.compra.com_nrorem ?? '',
           com_condic: this.compra.com_condic,
-          com_plzdia: this.compra.com_plzdia ?? 0,
-          com_cuotas: this.compra.com_cuotas ?? 0,
-          com_interv: this.compra.com_interv ?? 0,
+          com_plzdia: this.compra.com_plzdia ?? null,
+          com_cuotas: this.compra.com_cuotas ?? null,
+          com_interv: this.compra.com_interv ?? null,
           com_fchvto: this.compra.com_fchvto ?? '',
           com_obs:    this.compra.com_obs ?? '',
         });
@@ -164,7 +166,7 @@ constructor(
         this.form.disable();
       } else {
         // Nueva compra: form limpio y habilitado.
-        this.form.reset({ com_condic: 0, com_plzdia: 0, com_cuotas: 0, com_interv: 0 });
+        this.form.reset({ com_condic: 0, com_plzdia: null, com_cuotas: null, com_interv: null });
         this.detalle.clear();
         this.form.enable();
         this.onCondicionChange(0); // arranca en Contado: plazo/cuotas/interv deshabilitados
@@ -180,16 +182,13 @@ constructor(
       umd_codigo: [linea.umd_codigo ?? ''],
       descri:     [linea.descri ?? ''],
       precun:     [linea.precun ?? 0],
+      despor:     [linea.despor ?? 0],
       tasa:       [linea.tasa ?? 0],
       canfac:     [linea.canfac ?? 0],
       canrec:     [linea.canrec ?? linea.canfac ?? 0],
       tiv_id:     [linea.tiv_id ?? null],
-      // Solo se completan al cargar una compra EXISTENTE (modo Ver): son los
-      // valores reales que el backend calculo y grabo (CompraDetalle::cmd_gravada/
-      // cmd_iva). En modo Nuevo quedan en 0 y no se usan para nada — la vista
-      // muestra el calculo en vivo via los getters totalXxx.
-      gravada: [linea.gravada ?? 0],
-      iva:     [linea.iva ?? 0],
+      gravada:    [linea.gravada ?? 0],
+      iva:        [linea.iva ?? 0],
     });
   }
 
@@ -244,6 +243,7 @@ get cantidadConvertida(): number {
     umd_codigo: this.unidadSeleccionada.umd_codigo,
     descri: p.prd_descri,
     precun: this.nuevoCosto,
+    despor: this.nuevoDescuento ?? 0,
     tasa,
     canfac: this.nuevaCantidad,
     canrec: this.nuevaCantidad,
@@ -262,14 +262,10 @@ get cantidadConvertida(): number {
     this.productoSeleccionado = null;
     this.nuevoCosto = null;
     this.nuevaCantidad = null;
+    this.nuevoDescuento = null;
   }
 
   // ==================== Subtotales reactivos ====================
-
-  private gravadoLinea(fila: any): number {
-    return (Number(fila.precun) || 0) * (Number(fila.canfac) || 0);
-  }
-
   get totalExenta(): number {
     return this.detalle.controls
       .filter((c) => Number(c.value.tasa) === 0)
@@ -301,6 +297,13 @@ get cantidadConvertida(): number {
   }
 
   // ==================== Guardar ====================
+
+  // 5) gravadoLinea(): ahora publico y neto de descuento
+  gravadoLinea(fila: any): number {
+    const bruto = (Number(fila.precun) || 0) * (Number(fila.canfac) || 0);
+    const descuento = bruto * ((Number(fila.despor) || 0) / 100);
+    return bruto - descuento;
+  }
 
   campoInvalido(campo: string): boolean {
     const c = this.form.get(campo);
@@ -347,10 +350,11 @@ get cantidadConvertida(): number {
       com_total:  this.totalGeneral,
       detalle: this.detalle.value.map((l: any) => ({
         prd_id: l.prd_id,
-        umd_id: l.umd_id,     // <- faltaba
+        umd_id: l.umd_id,
         tiv_id: l.tiv_id,
         descri: l.descri,
-        precun: l.precun,     // <- antes decía "costo: l.costo" (campo inexistente)
+        precun: l.precun,
+        despor: l.despor,
         tasa: l.tasa,
         gravada: this.gravadoLinea(l),
         iva: this.gravadoLinea(l) * (Number(l.tasa) / 100),
@@ -403,7 +407,7 @@ get cantidadConvertida(): number {
       // Contado: se deshabilitan A NIVEL DE FORMCONTROL (no solo visual) y
       // se resetean a 0, para que nunca viajen valores viejos en el payload.
       campos.forEach((c) => {
-        this.form.get(c)?.setValue(0);
+        this.form.get(c)?.setValue(null);
         this.form.get(c)?.disable();
       });
     } else {
@@ -415,4 +419,8 @@ get cantidadConvertida(): number {
     this.visible = false;
     this.visibleChange.emit(false);
   }
+
+  ivaTotalVista(c: Compra | null): number {
+  return (Number(c?.com_iva5) || 0) + (Number(c?.com_iva10) || 0);
+}
 }

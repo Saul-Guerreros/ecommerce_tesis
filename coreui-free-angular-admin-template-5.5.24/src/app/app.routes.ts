@@ -189,7 +189,18 @@ export const routes: Routes = [
         data: { title: 'Configuración de Precios' },
       },
 
+      {
+        path: 'cuentas-por-pagar',
+        loadChildren: () => import('./modules/cuentas-por-pagar/cuentas-por-pagar.module').then(m => m.CuentasPorPagarModule),
+        data: { title: 'Cuentas por Pagar' },
+      },
 
+      {
+        path: 'libro-compra',
+        loadChildren: () => import('./modules/libro-compra/libro-compra.module').then(m => m.LibroCompraModule),
+        data: { title: 'Libro de Compras' },
+      },
+      
 	  {
 
 

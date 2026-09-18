@@ -8,21 +8,29 @@ import { Compra, ProveedorOption } from '../models/compra.model';
 import { ComprasService } from '../service/compras.service';
 import { FormCompraComponent } from '../form-compra/form-compra.component';
 
+import { FormNotaCreditoComponent } from '../notas-credito/form-nota-credito/form-nota-credito.component';
+
+import { ListNotaCreditoComponent } from '../notas-credito/list-nota-credito/list-nota-credito.component';
+
+import { ListCuotasComponent } from '../cuotas/list-cuotas/list-cuotas.component';
+
 @Component({
   selector: 'app-list-compra',
   standalone: true,
   imports: [
     CommonModule, FormsModule, CardModule, TableModule, ButtonModule,
     BadgeModule, SpinnerModule, FormModule, ModalModule,
-    FormCompraComponent,
+    FormCompraComponent,FormNotaCreditoComponent,ListNotaCreditoComponent,
   ],
   templateUrl: './list-compra.component.html',
 })
+
 export class ListCompraComponent implements OnInit {
   compras: Compra[] = [];
   proveedores: ProveedorOption[] = [];
   cargando = false;
 
+  
   search = '';
   filtroProveedor: number | null = null;
   filtroEstado = '';
@@ -77,16 +85,18 @@ export class ListCompraComponent implements OnInit {
     this.formModalVisible = true;
   }
 
+  cargandoVer = false;
+
   abrirVer(c: Compra): void {
-    this.cargando = true;
+    this.cargandoVer = true;
     this.service.getById(c.com_id!).subscribe({
       next: (compraCompleta) => {
         this.compraSeleccionada = compraCompleta;
         this.soloLectura = true;
         this.formModalVisible = true;
-        this.cargando = false;
+        this.cargandoVer = false;
       },
-      error: () => { this.toastr.error('No se pudo cargar el detalle de la compra', 'Error'); this.cargando = false; },
+      error: () => { this.toastr.error('No se pudo cargar el detalle de la compra', 'Error'); this.cargandoVer = false; },
     });
   }
 
@@ -117,5 +127,29 @@ export class ListCompraComponent implements OnInit {
         this.anularModalVisible = false;
       },
     });
+  }
+
+  ncModalVisible = false;
+  compraParaNC: Compra | null = null;
+
+  abrirNotaCredito(c: Compra): void {
+    this.compraParaNC = c;
+    this.ncModalVisible = true;
+  }
+
+  historialNCVisible = false;
+  compraParaHistorialNC: Compra | null = null;
+
+  abrirHistorialNC(c: Compra): void {
+    this.compraParaHistorialNC = c;
+    this.historialNCVisible = true;
+  }
+
+  cuotasVisible = false;
+  compraParaCuotas: Compra | null = null;
+
+  abrirCuotas(c: Compra): void {
+    this.compraParaCuotas = c;
+    this.cuotasVisible = true;
   }
 }

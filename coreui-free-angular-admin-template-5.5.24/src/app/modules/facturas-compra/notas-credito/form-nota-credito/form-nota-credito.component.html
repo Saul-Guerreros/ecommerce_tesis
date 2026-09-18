@@ -1,0 +1,80 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="xl" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Nota de Crédito — Compra N° {{ compra?.com_id }} ({{ compra?.com_nrodoc }})</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <div class="text-center py-3" *ngIf="cargandoConfig"><c-spinner color="primary"></c-spinner></div>
+
+    <form [formGroup]="form" *ngIf="!cargandoConfig">
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label cLabel>N° de Nota de Crédito <span class="text-danger">*</span></label>
+          <input cFormControl formControlName="ncr_numero" maxlength="15" />
+        </div>
+        <div class="col-md-4">
+          <label cLabel>Fecha <span class="text-danger">*</span></label>
+          <input cFormControl type="date" formControlName="ncr_fecha" />
+        </div>
+        <div class="col-md-4">
+          <label cLabel>Motivo <span class="text-danger">*</span></label>
+          <input cFormControl formControlName="ncr_motivo" maxlength="100" placeholder="Descuento comercial" />
+        </div>
+      </div>
+
+      <table cTable small striped>
+        <thead>
+          <tr>
+            <th></th><th>Producto</th><th class="text-end">Precio fact.</th><th class="text-end">Saldo fact.</th>
+            <th class="text-end">Cantidad</th><th class="text-end">Desc. %</th>
+            <th class="text-end">Descuento (gravado)</th>
+            <th class="text-center">IVA</th><th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let fila of detalle.controls" [formGroup]="$any(fila)">
+            <td><input type="checkbox" formControlName="incluir" /></td>
+            <td>{{ fila.value.cmd_descri }}</td>
+            <td class="text-end">{{ fila.value.cmd_precun | number:'1.0-2' }}</td>
+            <td class="text-end">{{ fila.value.saldo_acreditable | number:'1.0-4' }}</td>
+            <td class="text-end">
+              <input cFormControl type="number" formControlName="cantidad" min="0" [max]="fila.value.saldo_acreditable"
+                     step="0.0001"  placeholder="0" [disabled]="!fila.value.incluir" (input)="recalcularDescuento(fila)" style="width: 90px" />
+            </td>
+            <td class="text-end">
+              <input cFormControl type="number" formControlName="despor" min="0" max="100"
+                     step="0.01"  placeholder="0"  [disabled]="!fila.value.incluir" (input)="recalcularDescuento(fila)" style="width: 75px" />
+            </td>
+            <td class="text-end">
+              <input cFormControl type="number" formControlName="base_gravada" min="0" step="0.01"  placeholder="0" [disabled]="!fila.value.incluir" style="width: 110px" />
+            </td>
+            <td class="text-center">{{ ivaLinea(fila.value) | number:'1.0-2' }}</td>
+            <td class="text-end">{{ (fila.value.base_gravada + ivaLinea(fila.value)) | number:'1.0-2' }}</td>
+          </tr>
+          <tr *ngIf="detalle.length === 0">
+            <td colspan="9" class="text-center text-muted fst-italic">Esta compra no tiene saldo acreditable</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="row g-2 mt-2">
+        <div class="col"><label cLabel>Gravada</label><input cFormControl [value]="totalGravada | number:'1.0-2'" disabled /></div>
+        <div class="col"><label cLabel>IVA</label><input cFormControl [value]="totalIva | number:'1.0-2'" disabled /></div>
+        <div class="col"><label cLabel>Total NC</label><input cFormControl class="fw-bold" [value]="totalGeneral | number:'1.0-2'" disabled /></div>
+      </div>
+
+      <div class="mt-3">
+        <label cLabel>Observaciones</label>
+        <textarea cFormControl formControlName="ncr_obs" rows="2" maxlength="100"></textarea>
+      </div>
+    </form>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+    <button cButton color="primary" type="button" (click)="guardar()" [disabled]="guardando || cargandoConfig">
+      <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+      {{ guardando ? 'Guardando...' : 'Registrar Nota de Crédito' }}
+    </button>
+  </c-modal-footer>
+</c-modal>

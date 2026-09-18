@@ -13,7 +13,7 @@ class MovimientoStock extends Model
     public    $timestamps = false;
 
     protected $fillable = [
-        'mst_aidid', 'mst_cmdid', 'mst_usuid', 'mst_revid', 'mst_fecha', 'mst_tipo',
+        'mst_aidid', 'mst_cmdid', 'mst_dncid', 'mst_usuid', 'mst_revid', 'mst_fecha', 'mst_tipo',
         'mst_cantid', 'mst_cosuni', 'mst_salcan', 'mst_salcos', 'mst_obs',
         'mst_stprid', 'mst_stdeid',
     ];
@@ -21,6 +21,7 @@ class MovimientoStock extends Model
     protected $casts = [
         'mst_id'     => 'integer',
         'mst_cmdid'  => 'integer',
+        'mst_dncid'  => 'integer',   // <- agregar
         'mst_revid'  => 'integer',
         'mst_fecha'  => 'datetime',
         'mst_cantid' => 'decimal:4',
@@ -45,5 +46,10 @@ class MovimientoStock extends Model
     public function compraDetalle()
     {
         return $this->belongsTo(CompraDetalle::class, 'mst_cmdid', 'cmd_id');
+    }
+
+    public function detNotaCredito()
+    {
+        return $this->belongsTo(DetNotaCredito::class, 'mst_dncid', 'dnc_id');
     }
 }

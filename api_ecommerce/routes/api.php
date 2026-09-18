@@ -60,6 +60,14 @@ use App\Http\Controllers\Admin\Compras\ProductoEquivalenciaController;
 
 use App\Http\Controllers\Admin\product\ConfiguracionPrecioController;
 
+use App\Http\Controllers\Admin\Compras\NotaCreditoController;
+
+use App\Http\Controllers\Admin\Compras\CuotaCompraController;
+
+use App\Http\Controllers\Admin\Compras\CuentaPorPagarController;
+
+use App\Http\Controllers\Admin\Compras\LibroCompraController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -260,6 +268,23 @@ Route::group([
     Route::get('configuracion-precio', [ConfiguracionPrecioController::class, 'show']);
     Route::patch('configuracion-precio', [ConfiguracionPrecioController::class, 'update']);
  
+    // junto al bloque de "Compras":
+    Route::get('compras/{id}/notas-credito/config', [NotaCreditoController::class, 'config']);
+    Route::get('compras/{id}/notas-credito', [NotaCreditoController::class, 'index']);
+    Route::post('compras/{id}/notas-credito', [NotaCreditoController::class, 'store']);
+
+    // --- Cuotas de credito de Compras ---
+    Route::get('compras/{id}/cuotas', [CuotaCompraController::class, 'index']);
+    Route::post('cuotas-compra/{id}/pagos', [CuotaCompraController::class, 'pagar']);
+
+    // --- Cuentas por Pagar (reporte transversal sobre cuota_compra) ---
+    Route::get('cuentas-por-pagar/config', [CuentaPorPagarController::class, 'config']);
+    Route::get('cuentas-por-pagar', [CuentaPorPagarController::class, 'index']);
+
+    // --- Libro de Compras (reporte transversal: FC + NC) ---
+    Route::get('libro-compra/config', [LibroCompraController::class, 'config']);
+    Route::get('libro-compra', [LibroCompraController::class, 'index']);
+    
 });
 
 Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {

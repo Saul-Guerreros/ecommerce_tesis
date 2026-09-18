@@ -111,20 +111,22 @@
         <div class="row g-3">
           <div class="col-md-4">
             <label cLabel for="com_plzdia">Plazo (días)</label>
-            <input cFormControl type="number" id="com_plzdia" formControlName="com_plzdia" min="0" />
+            <input cFormControl type="number" id="com_plzdia" formControlName="com_plzdia" min="0" placeholder="0"  />
           </div>
           <div class="col-md-4">
             <label cLabel for="com_cuotas">Cuotas</label>
-            <input cFormControl type="number" id="com_cuotas" formControlName="com_cuotas" min="0" />
+            <input cFormControl type="number" id="com_cuotas" formControlName="com_cuotas" min="0" placeholder="0"  />
           </div>
           <div class="col-md-4">
             <label cLabel for="com_interv">Intervalo (días)</label>
-            <input cFormControl type="number" id="com_interv" formControlName="com_interv" min="0" />
+            <input cFormControl type="number" id="com_interv" formControlName="com_interv" min="0" placeholder="0"  />
           </div>
         </div>
+        <!-- 
         <div class="text-muted small mt-2">
           Obs: Se habilitan solo si la condición es Crédito.
         </div>
+        -->
       </fieldset>
 
       <fieldset class="border rounded p-3 mb-3">
@@ -157,9 +159,14 @@
             <label cLabel>Precio</label>
             <input cFormControl type="number" [(ngModel)]="nuevoCosto" [ngModelOptions]="{standalone: true}" min="0" step="0.01" />
           </div>
-          <div class="col-md-2">
+          <div class="col-md-1">
             <label cLabel>Cantidad</label>
             <input cFormControl type="number" [(ngModel)]="nuevaCantidad" [ngModelOptions]="{standalone: true}" min="0.0001" step="0.0001" />
+          </div>
+          <!-- NUEVO: descuento % de la linea -->
+          <div class="col-md-1">
+            <label cLabel>Desc. %</label>
+            <input cFormControl type="number" [(ngModel)]="nuevoDescuento" [ngModelOptions]="{standalone: true}" min="0" max="100" step="0.01" />
           </div>
           <div class="col-md-2">
             <button cButton color="primary" variant="outline" class="w-100" type="button" (click)="agregarItem()">
@@ -179,8 +186,8 @@
           <thead>
             <tr>
               <th>Código</th><th>Descripción</th><th class="text-end">Precio</th>
-              <th class="text-end">Cant.</th><th class="text-center">IVA</th>
-              <th class="text-end">Gravado</th><th *ngIf="!soloLectura"></th>
+              <th class="text-end">Cant.</th><th class="text-end">Desc. %</th>
+              <th class="text-center">IVA</th><th class="text-end">Gravado</th><th *ngIf="!soloLectura"></th>
             </tr>
           </thead>
           <tbody>
@@ -190,17 +197,18 @@
               <!-- CAMBIO: costo -> precun / umd_codigo -->
               <td class="text-end">{{ fila.value.precun | number:'1.0-2' }} / {{ fila.value.umd_codigo }}</td>
               <td class="text-end">{{ fila.value.canfac | number:'1.0-4' }}</td>
+              <td class="text-end">{{ fila.value.despor | number:'1.0-2' }}%</td>
               <td class="text-center">{{ fila.value.tasa }}%</td>
               <td class="text-end">
-                <!-- CAMBIO: costo -> precun en el cálculo de gravado -->
-                {{ (soloLectura ? fila.value.gravada : (fila.value.precun * fila.value.canfac)) | number:'1.0-2' }}
+                <!-- CAMBIO: ahora usa gravadoLinea() (neto de descuento) en vez de precun * canfac -->
+                {{ (soloLectura ? fila.value.gravada : gravadoLinea(fila.value)) | number:'1.0-2' }}
               </td>
               <td *ngIf="!soloLectura">
                 <button cButton size="sm" color="danger" variant="ghost" type="button" (click)="quitarItem(i)">✕</button>
               </td>
             </tr>
             <tr *ngIf="detalle.length === 0">
-              <td [attr.colspan]="soloLectura ? 6 : 7" class="text-center text-muted fst-italic">
+              <td [attr.colspan]="soloLectura ? 7 : 8" class="text-center text-muted fst-italic">
                 Sin ítems cargados
               </td>
             </tr>
@@ -222,7 +230,7 @@
           </div>
           <div class="col">
             <label cLabel>IVA total</label>
-            <input cFormControl [value]="(soloLectura ? ((compra?.com_iva5 ?? 0) + (compra?.com_iva10 ?? 0)) : (totalIva5 + totalIva10)) | number:'1.0-2'" disabled />
+            <input cFormControl [value]="(soloLectura ? ivaTotalVista(compra) : (totalIva5 + totalIva10)) | number:'1.0-2'" disabled />
           </div>
           <div class="col">
             <label cLabel>Total</label>

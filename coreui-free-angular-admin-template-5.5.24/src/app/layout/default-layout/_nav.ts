@@ -65,7 +65,9 @@ export const navItems: INavData[] = [
     children: [
       { name: 'Proveedores', url: '/proveedores' },
       { name: 'Tipos de proveedor', url: '/tipos-proveedor' },
-      { name: 'Facturas de Compra', url: '/facturas-compra' }
+      { name: 'Facturas de Compra', url: '/facturas-compra' },
+      { name: 'Cuentas por Pagar', url: '/cuentas-por-pagar' },
+      { name: 'Libro de Compras', url: '/libro-compra' }
     ]
   },
   
