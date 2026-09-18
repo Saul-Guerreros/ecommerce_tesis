@@ -11,6 +11,8 @@ import {
   SpinnerModule,
 } from '@coreui/angular';
 import { IconModule } from '@coreui/icons-angular';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { Categoria, Producto } from '../../../core/models/producto.model';
 import { PublicacionWeb } from '../../../core/models/publicacion-web.model';
@@ -18,6 +20,8 @@ import { CatalogoService } from '../../../core/services/catalogo.service';
 import { ProductoService } from '../../../core/services/producto.service';
 import { ProductVariationsService } from '../../productos/product-variations/services/product-variations.service';
 import { PublicacionWebService } from '../../../core/services/publicacion-web.service';
+import { PreciosService } from '../../../modules/precios/service/precios.service';
+import { Precio } from '../../../modules/precios/models/precio.model';
 
 /**
  * Apartado "Publicación Web" de un producto: categoría, título y
@@ -47,6 +51,9 @@ export class PublicacionWebComponent implements OnInit {
   productoId!: number;
   producto: Producto | null = null;
   publicacion: PublicacionWeb | null = null;
+  // Precio minorista/mayorista vigente del producto (Gestión de Precios).
+  // Solo se usa para sugerir pub_prevta al crear una publicación nueva.
+  precio: Precio | null = null;
   categorias: Categoria[] = [];
 
   cargando = false;
@@ -91,6 +98,7 @@ export class PublicacionWebComponent implements OnInit {
     private publicacionService: PublicacionWebService,
     private catalogoService: CatalogoService,
 	private variationsService: ProductVariationsService,
+    private preciosService: PreciosService,
   ) {}
 
   ngOnInit(): void {
@@ -169,16 +177,24 @@ copiarDelPadre(): void {
     this.cargando = true;
     this.error = null;
 
-    this.productoService.obtener(this.productoId).subscribe({
-      next: (res) => (this.producto = res.data),
-      error: () => (this.error = 'No se pudo cargar el producto.'),
-    });
-
-    this.publicacionService.obtener(this.productoId).subscribe({
-      next: (res) => {
-        this.publicacion = res.data;
+    // Los 3 vienen de módulos distintos (Producto, Publicación Web y
+    // Gestión de Precios) y se combinan recién acá. El precio se pide con
+    // catchError -> of(null): un producto sin compras/precio cargado
+    // todavía no debe tumbar el resto de la pantalla.
+    forkJoin({
+      producto: this.productoService.obtener(this.productoId),
+      publicacion: this.publicacionService.obtener(this.productoId),
+      precio: this.preciosService.getOne(this.productoId).pipe(catchError(() => of(null))),
+    }).subscribe({
+      next: ({ producto, publicacion, precio }) => {
+        this.producto = producto.data;
+        this.publicacion = publicacion.data;
+        this.precio = precio;
 
         if (this.publicacion) {
+          // Ya existe: se respetan los valores guardados, no se pisan con
+          // los actuales del producto (pub_titulo/pub_prevta pudieron
+          // editarse a propósito para diferir del producto).
           this.form.patchValue({
             pub_catid: this.publicacion.pub_catid,
             pub_titulo: this.publicacion.pub_titulo,
@@ -195,12 +211,21 @@ copiarDelPadre(): void {
             selling_activo: this.publicacion.vitrina?.selling != null,
             selling_orden: this.publicacion.vitrina?.selling ?? null,
           });
+        } else if (this.producto) {
+          // Publicación nueva: se sugieren título (nombre del producto) y
+          // precio de venta (minorista de Gestión de Precios). El admin
+          // los puede editar antes de guardar, igual que cualquier otro
+          // campo del formulario.
+          this.form.patchValue({
+            pub_titulo: this.producto.prd_descri,
+            pub_prevta: this.precio?.minorista?.precio ?? null,
+          });
         }
 
         this.cargando = false;
       },
       error: () => {
-        this.error = 'No se pudo cargar la publicación web.';
+        this.error = 'No se pudo cargar el producto o la publicación web.';
         this.cargando = false;
       },
     });

@@ -18,7 +18,11 @@ export interface EspecificacionResumen {
 export interface ProductoResumen {
   prd_id: number;
   prd_codinv: string;
-  prd_prevta: number;
+  prd_descri: string;
+  // Precio minorista/mayorista de Gestión de Precios (pueden venir null si
+  // el producto todavía no tuvo compra confirmada ni edición manual).
+  prd_pvtmin: number | null;
+  prd_pvtmay: number | null;
   prd_estado: number;
 }
 

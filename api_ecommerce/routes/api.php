@@ -268,6 +268,7 @@ Route::group([
 
     //Precios
     Route::get('precios', [PrecioController::class, 'index']);
+    Route::get('precios/{id}', [PrecioController::class, 'show']);
     Route::patch('precios/{id}', [PrecioController::class, 'update']);
 
     Route::get('tipos-ajuste/select', [TipoAjusteController::class, 'select']);

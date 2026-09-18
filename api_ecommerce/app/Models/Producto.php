@@ -70,10 +70,10 @@ class Producto extends Model
         return $this->belongsTo(UnidadMedida::class, 'prd_umdid', 'umd_id');
     }
 
-    public function imagenes(): HasMany
-    {
-        return $this->hasMany(ImagenProducto::class, 'img_prdid', 'prd_id');
-    }
+    // NOTA: ya no existe una relación imagenes() directa aquí. Las imágenes
+    // viven en publicacion_web (img_pubid), no en producto: accedé a ellas
+    // vía $producto->publicacionWeb?->imagenes (puede ser null si el
+    // producto todavía no tiene ficha web).
 
     public function stock(): HasMany
     {

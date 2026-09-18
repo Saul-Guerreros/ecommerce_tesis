@@ -62,7 +62,7 @@ class PublicacionWebController extends Controller
     public function show(Producto $producto): JsonResponse
     {
         $publicacion = $producto->publicacionWeb()
-        ->with(['categoria', 'imagenes', 'especificaciones', 'vitrinas'])
+        ->with(['producto', 'categoria', 'imagenes', 'especificaciones', 'vitrinas'])
         ->first();
  
     return response()->json([

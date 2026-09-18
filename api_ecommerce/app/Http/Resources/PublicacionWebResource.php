@@ -27,7 +27,12 @@ class PublicacionWebResource extends JsonResource
             'producto' => $this->whenLoaded('producto', fn () => [
                 'prd_id'     => $this->producto->prd_id,
                 'prd_codinv' => $this->producto->prd_codinv,
-                'prd_prevta' => $this->producto->prd_prevta !== null ? (float) $this->producto->prd_prevta : null,
+                'prd_descri' => $this->producto->prd_descri,
+                // Precio minorista de Gestión de Precios: es lo que se sugiere
+                // como valor inicial de pub_prevta (ver StorePublicacionWebRequest /
+                // publicacion-web.component.ts). prd_prevta ya no existe en producto.
+                'prd_pvtmin' => $this->producto->prd_pvtmin !== null ? (float) $this->producto->prd_pvtmin : null,
+                'prd_pvtmay' => $this->producto->prd_pvtmay !== null ? (float) $this->producto->prd_pvtmay : null,
                 'prd_estado' => $this->producto->prd_estado,
             ]),
 
