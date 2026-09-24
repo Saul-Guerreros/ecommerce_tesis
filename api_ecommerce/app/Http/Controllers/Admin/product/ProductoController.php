@@ -6,6 +6,8 @@ use App\Http\Requests\product\ProductoRequest;
 use App\Http\Resources\product\ProductoResource;
 use App\Http\Controllers\Controller;
 use App\Models\Producto;
+use App\Models\PublicacionWeb;
+use App\Models\Product\EspecificacionProducto;
 use App\Models\Compras\ProductoEquivalencia;
 use App\Services\Precio\PriceService;
 use Illuminate\Database\Eloquent\Collection;
@@ -99,10 +101,98 @@ class ProductoController extends Controller
         return $productos;
     }
 
+    /**
+     * Crea, dentro de la MISMA transacción del padre, una fila de producto
+     * por cada elemento de $filas (alta en lote, Opción 3). Cada variante
+     * hereda marca/IVA/unidad/afecta-stock/estado del padre, incluyendo su
+     * override individual de margen si lo tiene (prd_marmin/prd_marmaj/
+     * prd_canminmaj -- null en el padre = usa el general de
+     * configuracion_precio, y eso también se hereda tal cual).
+     * prd_descri/prd_codinv/prd_stkmin/atb_id/prp_id vienen de la fila.
+     *
+     * Toda variante nace, además, con su Publicación Web en borrador
+     * (pub_estado=0, sin categoría todavía -- eso se completa cuando el
+     * admin entra a esa pantalla) y su especificación ya cargada con el
+     * Atributo/Propiedad de esa fila. No es opcional: si es una variante,
+     * por definición se diferencia por algo, y eso es justamente lo que
+     * queda registrado acá.
+     */
+    private function crearVariantes(Producto $padre, array $filas): void
+    {
+        foreach ($filas as $fila) {
+            $variante = Producto::create([
+                'prd_padre_id'  => $padre->prd_id,
+                'prd_marid'     => $padre->prd_marid,
+                'prd_tivid'     => $padre->prd_tivid,
+                'prd_umdid'     => $padre->prd_umdid,
+                'prd_afestk'    => $padre->prd_afestk,
+                'prd_estado'    => $padre->prd_estado,
+                'prd_marmin'    => $padre->prd_marmin,
+                'prd_marmaj'    => $padre->prd_marmaj,
+                'prd_canminmaj' => $padre->prd_canminmaj,
+                'prd_codinv'    => $fila['prd_codinv'],
+                'prd_descri'    => $fila['prd_descri'],
+                'prd_stkmin'    => $fila['prd_stkmin'],
+            ]);
+
+            $publicacion = PublicacionWeb::create([
+                'pub_prdid'  => $variante->prd_id,
+                'pub_titulo' => $variante->prd_descri,
+                // pub_catid: se completa después, en Publicación Web.
+                // pub_slug: se autogenera solo desde pub_titulo (ver
+                // PublicacionWeb::boot()). pub_estado: default 0 (borrador).
+            ]);
+
+            EspecificacionProducto::create([
+                'esp_pubid' => $publicacion->pub_id,
+                'esp_atbid' => $fila['atb_id'],
+                'esp_prpid' => $fila['prp_id'],
+                // esp_valibr queda null a propósito: al mostrarla, el
+                // valor sale del nombre de la Propiedad (ver
+                // VitrinaController::detalle()) -- no hay nada que
+                // duplicar acá.
+            ]);
+        }
+    }
+
+    /**
+     * Sincronización automática (sin casilla, siempre): si el padre tiene
+     * variantes propias, sus marca/IVA/unidad Y su override de margen se
+     * propagan a todas -- así nunca quedan desalineadas de lo que el admin
+     * definió como compartido, tampoco en precio. prd_estado/prd_afestk/
+     * prd_stkmin NO se propagan: son independientes por diseño (cada
+     * variante puede tener su propio stock mínimo o estar desactivada sin
+     * afectar a sus hermanas). prd_pvtmin/prd_pvtmay (el precio ya
+     * CALCULADO) tampoco se tocan acá: eso lo recalcula PriceService según
+     * el costo propio de cada variante, no se copia del padre.
+     */
+    private function sincronizarVariantes(Producto $padre): void
+    {
+        Producto::where('prd_padre_id', $padre->prd_id)->update([
+            'prd_marid'     => $padre->prd_marid,
+            'prd_tivid'     => $padre->prd_tivid,
+            'prd_umdid'     => $padre->prd_umdid,
+            'prd_marmin'    => $padre->prd_marmin,
+            'prd_marmaj'    => $padre->prd_marmaj,
+            'prd_canminmaj' => $padre->prd_canminmaj,
+        ]);
+    }
+
     // GET /api/admin/productos?search=&marca=&estado=&categoria=&estado_publicacion=&page=&per_page=
     public function index(Request $request): JsonResponse
     {
-        $query = Producto::with([
+        // Colapsado por defecto: solo modelos base / productos sueltos
+        // (las variantes se piden aparte, GET /productos/{id}, al expandir
+        // una fila). Publicación Web necesita ver TODOS los productos por
+        // igual -- cada variante publica por separado -- así que manda
+        // ?incluir_variantes=1 para pedir la lista sin colapsar.
+        $incluirVariantes = $request->boolean('incluir_variantes');
+
+        $query = Producto::query();
+        if (!$incluirVariantes) {
+            $query->whereNull('prd_padre_id')->withCount('variantes');
+        }
+        $query->with([
             'marca',
             'tipoIva',
             'unidadMedida',
@@ -209,13 +299,30 @@ class ProductoController extends Controller
     // GET /api/admin/productos/{id}
     public function show(int $id): JsonResponse
     {
-        $producto = Producto::with(['marca', 'tipoIva', 'unidadMedida'])->find($id);
+        $producto = Producto::with([
+            'marca', 'tipoIva', 'unidadMedida', 'padre',
+            'variantes.publicacionWeb', 'variantes.marca', 'variantes.unidadMedida',
+        ])->find($id);
 
         if (!$producto) {
             return response()->json(['message' => 'Producto no encontrado'], 404);
         }
 
         $producto = $this->conStock($producto);
+
+        // El listado colapsado (index()) necesita poder pintar la fila de
+        // cada variante igual de completa que la del padre (marca, unidad,
+        // stock, si está en uso para habilitar/deshabilitar "Eliminar") al
+        // expandir -- así que se les calcula acá también, no solo al padre.
+        if ($producto->variantes->isNotEmpty()) {
+            $this->conStock($producto->variantes);
+        }
+
+        $usos = $this->contarUsos();
+        $producto->usos_count = array_sum($usos[$producto->prd_id] ?? []);
+        $producto->variantes->each(function ($v) use ($usos) {
+            $v->usos_count = array_sum($usos[$v->prd_id] ?? []);
+        });
 
         return response()->json(['data' => new ProductoResource($producto)], 200);
     }
@@ -234,9 +341,10 @@ class ProductoController extends Controller
         $tieneEquivCompra = (bool) ($datos['tiene_equiv_compra'] ?? false);
         $peqUmdid  = $datos['peq_umdid']  ?? null;
         $peqFactor = $datos['peq_factor'] ?? null;
-        unset($datos['tiene_equiv_compra'], $datos['peq_umdid'], $datos['peq_factor']);
+        $variantes = $datos['variantes'] ?? [];
+        unset($datos['tiene_equiv_compra'], $datos['peq_umdid'], $datos['peq_factor'], $datos['variantes']);
 
-        $producto = DB::transaction(function () use ($datos, $tieneEquivCompra, $peqUmdid, $peqFactor) {
+        $producto = DB::transaction(function () use ($datos, $tieneEquivCompra, $peqUmdid, $peqFactor, $variantes) {
             $producto = Producto::create($datos);
 
             if ($tieneEquivCompra) {
@@ -248,10 +356,14 @@ class ProductoController extends Controller
                 ]);
             }
 
+            if (!empty($variantes)) {
+                $this->crearVariantes($producto, $variantes);
+            }
+
             return $producto;
         });
 
-        $producto->load(['marca', 'tipoIva', 'unidadMedida']);
+        $producto->load(['marca', 'tipoIva', 'unidadMedida', 'variantes']);
         $producto = $this->conStock($producto);
 
         return response()->json([
@@ -271,8 +383,36 @@ class ProductoController extends Controller
 
         // request->validated() nunca trae stock_actual/precio_sugerido: no
         // estan en las reglas del Request, se ignoran aunque lleguen.
-        $producto->update($request->validated());
-        $producto->load(['marca', 'tipoIva', 'unidadMedida']);
+        //
+        // prd_padre_id se saca EXPLICITAMENTE: el form de edición ya no
+        // tiene forma de mandarlo (se gestiona solo, vía crearVariantes()/
+        // sincronizarVariantes()) -- si Laravel llegara a devolverlo en
+        // null por estar ausente del payload, un update() sin este unset
+        // desvincularía silenciosamente una variante existente de su padre.
+        $datos = $request->validated();
+        $variantes = $datos['variantes'] ?? [];
+        unset(
+            $datos['variantes'], $datos['tiene_equiv_compra'], $datos['peq_umdid'], $datos['peq_factor'],
+            $datos['prd_padre_id']
+        );
+
+        DB::transaction(function () use ($producto, $datos, $variantes) {
+            $producto->update($datos);
+
+            // Sync automático: si YA tenía variantes, sus marca/IVA/unidad
+            // se actualizan para no quedar desalineadas del padre.
+            if ($producto->variantes()->exists()) {
+                $this->sincronizarVariantes($producto);
+            }
+
+            // Filas nuevas cargadas ahora desde el mismo formulario de
+            // edición (Opción 3 también disponible al editar, no solo al crear).
+            if (!empty($variantes)) {
+                $this->crearVariantes($producto, $variantes);
+            }
+        });
+
+        $producto->load(['marca', 'tipoIva', 'unidadMedida', 'variantes']);
         $producto = $this->conStock($producto);
 
         return response()->json([

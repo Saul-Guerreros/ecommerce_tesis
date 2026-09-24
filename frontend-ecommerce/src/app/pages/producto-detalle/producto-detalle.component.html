@@ -20,307 +20,290 @@
     <div class="uk-container">
       <div class="uk-grid-medium uk-child-width-1-1" uk-grid="">
 
-        <!-- Breadcrumb + title -->
-        <div class="uk-text-center">
-          <ul class="uk-breadcrumb uk-flex-center uk-margin-remove">
-            <li><a routerLink="/">Home</a></li>
-            <li *ngIf="producto.categoria"><span>{{ producto.categoria }}</span></li>
-            <li><span>{{ producto.titulo }}</span></li>
-          </ul>
-          <h1 class="uk-margin-small-top uk-margin-remove-bottom">{{ producto.titulo }}</h1>
+        <!-- Breadcrumb -->
+        <div>
+          <nav class="pd-breadcrumb" aria-label="Breadcrumb">
+            <a routerLink="/">Home</a>
+            <span *ngIf="producto.categoria" class="pd-breadcrumb-sep">/</span>
+            <span *ngIf="producto.categoria">{{ producto.categoria }}</span>
+            <span class="pd-breadcrumb-sep">/</span>
+            <span class="pd-breadcrumb-current">{{ producto.titulo }}</span>
+          </nav>
         </div>
 
         <div>
-          <div class="uk-grid-medium uk-child-width-1-1" uk-grid="">
-            <div>
-              <div class="uk-card uk-card-default uk-card-small tm-ignore-container">
-                <div class="uk-grid-small uk-grid-collapse uk-grid-match" uk-grid="">
+          <div class="pd-card">
+          <div class="pd-top">
 
-                  <!-- Gallery -->
-                  <div class="uk-width-1-1 uk-width-expand@m">
-                    <div class="uk-card-body">
-                      <div class="tm-ratio tm-ratio-4-3">
-                        <a
-                          class="tm-media-box tm-media-box-zoom"
-                          href="javascript:void(0)"
-                          (click)="abrirZoom()"
-                        >
-                          <figure class="tm-media-box-wrap">
-                            <img [src]="imagenActual" [alt]="producto.titulo" fetchpriority="high" loading="eager" />
-                          </figure>
-                        </a>
-                      </div>
+            <!-- Gallery -->
+            <div class="pd-gallery">
+              <div class="pd-gallery-inner">
+                <div class="pd-thumbs-wrap" *ngIf="galeria.length > 1" [class.has-overflow]="hayDesborde">
+  <button
+    type="button"
+    class="pd-thumbs-arrow pd-thumbs-arrow-prev"
+    *ngIf="hayDesborde"
+    [disabled]="!puedeAnterior"
+    (click)="desplazarMiniaturas(-1)"
+    aria-label="Miniaturas anteriores"
+  >
+    <svg viewBox="0 0 20 20" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="1.6" points="4 13 10 7 16 13"></polyline></svg>
+  </button>
 
-                      <ul
-                        class="uk-grid-small uk-child-width-1-5 uk-grid uk-margin-small-top"
-                        uk-grid=""
-                        *ngIf="galeria.length > 1"
-                      >
-                        <li *ngFor="let img of galeria; let i = index; trackBy: trackByIndice">
-                          <div class="tm-ratio tm-ratio-1-1">
-                            <a
-                              class="tm-media-box tm-media-box-frame"
-                              [class.uk-active]="i === imagenActivaIndex"
-                              href="javascript:void(0)"
-                              (click)="seleccionarImagen(i)"
-                            >
-                              <figure class="tm-media-box-wrap">
-                                <img [src]="imagenMiniatura(img)" [alt]="producto.titulo" loading="lazy" />
-                              </figure>
-                            </a>
-                          </div>
-                        </li>
-                      </ul>
-                    </div>
+  <div class="pd-thumbs" #thumbsViewport (scroll)="actualizarFlechasMiniaturas()">
+    <button
+      type="button"
+      class="pd-thumb"
+      style="box-sizing:border-box; display:block; width:78px; min-width:78px; max-width:78px; height:92px; min-height:92px; max-height:92px; flex:0 0 auto; padding:0; overflow:hidden;"
+      *ngFor="let img of galeria; let i = index; trackBy: trackByIndice"
+      [class.is-active]="i === imagenActivaIndex"
+      (click)="seleccionarImagen(i)"
+    >
+      <img
+        [src]="imagenMiniatura(img)"
+        [alt]="producto.titulo"
+        loading="lazy"
+        style="display:block; width:100%; height:100%; max-width:none; object-fit:cover; transform:scale(0.85); transform-origin:center;"
+      />
+    </button>
+  </div>
+
+  <button
+    type="button"
+    class="pd-thumbs-arrow pd-thumbs-arrow-next"
+    *ngIf="hayDesborde"
+    [disabled]="!puedeSiguiente"
+    (click)="desplazarMiniaturas(1)"
+    aria-label="Miniaturas siguientes"
+  >
+    <svg viewBox="0 0 20 20" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="1.6" points="4 7 10 13 16 7"></polyline></svg>
+  </button>
+</div>
+                <a class="pd-main-image" href="javascript:void(0)" (click)="abrirZoom()">
+                  <img [src]="imagenActual" [alt]="producto.titulo" fetchpriority="high" loading="eager" />
+                </a>
+              </div>
+            </div>
+
+            <!-- Info column -->
+            <div class="pd-info">
+              <div class="pd-category" *ngIf="producto.categoria">{{ producto.categoria }}</div>
+              <h1 class="pd-title">{{ producto.titulo }}</h1>
+
+              <!-- inventory details -->
+              <div class="pd-inventory">
+                <span class="pd-stock" [class.is-out]="sinStock">{{ sinStock ? 'Out of stock' : 'In stock' }}</span>
+
+                <span class="pd-rating" *ngIf="producto.rating">
+                  <span
+                    class="pd-star"
+                    [class.is-filled]="llena"
+                    *ngFor="let llena of estrellas"
+                    uk-icon="icon: star; ratio: .7"
+                  ></span>
+                </span>
+                <span class="pd-rating pd-rating-empty" *ngIf="!producto.rating">
+                  <span class="pd-star" uk-icon="icon: star; ratio: .7"></span>
+                  <span class="pd-star" uk-icon="icon: star; ratio: .7"></span>
+                  <span class="pd-star" uk-icon="icon: star; ratio: .7"></span>
+                  <span class="pd-star" uk-icon="icon: star; ratio: .7"></span>
+                  <span class="pd-star" uk-icon="icon: star; ratio: .7"></span>
+                </span>
+
+                <a href="javascript:void(0)" (click)="seleccionarTab('resenas')" class="pd-reviews-link">
+                  {{ producto.rating ? '(' + producto.rating + ')' : 'No reviews yet' }}
+                </a>
+              </div>
+
+              <!-- price -->
+              <div class="pd-price-row">
+                <span class="pd-price-old" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</span>
+                <span class="pd-price-new">{{ producto.precio_final | currency }}</span>
+                <span class="pd-price-badge" *ngIf="producto.descuento_pct">-{{ producto.descuento_pct }}%</span>
+              </div>
+              <div class="pd-subtotal" *ngIf="cantidad > 1 && !sinStock">
+                Subtotal ({{ cantidad }}): {{ subtotal | currency }}
+              </div>
+			  
+			  <div
+  class="pd-flash"
+  *ngIf="producto.es_flash && producto.oferta_fin"
+  [attr.uk-countdown]="'date: ' + producto.oferta_fin"
+>
+  <span class="pd-flash-label">
+  <svg class="pd-flash-icon" viewBox="0 0 384 512" width="14" height="14" fill="currentColor">
+    <path d="M159.3 5.4c7.8-7.3 19.9-7.2 27.7 .1c27.6 25.9 53.5 53.8 77.7 84c11-14.4 23.5-30.1 37-42.9c7.9-7.4 20.1-7.4 28 .1c34.6 33 63.9 76.6 84.5 118c20.3 40.8 33.8 82.5 33.8 111.9C448 404.2 348.2 512 224 512C98.4 512 0 404.1 0 276.5c0-38.4 17.8-85.3 45.4-131.7c28-47.1 66.8-94.3 106.2-131.9C155.4 9.3 157.3 7.4 159.3 5.4zM224 461.3c86.1 0 158.4-71.9 158.4-165.2c0-2.3 0-4.6-.1-6.9c-26.2 32.1-64.9 51.2-107 51.2c-54.6 0-98.4-42.4-98.4-95.2c0-19.6 8.5-38.5 15.5-52c-15.7 17.4-31.7 37.5-45.1 58.5c-25.2 39.6-42.6 79.5-42.6 111.9c0 66.9 55.2 121.6 121.9 121.6c-.1-.1-.1-.1-.1-.1z"/>
+  </svg>
+  Flash Sale end in:
+</span>
+  <span class="pd-flash-timer">
+    <span class="pd-flash-unit"><span uk-countdown-days=""></span>d</span>
+    <span class="pd-flash-sep">:</span>
+    <span class="pd-flash-unit"><span uk-countdown-hours=""></span>h</span>
+    <span class="pd-flash-sep">:</span>
+    <span class="pd-flash-unit"><span uk-countdown-minutes=""></span>m</span>
+    <span class="pd-flash-sep">:</span>
+    <span class="pd-flash-unit"><span uk-countdown-seconds=""></span>s</span>
+  </span>
+</div>
+
+              <!-- actions: compra habilitada -->
+              <div class="pd-purchase" *ngIf="!sinStock">
+                <div class="pd-qty-title">Cantidad</div>
+                <div class="pd-action-row">
+                  <div class="pd-qty">
+                    <button type="button" class="pd-qty-btn" (click)="decrementarCantidad()" uk-icon="icon: minus; ratio: .6"></button>
+                    <input class="pd-qty-input" type="text" readonly [value]="cantidad" />
+                    <button type="button" class="pd-qty-btn" (click)="incrementarCantidad()" uk-icon="icon: plus; ratio: .6"></button>
                   </div>
-
-                  <!-- Info column -->
-                  <div class="uk-width-1-1 uk-width-1-3@m tm-product-info">
-                    <div class="uk-card-body">
-                      <div class="uk-text-meta uk-margin-small-bottom" *ngIf="producto.marca">
-                        {{ producto.marca }}
-                      </div>
-
-                      <div class="uk-margin">
-                        <div class="uk-grid-small uk-flex-middle" uk-grid="">
-                          <div class="uk-flex uk-flex-middle uk-text-meta">
-                            SKU: {{ producto.sku }}
-                          </div>
-                          <div *ngIf="producto.descuento_pct">
-                            <span class="uk-label uk-label-danger">-{{ producto.descuento_pct }}%</span>
-                          </div>
-                        </div>
-                         <div class="uk-margin-xsmall-top" *ngIf="!producto.rating">
-                          <span class="tm-rating-empty uk-margin-xsmall-right">
-                            <span uk-icon="icon: star; ratio: .75"></span>
-                            <span uk-icon="icon: star; ratio: .75"></span>
-                            <span uk-icon="icon: star; ratio: .75"></span>
-                            <span uk-icon="icon: star; ratio: .75"></span>
-                            <span uk-icon="icon: star; ratio: .75"></span>
-                          </span>
-                          <a href="javascript:void(0)" (click)="seleccionarTab('resenas')" class="uk-link-muted uk-text-meta">No reviews yet</a>
-                        </div>
-                      </div>
-
-                      <!-- Colors -->
-                      <div class="uk-margin" *ngIf="coloresParaMostrar.length > 0">
-                        <div class="uk-text-small uk-margin-xsmall-bottom">Color</div>
-                        <ul class="uk-subnav uk-subnav-pill tm-variations">
-                          <li
-                            *ngFor="let color of coloresParaMostrar; trackBy: trackByColor"
-                            [class.uk-active]="esColorActivo(color)"
-                          >
-                            <a
-                              [routerLink]="color.slug ? ['/producto', color.slug] : null"
-                              [attr.uk-tooltip]="color.titulo"
-                            >
-                              <img [src]="imagenColor(color)" [alt]="color.titulo" class="tm-variation-swatch" />
-                            </a>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <!-- Price + qty + actions -->
-                      <div class="uk-margin">
-                        <div class="uk-padding-small uk-background-primary-lighten uk-border-rounded">
-                          <div class="uk-grid-small uk-child-width-1-1" uk-grid="">
-                            <div>
-                              <del class="uk-text-meta" *ngIf="producto.descuento_pct">
-                                {{ producto.precio_original | currency }}
-                              </del>
-                              <div class="tm-product-price">{{ producto.precio_final | currency }}</div>
-                              <div class="uk-text-meta uk-margin-xsmall-top" *ngIf="cantidad > 1 && !sinStock">
-                                Subtotal ({{ cantidad }}): {{ subtotal | currency }}
-                              </div>
-                            </div>
-
-                            <!-- Compra habilitada -->
-                            <div *ngIf="!sinStock">
-                              <div class="uk-grid-small uk-flex-middle" uk-grid="">
-                                <div>
-                                  <a
-                                    href="javascript:void(0)"
-                                    (click)="decrementarCantidad()"
-                                    uk-icon="icon: minus; ratio: .75"
-                                  ></a>
-                                  <input
-                                    class="uk-input tm-quantity-input"
-                                    maxlength="3"
-                                    type="text"
-                                    readonly
-                                    [value]="cantidad"
-                                  />
-                                  <a
-                                    href="javascript:void(0)"
-                                    (click)="incrementarCantidad()"
-                                    uk-icon="icon: plus; ratio: .75"
-                                  ></a>
-                                </div>
-                                <div>
-                                  <button
-                                    class="uk-button uk-button-primary tm-product-add-button tm-shine"
-                                    (click)="agregarAlCarrito()"
-                                  >
-                                    add to cart
-                                  </button>
-                                </div>
-                                <div class="uk-width-auto uk-width-expand@s uk-flex uk-flex-middle uk-text-meta">
-                                  <a
-                                    href="javascript:void(0)"
-                                    class="uk-margin-small-right"
-                                    [class.tm-action-button-active]="favoritoActivo"
-                                    (click)="toggleFavorito()"
-                                    uk-tooltip="Add to favorites"
-                                  ><span uk-icon="heart"></span></a>
-                                  <a
-                                    href="javascript:void(0)"
-                                    [class.tm-action-button-active]="compararActivo"
-                                    (click)="toggleComparar()"
-                                    uk-tooltip="Add to compare"
-                                  ><span uk-icon="copy"></span></a>
-                                </div>
-                              </div>
-                            </div>
-
-                            <!-- Sin stock: banner claro en vez de un botón "disabled" casi invisible -->
-                            <div *ngIf="sinStock">
-                              <div class="uk-grid-small uk-flex-middle" uk-grid="">
-                                <div>
-                                  <span class="uk-label uk-label-danger">Out of stock</span>
-                                </div>
-                                <div class="uk-text-meta">We'll let you know when it's back.</div>
-                                <div class="uk-width-auto uk-width-expand@s uk-flex uk-flex-middle uk-text-meta">
-                                  <a
-                                    href="javascript:void(0)"
-                                    class="uk-margin-small-right"
-                                    [class.tm-action-button-active]="favoritoActivo"
-                                    (click)="toggleFavorito()"
-                                    uk-tooltip="Add to favorites"
-                                  ><span uk-icon="heart"></span></a>
-                                  <a
-                                    href="javascript:void(0)"
-                                    [class.tm-action-button-active]="compararActivo"
-                                    (click)="toggleComparar()"
-                                    uk-tooltip="Add to compare"
-                                  ><span uk-icon="copy"></span></a>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Availability -->
-                      <div class="uk-margin" *ngIf="!sinStock">
-                        <div class="uk-padding-small uk-background-muted uk-border-rounded">
-                          <div class="uk-grid-collapse uk-flex-middle" uk-grid="">
-                            <span class="uk-margin-xsmall-right" uk-icon="icon: check"></span>
-                            <div>
-                              <div class="uk-text-bolder">In stock</div>
-                              <div class="uk-text-xsmall uk-text-muted">{{ disponibilidadDetalle }}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-
-                      <!-- Pick up in store: datos reales (sucursales con stock > 0) -->
-                      <div class="uk-margin" *ngIf="sucursalesPickup.length > 0">
-                        <div class="uk-padding-small uk-background-muted uk-border-rounded">
-                          <div class="uk-grid-collapse uk-flex-middle" uk-grid="">
-                            <span class="uk-margin-xsmall-right" uk-icon="icon: location"></span>
-                            <div>
-                              <div class="uk-text-bolder">Pick up in store</div>
-                              <div class="uk-text-xsmall uk-text-muted">Available at {{ sucursalesPickup.join(', ') }}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Quick specs -->
-                      <div class="uk-margin" *ngIf="especificacionesResumen.length > 0">
-                        <ul class="uk-list uk-text-small uk-margin-remove">
-                          <li *ngFor="let esp of especificacionesResumen">
-                            <span class="uk-text-muted">{{ esp.atributo }}: </span>
-                            <span>{{ esp.valor }}</span>
-                          </li>
-                        </ul>
-                        <div class="uk-margin-small-top">
-                          <a class="uk-link-heading" href="javascript:void(0)" (click)="verEspecificacionesCompletas()">
-                            <span class="tm-pseudo">Detailed specifications</span>
-                            <span class="uk-margin-xsmall-left" uk-icon="icon: chevron-down; ratio: .75;"></span>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <button class="pd-add-btn" (click)="agregarAlCarrito()">Add to cart</button>
                 </div>
+                <button class="pd-buy-btn" (click)="comprarAhora()">Buy Now</button>
+              </div>
 
-                <!-- Tabs: Description / Specifications / Reviews -->
-                <header>
-                  <nav class="tm-product-nav" id="description">
-                    <ul class="uk-subnav uk-subnav-pill uk-margin-remove">
-                      <li [class.uk-active]="tabActiva === 'descripcion'">
-                       <a href="javascript:void(0)" (click)="seleccionarTab('descripcion')">Overview</a>
-                      </li>
-                      <li
-                        *ngIf="especificaciones.length > 0"
-                        [class.uk-active]="tabActiva === 'especificaciones'"
-                      >
-                        <a href="javascript:void(0)" (click)="seleccionarTab('especificaciones')">Specifications</a>
-                      </li>
-                      <li [class.uk-active]="tabActiva === 'resenas'">
-                        <a href="javascript:void(0)" (click)="seleccionarTab('resenas')">
-                          Reviews <span>({{ producto.rating ? 1 : 0 }})</span>
-                        </a>
-                      </li>
-                    </ul>
-                  </nav>
-                </header>
+              <!-- Sin stock: banner claro en vez de un botón "disabled" casi invisible -->
+              <div class="pd-outofstock" *ngIf="sinStock">
+                <span class="pd-outofstock-badge">Out of stock</span>
+                <span class="pd-outofstock-msg">We'll let you know when it's back.</span>
+              </div>
 
-                <div class="uk-card-body tm-product-description">
-                  <div *ngIf="tabActiva === 'descripcion'">
-                    <article class="uk-article" *ngIf="parrafosDescripcion.length > 0">
-                      <p *ngFor="let parrafo of parrafosDescripcion">{{ parrafo }}</p>
-                    </article>
-                    <p class="uk-text-meta" *ngIf="parrafosDescripcion.length === 0">
-                      No description available for this product yet.
-                    </p>
+              <!-- wishlist / compare -->
+              <div class="pd-action-sm">
+                <button
+                  type="button"
+                  class="pd-action-sm-btn"
+                  [class.is-active]="favoritoActivo"
+                  (click)="toggleFavorito()"
+                >
+                  <span uk-icon="heart"></span> Add to wishlist
+                </button>
+                <button
+                  type="button"
+                  class="pd-action-sm-btn"
+                  [class.is-active]="compararActivo"
+                  (click)="toggleComparar()"
+                >
+                  <span uk-icon="copy"></span> Compare
+                </button>
+              </div>
+
+              <!-- meta: sku / category / brand -->
+              <div class="pd-meta">
+                <div class="pd-meta-item"><span>SKU:</span> {{ producto.sku }}</div>
+                <div class="pd-meta-item" *ngIf="producto.categoria"><span>Category:</span> {{ producto.categoria }}</div>
+                <div class="pd-meta-item" *ngIf="producto.marca"><span>Brand:</span> {{ producto.marca }}</div>
+              </div>
+
+              <!-- Availability -->
+              <div class="pd-note" *ngIf="!sinStock">
+                <span class="pd-note-icon" uk-icon="icon: check"></span>
+                <div>
+                  <div class="pd-note-title">In stock</div>
+                  <div class="pd-note-text">{{ disponibilidadDetalle }}</div>
+                </div>
+              </div>
+
+              <!-- Pick up in store: datos reales (sucursales con stock > 0) -->
+              <div class="pd-note" *ngIf="sucursalesPickup.length > 0">
+                <span class="pd-note-icon" uk-icon="icon: location"></span>
+                <div>
+                  <div class="pd-note-title">Pick up in store</div>
+                  <div class="pd-note-text">Available at {{ sucursalesPickup.join(', ') }}</div>
+                </div>
+              </div>
+
+              <!-- Available options: mismo modelo, otro atributo (RAM, color, etc.) -->
+              <div class="pd-options" *ngIf="coloresParaMostrar.length > 1">
+                <div class="pd-options-title">Opciones disponibles</div>
+                <div class="pd-options-list">
+                  <a
+                    *ngFor="let color of coloresParaMostrar; trackBy: trackByColor"
+                    class="pd-option"
+                    [class.is-active]="esColorActivo(color)"
+                    [routerLink]="color.slug ? ['/producto', color.slug] : null"
+                    [title]="color.titulo"
+                  >
+                    <img [src]="imagenColor(color)" [alt]="color.titulo" />
+                  </a>
+                </div>
+              </div>
+
+              <!-- Quick specs -->
+              <div class="pd-specs" *ngIf="especificacionesResumen.length > 0">
+                <ul>
+                  <li *ngFor="let esp of especificacionesResumen">
+                    <span>{{ esp.atributo }}:</span> {{ esp.valor }}
+                  </li>
+                </ul>
+                <a class="pd-specs-link" href="javascript:void(0)" (click)="verEspecificacionesCompletas()">
+                  Detailed specifications
+                  <span uk-icon="icon: chevron-down; ratio: .7;"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs: Description / Specifications / Reviews -->
+          <div class="pd-tabs">
+            <nav class="pd-tab-nav" id="description">
+              <button type="button" class="pd-tab-btn" [class.is-active]="tabActiva === 'descripcion'" (click)="seleccionarTab('descripcion')">
+                Overview
+              </button>
+              <button
+                type="button"
+                class="pd-tab-btn"
+                *ngIf="especificaciones.length > 0"
+                [class.is-active]="tabActiva === 'especificaciones'"
+                (click)="seleccionarTab('especificaciones')"
+              >
+                Specifications
+              </button>
+              <button type="button" class="pd-tab-btn" [class.is-active]="tabActiva === 'resenas'" (click)="seleccionarTab('resenas')">
+                Reviews <span class="pd-tab-count">({{ producto.rating ? 1 : 0 }})</span>
+              </button>
+            </nav>
+
+            <div class="pd-tab-content">
+              <div *ngIf="tabActiva === 'descripcion'">
+                <article class="pd-description" *ngIf="parrafosDescripcion.length > 0">
+                  <p *ngFor="let parrafo of parrafosDescripcion">{{ parrafo }}</p>
+                </article>
+                <p class="pd-empty-text" *ngIf="parrafosDescripcion.length === 0">
+                  No description available for this product yet.
+                </p>
+              </div>
+
+              <div *ngIf="tabActiva === 'especificaciones' && especificaciones.length > 0">
+                <table class="pd-specs-table">
+                  <tbody>
+                    <tr *ngFor="let esp of especificaciones">
+                      <th>{{ esp.atributo }}</th>
+                      <td>{{ esp.valor }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div *ngIf="tabActiva === 'resenas'">
+                <div class="pd-reviews">
+                  <div class="pd-reviews-summary">
+                    <div class="pd-reviews-summary-label">Average rating</div>
+                    <div class="pd-reviews-summary-value">{{ producto.rating ? producto.rating : '—' }}</div>
+                    <div class="pd-reviews-summary-count">based on 0 reviews</div>
                   </div>
-
-                  <div *ngIf="tabActiva === 'especificaciones' && especificaciones.length > 0">
-                    <table class="uk-table uk-table-divider uk-table-justify uk-table-responsive uk-margin-remove">
-                      <tbody>
-                        <tr *ngFor="let esp of especificaciones">
-                          <th class="uk-width-medium">{{ esp.atributo }}</th>
-                          <td class="uk-table-expand">{{ esp.valor }}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div *ngIf="tabActiva === 'resenas'">
-                    <div class="uk-grid-small uk-grid-divider" uk-grid="">
-                      <div class="uk-width-1-1 uk-width-1-5@s uk-text-center tm-reviews-column">
-                        <div class="uk-text-meta uk-text-uppercase">average rating</div>
-                        <div class="uk-heading-primary">—</div>
-                        <div class="uk-margin-small-top uk-text-meta">based on 0 reviews</div>
-                      </div>
-                      <div class="uk-width-1-1 uk-width-expand@s">
-                        <p class="uk-text-meta uk-margin-remove">
-                          This product doesn't have any reviews yet. Be the first to try it and share your experience.
-                        </p>
-                      </div>
-                    </div>
+                  <div class="pd-reviews-empty">
+                    <p>This product doesn't have any reviews yet. Be the first to try it and share your experience.</p>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+          </div>
 
-            <!-- Related products -->
+          <!-- Related products -->
             <div *ngIf="relacionados.length > 0" uk-slider="finite: true">
               <div class="uk-grid-small uk-flex-middle uk-margin-bottom" uk-grid="">
-                <h2 class="uk-width-expand uk-margin-remove">You may also like</h2>
+                <h2 class="uk-width-expand uk-margin-remove">También te puede gustar</h2>
                 <div class="uk-visible@s">
                   <a class="tm-slidenav" href="javascript:void(0)" uk-slidenav-previous="" uk-slider-item="previous"></a>
                   <a class="tm-slidenav" href="javascript:void(0)" uk-slidenav-next="" uk-slider-item="next"></a>
@@ -366,7 +349,6 @@
           </div>
         </div>
       </div>
-    </div>
   </section>
 
   <!-- Zoom modal propio: no depende de uk-lightbox -->

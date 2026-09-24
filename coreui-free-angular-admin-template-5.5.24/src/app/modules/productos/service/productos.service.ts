@@ -20,6 +20,12 @@ export class ProductosService {
     return this.http.get<{ data: Producto[] }>(this.apiUrl, { params }).pipe(map((res) => res.data));
   }
 
+  // GET /productos/{id} — trae el producto con su modelo base (padre) y
+  // sus variantes propias, si las tiene (el listado no los incluye).
+  getOne(id: number): Observable<Producto> {
+    return this.http.get<{ data: Producto }>(`${this.apiUrl}/${id}`).pipe(map((res) => res.data));
+  }
+
   getConfig(): Observable<ProductoConfig> {
     return this.http.get<ProductoConfig>(`${this.apiUrl}/config`);
   }

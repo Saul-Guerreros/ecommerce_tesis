@@ -49,7 +49,7 @@ export class HeaderComponent {
     afterNextRender(() => {
       this.homeService.menus().subscribe({
         next: (resp:any) => {
-          console.log(resp);
+          //console.log(resp);
           this.categories_menus = resp.categories_menus;
         },
         error: (err) => {
@@ -62,7 +62,7 @@ export class HeaderComponent {
       
       if(this.user){
         this.cartService.listCart().subscribe((resp:any) => {
-          console.log(resp);
+          //console.log(resp);
           resp.carts.data.forEach((cart:any) => {
             if(cart.currency != this.currency){
               this.cookieService.set("currency",cart.currency);
@@ -85,7 +85,6 @@ export class HeaderComponent {
   ngOnInit(): void {
     //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
     //Add 'implements OnInit' to the class.
-    console.log(this.user);
     this.cartService.currentDataCart$.subscribe((resp:any) => {
       // console.log(resp);
       this.listCarts = resp;
@@ -116,7 +115,7 @@ export class HeaderComponent {
       this.cartService.deleteCartsAll().subscribe((resp:any) => {
         this.cookieService.set("currency",val);
         window.location.reload();
-        console.log(resp);
+        //console.log(resp);
       })
     }else{
       this.cookieService.set("currency",val);

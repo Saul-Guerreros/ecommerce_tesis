@@ -1,5 +1,5 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { URL_BACKEND } from '../../config/config';
@@ -48,6 +48,23 @@ export class ProductoDetalleComponent implements OnInit {
   readonly imagenFallback =
     'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22600%22%20height%3D%22450%22%20viewBox%3D%220%200%20600%20450%22%3E%3Crect%20width%3D%22600%22%20height%3D%22450%22%20fill%3D%22%23e9e9e9%22/%3E%3Ctext%20x%3D%22300%22%20y%3D%22235%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%2222%22%20fill%3D%22%23999%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ESin%20imagen%3C/text%3E%3C/svg%3E';
 
+	  // Carrusel vertical de miniaturas (en móvil pasa a horizontal por CSS).
+  // hayDesborde: hay más miniaturas de las que caben -> se muestran las flechas.
+  hayDesborde = false;
+  puedeAnterior = false;
+  puedeSiguiente = false;
+  private miniaturasEl: HTMLElement | null = null;
+
+  // Setter en vez de un @ViewChild "normal": el contenedor vive dentro de
+  // *ngIf (solo existe cuando ya cargó el producto y hay más de 1 imagen).
+  @ViewChild('thumbsViewport')
+  set thumbsViewport(ref: ElementRef<HTMLElement> | undefined) {
+    this.miniaturasEl = ref?.nativeElement ?? null;
+    if (this.miniaturasEl) {
+      // Diferido para no cambiar estado en medio de la detección de cambios.
+      setTimeout(() => this.actualizarFlechasMiniaturas());
+    }
+  }
   constructor(
     private route: ActivatedRoute,
     private productoDetalleService: ProductoDetalleService,
@@ -134,6 +151,7 @@ export class ProductoDetalleComponent implements OnInit {
 
   seleccionarImagen(indice: number): void {
     this.imagenActivaIndex = indice;
+	this.mostrarMiniaturaActiva();
   }
 
   abrirZoom(): void {
@@ -150,6 +168,7 @@ export class ProductoDetalleComponent implements OnInit {
     }
     this.imagenActivaIndex =
       (this.imagenActivaIndex - 1 + this.galeria.length) % this.galeria.length;
+	this.mostrarMiniaturaActiva();
   }
 
   zoomSiguiente(): void {
@@ -157,6 +176,7 @@ export class ProductoDetalleComponent implements OnInit {
       return;
     }
     this.imagenActivaIndex = (this.imagenActivaIndex + 1) % this.galeria.length;
+	 this.mostrarMiniaturaActiva();
   }
 
   @HostListener('document:keydown.escape')
@@ -164,6 +184,82 @@ export class ProductoDetalleComponent implements OnInit {
     if (this.zoomAbierto) {
       this.cerrarZoom();
     }
+  }
+  
+    // ---------------------------------------------------------------
+  // Carrusel de miniaturas
+  // ---------------------------------------------------------------
+
+  /** true si el carrusel corre en horizontal (móvil), false si es vertical. */
+  private get miniaturasHorizontales(): boolean {
+    return !!this.miniaturasEl && getComputedStyle(this.miniaturasEl).flexDirection === 'row';
+  }
+
+  /** Recalcula si hacen falta flechas y cuáles están habilitadas. */
+  actualizarFlechasMiniaturas(): void {
+    const el = this.miniaturasEl;
+    if (!el || typeof window === 'undefined') {
+      return;
+    }
+    const horizontal = this.miniaturasHorizontales;
+    const visible = horizontal ? el.clientWidth : el.clientHeight;
+    const total = horizontal ? el.scrollWidth : el.scrollHeight;
+    const posicion = horizontal ? el.scrollLeft : el.scrollTop;
+
+    this.hayDesborde = total > visible + 1;
+    this.puedeAnterior = posicion > 1;
+    this.puedeSiguiente = posicion + visible < total - 1;
+  }
+
+  /** Flecha: avanza (1) o retrocede (-1) casi una "página" de miniaturas. */
+  desplazarMiniaturas(direccion: 1 | -1): void {
+    const el = this.miniaturasEl;
+    if (!el) {
+      return;
+    }
+    const horizontal = this.miniaturasHorizontales;
+    const visible = horizontal ? el.clientWidth : el.clientHeight;
+    const paso = direccion * Math.max(visible * 0.8, 100);
+
+    if (horizontal) {
+      el.scrollBy({ left: paso, behavior: 'smooth' });
+    } else {
+      el.scrollBy({ top: paso, behavior: 'smooth' });
+    }
+  }
+
+  /** Si la miniatura activa quedó fuera de la zona visible, la trae a la vista. */
+  private mostrarMiniaturaActiva(): void {
+    const el = this.miniaturasEl;
+    const miniatura = el?.children[this.imagenActivaIndex] as HTMLElement | undefined;
+    if (!el || !miniatura) {
+      return;
+    }
+    const caja = el.getBoundingClientRect();
+    const item = miniatura.getBoundingClientRect();
+
+    let dy = 0;
+    if (item.top < caja.top) {
+      dy = item.top - caja.top;
+    } else if (item.bottom > caja.bottom) {
+      dy = item.bottom - caja.bottom;
+    }
+
+    let dx = 0;
+    if (item.left < caja.left) {
+      dx = item.left - caja.left;
+    } else if (item.right > caja.right) {
+      dx = item.right - caja.right;
+    }
+
+    if (dx !== 0 || dy !== 0) {
+      el.scrollBy({ left: dx, top: dy, behavior: 'smooth' });
+    }
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.actualizarFlechasMiniaturas();
   }
 
   // ---------------------------------------------------------------
@@ -199,6 +295,12 @@ export class ProductoDetalleComponent implements OnInit {
     return (this.producto?.precio_final ?? 0) * this.cantidad;
   }
 
+  /** 5 posiciones, true = estrella llena, según producto.rating redondeado. */
+  get estrellas(): boolean[] {
+    const llenas = Math.round(this.producto?.rating ?? 0);
+    return Array.from({ length: 5 }, (_, i) => i < llenas);
+  }
+
   get disponibilidadDetalle(): string {
     if (this.stockDisponible !== null) {
       return `${this.stockDisponible} unit${this.stockDisponible === 1 ? '' : 's'} available`;
@@ -229,6 +331,19 @@ export class ProductoDetalleComponent implements OnInit {
   // ---------------------------------------------------------------
 
   agregarAlCarrito(): void {
+    if (!this.producto || this.sinStock) {
+      return;
+    }
+    this.toastr.success(`${this.cantidad} × ${this.producto.titulo}`, 'Added to cart');
+  }
+
+  /**
+   * TODO: este proyecto todavía no tiene una página/ruta real de checkout
+   * (el header enlaza a "/carrito-de-compra" pero esa ruta no existe todavía).
+   * Por ahora "Buy Now" hace lo mismo que "Add to cart"; cuando exista el
+   * checkout, reemplazar el toast por: this.agregarAlCarrito(); this.router.navigate(['/carrito-de-compra']);
+   */
+  comprarAhora(): void {
     if (!this.producto || this.sinStock) {
       return;
     }

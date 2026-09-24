@@ -110,6 +110,113 @@
 
       </div>
 
+      <!-- Este producto ES una variante de otro (informativo, no editable). -->
+      <div class="alert alert-light border d-flex align-items-center gap-2 mt-3" *ngIf="esVariante">
+        <c-badge color="info" class="text-white">Variante</c-badge>
+        <span>
+          Este producto es una variante de
+          <strong>{{ producto?.padre?.prd_codinv }} — {{ producto?.padre?.prd_descri }}</strong>.
+          Marca, IVA y unidad se heredan de ese producto y se actualizan solas si cambian allá.
+        </span>
+      </div>
+
+      <!-- Variantes: solo si este producto no es, a su vez, una variante de otro. -->
+      <fieldset class="border rounded p-3 mt-3" *ngIf="puedeTenerVariantes">
+        <legend class="float-none w-auto px-2 fs-6 text-muted">Variantes</legend>
+
+        <div class="mb-3" *ngIf="producto?.variantes?.length">
+          <div class="text-muted small mb-1">Ya tiene {{ producto?.variantes?.length }}:</div>
+          <div class="d-flex flex-wrap gap-2">
+            <span *ngFor="let v of producto?.variantes" class="d-inline-flex align-items-center gap-1">
+              <c-badge color="secondary">{{ v.prd_codinv }} — {{ v.prd_descri }}</c-badge>
+              <c-badge [color]="v.pub_estado === 1 ? 'success' : 'light'" class="text-dark">
+                {{ v.pub_estado === 1 ? 'Publicado' : (v.pub_estado === 0 ? 'Borrador' : 'Sin publicar') }}
+              </c-badge>
+            </span>
+          </div>
+        </div>
+
+        <div class="form-check mb-2" *ngIf="!soloLectura">
+          <input cFormCheckInput type="checkbox" id="tiene_variantes"
+                 [checked]="seccionVariantesAbierta" (change)="toggleSeccionVariantes()" />
+          <label cFormCheckLabel for="tiene_variantes">
+            {{ producto?.variantes?.length ? 'Agregar más variantes' : 'Este producto tiene variantes (ej: misma notebook con otra RAM)' }}
+          </label>
+          <div class="text-muted small">
+            Cada variante nace con su Publicación Web en borrador y esa especificación ya cargada.
+            Los atributos y sus valores se administran en <a routerLink="/atributos/list">Atributos</a>.
+          </div>
+        </div>
+
+        <div class="text-danger small mb-2" *ngIf="errorVariantes">{{ errorVariantes }}</div>
+
+        <div *ngIf="seccionVariantesAbierta && !soloLectura" formArrayName="variantes">
+          <div class="text-muted small mb-2">
+            Cada fila se crea como un producto independiente, con su propio stock y precio (se cargan
+            después, en Compras / Gestión de Precios). Marca, IVA y unidad de arriba se copian solas.
+            La categoría para su Publicación Web se elige más adelante, ahí mismo.
+          </div>
+
+          <div class="border rounded p-2 mb-2" *ngFor="let fila of variantesArray().controls; let i = index" [formGroupName]="i">
+            <div class="row g-2 align-items-start">
+              <div class="col-md-3">
+                <label cLabel class="small">Diferencia (ej: 16GB)</label>
+                <input cFormControl formControlName="valor" placeholder="16GB" (input)="actualizarSugerencia(i)" />
+              </div>
+              <div class="col-md-4">
+                <label cLabel class="small">Código</label>
+                <input cFormControl formControlName="prd_codinv" maxlength="45" (input)="marcarEdicionManual(i, 'prd_codinv')" />
+                <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'prd_codinv')">
+                  {{ filaErrorBackend(i, 'prd_codinv') || 'Obligatorio y único.' }}
+                </div>
+              </div>
+              <div class="col-md-5">
+                <label cLabel class="small">Nombre</label>
+                <input cFormControl formControlName="prd_descri" maxlength="150" (input)="marcarEdicionManual(i, 'prd_descri')" />
+                <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'prd_descri')">
+                  {{ filaErrorBackend(i, 'prd_descri') || 'Obligatorio.' }}
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <label cLabel class="small">Se diferencia por <span class="text-danger">*</span></label>
+                <select cSelect formControlName="atb_id" (change)="onAtributoFilaChange(i)">
+                  <option [ngValue]="null">Elegir atributo</option>
+                  <option *ngFor="let a of atributosSeleccionables" [ngValue]="a.atb_id">{{ a.atb_nombre }}</option>
+                </select>
+                <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'atb_id')">
+                  {{ filaErrorBackend(i, 'atb_id') || 'Obligatorio.' }}
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label cLabel class="small">Valor <span class="text-danger">*</span></label>
+                <select cSelect formControlName="prp_id">
+                  <option [ngValue]="null">{{ fila.value.atb_id ? 'Elegir' : 'Elegí primero el atributo' }}</option>
+                  <option *ngFor="let p of propiedadesDeFila(i)" [ngValue]="p.prp_id">{{ p.prp_nombre }}</option>
+                </select>
+                <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'prp_id')">
+                  {{ filaErrorBackend(i, 'prp_id') || 'Obligatorio.' }}
+                </div>
+              </div>
+              <div class="col-md-3">
+                <label cLabel class="small">Stock mínimo</label>
+                <input cFormControl type="number" formControlName="prd_stkmin" min="0" step="0.0001" />
+                <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'prd_stkmin')">
+                  {{ filaErrorBackend(i, 'prd_stkmin') || 'Obligatorio.' }}
+                </div>
+              </div>
+              <div class="col-md-1 pt-4 text-end">
+                <button cButton type="button" color="danger" variant="outline" size="sm" (click)="quitarVariante(i)" title="Quitar fila">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <button cButton type="button" color="secondary" variant="outline" size="sm" (click)="agregarVariante()">
+            + Agregar variante
+          </button>
+        </div>
+      </fieldset>
+
       <fieldset class="border rounded p-3 mt-3" *ngIf="!esEdicion">
         <legend class="float-none w-auto px-2 fs-6 text-muted">¿Tiene unidad alternativa de compra?</legend>
 

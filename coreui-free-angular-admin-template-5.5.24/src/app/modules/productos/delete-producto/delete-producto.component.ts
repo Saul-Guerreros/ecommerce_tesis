@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonModule, ModalModule } from '@coreui/angular';
-import { Producto } from '../models/producto.model';
+import { Producto, VarianteResumen } from '../models/producto.model';
 
 @Component({
   selector: 'app-delete-producto',
@@ -11,7 +11,7 @@ import { Producto } from '../models/producto.model';
 })
 export class DeleteProductoComponent {
   @Input() visible = false;
-  @Input() producto: Producto | null = null;
+  @Input() producto: Producto | VarianteResumen | null = null;
 
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() confirmar = new EventEmitter<void>();

@@ -10,6 +10,24 @@ export interface Producto {
   prd_estado?: number;
   prd_creado?: string;
 
+  /**
+   * Variación (Sistema B: un producto = una variante, ej. "Notebook X 8GB"
+   * y "Notebook X 16GB" son dos filas de producto distintas). null = este
+   * producto no es variante de nada. Un producto nunca tiene padre Y
+   * variantes propias a la vez (ver ProductoRequest).
+   */
+  prd_padre_id?: number | null;
+  padre?: VarianteResumen | null;
+  variantes?: VarianteResumen[];
+
+  /**
+   * Solo viene en el listado (index()), vía withCount('variantes') -- no
+   * carga las variantes en sí, solo cuántas tiene, para saber si mostrar
+   * la flecha de expandir. Al expandir se pide el detalle completo con
+   * getOne(), que sí trae `variantes` (el array de arriba).
+   */
+  variantes_count?: number;
+
   // calculados por el backend
   mar_descri?: string;
   tiv_descri?: string;
@@ -46,6 +64,23 @@ export interface Producto {
   tiene_equiv_compra?: boolean;
   peq_umdid?: number | null;
   peq_factor?: number | null;
+}
+
+// Fila liviana usada tanto para "padre" como para cada item de "variantes"
+// dentro de un Producto.
+export interface VarianteResumen {
+  prd_id: number;
+  prd_codinv: string;
+  prd_descri: string;
+  prd_estado?: number;
+  pub_estado?: number | null; // 0 borrador / 1 publicado / 2 archivado / null sin publicar
+  // Solo vienen cuando la variante se cargó como parte de GET /productos/{id}
+  // (ver ProductoController::show), para pintar la fila expandida del
+  // listado igual de completa que la del padre.
+  mar_descri?: string | null;
+  umd_codigo?: string | null;
+  stock_actual?: number | null;
+  usos_count?: number;
 }
 
 export interface MarcaOption {

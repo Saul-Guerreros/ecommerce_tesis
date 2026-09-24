@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Categoria;
 use App\Models\Discount\Discount;
 use App\Models\Producto;
 use App\Models\PublicacionWeb;
@@ -38,36 +39,41 @@ class VitrinaController extends Controller
     public function home(Request $request): JsonResponse
     {
         $limite = min((int) $request->query('limite', 12), 24);
+
+    // Descuentos activos, resueltos una sola vez por request y aplicados a
+    // TODAS las secciones (no solo a en_oferta / oferta_del_dia), para que un
+    // mismo producto muestre el mismo precio en cualquier lugar de la tienda.
+    $descuentos = $this->descuentosActivosPorProducto();
  
     $nuevos = PublicacionWeb::publicadas()
         ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
         ->orderByDesc('pub_creado')
         ->limit($limite)
         ->get()
-        ->map(fn (PublicacionWeb $pub) => $this->formatearProducto($pub));
+        ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
  
     $destacados = PublicacionWeb::publicadas()
         ->destacadas()
         ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
         ->limit($limite)
         ->get()
-        ->map(fn (PublicacionWeb $pub) => $this->formatearProducto($pub));
+        ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
  
     $trending = PublicacionWeb::publicadas()
         ->trending()
         ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
         ->limit($limite)
         ->get()
-        ->map(fn (PublicacionWeb $pub) => $this->formatearProducto($pub));
+        ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
  
     $masVendidos = PublicacionWeb::publicadas()
         ->selling()
         ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
         ->limit($limite)
         ->get()
-        ->map(fn (PublicacionWeb $pub) => $this->formatearProducto($pub));
+        ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
  
-    [$enOferta, $ofertaDelDia] = $this->resolverOfertas($limite);
+    [$enOferta, $ofertaDelDia] = $this->resolverOfertas($limite, $descuentos);
  
     return response()->json([
         'data' => [
@@ -117,10 +123,8 @@ class VitrinaController extends Controller
     /**
      * @return array{0: Collection, 1: Collection} [en_oferta, oferta_del_dia]
      */
-    private function resolverOfertas(int $limite): array
+    private function resolverOfertas(int $limite, Collection $descuentosPorProducto): array
     {
-        $descuentosPorProducto = $this->descuentosActivosPorProducto();
-
         if ($descuentosPorProducto->isEmpty()) {
             return [collect(), collect()];
         }
@@ -129,23 +133,7 @@ class VitrinaController extends Controller
             ->whereIn('pub_prdid', $descuentosPorProducto->keys())
             ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
             ->get()
-            ->map(function (PublicacionWeb $pub) use ($descuentosPorProducto) {
-                $precioBase = (float) ($pub->pub_prevta ?? $pub->producto->prd_precio);
-
-                // Si varios descuentos activos aplican al mismo producto
-                // (ej. uno por categoría y otro puntual), se usa el que le
-                // conviene más al cliente (precio final más bajo) — así se
-                // evita mostrar un precio distinto según qué regla "gane".
-                $mejor = $descuentosPorProducto->get($pub->pub_prdid)
-                    ->map(fn (Discount $descuento) => [
-                        'descuento' => $descuento,
-                        'precio_final' => $this->calcularPrecioFinal($precioBase, $descuento),
-                    ])
-                    ->sortBy('precio_final')
-                    ->first();
-
-                return $this->formatearProducto($pub, $mejor);
-            });
+            ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentosPorProducto));
 
         $enOferta = $formateados->sortBy('precio_final')->take($limite)->values();
 
@@ -193,6 +181,48 @@ class VitrinaController extends Controller
         }
 
         return $mapa;
+    }
+
+    /**
+     * Mejor descuento activo para una publicación (el que deja el precio final
+     * más bajo), o null si no le aplica ninguno.
+     *
+     * Si varios descuentos activos aplican al mismo producto (ej. uno por
+     * categoría y otro puntual), se usa el que le conviene más al cliente —
+     * así se evita mostrar un precio distinto según qué regla "gane".
+     *
+     * @param  Collection<int, Collection<int, Discount>>  $descuentosPorProducto
+     * @return array{descuento: Discount, precio_final: float}|null
+     */
+    private function mejorOfertaPara(PublicacionWeb $pub, Collection $descuentosPorProducto): ?array
+    {
+        $descuentos = $descuentosPorProducto->get($pub->pub_prdid);
+
+        if (! $descuentos || $descuentos->isEmpty()) {
+            return null;
+        }
+
+        $precioBase = (float) ($pub->pub_prevta ?? $pub->producto->prd_precio);
+
+        return $descuentos
+            ->map(fn (Discount $descuento) => [
+                'descuento' => $descuento,
+                'precio_final' => $this->calcularPrecioFinal($precioBase, $descuento),
+            ])
+            ->sortBy('precio_final')
+            ->first();
+    }
+
+    /**
+     * Atajo: formatea la publicación aplicándole su mejor descuento activo
+     * (si tiene). Es lo que deben usar TODAS las salidas públicas de producto
+     * (home, detalle, relacionados) para que el precio sea siempre coherente.
+     *
+     * @param  Collection<int, Collection<int, Discount>>  $descuentosPorProducto
+     */
+    private function formatearConOferta(PublicacionWeb $pub, Collection $descuentosPorProducto): array
+    {
+        return $this->formatearProducto($pub, $this->mejorOfertaPara($pub, $descuentosPorProducto));
     }
 
     private function calcularPrecioFinal(float $precioBase, Discount $descuento): float
@@ -291,6 +321,143 @@ class VitrinaController extends Controller
         ];
     }
 
+    // ---------------------------------------------------------------
+    // Productos relacionados ("También te puede gustar")
+    // ---------------------------------------------------------------
+
+    /** Cuántos productos se muestran en "También te puede gustar". */
+    private const RELACIONADOS_LIMITE = 8;
+
+    /**
+     * Relacionados como en un ecommerce real:
+     *
+     *  1. EXCLUYE la familia completa del producto (el modelo base + todas sus
+     *     variantes). Las variantes ya se ofrecen aparte (colores_disponibles);
+     *     "relacionados" es para descubrir OTROS productos.
+     *  2. Candidatos: publicaciones publicadas de la misma categoría, sus
+     *     subcategorías, sus hermanas y la categoría padre. Si no alcanzan para
+     *     llenar la lista, se completa con el resto del catálogo publicado.
+     *  3. Ordena por afinidad (ver puntuarRelacionado()): misma categoría >
+     *     categorías afines > resto; luego misma marca, precio parecido y
+     *     productos de vitrina; los sin stock quedan al final.
+     *  4. Diversifica: máximo UN producto por familia (si dos variantes de otro
+     *     modelo califican, se muestra solo la mejor).
+     *
+     * @return Collection<int, array> ya formateados (con descuento aplicado)
+     */
+    private function resolverRelacionados(
+        PublicacionWeb $pub,
+        Producto $producto,
+        Collection $descuentos,
+        int $limite = self::RELACIONADOS_LIMITE
+    ): Collection {
+        $familiaId = $producto->prd_padre_id ?? $producto->prd_id;
+        $categoriaId = $pub->pub_catid ? (int) $pub->pub_catid : null;
+
+        // Categorías afines: la propia, sus hijas, sus hermanas y la categoría padre.
+        $categoriasAfines = [];
+        if ($categoriaId) {
+            $padreId = $pub->categoria?->cat_idpadr;
+
+            $categoriasAfines = Categoria::query()
+                ->where('cat_id', $categoriaId)
+                ->orWhere('cat_idpadr', $categoriaId)
+                ->when($padreId, fn ($q) => $q
+                    ->orWhere('cat_idpadr', $padreId)
+                    ->orWhere('cat_id', $padreId))
+                ->pluck('cat_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        // Base común: publicadas, y fuera toda la familia del producto actual.
+        $candidatas = fn () => PublicacionWeb::publicadas()
+            ->where('pub_id', '!=', $pub->pub_id)
+            ->whereHas('producto', fn ($q) => $q
+                ->where('prd_id', '!=', $familiaId)
+                ->where(fn ($w) => $w
+                    ->whereNull('prd_padre_id')
+                    ->orWhere('prd_padre_id', '!=', $familiaId)))
+            ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes', 'vitrinas'])
+            ->orderByDesc('pub_id');
+
+        $familiaDe = fn (PublicacionWeb $p) => $p->producto->prd_padre_id ?? $p->producto->prd_id;
+
+        $pool = $categoriasAfines
+            ? $candidatas()->whereIn('pub_catid', $categoriasAfines)->limit(60)->get()
+            : collect();
+
+        // Si la categoría no aporta suficientes FAMILIAS distintas, se completa
+        // con el resto del catálogo (así la sección nunca queda vacía ni corta
+        // en una categoría chica).
+        if ($pool->map($familiaDe)->unique()->count() < $limite) {
+            $relleno = $candidatas()
+                ->whereNotIn('pub_id', $pool->pluck('pub_id'))
+                ->limit(60)
+                ->get();
+
+            $pool = $pool->concat($relleno);
+        }
+
+        return $pool
+            ->map(fn (PublicacionWeb $c) => [
+                'pub' => $c,
+                'puntos' => $this->puntuarRelacionado($c, $pub, $producto, $categoriaId, $categoriasAfines),
+            ])
+            // Mayor puntaje primero; a igualdad, la publicación más nueva.
+            ->sort(fn (array $a, array $b) => [$b['puntos'], $b['pub']->pub_id] <=> [$a['puntos'], $a['pub']->pub_id])
+            ->unique(fn (array $x) => $familiaDe($x['pub']))
+            ->take($limite)
+            ->map(fn (array $x) => $this->formatearConOferta($x['pub'], $descuentos))
+            ->values();
+    }
+
+    /**
+     * Afinidad de un candidato con el producto que se está viendo.
+     * Los pesos hacen que la categoría domine (100 vs 50) y que marca, precio y
+     * vitrina solo desempaten dentro de cada nivel; sin stock siempre al final.
+     */
+    private function puntuarRelacionado(
+        PublicacionWeb $candidata,
+        PublicacionWeb $actual,
+        Producto $productoActual,
+        ?int $categoriaId,
+        array $categoriasAfines
+    ): float {
+        $puntos = 0.0;
+        $categoriaCandidata = $candidata->pub_catid ? (int) $candidata->pub_catid : null;
+
+        if ($categoriaId && $categoriaCandidata === $categoriaId) {
+            $puntos += 100;
+        } elseif ($categoriaCandidata && in_array($categoriaCandidata, $categoriasAfines, true)) {
+            $puntos += 50;
+        }
+
+        // Misma marca.
+        if ($productoActual->prd_marid && (int) $candidata->producto->prd_marid === (int) $productoActual->prd_marid) {
+            $puntos += 20;
+        }
+
+        // Precio parecido: 1.0 si cuestan igual, tiende a 0 mientras más se alejan.
+        $a = (float) $actual->pub_prevta;
+        $b = (float) $candidata->pub_prevta;
+        if ($a > 0 && $b > 0) {
+            $puntos += 20 * (min($a, $b) / max($a, $b));
+        }
+
+        // Curado por el admin en alguna sección de vitrina.
+        if ($candidata->vitrinas->isNotEmpty()) {
+            $puntos += 5;
+        }
+
+        // Sin stock (solo si el producto controla stock): siempre al final.
+        if ($candidata->producto->prd_afestk && $this->stockDisponible($candidata->producto) <= 0) {
+            $puntos -= 200;
+        }
+
+        return $puntos;
+    }
+
    // GET /api/tienda/producto/{slug} — público
     public function detalle(string $slug): JsonResponse
     {
@@ -300,6 +467,10 @@ class VitrinaController extends Controller
             ->firstOrFail();
 
         $producto = $pub->producto;
+
+        // Mismo mecanismo de descuentos que el home: sin esto el detalle
+        // mostraba siempre el precio de lista aunque la campaña estuviera activa.
+        $descuentos = $this->descuentosActivosPorProducto();
 
         $especificaciones = EspecificacionProducto::with(['atributo', 'propiedad'])
             ->where('esp_pubid', $pub->pub_id)
@@ -341,20 +512,12 @@ class VitrinaController extends Controller
             ->unique()
             ->values();
 
-        // Relacionados: otras publicaciones de la misma categoría (si tiene una asignada).
-        $relacionados = $pub->pub_catid
-            ? PublicacionWeb::publicadas()
-                ->where('pub_catid', $pub->pub_catid)
-                ->where('pub_id', '!=', $pub->pub_id)
-                ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
-                ->limit(8)
-                ->get()
-                ->map(fn (PublicacionWeb $p) => $this->formatearProducto($p))
-            : collect();
+        // Relacionados: otros productos afines (ver resolverRelacionados()).
+        $relacionados = $this->resolverRelacionados($pub, $producto, $descuentos);
 
         return response()->json([
             'data' => [
-                'producto' => $this->formatearProducto($pub),
+                'producto' => $this->formatearConOferta($pub, $descuentos),
                 // pub_descwb: puede venir null si no se completó todavía.
                 'descripcion' => $pub->pub_descwb,
                 'galeria' => $galeria,
