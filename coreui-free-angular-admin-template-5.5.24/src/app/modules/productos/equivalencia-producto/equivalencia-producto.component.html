@@ -1,44 +1,116 @@
+<!-- src/app/modules/productos/equivalencia-producto/equivalencia-producto.component.html -->
 <div>
-  <table cTable small striped class="mb-2">
+  <table class="table table-sm table-striped align-middle mb-2">
     <thead>
       <tr>
-        <th>Unidad alternativa</th>
+        <th>Presentación</th>
         <th class="text-end">Equivale a</th>
-        <th *ngIf="!soloLectura"></th>
+        <th class="text-center">Estado</th>
+        <th *ngIf="!soloLectura" class="text-end" style="min-width: 230px;"></th>
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let eq of equivalencias">
-        <td>{{ eq.umd_nombre }} ({{ eq.umd_codigo }})</td>
-        <td class="text-end">{{ eq.peq_factor }} unidades</td>
-        <td *ngIf="!soloLectura">
-          <button cButton size="sm" color="danger" variant="ghost" type="button" (click)="eliminar(eq)">✕</button>
+      <tr *ngFor="let eq of equivalencias" [class.text-muted]="eq.peq_estado === 0">
+        <td>{{ eq.etiqueta }}</td>
+
+        <td class="text-end">
+          <ng-container *ngIf="editandoId !== eq.peq_id; else edicion">
+            {{ eq.peq_factor }} {{ unidadBaseNombre }}
+          </ng-container>
+          <ng-template #edicion>
+            <input cFormControl type="number" min="0.0001" step="0.0001"
+                   class="form-control-sm d-inline-block text-end" style="width: 110px;"
+                   [formControl]="factorEdicion"
+                   [class.is-invalid]="!!errorEdicion"
+                   (keydown.enter)="$event.preventDefault(); guardarEdicion(eq)" />
+            <div class="text-danger small" *ngIf="errorEdicion">{{ errorEdicion }}</div>
+          </ng-template>
+        </td>
+
+        <td class="text-center">
+          <span class="badge" [ngClass]="eq.peq_estado === 1 ? 'bg-success' : 'bg-secondary'">
+            {{ eq.peq_estado === 1 ? 'Activa' : 'Desactivada' }}
+          </span>
+        </td>
+
+        <td *ngIf="!soloLectura" class="text-end text-nowrap">
+          <!-- Confirmación de eliminación -->
+          <ng-container *ngIf="confirmandoEliminarId === eq.peq_id; else sinConfirmar">
+            <span class="small me-1">¿Eliminar?</span>
+            <button cButton size="sm" color="danger" type="button"
+                    [disabled]="procesandoId === eq.peq_id" (click)="confirmarEliminar(eq)">Sí</button>
+            <button cButton size="sm" color="secondary" variant="ghost" type="button"
+                    (click)="cancelarEliminar()">No</button>
+          </ng-container>
+
+          <ng-template #sinConfirmar>
+            <!-- Modo edición -->
+            <ng-container *ngIf="editandoId === eq.peq_id; else modoNormal">
+              <button cButton size="sm" color="success" type="button"
+                      [disabled]="guardando" (click)="guardarEdicion(eq)">Guardar</button>
+              <button cButton size="sm" color="secondary" variant="ghost" type="button"
+                      (click)="cancelarEdicion()">Cancelar</button>
+            </ng-container>
+
+            <!-- Modo normal -->
+            <ng-template #modoNormal>
+              <button cButton size="sm" variant="ghost" type="button"
+                      [disabled]="eq.en_uso"
+                      [title]="eq.en_uso ? 'Ya usada en compras: solo puede desactivarse' : 'Editar equivalencia'"
+                      (click)="editar(eq)">Editar</button>
+              <button cButton size="sm" variant="ghost" type="button"
+                      [color]="eq.peq_estado === 1 ? 'warning' : 'success'"
+                      [disabled]="procesandoId === eq.peq_id" (click)="cambiarEstado(eq)">
+                {{ eq.peq_estado === 1 ? 'Desactivar' : 'Activar' }}
+              </button>
+              <button cButton size="sm" color="danger" variant="ghost" type="button"
+                      [disabled]="eq.en_uso"
+                      [title]="eq.en_uso ? 'Ya usada en compras: solo puede desactivarse' : 'Eliminar equivalencia'"
+                      (click)="pedirEliminar(eq)">Eliminar</button>
+            </ng-template>
+          </ng-template>
         </td>
       </tr>
+
       <tr *ngIf="!cargando && equivalencias.length === 0">
-        <td [attr.colspan]="soloLectura ? 2 : 3" class="text-center text-muted fst-italic">
+        <td [attr.colspan]="soloLectura ? 3 : 4" class="text-center text-muted fst-italic">
           Este producto se compra únicamente en su unidad de stock.
         </td>
       </tr>
     </tbody>
   </table>
 
-  <div class="row g-2 align-items-end" *ngIf="!soloLectura">
-    <div class="col-md-5">
-      <select class="form-select" [(ngModel)]="nuevaUnidad" [ngModelOptions]="{standalone: true}">
+  <!-- Alta: <div [formGroup]> y NO <form>, porque este componente vive dentro del <form> de form-producto -->
+  <div class="row g-2 align-items-start" *ngIf="!soloLectura" [formGroup]="form">
+    <div class="col-md-4">
+      <select class="form-select" formControlName="peq_umdid" [class.is-invalid]="campoInvalido('peq_umdid')">
         <option [ngValue]="null">Unidad alternativa...</option>
         <option *ngFor="let u of unidadesDisponibles" [ngValue]="u.umd_id">{{ u.umd_nombre }} ({{ u.umd_codigo }})</option>
       </select>
+      <div class="text-danger small" *ngIf="campoInvalido('peq_umdid')">
+        {{ errorBackend('peq_umdid') || 'Seleccione la unidad alternativa.' }}
+      </div>
     </div>
+
     <div class="col-md-4">
-      <input cFormControl type="number" placeholder="Ej: 12" min="0.0001" step="0.0001"
-             [(ngModel)]="nuevoFactor" [ngModelOptions]="{standalone: true}" />
-      <div class="text-muted small">Unidades de stock por 1 unidad alternativa</div>
+      <input cFormControl type="number" placeholder="Ej: 10" min="0.0001" step="0.0001"
+             formControlName="peq_factor" [class.is-invalid]="campoInvalido('peq_factor')"
+             (keydown.enter)="$event.preventDefault(); agregar()" />
+      <div class="text-danger small" *ngIf="campoInvalido('peq_factor')">
+        {{ errorBackend('peq_factor') || 'Debe ser un número mayor a 0.' }}
+        <button *ngIf="duplicadaInactiva" type="button" class="btn btn-link btn-sm p-0 ms-1"
+                (click)="reactivarDuplicada()">Está desactivada: reactivarla</button>
+      </div>
+      <div class="text-muted small" *ngIf="!campoInvalido('peq_factor')">
+        {{ unidadBaseNombre }} por 1 unidad alternativa
+      </div>
     </div>
-    <div class="col-md-3">
+
+    <div class="col-md-4">
       <button cButton color="primary" variant="outline" class="w-100" type="button"
               [disabled]="guardando" (click)="agregar()">
-        + Agregar
+        <span *ngIf="guardando" class="spinner-border spinner-border-sm me-1"></span>
+        {{ guardando ? 'Guardando...' : '+ Agregar' }}
       </button>
     </div>
   </div>

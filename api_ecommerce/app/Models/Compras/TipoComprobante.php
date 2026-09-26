@@ -9,6 +9,18 @@ class TipoComprobante extends Model
     protected $table      = 'tipo_comprobante';
     protected $primaryKey = 'tco_id';
     public    $timestamps = false;
+    /** Codigo del seeder para Factura. */
+    public const CODIGO_FACTURA = '001';
+
+    /** Codigo del seeder para Nota de Credito. */
+    public const CODIGO_NOTA_CREDITO = '002';
+
+    public static function idNotaCredito(): ?int
+    {
+        return static::where('tco_codigo', self::CODIGO_NOTA_CREDITO)
+            ->where('tco_estado', 1)
+            ->value('tco_id');
+    }
 
     protected $fillable = [
         'tco_codigo',
@@ -25,6 +37,13 @@ class TipoComprobante extends Model
         'tco_estado'  => 'integer',
         'tco_creado'  => 'datetime',
     ];
+
+    public static function idFactura(): ?int
+    {
+        return static::where('tco_codigo', self::CODIGO_FACTURA)
+            ->where('tco_estado', 1)
+            ->value('tco_id');
+    }
 
     public function timbrados()
     {

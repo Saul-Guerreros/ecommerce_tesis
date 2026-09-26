@@ -18,6 +18,12 @@ export class PreciosService {
     return this.http.get<{ data: Precio[] }>(this.apiUrl, { params }).pipe(map((res) => res.data));
   }
 
+  // Precio de un solo producto (ej: para sugerir el precio minorista al
+  // crear su publicación web).
+  getOne(id: number): Observable<Precio> {
+    return this.http.get<{ data: Precio }>(`${this.apiUrl}/${id}`).pipe(map((res) => res.data));
+  }
+
   // Los 3 campos SIEMPRE se mandan (null = "usar el general"). Antes
   // solo se mandaba prd_margen; ahora el backend espera los 3 juntos.
   update(id: number, payload: ActualizarPrecioPayload): Observable<any> {

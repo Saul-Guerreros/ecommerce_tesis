@@ -25,6 +25,19 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-external-link' },
     attributes: { target: '_blank' }
   },
+   {
+
+  name: 'Publicación Web',
+  url: '/publicaciones',
+  iconComponent: { name: 'cilShareAll' },
+  },
+  {
+
+  name: 'Sliders',
+  url: '/sliders/list',
+  iconComponent: { name: 'cil-image' },
+  },
+
   {
     name: 'Publicaciones',
     url: '/publicaciones',
@@ -35,11 +48,7 @@ export const navItems: INavData[] = [
       { name: 'Atributos', url: '/atributos/list' }
     ]
   },
-  {
-    name: 'Sliders',
-    url: '/sliders/list',
-    iconComponent: { name: 'cil-image' }
-  },
+ 
   {
     name: 'Cupones',
     url: '/cupones/list',
@@ -124,6 +133,7 @@ export const navItems: INavData[] = [
     url: '/inventario/kardex',
     iconComponent: { name: 'cil-history' }
   },
+ 
   {
     name: 'Stock Actual',
     url: '/inventario/stock-actual',
@@ -142,6 +152,16 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-people' },
     url: '/funcionarios'
     
+  },
+  {
+  name:'campaña de descuento',
+  url:'/discounts/list',
+  iconComponent: { name: 'cil-image'},
+  }, 
+   {
+  name: 'Usuarios',
+  url: '/usuarios/list',
+  iconComponent: { name: 'cil-people' },
   },
   {
     name: 'Clientes',

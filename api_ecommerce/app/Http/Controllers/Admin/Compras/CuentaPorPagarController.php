@@ -35,8 +35,6 @@ class CuentaPorPagarController extends Controller
 
         $facturas = $query->get();
 
-        // Por defecto solo facturas con saldo pendiente. estado=todas trae
-        // tambien las que ya se terminaron de pagar (para consulta historica).
         if ($request->input('estado') !== 'todas') {
             $facturas = $facturas->filter(fn ($f) => (float) $f->cuo_saldo > 0)->values();
         }

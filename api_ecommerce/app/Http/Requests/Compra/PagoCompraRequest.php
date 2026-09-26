@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Requests\Compra;
 
-use App\Models\Compras\CuotaCompra;
+use App\Models\Compras\{CompraCab, CuotaCompra};
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -15,34 +15,29 @@ class PagoCompraRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'pgo_fecha'   => ['required', 'date'],
-            'pgo_importe' => ['required', 'numeric', 'min:0.01'],
-            'pgo_formapa' => ['required', 'string', 'in:Efectivo,Transferencia,Cheque,Otro'],
-            'pgo_observ'  => ['nullable', 'string', 'max:150'],
+            'cuo_id'         => ['required', 'integer', 'exists:cuota_compra,cuo_id'],
+            'pgo_fecha'      => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'pgo_formapa'    => ['required', 'string', 'in:Efectivo,Transferencia,Cheque,Otro'],
+            'pgo_referencia' => ['nullable', 'string', 'max:60'],
+            'pgo_observ'     => ['nullable', 'string', 'max:150'],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(function (Validator $validator) {
-            $cuota = CuotaCompra::with('pagos')->find($this->route('id'));
-
+        $validator->after(function (Validator $v) {
+            $cuota = CuotaCompra::with('compraCab')->find($this->input('cuo_id'));
             if (!$cuota) {
                 return;
             }
 
             if ($cuota->cuo_estado === CuotaCompra::ESTADO_PAGADA) {
-                $validator->errors()->add('pgo_importe', 'Esta cuota ya está totalmente pagada.');
+                $v->errors()->add('cuo_id', 'Esta cuota ya está pagada.');
                 return;
             }
 
-            $saldo = round((float) $cuota->cuo_importe - (float) $cuota->pagos->sum('pgo_importe'), 2);
-
-            if ($this->filled('pgo_importe') && (float) $this->pgo_importe > $saldo) {
-                $validator->errors()->add(
-                    'pgo_importe',
-                    "El importe no puede superar el saldo pendiente de la cuota (Gs. {$saldo})."
-                );
+            if ((int) $cuota->compraCab->com_estfac !== CompraCab::ESTADO_CONFIRMADA) {
+                $v->errors()->add('cuo_id', 'La factura de esta cuota no está confirmada.');
             }
         });
     }
@@ -50,10 +45,11 @@ class PagoCompraRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'pgo_fecha.required'   => 'La fecha de pago es obligatoria.',
-            'pgo_importe.required' => 'El importe es obligatorio.',
-            'pgo_importe.min'      => 'El importe debe ser mayor a 0.',
-            'pgo_formapa.required' => 'Debe seleccionar la forma de pago.',
+            'cuo_id.required'           => 'Debe indicar la cuota a pagar.',
+            'cuo_id.exists'              => 'La cuota indicada no existe.',
+            'pgo_fecha.required'        => 'La fecha de pago es obligatoria.',
+            'pgo_fecha.before_or_equal' => 'La fecha de pago no puede ser posterior a hoy.',
+            'pgo_formapa.required'      => 'Debe seleccionar la forma de pago.',
         ];
     }
 }

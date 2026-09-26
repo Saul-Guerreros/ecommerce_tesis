@@ -7,6 +7,7 @@ import { BadgeModule, ButtonModule, CardModule, FormModule, SpinnerModule, Table
 import { CuentaPorPagar, ProveedorOption } from '../models/cuenta-por-pagar.model';
 import { CuentasPorPagarService } from '../service/cuentas-por-pagar.service';
 import { DetalleCuotasPagarComponent } from '../detalle-cuotas-pagar/detalle-cuotas-pagar.component';
+
 @Component({
   selector: 'app-list-cuentas-por-pagar',
   standalone: true,
@@ -23,7 +24,7 @@ export class ListCuentasPorPagarComponent implements OnInit {
 
   search = '';
   filtroProveedor: number | null = null;
-  filtroEstado = '0'; // 0 = con saldo pendiente, 'todas' = incluye ya saldadas
+  filtroEstado = '0';
 
   detalleVisible = false;
   facturaSeleccionada: CuentaPorPagar | null = null;
@@ -70,8 +71,6 @@ export class ListCuentasPorPagarComponent implements OnInit {
     this.detalleVisible = true;
   }
 
-  // Se dispara cuando se paga una cuota dentro del detalle: refresca los
-  // saldos de esta lista sin cerrar el modal.
   onPagoRegistrado(): void {
     this.cargar();
   }

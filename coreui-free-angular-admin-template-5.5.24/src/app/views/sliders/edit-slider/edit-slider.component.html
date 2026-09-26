@@ -66,6 +66,18 @@
         </div>
       </div>
 
+      <div class="row mb-3" *ngIf="form.value.sld_tipo == 2">
+        <div class="col-md-3">
+          <label class="form-label">Posición (*)</label>
+          <select class="form-select" formControlName="sld_posicion">
+            <option [value]="null" disabled>Selecciona un lado</option>
+            <option [value]="1">Izquierda</option>
+            <option [value]="2">Derecha</option>
+          </select>
+          <small class="text-muted">Define en qué carrusel del home se muestra este banner.</small>
+        </div>
+      </div>
+
       <div class="row mb-3">
         <div class="col-md-6">
           <label class="form-label">Imagen</label>

@@ -51,12 +51,13 @@
         </div>
       </fieldset>
 
+      <!-- Datos del proveedor y la factura -->
       <fieldset class="border rounded p-3 mb-3">
         <legend class="float-none w-auto px-2 fs-6 text-muted">Datos del proveedor y la factura</legend>
         <div class="row g-3">
           <div class="col-md-4">
             <label cLabel for="com_proid">Proveedor <span class="text-danger">*</span></label>
-            <select cSelect id="com_proid" formControlName="com_proid">
+            <select cSelect id="com_proid" formControlName="com_proid" [class.is-invalid]="campoInvalido('com_proid')">
               <option [ngValue]="null">Seleccione un proveedor</option>
               <option *ngFor="let p of proveedores" [ngValue]="p.pro_id">{{ p.pro_razon }} ({{ p.pro_ruc }})</option>
             </select>
@@ -64,113 +65,103 @@
               {{ errorBackend('com_proid') || 'Debe seleccionar el proveedor.' }}
             </div>
           </div>
+
+          <!-- Tipo de comprobante: fijo -->
           <div class="col-md-4">
-            <label cLabel for="com_tcoid">Tipo de comprobante <span class="text-danger">*</span></label>
-            <select cSelect id="com_tcoid" formControlName="com_tcoid">
-              <option [ngValue]="null">Seleccione un tipo</option>
-              <option *ngFor="let t of tiposComprobante" [ngValue]="t.tco_id">{{ t.tco_descri }}</option>
-            </select>
-            <div class="text-danger small" *ngIf="campoInvalido('com_tcoid')">
-              {{ errorBackend('com_tcoid') || 'Debe seleccionar el tipo de comprobante.' }}
-            </div>
+            <label cLabel>Tipo de comprobante</label>
+            <input cFormControl disabled
+                  [value]="soloLectura ? (compra?.tco_descri || 'Factura') : (tipoFactura?.tco_descri || 'Factura')" />
           </div>
+
           <div class="col-md-4">
             <label cLabel for="com_nrodoc">N° de factura <span class="text-danger">*</span></label>
-            <input cFormControl id="com_nrodoc" formControlName="com_nrodoc" placeholder="001-001-0000000" />
-            <div class="text-danger small" *ngIf="campoInvalido('com_nrodoc')">
-              {{ errorBackend('com_nrodoc') || 'Formato requerido: 001-001-0000000.' }}
+            <input cFormControl id="com_nrodoc" formControlName="com_nrodoc" placeholder="001-001-0000000"
+                  maxlength="15" inputmode="numeric" autocomplete="off"
+                  [class.is-invalid]="!!errorNroFactura" (input)="onNroFacturaInput($event)" />
+            <div class="d-flex justify-content-between small">
+              <span class="text-danger">{{ errorNroFactura }}</span>
+              <span class="text-muted" *ngIf="!soloLectura">{{ digitosNroFactura }}/{{ digitosRequeridos }}</span>
             </div>
           </div>
 
-          <!-- Timbrado del proveedor: filtrado por proveedor + tipo -->
+          <!-- Timbrado del proveedor -->
           <div class="col-md-4">
-            <label cLabel for="com_tpvid">
-              Timbrado (del proveedor) <span class="text-danger" *ngIf="requiereTimbrado">*</span>
-            </label>
+            <label cLabel for="com_tpvid">Timbrado (del proveedor) <span class="text-danger">*</span></label>
             <input *ngIf="soloLectura" cFormControl [value]="compra?.com_timbra || '—'" disabled />
             <ng-container *ngIf="!soloLectura">
               <div class="d-flex gap-2">
-                <select cSelect id="com_tpvid" formControlName="com_tpvid">
-                  <option [ngValue]="null">
-                    {{ !form.get('com_proid')?.value || !form.get('com_tcoid')?.value
-                        ? 'Elija proveedor y tipo'
-                        : (!requiereTimbrado ? 'No requiere timbrado'
-                        : (cargandoTimbrados ? 'Cargando...'
-                        : (timbrados.length ? 'Seleccione un timbrado' : 'Sin timbrados registrados'))) }}
-                  </option>
-                  <option *ngFor="let t of timbrados" [ngValue]="t.tpv_id">
-                   {{ t.tpv_numero }}{{ timbradoVencidoHoy(t) ? ' (vencido)' : '' }}
+                <select cSelect id="com_tpvid" formControlName="com_tpvid" [class.is-invalid]="!!errorTimbrado">
+                  <option [ngValue]="null">{{ placeholderTimbrado }}</option>
+                  <option *ngFor="let t of timbrados" [ngValue]="t.tpv_id" [disabled]="timbradoInutilizable(t)">
+                    {{ etiquetaTimbrado(t) }}
                   </option>
                 </select>
-                <button cButton color="secondary" variant="outline" type="button" title="Registrar timbrado del proveedor"
-                        [disabled]="!form.get('com_proid')?.value || !form.get('com_tcoid')?.value || !requiereTimbrado"
-                        (click)="abrirNuevoTimbrado()">+</button>
+                <button cButton variant="outline" type="button" title="Registrar timbrado nuevo del proveedor"
+                        [color]="errorTimbrado || todosVencidos ? 'warning' : 'secondary'"
+                        [disabled]="!form.get('com_proid')?.value" (click)="abrirNuevoTimbrado()">+</button>
               </div>
             </ng-container>
-            <div class="text-danger small" *ngIf="campoInvalido('com_tpvid')">
-              {{ errorBackend('com_tpvid') || 'Seleccione el timbrado impreso en la factura.' }}
+            <div class="text-danger small" *ngIf="errorTimbrado">{{ errorTimbrado }}</div>
+            <div class="text-warning small" *ngIf="!soloLectura && !errorTimbrado && todosVencidos">
+              Todos los timbrados de este proveedor están vencidos. Registre el nuevo con +.
             </div>
           </div>
 
           <div class="col-md-4">
             <label cLabel>Vto. timbrado</label>
             <input cFormControl [value]="vtoTimbrado || '—'" disabled />
-            <div class="text-muted small" *ngIf="!soloLectura && timbradoSeleccionado">
-              Vigencia: {{ fmt(timbradoSeleccionado.tpv_fechin) }} al {{ fmt(timbradoSeleccionado.tpv_fechfn) }}
-            </div>
           </div>
 
           <div class="col-md-4">
             <label cLabel for="com_fchaem">Fecha de emisión <span class="text-danger">*</span></label>
-            <input cFormControl type="date" id="com_fchaem" formControlName="com_fchaem" [max]="hoy" />
-            <div class="text-muted small" *ngIf="!soloLectura">La fecha impresa en la factura (puede ser anterior a hoy).</div>
-            <div class="text-danger small" *ngIf="campoInvalido('com_fchaem')">
-              {{ errorBackend('com_fchaem') || 'La fecha de emisión es obligatoria.' }}
+            <input cFormControl type="date" id="com_fchaem" formControlName="com_fchaem"
+                  [min]="fechaMinima" [max]="hoy" [class.is-invalid]="!!errorFechaEmision" />
+            <div class="text-muted small" *ngIf="!soloLectura && !errorFechaEmision">
+              Permitido: {{ fmt(fechaMinima) }} al {{ fmt(hoy) }}.
             </div>
-            <div class="text-danger small" *ngIf="!soloLectura && errorFecha && (form.get('com_fchaem')?.touched || form.get('com_fchaem')?.dirty)">
-              {{ errorFecha }}
-            </div>
+            <div class="text-danger small" *ngIf="errorFechaEmision">{{ errorFechaEmision }}</div>
           </div>
 
           <!-- Alta rápida de timbrado del proveedor -->
           <div class="col-12" *ngIf="mostrarNuevoTimbrado && !soloLectura">
             <div class="border rounded p-3 bg-body-tertiary" [formGroup]="timbradoForm">
               <div class="fw-semibold mb-2">Nuevo timbrado del proveedor</div>
-              <div class="row g-2 align-items-end">
-                <div class="col-md-3">
-                  <label cLabel>N° timbrado *</label>
-                  <input cFormControl formControlName="tpv_numero" maxlength="8" placeholder="00000000" />
+              <div class="row g-2 align-items-start">
+                <div class="col-md-4">
+                  <label cLabel>N° timbrado <span class="text-danger">*</span></label>
+                  <input cFormControl formControlName="tpv_numero" maxlength="8" inputmode="numeric" placeholder="00000000"
+                        [class.is-invalid]="campoTimbradoInvalido('tpv_numero')" />
+                  <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_numero')">
+                    {{ timbradoForm.get('tpv_numero')?.errors?.['backend'] || 'Obligatorio, hasta 8 dígitos.' }}
+                  </div>
                 </div>
-                <div class="col-md-3">
-                  <label cLabel>Inicio vigencia *</label>
-                  <input cFormControl type="date" formControlName="tpv_fechin" />
+                <div class="col-md-4">
+                  <label cLabel>Vencimiento <span class="text-danger">*</span></label>
+                  <input cFormControl type="date" formControlName="tpv_fechfn"
+                        [class.is-invalid]="campoTimbradoInvalido('tpv_fechfn')" />
+                  <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_fechfn')">
+                    {{ timbradoForm.get('tpv_fechfn')?.errors?.['backend']
+                      || (timbradoForm.get('tpv_fechfn')?.errors?.['inutil']
+                          ? 'Ese timbrado venció antes del ' + fmt(fechaMinima) + ' y no cubre ninguna factura cargable.'
+                          : 'El vencimiento es obligatorio.') }}
+                  </div>
                 </div>
-                <div class="col-md-3">
-                  <label cLabel>Vencimiento *</label>
-                  <input cFormControl type="date" formControlName="tpv_fechfn" />
-                </div>
-                <div class="col-md-3 d-flex gap-2">
+                <div class="col-md-4 d-flex gap-2" style="margin-top: 1.9rem;">
                   <button cButton color="primary" type="button" class="flex-fill"
-                          [disabled]="guardandoTimbrado" (click)="guardarNuevoTimbrado()">
-                    {{ guardandoTimbrado ? '...' : 'Guardar' }}
+                          [disabled]="guardandoTimbrado || timbradoForm.invalid" (click)="guardarNuevoTimbrado()">
+                    <c-spinner size="sm" *ngIf="guardandoTimbrado" class="me-1"></c-spinner>
+                    {{ guardandoTimbrado ? 'Guardando...' : 'Guardar' }}
                   </button>
                   <button cButton color="secondary" variant="ghost" type="button" (click)="mostrarNuevoTimbrado = false">✕</button>
                 </div>
               </div>
-              <div class="text-danger small mt-1" *ngIf="timbradoForm.invalid && timbradoForm.touched">
-                Complete todos los campos (solo dígitos).
-              </div>
             </div>
           </div>
 
-          <div class="col-md-4">
-            <label cLabel for="com_nrorem">N° de remisión</label>
-            <input cFormControl id="com_nrorem" formControlName="com_nrorem" maxlength="15" />
-          </div>
         </div>
       </fieldset>
 
-      <fieldset class="border rounded p-3 mb-3">
+            <fieldset class="border rounded p-3 mb-3">
         <legend class="float-none w-auto px-2 fs-6 text-muted">Condición de compra</legend>
         <div class="d-flex gap-4 mb-3">
           <div class="form-check">
@@ -189,34 +180,29 @@
         <div class="row g-3">
           <div class="col-md-4">
             <label cLabel for="com_plzdia">Plazo (días)</label>
-            <input cFormControl type="number" id="com_plzdia" formControlName="com_plzdia" min="0" placeholder="0"  />
+            <input cFormControl type="number" id="com_plzdia" formControlName="com_plzdia" min="0" placeholder="0" />
           </div>
           <div class="col-md-4">
             <label cLabel for="com_cuotas">Cuotas</label>
-            <input cFormControl type="number" id="com_cuotas" formControlName="com_cuotas" min="0" placeholder="0"  />
+            <input cFormControl type="number" id="com_cuotas" formControlName="com_cuotas" min="0" placeholder="0" />
           </div>
           <div class="col-md-4">
             <label cLabel for="com_interv">Intervalo (días)</label>
-            <input cFormControl type="number" id="com_interv" formControlName="com_interv" min="0" placeholder="0"  />
+            <input cFormControl type="number" id="com_interv" formControlName="com_interv" min="0" placeholder="0" />
           </div>
         </div>
-        <!-- 
-        <div class="text-muted small mt-2">
-          Obs: Se habilitan solo si la condición es Crédito.
-        </div>
-        -->
       </fieldset>
 
+      <!-- Detalle de ítems -->
       <fieldset class="border rounded p-3 mb-3">
         <legend class="float-none w-auto px-2 fs-6 text-muted">Detalle de ítems</legend>
 
-        <div class="row g-2 align-items-end mb-3" *ngIf="!soloLectura">
-          <div class="col-md-4 position-relative">
+        <div class="row g-2 align-items-start mb-3" *ngIf="!soloLectura">
+          <div class="col-md-3 position-relative">
             <label cLabel>Producto <span class="text-danger">*</span></label>
-            <input cFormControl placeholder="Buscar por código o nombre..."
-                   autocomplete="off"
-                   [ngModel]="busquedaProducto" (ngModelChange)="onBusquedaChange($event)"
-                   [ngModelOptions]="{standalone: true}" />
+            <input cFormControl placeholder="Buscar por código o nombre..." autocomplete="off"
+                  [ngModel]="busquedaProducto" (ngModelChange)="onBusquedaChange($event)"
+                  [ngModelOptions]="{standalone: true}" />
             <div class="list-group position-absolute w-100" style="z-index: 20;" *ngIf="productosFiltrados.length > 0">
               <button type="button" class="list-group-item list-group-item-action"
                       *ngFor="let p of productosFiltrados" (click)="seleccionarProducto(p)">
@@ -224,100 +210,123 @@
               </button>
             </div>
           </div>
-          <!-- NUEVO: combo de unidad de compra -->
-          <div class="col-md-2">
-            <label cLabel>Unidad</label>
-            <select class="form-select"
-                    [ngModel]="unidadSeleccionada"
-                    (ngModelChange)="seleccionarUnidad($event)"
-                    [ngModelOptions]="{standalone: true}"
-                    [disabled]="!productoSeleccionado">
-              <option *ngFor="let u of unidadesDisponibles" [ngValue]="u">{{ u.umd_codigo }}</option>
+          <div class="col-md-1">
+            <label cLabel>U.M.</label>
+            <select class="form-select" [ngModel]="unidadSeleccionada" (ngModelChange)="seleccionarUnidad($event)"
+                    [ngModelOptions]="{standalone: true}" [disabled]="!productoSeleccionado">
+              <option *ngFor="let u of unidadesDisponibles" [ngValue]="u">{{ u.etiqueta }}</option>
             </select>
-          </div>
-          <div class="col-md-2">
-            <label cLabel>Precio</label>
-            <input cFormControl type="number" [(ngModel)]="nuevoCosto" [ngModelOptions]="{standalone: true}" min="0" step="0.01" />
           </div>
           <div class="col-md-1">
             <label cLabel>Cantidad</label>
-            <input cFormControl type="number" [(ngModel)]="nuevaCantidad" [ngModelOptions]="{standalone: true}" min="0.0001" step="0.0001" />
-          </div>
-          <!-- NUEVO: descuento % de la linea -->
-          <div class="col-md-1">
-            <label cLabel>Desc. %</label>
-            <input cFormControl type="number" [(ngModel)]="nuevoDescuento" [ngModelOptions]="{standalone: true}" min="0" max="100" step="0.01" />
+            <input cFormControl type="number" min="0.0001" step="0.0001" [class.is-invalid]="!!errorCantidad"
+                  [(ngModel)]="nuevaCantidad" [ngModelOptions]="{standalone: true}" />
           </div>
           <div class="col-md-2">
-            <button cButton color="primary" variant="outline" class="w-100" type="button" (click)="agregarItem()">
-              + Agregar ítem
-            </button>
+            <label cLabel>Precio Unitario</label>
+            <input cFormControl type="number" min="0" step="1" [class.is-invalid]="!!errorPrecio"
+                  [ngModel]="nuevoCosto" (ngModelChange)="onPrecioChange($event)" [ngModelOptions]="{standalone: true}" />
           </div>
-          <!-- NUEVO: aviso de conversión -->
-          <div class="col-12" *ngIf="unidadSeleccionada && unidadSeleccionada.factor !== 1">
-            <small class="text-medium-emphasis">
+          <div class="col-md-1">
+            <label cLabel>Desc. %</label>
+            <input cFormControl type="number" min="0" max="100" step="0.01" [class.is-invalid]="!!errorDescuento"
+                  [ngModel]="nuevoDescPor" (ngModelChange)="onDescPorChange($event)" [ngModelOptions]="{standalone: true}" />
+          </div>
+          <div class="col-md-2">
+            <label cLabel>Desc. Unitario (Gs.)</label>
+            <input cFormControl type="number" min="0" step="1" [class.is-invalid]="!!errorDescuento"
+                  [ngModel]="nuevoDescMonto" (ngModelChange)="onDescMontoChange($event)" [ngModelOptions]="{standalone: true}" />
+          </div>
+          <div class="col-md-2" style="margin-top: 1.9rem;">
+            <button cButton color="primary" variant="outline" class="w-100" type="button"
+                    [disabled]="!itemValido" (click)="agregarItem()">+ Agregar ítem</button>
+          </div>
+          <div class="col-12 small">
+            <div class="text-danger" *ngIf="errorCantidad">{{ errorCantidad }}</div>
+            <div class="text-danger" *ngIf="errorPrecio">{{ errorPrecio }}</div>
+            <div class="text-danger" *ngIf="errorDescuento">{{ errorDescuento }}</div>
+            <div class="text-medium-emphasis" *ngIf="unidadSeleccionada && unidadSeleccionada.factor !== 1">
               {{ nuevaCantidad || 0 }} {{ unidadSeleccionada.umd_codigo }} × {{ unidadSeleccionada.factor }} =
               {{ cantidadConvertida }} unidades ingresarán a stock
-            </small>
+            </div>
           </div>
         </div>
 
-        <table cTable small striped>
-          <thead>
-            <tr>
-              <th>Código</th><th>Descripción</th><th class="text-end">Precio</th>
-              <th class="text-end">Cant.</th><th class="text-end">Desc. %</th>
-              <th class="text-center">IVA</th><th class="text-end">Gravado</th><th *ngIf="!soloLectura"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let fila of detalle.controls; let i = index" [formGroup]="$any(fila)">
-              <td>{{ fila.value.prd_codinv }}</td>
-              <td>{{ fila.value.descri }}</td>
-              <!-- CAMBIO: costo -> precun / umd_codigo -->
-              <td class="text-end">{{ fila.value.precun | number:'1.0-2' }} / {{ fila.value.umd_codigo }}</td>
-              <td class="text-end">{{ fila.value.canfac | number:'1.0-4' }}</td>
-              <td class="text-end">{{ fila.value.despor | number:'1.0-2' }}%</td>
-              <td class="text-center">{{ fila.value.tasa }}%</td>
-              <td class="text-end">
-                <!-- CAMBIO: ahora usa gravadoLinea() (neto de descuento) en vez de precun * canfac -->
-                {{ (soloLectura ? fila.value.gravada : gravadoLinea(fila.value)) | number:'1.0-2' }}
-              </td>
-              <td *ngIf="!soloLectura">
-                <button cButton size="sm" color="danger" variant="ghost" type="button" (click)="quitarItem(i)">✕</button>
-              </td>
-            </tr>
-            <tr *ngIf="detalle.length === 0">
-              <td [attr.colspan]="soloLectura ? 7 : 8" class="text-center text-muted fst-italic">
-                Sin ítems cargados
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-responsive">
+          <table cTable small striped>
+            <thead>
+              <tr>
+                <th>Código</th><th>Descripción</th><th>U.M.</th>
+                <th class="text-end">Cantidad</th><th class="text-end">Precio Unitario</th>
+                <th class="text-end">Desc. %</th><th class="text-end">Desc. Unitario</th>
+                <th class="text-end">Exentas</th><th class="text-end">5%</th><th class="text-end">10%</th>
+                <th *ngIf="!soloLectura"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let fila of detalle.controls; let i = index">
+                <td>{{ fila.value.prd_codinv }}</td>
+                <td>{{ fila.value.descri }}</td>
+                <td>{{ fila.value.umd_codigo }}</td>
+                <td class="text-end">{{ fila.value.canfac | number:'1.0-4' }}</td>
+                <td class="text-end">{{ fila.value.precun | number:'1.0-2' }}</td>
+                <td class="text-end">{{ fila.value.despor | number:'1.0-2' }}</td>
+                <td class="text-end">{{ fila.value.descto | number:'1.0-2' }}</td>
+                <td class="text-end">{{ montoEnColumna(fila.value, 0) | number:'1.0-2' }}</td>
+                <td class="text-end">{{ montoEnColumna(fila.value, 5) | number:'1.0-2' }}</td>
+                <td class="text-end">{{ montoEnColumna(fila.value, 10) | number:'1.0-2' }}</td>
+                <td *ngIf="!soloLectura">
+                  <button cButton size="sm" color="danger" variant="ghost" type="button" (click)="quitarItem(i)">✕</button>
+                </td>
+              </tr>
+              <tr *ngIf="detalle.length === 0">
+                <td [attr.colspan]="soloLectura ? 10 : 11" class="text-center text-muted fst-italic">Sin ítems cargados</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
+        <!-- Bloque de totales -->
         <div class="row g-2 mt-2">
-          <div class="col">
-            <label cLabel>Exenta</label>
-            <input cFormControl [value]="(soloLectura ? compra?.com_exenta : totalExenta) | number:'1.0-2'" disabled />
+          <div class="col-md-4">
+            <label cLabel>Subtotal Exentas</label>
+            <input cFormControl disabled [value]="valorVista('com_exenta', subtotalExentas) | number:'1.0-2'" />
           </div>
-          <div class="col">
-            <label cLabel>Gravada 5%</label>
-            <input cFormControl [value]="(soloLectura ? compra?.com_grav5 : totalGrav5) | number:'1.0-2'" disabled />
+          <div class="col-md-4">
+            <label cLabel>Subtotal 5%</label>
+            <input cFormControl disabled [value]="valorVista('com_grav5', subtotal5) | number:'1.0-2'" />
           </div>
-          <div class="col">
-            <label cLabel>Gravada 10%</label>
-            <input cFormControl [value]="(soloLectura ? compra?.com_grav10 : totalGrav10) | number:'1.0-2'" disabled />
+          <div class="col-md-4">
+            <label cLabel>Subtotal 10%</label>
+            <input cFormControl disabled [value]="valorVista('com_grav10', subtotal10) | number:'1.0-2'" />
           </div>
-          <div class="col">
-            <label cLabel>IVA total</label>
-            <input cFormControl [value]="(soloLectura ? ivaTotalVista(compra) : (totalIva5 + totalIva10)) | number:'1.0-2'" disabled />
+        </div>
+        <div class="row g-2 mt-1">
+          <div class="col-md-6">
+            <label cLabel>Total Descuento</label>
+            <input cFormControl disabled [value]="totalDescuento | number:'1.0-2'" />
           </div>
-          <div class="col">
-            <label cLabel>Total</label>
-            <input cFormControl class="fw-bold" [value]="(soloLectura ? compra?.com_total : totalGeneral) | number:'1.0-2'" disabled />
+          <div class="col-md-6">
+            <label cLabel class="fw-bold">TOTAL A PAGAR (Gs.)</label>
+            <input cFormControl class="fw-bold" disabled [value]="valorVista('com_total', totalAPagar) | number:'1.0-2'" />
           </div>
         </div>
 
+        <div class="fw-semibold mt-3 mb-1">Liquidación del IVA</div>
+        <div class="row g-2">
+          <div class="col-md-4">
+            <label cLabel>IVA 5%</label>
+            <input cFormControl disabled [value]="valorVista('com_iva5', iva5) | number:'1.0-0'" />
+          </div>
+          <div class="col-md-4">
+            <label cLabel>IVA 10%</label>
+            <input cFormControl disabled [value]="valorVista('com_iva10', iva10) | number:'1.0-0'" />
+          </div>
+          <div class="col-md-4">
+            <label cLabel>TOTAL IVA</label>
+            <input cFormControl class="fw-semibold" disabled [value]="totalIvaVista | number:'1.0-0'" />
+          </div>
+        </div>
       </fieldset>
 
       <fieldset class="border rounded p-3" *ngIf="!soloLectura || compra?.com_obs">

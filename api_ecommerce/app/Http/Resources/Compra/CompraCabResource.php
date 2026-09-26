@@ -22,7 +22,6 @@ class CompraCabResource extends JsonResource
             'com_timbvn' => $this->com_timbvn?->format('Y-m-d'),
             'com_nrodoc' => $this->com_nrodoc,
             'com_fchaem' => $this->com_fchaem?->format('Y-m-d'),
-            'com_nrorem' => $this->com_nrorem,
             'com_condic' => $this->com_condic,
             'com_plzdia' => $this->com_plzdia,
             'com_cuotas' => $this->com_cuotas,

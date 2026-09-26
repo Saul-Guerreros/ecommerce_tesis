@@ -14,14 +14,23 @@ class SliderController extends Controller
 
     public function productos(Request $request)
     {
+        // prd_titulo se movió a publicacion_web.pub_titulo (ver migración
+        // de Publicación Web); se busca/ordena a través de esa relación.
         $search = $request->search;
 
-        $productos = Producto::when($request->filled('search'), function ($q) use ($search) {
-                $q->where('prd_titulo', 'like', '%' . $search . '%');
+        $productos = Producto::with('publicacionWeb')
+            ->when($request->filled('search'), function ($q) use ($search) {
+                $q->where('prd_codinv', 'like', '%' . $search . '%')
+                    ->orWhereHas('publicacionWeb', fn ($p) => $p->where('pub_titulo', 'like', '%' . $search . '%'));
             })
-            ->orderBy('prd_titulo')
+            ->orderBy('prd_codinv')
             ->limit(50)
-            ->get(['prd_id', 'prd_titulo', 'prd_codinv']);
+            ->get(['prd_id', 'prd_codinv'])
+            ->map(fn ($p) => [
+                'prd_id'     => $p->prd_id,
+                'prd_codinv' => $p->prd_codinv,
+                'prd_titulo' => $p->publicacionWeb?->pub_titulo ?? $p->prd_codinv,
+            ]);
 
         return response()->json(['productos' => $productos]);
     }
@@ -29,10 +38,14 @@ class SliderController extends Controller
    
     public function productoShow(string $id)
     {
-        $producto = Producto::findOrFail($id);
+        $producto = Producto::with('publicacionWeb')->findOrFail($id);
 
         return response()->json([
-            'producto' => $producto->only(['prd_id', 'prd_titulo', 'prd_codinv']),
+            'producto' => [
+                'prd_id'     => $producto->prd_id,
+                'prd_codinv' => $producto->prd_codinv,
+                'prd_titulo' => $producto->publicacionWeb?->pub_titulo ?? $producto->prd_codinv,
+            ],
         ]);
     }
 
@@ -61,7 +74,8 @@ class SliderController extends Controller
             'image'      => 'required|image|mimes:jpeg,jpg,png,gif,webp|max:4096',
             'sld_enlace' => 'nullable|string|max:255',
             'sld_orden'  => 'nullable|integer',
-            'sld_tipo'   => 'nullable|integer',
+            'sld_tipo'   => 'nullable|integer|in:1,2,3',
+            'sld_posicion' => 'nullable|integer|in:1,2|required_if:sld_tipo,2',
             'sld_estado' => 'nullable|integer|in:1,2',
         ]);
 
@@ -71,13 +85,13 @@ class SliderController extends Controller
 
         $data = $request->only([
             'sld_prdid', 'sld_titulo', 'sld_subtitulo', 'sld_label',
-            'sld_enlace', 'sld_orden', 'sld_tipo', 'sld_color',
+            'sld_enlace', 'sld_orden', 'sld_tipo', 'sld_posicion', 'sld_color',
         ]);
 
         $data['sld_estado'] = $request->sld_estado ?? 1;
 
         if ($request->hasFile('image')) {
-            $data['sld_imagen'] = Storage::putFile('sliders', $request->file('image'));
+            $data['sld_imagen'] = Storage::disk('public')->putFile('sliders', $request->file('image'));
         }
 
         $slider = Slider::create($data);
@@ -105,6 +119,8 @@ class SliderController extends Controller
             'sld_prdid'  => 'required|integer|exists:producto,prd_id',
             'sld_titulo' => 'required|string|max:150',
             'image'      => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:4096',
+			'sld_tipo'   => 'nullable|integer|in:1,2,3',
+            'sld_posicion' => 'nullable|integer|in:1,2|required_if:sld_tipo,2',
             'sld_estado' => 'nullable|integer|in:1,2',
         ]);
 
@@ -114,14 +130,14 @@ class SliderController extends Controller
 
         $data = $request->only([
             'sld_prdid', 'sld_titulo', 'sld_subtitulo', 'sld_label',
-            'sld_enlace', 'sld_orden', 'sld_tipo', 'sld_estado', 'sld_color',
+            'sld_enlace', 'sld_orden', 'sld_tipo', 'sld_posicion', 'sld_estado', 'sld_color',
         ]);
 
         if ($request->hasFile('image')) {
             if ($slider->sld_imagen) {
-                Storage::delete($slider->sld_imagen);
+                Storage::disk('public')->delete($slider->sld_imagen);
             }
-            $data['sld_imagen'] = Storage::putFile('sliders', $request->file('image'));
+            $data['sld_imagen'] = Storage::disk('public')->putFile('sliders', $request->file('image'));
         }
 
         $slider->update($data);
@@ -153,6 +169,7 @@ class SliderController extends Controller
             'sld_enlace'    => $slider->sld_enlace,
             'sld_orden'     => $slider->sld_orden,
             'sld_tipo'      => $slider->sld_tipo,
+            'sld_posicion'  => $slider->sld_posicion,
             'sld_estado'    => $slider->sld_estado,
             'sld_color'     => $slider->sld_color,
             'sld_creado'    => $slider->sld_creado,

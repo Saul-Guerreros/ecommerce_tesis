@@ -13,7 +13,8 @@ class NotaCreditoResource extends JsonResource
             'ncr_comid'   => $this->ncr_comid,
             'ncr_numero'  => $this->ncr_numero,
             'ncr_fecha'   => $this->ncr_fecha?->format('Y-m-d'),
-            'ncr_motivo'  => $this->ncr_motivo,
+            'ncr_mncid'   => $this->ncr_mncid,
+            'motivo'      => new MotivoNotaCreditoResource($this->whenLoaded('motivo')),
             'ncr_exenta'  => $this->ncr_exenta,
             'ncr_grav5'   => $this->ncr_grav5,
             'ncr_grav10'  => $this->ncr_grav10,
@@ -25,6 +26,9 @@ class NotaCreditoResource extends JsonResource
             'ncr_obs'     => $this->ncr_obs,
             'ncr_creado'  => $this->ncr_creado,
             'detalle'     => DetNotaCreditoResource::collection($this->whenLoaded('detalle')),
+            'ncr_tpvid'   => $this->ncr_tpvid,
+            'ncr_timbra'  => $this->ncr_timbra,
+            'ncr_timbvn'  => $this->ncr_timbvn?->format('Y-m-d'),
         ];
     }
 }

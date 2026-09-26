@@ -3,7 +3,10 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import {
+  AbstractControl, FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule,
+  ValidationErrors, Validators,
+} from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { distinctUntilChanged } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
@@ -16,11 +19,23 @@ import { ComprasService } from '../service/compras.service';
 import { EquivalenciasService } from '../../productos/service/equivalencias.service';
 import { ProductoEquivalencia } from '../../productos/models/producto.model';
 
+/** Antigüedad máxima de la fecha de emisión (días). */
+const DIAS_MAX_ANTIGUEDAD = 10;
+/** 001-001-0000000 → 13 dígitos. */
+const DIGITOS_NRO_FACTURA = 13;
+
+type CampoTotal = 'com_exenta' | 'com_grav5' | 'com_grav10' | 'com_iva5' | 'com_iva10' | 'com_total';
+
 /** Fecha local YYYY-MM-DD (toISOString() usa UTC y en Paraguay adelanta el día después de las 21:00). */
 function fechaLocal(d = new Date()): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function sumarDias(fecha: string, dias: number): string {
+  const [y, m, d] = fecha.split('-').map(Number);
+  return fechaLocal(new Date(y, m - 1, d + dias));
 }
 
 /** 'YYYY-MM-DD' -> 'DD/MM/YYYY' */
@@ -30,14 +45,23 @@ function fmt(fecha?: string | null): string {
   return `${d}/${m}/${y}`;
 }
 
+/** Deja solo dígitos (máx. 13) y arma 001-001-0000000 mientras se escribe o se pega. */
+function formatearNroFactura(valor: string): string {
+  const d = (valor ?? '').replace(/\D/g, '').slice(0, DIGITOS_NRO_FACTURA);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+}
+
+/** IVA contenido en un monto con IVA incluido: 10% = ÷11, 5% = ÷21. */
+function ivaIncluido(monto: number, tasa: number): number {
+  return tasa > 0 ? Math.round((monto * tasa) / (100 + tasa)) : 0;
+}
+
 /**
  * Modal único con dos modos: Nuevo (editable) y Ver (solo lectura).
- * Una compra confirmada no se edita: solo se anula.
- *
- * Flujo de cabecera:
- *   Proveedor → Tipo comprobante → Timbrado (filtrado) → Vto. (auto)
- *   → N° factura (est/punto del timbrado) → Fecha emisión (≤ hoy y dentro de vigencia)
- *   Sucursal → Depósito (filtrado por sucursal)
+ * Tipo de comprobante fijo: Factura.
+ * Flujo: Proveedor → Timbrado (vto. auto) → N° factura → Fecha emisión.
  */
 @Component({
   selector: 'app-form-compra',
@@ -56,16 +80,19 @@ export class FormCompraComponent implements OnInit, OnChanges {
 
   private destroyRef = inject(DestroyRef);
 
+  readonly hoy = fechaLocal();
+  readonly fechaMinima = sumarDias(this.hoy, -DIAS_MAX_ANTIGUEDAD);
+  readonly digitosRequeridos = DIGITOS_NRO_FACTURA;
+  readonly fmt = fmt;
+
   form: FormGroup;
   timbradoForm: FormGroup;
   guardando = false;
-  readonly hoy = fechaLocal();
-  readonly fmt = fmt;
 
   proveedores: ProveedorOption[] = [];
   sucursales: SucursalOption[] = [];
   depositos: DepositoOption[] = [];
-  tiposComprobante: TipoComprobanteOption[] = [];
+  tipoFactura: TipoComprobanteOption | null = null;
   productosDisponibles: ProductoBusqueda[] = [];
 
   // --- timbrados del proveedor ---
@@ -82,8 +109,32 @@ export class FormCompraComponent implements OnInit, OnChanges {
   unidadSeleccionada: UnidadCompraOption | null = null;
   nuevoCosto: number | null = null;
   nuevaCantidad: number | null = null;
-  nuevoDescuento: number | null = null;
+  nuevoDescPor: number | null = null;     // ayuda de carga
+  nuevoDescMonto: number | null = null;   // fuente de verdad (Gs. por unidad)
   private equivalenciasSub?: Subscription;
+
+  // ==================== Validadores (tiempo real) ====================
+
+  /** No futura y con antigüedad máxima de DIAS_MAX_ANTIGUEDAD. */
+  private readonly fechaEmisionValidator = (c: AbstractControl): ValidationErrors | null => {
+    const f: string = c.value;
+    if (!f) return null;
+    if (f > this.hoy) return { futura: true };
+    if (f < this.fechaMinima) return { antigua: true };
+    return null;
+  };
+
+  /** El timbrado debe cubrir la fecha de emisión (o hoy, si todavía no se cargó). */
+  private readonly timbradoVigenteValidator = (c: AbstractControl): ValidationErrors | null => {
+    const t = this.timbrados.find((x) => x.tpv_id === c.value);
+    if (!t) return null;
+    const referencia: string = this.form?.get('com_fchaem')?.value || this.hoy;
+    return t.tpv_fechfn < referencia ? { vencido: t.tpv_fechfn } : null;
+  };
+
+  /** Un timbrado nuevo que venció antes de la fecha mínima no sirve para ninguna factura cargable. */
+  private readonly vencimientoUtilValidator = (c: AbstractControl): ValidationErrors | null =>
+    c.value && c.value < this.fechaMinima ? { inutil: true } : null;
 
   constructor(
     private fb: FormBuilder,
@@ -93,11 +144,11 @@ export class FormCompraComponent implements OnInit, OnChanges {
   ) {
     this.form = this.fb.group({
       com_proid:  [null, [Validators.required]],
-      com_tcoid:  [null, [Validators.required]],
-      com_tpvid:  [null],                               // required dinámico según tco_reqtim
+      com_tcoid:  [null, [Validators.required]],   // fijo: Factura (lo asigna la config)
+      com_tpvid:  [null, [Validators.required, this.timbradoVigenteValidator]],
       com_nrodoc: ['', [Validators.required, Validators.pattern(/^\d{3}-\d{3}-\d{7}$/)]],
-      com_fchaem: ['', [Validators.required]],          // SIN valor por defecto: es la fecha impresa en la factura
-      com_nrorem: [''],
+      com_fchaem: ['', [Validators.required, this.fechaEmisionValidator]],
+
       com_sucid:  [null, [Validators.required]],
       com_depid:  [null, [Validators.required]],
       com_condic: [0],
@@ -110,9 +161,8 @@ export class FormCompraComponent implements OnInit, OnChanges {
     });
 
     this.timbradoForm = this.fb.group({
-      tpv_numero:   ['', [Validators.required, Validators.pattern(/^\d{1,8}$/)]],
-      tpv_fechin:   ['', [Validators.required]],
-      tpv_fechfn:   ['', [Validators.required]],
+      tpv_numero: ['', [Validators.required, Validators.pattern(/^\d{1,8}$/)]],
+      tpv_fechfn: ['', [Validators.required, this.vencimientoUtilValidator]],
     });
   }
 
@@ -122,7 +172,15 @@ export class FormCompraComponent implements OnInit, OnChanges {
         this.proveedores = res.proveedores;
         this.sucursales = res.sucursales ?? [];
         this.depositos = res.depositos;
-        this.tiposComprobante = res.tipos_comprobante;
+        this.tipoFactura = res.tipo_factura ?? null;
+
+        if (!this.tipoFactura) {
+          this.toastr.error('No está configurado el tipo de comprobante "Factura"', 'Configuración');
+          return;
+        }
+        if (!this.soloLectura) {
+          this.form.get('com_tcoid')!.setValue(this.tipoFactura.tco_id, { emitEvent: false });
+        }
       },
       error: () => this.toastr.error('No se pudo cargar la configuración del formulario', 'Error'),
     });
@@ -137,57 +195,63 @@ export class FormCompraComponent implements OnInit, OnChanges {
 
   // ==================== Dependencias entre campos ====================
 
-  /**
-   * distinctUntilChanged evita que reset()/disable() (que re-emiten el
-   * mismo valor) limpien campos dependientes por error.
-   */
   private escucharCambiosCabecera(): void {
-    const proveedor$ = this.form.get('com_proid')!.valueChanges.pipe(distinctUntilChanged());
-    const tipo$ = this.form.get('com_tcoid')!.valueChanges.pipe(distinctUntilChanged());
-    const sucursal$ = this.form.get('com_sucid')!.valueChanges.pipe(distinctUntilChanged());
+    const ctrl = (n: string) => this.form.get(n)!;
 
-    // Proveedor o tipo cambian → el timbrado anterior deja de ser válido.
-    proveedor$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.recargarTimbrados());
-    tipo$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      this.actualizarValidadorTimbrado();
-      this.recargarTimbrados();
-    });
+    // Proveedor cambia → el timbrado anterior deja de ser válido.
+    ctrl('com_proid').valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.recargarTimbrados());
+
+    // Fecha de emisión cambia → se revalida el timbrado en el acto.
+    ctrl('com_fchaem').valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.revalidarTimbrado());
+
+    // Al elegir (o autoseleccionar) un timbrado, su error se muestra de inmediato.
+    ctrl('com_tpvid').valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((id) => { if (id) ctrl('com_tpvid').markAsTouched(); });
 
     // Sucursal cambia → se limpia el depósito y se preselecciona el principal.
-    sucursal$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((sucId) => {
-      const deps = this.depositos.filter((d) => d.dpo_sucid === sucId);
-      const sugerido = deps.find((d) => d.dpo_princi === 1) ?? (deps.length === 1 ? deps[0] : null);
-      this.form.get('com_depid')!.setValue(sugerido?.dpo_id ?? null);
-    });
+    ctrl('com_sucid').valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((sucId) => {
+        const deps = this.depositos.filter((d) => d.dpo_sucid === sucId);
+        const sugerido = deps.find((d) => d.dpo_princi === 1) ?? (deps.length === 1 ? deps[0] : null);
+        ctrl('com_depid').setValue(sugerido?.dpo_id ?? null);
+      });
   }
 
-  private actualizarValidadorTimbrado(): void {
-    const ctrl = this.form.get('com_tpvid')!;
-    ctrl.setValidators(this.requiereTimbrado ? [Validators.required] : []);
-    ctrl.updateValueAndValidity({ emitEvent: false });
+  private revalidarTimbrado(): void {
+    const c = this.form.get('com_tpvid')!;
+    if (c.disabled || !c.value) return;
+    c.updateValueAndValidity({ emitEvent: false });
+    c.markAsTouched();
   }
 
   private recargarTimbrados(): void {
     this.timbradosSub?.unsubscribe();
-    this.form.get('com_tpvid')!.setValue(null);
+    const ctrl = this.form.get('com_tpvid')!;
+    ctrl.setValue(null, { emitEvent: false });
     this.timbrados = [];
     this.mostrarNuevoTimbrado = false;
 
-    // El select se habilita solo cuando hay proveedor + tipo que requiere timbrado.
-    const ctrl = this.form.get('com_tpvid')!;
     const { com_proid, com_tcoid } = this.form.getRawValue();
-    const habilitar = !!com_proid && !!com_tcoid && this.requiereTimbrado;
-    habilitar ? ctrl.enable({ emitEvent: false }) : ctrl.disable({ emitEvent: false });
-    if (!habilitar) return;
+    if (!com_proid || !com_tcoid) {
+      ctrl.disable({ emitEvent: false });
+      return;
+    }
+    ctrl.enable({ emitEvent: false });
 
     this.cargandoTimbrados = true;
     this.timbradosSub = this.service.getTimbradosProveedor(com_proid, com_tcoid).subscribe({
       next: (res) => {
         this.timbrados = res;
         this.cargandoTimbrados = false;
-        // Si hay uno solo que cubre hoy, se sugiere automáticamente.
-        const vigentes = res.filter((t) => t.tpv_fechin <= this.hoy && t.tpv_fechfn >= this.hoy);
-        if (vigentes.length === 1) this.form.get('com_tpvid')!.setValue(vigentes[0].tpv_id);
+        // Solo se autoselecciona si hay UN único vigente (varias cajas = elige el usuario).
+        const vigentes = res.filter((t) => t.tpv_fechfn >= this.hoy);
+        if (vigentes.length === 1) ctrl.setValue(vigentes[0].tpv_id);
       },
       error: () => {
         this.cargandoTimbrados = false;
@@ -211,50 +275,94 @@ export class FormCompraComponent implements OnInit, OnChanges {
     return sucId ? this.depositos.filter((d) => d.dpo_sucid === sucId) : [];
   }
 
-  get tipoSeleccionado(): TipoComprobanteOption | undefined {
-    return this.tiposComprobante.find((t) => t.tco_id === this.form.get('com_tcoid')!.value);
-  }
-
-  get requiereTimbrado(): boolean {
-    return Number(this.tipoSeleccionado?.tco_reqtim ?? 1) === 1;
-  }
-
   get timbradoSeleccionado(): TimbradoProveedorOption | undefined {
     return this.timbrados.find((t) => t.tpv_id === this.form.get('com_tpvid')!.value);
   }
 
-  /** Vto. del timbrado: SOLO LECTURA, sale del timbrado elegido (o del snapshot en modo Ver). */
   get vtoTimbrado(): string {
     if (this.soloLectura) return fmt(this.compra?.com_timbvn);
     return fmt(this.timbradoSeleccionado?.tpv_fechfn);
   }
 
-  timbradoVencidoHoy(t: TimbradoProveedorOption): boolean {
-    return t.tpv_fechfn < this.hoy;
+  get placeholderTimbrado(): string {
+    if (!this.form.get('com_proid')!.value) return 'Primero elija el proveedor';
+    if (this.cargandoTimbrados) return 'Cargando...';
+    return this.timbrados.length ? 'Seleccione un timbrado' : 'Sin timbrados: registre uno con +';
   }
 
-  // ==================== Validaciones cruzadas ====================
+  etiquetaTimbrado(t: TimbradoProveedorOption): string {
+    return t.tpv_numero;
+  }
 
-  /** Fecha de emisión: no futura y dentro de la vigencia del timbrado (NO se compara el vto. con hoy). */
-  get errorFecha(): string | null {
-    const fecha: string = this.form.get('com_fchaem')!.value;
-    if (!fecha) return null;
-    if (fecha > this.hoy) return 'La fecha de emisión no puede ser posterior a hoy.';
+  /** Vencido antes de la fecha mínima permitida: no puede cubrir ninguna factura. */
+  timbradoInutilizable(t: TimbradoProveedorOption): boolean {
+    return t.tpv_fechfn < this.fechaMinima;
+  }
 
-    const t = this.timbradoSeleccionado;
-    if (t && (fecha < t.tpv_fechin || fecha > t.tpv_fechfn)) {
-      return `Fuera de la vigencia del timbrado (${fmt(t.tpv_fechin)} al ${fmt(t.tpv_fechfn)}).`;
-    }
-    return null;
+  get todosVencidos(): boolean {
+    return this.timbrados.length > 0 && this.timbrados.every((t) => t.tpv_fechfn < this.hoy);
+  }
+
+  // ==================== Mensajes de error (tiempo real) ====================
+
+  private erroresVisibles(campo: string): ValidationErrors | null {
+    const c = this.form.get(campo);
+    return c && c.invalid && (c.touched || c.dirty) ? c.errors : null;
   }
 
   campoInvalido(campo: string): boolean {
-    const c = this.form.get(campo);
-    return !!c && c.invalid && (c.touched || c.dirty);
+    return !!this.erroresVisibles(campo);
   }
 
   errorBackend(campo: string): string | null {
     return this.form.get(campo)?.errors?.['backend'] ?? null;
+  }
+
+  get digitosNroFactura(): number {
+    return String(this.form.get('com_nrodoc')!.value ?? '').replace(/\D/g, '').length;
+  }
+
+  get errorNroFactura(): string | null {
+    const e = this.erroresVisibles('com_nrodoc');
+    if (!e) return null;
+    if (e['backend']) return e['backend'];
+    if (e['required']) return 'El número de factura es obligatorio.';
+    return `Faltan ${DIGITOS_NRO_FACTURA - this.digitosNroFactura} dígito(s). Formato: 001-001-0000000.`;
+  }
+
+  get errorFechaEmision(): string | null {
+    const e = this.erroresVisibles('com_fchaem');
+    if (!e) return null;
+    if (e['backend']) return e['backend'];
+    if (e['required']) return 'La fecha de emisión es obligatoria.';
+    if (e['futura']) return 'La fecha de emisión no puede ser posterior a hoy.';
+    if (e['antigua']) return `No puede tener más de ${DIAS_MAX_ANTIGUEDAD} días de antigüedad (mínimo ${fmt(this.fechaMinima)}).`;
+    return null;
+  }
+
+  get errorTimbrado(): string | null {
+    const e = this.erroresVisibles('com_tpvid');
+    if (!e) return null;
+    if (e['backend']) return e['backend'];
+    if (e['vencido']) {
+      const ref = this.form.get('com_fchaem')!.value ? 'antes de la fecha de emisión' : 'antes de hoy';
+      return `Timbrado vencido el ${fmt(e['vencido'])} (${ref}). Registre el timbrado nuevo con el botón +.`;
+    }
+    if (e['required']) return 'Seleccione el timbrado impreso en la factura.';
+    return null;
+  }
+
+  campoTimbradoInvalido(campo: string): boolean {
+    const c = this.timbradoForm.get(campo);
+    return !!c && c.invalid && (c.touched || c.dirty);
+  }
+
+  /** Máscara: solo dígitos, máximo 13, guiones automáticos (también al pegar). */
+  onNroFacturaInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const formateado = formatearNroFactura(input.value);
+    input.value = formateado;
+    this.form.get('com_nrodoc')!.setValue(formateado);
   }
 
   // ==================== Ciclo de apertura del modal ====================
@@ -269,14 +377,13 @@ export class FormCompraComponent implements OnInit, OnChanges {
     this.timbradoForm.reset();
 
     if (this.compra) {
-      // emitEvent:false → no disparar la cascada (limpiar depósito/timbrado).
       this.form.reset({
         com_proid:  this.compra.com_proid,
         com_tcoid:  this.compra.com_tcoid,
         com_tpvid:  this.compra.com_tpvid ?? null,
         com_nrodoc: this.compra.com_nrodoc,
         com_fchaem: this.compra.com_fchaem,
-        com_nrorem: this.compra.com_nrorem ?? '',
+        
         com_sucid:  this.compra.com_sucid ?? null,
         com_depid:  this.compra.com_depid,
         com_condic: this.compra.com_condic,
@@ -288,29 +395,35 @@ export class FormCompraComponent implements OnInit, OnChanges {
       }, { emitEvent: false });
 
       this.detalle.clear({ emitEvent: false });
-      (this.compra.detalle ?? []).forEach((linea: any) => this.detalle.push(this.filaDetalle({
-        prd_id:     linea.cmd_prdid,
-        prd_codinv: linea.prd_codinv ?? '',
-        umd_id:     linea.cmd_umdid,
-        umd_codigo: linea.umd_codigo ?? '',
-        descri:     linea.cmd_descri,
-        precun:     linea.cmd_precun,
-        despor:     linea.cmd_despor,
-        tasa:       linea.cmd_tasa,
-        canfac:     linea.cmd_canfac,
-        canrec:     linea.cmd_canrec,
-        tiv_id:     linea.cmd_tivid,
-        gravada:    linea.cmd_gravada,
-        iva:        linea.cmd_iva,
-      }), { emitEvent: false }));
+      (this.compra.detalle ?? []).forEach((linea: any) => {
+        // cmd_canfac/canrec se guardan en unidad de STOCK: se vuelven a la unidad facturada.
+        const factor = Number(linea.cmd_factconv) || 1;
+        this.detalle.push(this.filaDetalle({
+          prd_id:     linea.cmd_prdid,
+          prd_codinv: linea.prd_codinv ?? '',
+          // (e) al cargar una compra existente (bloque con linea.cmd_factconv):
+          umd_id:     linea.cmd_umdid,
+          peq_id:     linea.cmd_peqid ?? null,
+          umd_codigo: factor !== 1 ? `${linea.umd_codigo ?? ''} (x${factor})` : (linea.umd_codigo ?? ''),
+          descri:     linea.cmd_descri,
+          precun:     Number(linea.cmd_precun),
+          despor:     Number(linea.cmd_despor),
+          descto:     Number(linea.cmd_descto),
+          tasa:       Number(linea.cmd_tasa),
+          canfac:     Number(linea.cmd_canfac) / factor,
+          canrec:     Number(linea.cmd_canrec) / factor,
+          tiv_id:     linea.cmd_tivid,
+          gravada:    Number(linea.cmd_gravada),
+          iva:        Number(linea.cmd_iva),
+        }), { emitEvent: false });
+      });
 
       this.form.disable({ emitEvent: false });
     } else {
-      this.form.reset({ com_condic: 0 }, { emitEvent: false });
+      this.form.reset({ com_condic: 0, com_tcoid: this.tipoFactura?.tco_id ?? null }, { emitEvent: false });
       this.detalle.clear({ emitEvent: false });
       this.form.enable({ emitEvent: false });
-      this.form.get('com_tpvid')!.disable({ emitEvent: false }); // hasta elegir proveedor + tipo
-      this.actualizarValidadorTimbrado();
+      this.form.get('com_tpvid')!.disable({ emitEvent: false }); // hasta elegir proveedor
       this.onCondicionChange(0);
     }
   }
@@ -324,40 +437,39 @@ export class FormCompraComponent implements OnInit, OnChanges {
       descri:     [linea.descri ?? ''],
       precun:     [linea.precun ?? 0],
       despor:     [linea.despor ?? 0],
+      descto:     [linea.descto ?? 0],
       tasa:       [linea.tasa ?? 0],
       canfac:     [linea.canfac ?? 0],
       canrec:     [linea.canrec ?? linea.canfac ?? 0],
       tiv_id:     [linea.tiv_id ?? null],
       gravada:    [linea.gravada ?? 0],
       iva:        [linea.iva ?? 0],
+      // (c) filaDetalle(): agrega el control
+      peq_id:     [linea.peq_id ?? null],
+      
     });
   }
 
   // ==================== Alta rápida de timbrado del proveedor ====================
 
   abrirNuevoTimbrado(): void {
-    this.timbradoForm.reset({ tpv_numero: '', tpv_fechin: '', tpv_fechfn: '' });
+    this.timbradoForm.reset({ tpv_numero: '', tpv_fechfn: '' });
     this.mostrarNuevoTimbrado = true;
   }
 
   guardarNuevoTimbrado(): void {
     const { com_proid, com_tcoid } = this.form.getRawValue();
     if (!com_proid || !com_tcoid) {
-      this.toastr.error('Seleccione primero proveedor y tipo de comprobante', 'Falta dato');
+      this.toastr.error('Seleccione primero el proveedor', 'Falta dato');
       return;
     }
     if (this.timbradoForm.invalid) {
       this.timbradoForm.markAllAsTouched();
       return;
     }
-    const v = this.timbradoForm.value;
-    if (v.tpv_fechfn < v.tpv_fechin) {
-      this.toastr.error('El vencimiento no puede ser anterior al inicio de vigencia', 'Fechas inválidas');
-      return;
-    }
 
     this.guardandoTimbrado = true;
-    this.service.crearTimbradoProveedor({ ...v, tpv_proid: com_proid, tpv_tcoid: com_tcoid }).subscribe({
+    this.service.crearTimbradoProveedor({ ...this.timbradoForm.value, tpv_proid: com_proid, tpv_tcoid: com_tcoid }).subscribe({
       next: (t) => {
         this.guardandoTimbrado = false;
         this.timbrados = [t, ...this.timbrados];
@@ -367,9 +479,15 @@ export class FormCompraComponent implements OnInit, OnChanges {
       },
       error: (err) => {
         this.guardandoTimbrado = false;
-        const errores = err?.error?.errors;
-        const msg = errores ? (Object.values(errores)[0] as string[])[0] : err?.error?.message;
-        this.toastr.error(msg ?? 'No se pudo registrar el timbrado', 'Error');
+        if (err.status === 422 && err.error?.errors) {
+          Object.keys(err.error.errors).forEach((campo) => {
+            const c = this.timbradoForm.get(campo);
+            c?.setErrors({ backend: err.error.errors[campo][0] });
+            c?.markAsTouched();
+          });
+          return;
+        }
+        this.toastr.error(err?.error?.message ?? 'No se pudo registrar el timbrado', 'Error');
       },
     });
   }
@@ -388,11 +506,6 @@ export class FormCompraComponent implements OnInit, OnChanges {
     return `${p.prd_codinv} — ${p.prd_descri}`;
   }
 
-  /**
-   * FIX del buscador: si el usuario edita/borra el texto después de haber
-   * elegido un producto, la selección anterior se descarta. Antes quedaba
-   * "pegada" y el *ngIf="!productoSeleccionado" ocultaba la lista para siempre.
-   */
   onBusquedaChange(texto: string): void {
     this.busquedaProducto = texto ?? '';
     if (this.productoSeleccionado && this.busquedaProducto !== this.etiquetaProducto(this.productoSeleccionado)) {
@@ -408,27 +521,34 @@ export class FormCompraComponent implements OnInit, OnChanges {
   }
 
   seleccionarProducto(p: ProductoBusqueda): void {
-    this.equivalenciasSub?.unsubscribe();   // cancela equivalencias de un producto anterior
-
+    this.equivalenciasSub?.unsubscribe();
     this.productoSeleccionado = p;
     this.busquedaProducto = this.etiquetaProducto(p);
 
-    const base: UnidadCompraOption = {
-      umd_id: p.prd_umdid, umd_codigo: p.umd_codigo ?? 'Unidad', umd_nombre: p.umd_codigo ?? 'Unidad', factor: 1,
-    };
-    this.unidadesDisponibles = [base];
-    this.unidadSeleccionada = base;
+   // (a) seleccionarProducto(): reemplaza la construcción de `base` y de `extras`
+  const base: UnidadCompraOption = {
+    umd_id: p.prd_umdid, peq_id: null,
+    umd_codigo: p.umd_codigo ?? 'Unidad', umd_nombre: p.umd_codigo ?? 'Unidad',
+    factor: 1, etiqueta: p.umd_codigo ?? 'Unidad',
+  };
+  this.unidadesDisponibles = [base];
+  this.unidadSeleccionada = base;
 
-    this.equivalenciasSub = this.equivalenciasService.getByProducto(p.prd_id).subscribe({
-      next: (eqs: ProductoEquivalencia[]) => {
-        if (this.productoSeleccionado?.prd_id !== p.prd_id) return; // respuesta tardía de otro producto
-        const extras = eqs.filter((e) => e.peq_estado === 1).map((e) => ({
-          umd_id: e.peq_umdid, umd_codigo: e.umd_codigo ?? '', umd_nombre: e.umd_nombre ?? '', factor: e.peq_factor,
+  this.equivalenciasSub = this.equivalenciasService.getByProducto(p.prd_id).subscribe({
+    next: (eqs: ProductoEquivalencia[]) => {
+      if (this.productoSeleccionado?.prd_id !== p.prd_id) return;
+      const extras: UnidadCompraOption[] = eqs
+        .filter((e) => e.peq_estado === 1)                 // solo presentaciones activas
+        .map((e) => ({
+          umd_id: e.peq_umdid, peq_id: e.peq_id ?? null,
+          umd_codigo: e.umd_codigo ?? '', umd_nombre: e.umd_nombre ?? '',
+          factor: Number(e.peq_factor),
+          etiqueta: e.etiqueta ?? `${e.umd_codigo} (x${Number(e.peq_factor)})`,
         }));
-        this.unidadesDisponibles = [base, ...extras]; // nueva referencia → el <select> se refresca
-      },
-      error: () => {},
-    });
+      this.unidadesDisponibles = [base, ...extras];
+    },
+    error: () => {},
+  });
   }
 
   seleccionarUnidad(u: UnidadCompraOption): void {
@@ -439,28 +559,85 @@ export class FormCompraComponent implements OnInit, OnChanges {
     return (this.nuevaCantidad ?? 0) * (this.unidadSeleccionada?.factor ?? 1);
   }
 
-  agregarItem(): void {
-    if (!this.productoSeleccionado) { this.toastr.error('Busque y seleccione un producto', 'Falta producto'); return; }
-    if (!this.unidadSeleccionada)   { this.toastr.error('Seleccione la unidad de compra', 'Falta unidad'); return; }
-    if (!this.nuevoCosto || this.nuevoCosto <= 0) { this.toastr.error('El precio debe ser mayor a 0', 'Precio inválido'); return; }
-    if (!this.nuevaCantidad || this.nuevaCantidad <= 0) { this.toastr.error('La cantidad debe ser mayor a 0', 'Cantidad inválida'); return; }
-    const desc = this.nuevoDescuento ?? 0;
-    if (desc < 0 || desc > 100) { this.toastr.error('El descuento debe estar entre 0 y 100', 'Descuento inválido'); return; }
+  // --- Descuento bidireccional: se edita % o monto; se persiste el MONTO ---
 
-    const p = this.productoSeleccionado;
+  private porcentajeDesde(monto: number | null, precio: number | null): number | null {
+    if (monto === null || !precio) return null;
+    return Math.round((monto / precio) * 10000) / 100;   // 2 decimales
+  }
+
+  onPrecioChange(valor: number | null): void {
+    this.nuevoCosto = valor;
+    // El monto es la fuente de verdad: si cambia el precio, se recalcula el %.
+    if (this.nuevoDescMonto !== null) this.nuevoDescPor = this.porcentajeDesde(this.nuevoDescMonto, valor);
+  }
+
+  onDescPorChange(valor: number | null): void {
+    this.nuevoDescPor = valor;
+    this.nuevoDescMonto = valor === null || !this.nuevoCosto
+      ? null
+      : Math.round((this.nuevoCosto * valor) / 100);   // Gs. enteros
+  }
+
+  onDescMontoChange(valor: number | null): void {
+    this.nuevoDescMonto = valor;
+    this.nuevoDescPor = this.porcentajeDesde(valor, this.nuevoCosto);
+  }
+
+  get errorPrecio(): string | null {
+    if (this.nuevoCosto === null) return null;
+    return this.nuevoCosto > 0 ? null : 'El precio debe ser mayor a 0.';
+  }
+
+  get errorCantidad(): string | null {
+    if (this.nuevaCantidad === null) return null;
+    return this.nuevaCantidad > 0 ? null : 'La cantidad debe ser mayor a 0.';
+  }
+
+  get errorDescuento(): string | null {
+    const monto = this.nuevoDescMonto ?? 0;
+    const por = this.nuevoDescPor ?? 0;
+    if (monto < 0 || por < 0) return 'El descuento no puede ser negativo.';
+    if (por > 100) return 'El % no puede superar 100.';
+    if (this.nuevoCosto && monto > this.nuevoCosto) return 'El descuento no puede superar el precio unitario.';
+    return null;
+  }
+
+  get itemValido(): boolean {
+    return !!this.productoSeleccionado && !!this.unidadSeleccionada
+      && (this.nuevoCosto ?? 0) > 0 && (this.nuevaCantidad ?? 0) > 0 && !this.errorDescuento;
+  }
+
+  agregarItem(): void {
+    if (!this.itemValido) return;   // el botón ya está deshabilitado; es una red de seguridad
+
+    const p = this.productoSeleccionado!;
     this.detalle.push(this.filaDetalle({
       prd_id: p.prd_id,
       prd_codinv: p.prd_codinv,
-      umd_id: this.unidadSeleccionada.umd_id,
-      umd_codigo: this.unidadSeleccionada.umd_codigo,
+      // (b) agregarItem(): en this.filaDetalle({...})
+      umd_id: this.unidadSeleccionada!.umd_id,
+      peq_id: this.unidadSeleccionada!.peq_id,
+      umd_codigo: this.unidadSeleccionada!.etiqueta,     // la grilla muestra "Caja (x10)"
       descri: p.prd_descri,
       precun: this.nuevoCosto,
-      despor: desc,
+      despor: this.nuevoDescPor ?? 0,
+      descto: this.nuevoDescMonto ?? 0,
       tasa: p.tiv_tasa ?? 0,
       canfac: this.nuevaCantidad,
       canrec: this.nuevaCantidad,
       tiv_id: p.prd_tivid ?? null,
+      
     }));
+
+
+      if (!p.prd_tivid) {
+        this.toastr.error(
+        'Este producto no tiene tipo de IVA configurado. Edítelo en Productos antes de comprarlo.',
+        'Falta tipo de IVA'
+      );
+      return;
+    }
 
     this.limpiarToolbarItem();
   }
@@ -474,33 +651,50 @@ export class FormCompraComponent implements OnInit, OnChanges {
     this.busquedaProducto = '';
     this.nuevoCosto = null;
     this.nuevaCantidad = null;
-    this.nuevoDescuento = null;
+    this.nuevoDescPor = null;
+    this.nuevoDescMonto = null;
   }
 
-  // ==================== Totales ====================
+  // ==================== Totales (IVA incluido) ====================
 
-  gravadoLinea(fila: any): number {
-    const bruto = (Number(fila.precun) || 0) * (Number(fila.canfac) || 0);
-    return bruto - bruto * ((Number(fila.despor) || 0) / 100);
+  /** Total de la operación: (precio − descuento unitario) × cantidad. */
+  netoLinea(f: any): number {
+    const neto = ((Number(f.precun) || 0) - (Number(f.descto) || 0)) * (Number(f.canfac) || 0);
+    return Math.round(neto);
+  }
+
+  /** Monto de la línea en su columna (Exentas / 5% / 10%); null en las otras. */
+  montoEnColumna(f: any, tasa: number): number | null {
+    return Number(f.tasa) === tasa ? this.netoLinea(f) : null;
   }
 
   private sumaPorTasa(tasa: number): number {
     return this.detalle.controls
       .filter((c) => Number(c.value.tasa) === tasa)
-      .reduce((s, c) => s + this.gravadoLinea(c.value), 0);
+      .reduce((s, c) => s + this.netoLinea(c.value), 0);
   }
 
-  get totalExenta(): number { return this.sumaPorTasa(0); }
-  get totalGrav5(): number  { return this.sumaPorTasa(5); }
-  get totalGrav10(): number { return this.sumaPorTasa(10); }
-  get totalIva5(): number   { return this.totalGrav5 * 0.05; }
-  get totalIva10(): number  { return this.totalGrav10 * 0.10; }
-  get totalGeneral(): number {
-    return this.totalExenta + this.totalGrav5 + this.totalGrav10 + this.totalIva5 + this.totalIva10;
+  get subtotalExentas(): number { return this.sumaPorTasa(0); }
+  get subtotal5(): number       { return this.sumaPorTasa(5); }
+  get subtotal10(): number      { return this.sumaPorTasa(10); }
+
+  get totalDescuento(): number {
+    return this.detalle.controls.reduce(
+      (s, c) => s + (Number(c.value.descto) || 0) * (Number(c.value.canfac) || 0), 0,
+    );
   }
 
-  ivaTotalVista(c: Compra | null): number {
-    return (Number(c?.com_iva5) || 0) + (Number(c?.com_iva10) || 0);
+  get totalAPagar(): number { return this.subtotalExentas + this.subtotal5 + this.subtotal10; }
+  get iva5(): number        { return ivaIncluido(this.subtotal5, 5); }
+  get iva10(): number       { return ivaIncluido(this.subtotal10, 10); }
+
+  /** En modo Ver se muestran los importes persistidos (los calculó el backend). */
+  valorVista(campo: CampoTotal, calculado: number): number {
+    return this.soloLectura ? Number(this.compra?.[campo]) || 0 : calculado;
+  }
+
+  get totalIvaVista(): number {
+    return this.valorVista('com_iva5', this.iva5) + this.valorVista('com_iva10', this.iva10);
   }
 
   // ==================== Guardar ====================
@@ -510,8 +704,7 @@ export class FormCompraComponent implements OnInit, OnChanges {
       this.toastr.error('Debe cargar al menos un ítem antes de guardar', 'Detalle vacío');
       return;
     }
-
-    if (this.form.invalid || this.errorFecha) {
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.toastr.error('Revise los campos marcados en rojo', 'Validación');
       return;
@@ -525,26 +718,22 @@ export class FormCompraComponent implements OnInit, OnChanges {
 
     this.guardando = true;
 
+    // Los totales NO se envían: el backend los recalcula desde el detalle.
     const payload = {
-      ...this.form.value,   // .value excluye plazo/cuotas/intervalo deshabilitados (contado)
-      com_exenta: this.totalExenta,
-      com_grav5:  this.totalGrav5,
-      com_grav10: this.totalGrav10,
-      com_iva5:   this.totalIva5,
-      com_iva10:  this.totalIva10,
-      com_total:  this.totalGeneral,
+      ...this.form.value,
       detalle: this.detalle.value.map((l: any) => ({
         prd_id: l.prd_id,
+       // (d) payload del guardado: agrega peq_id al map del detalle
         umd_id: l.umd_id,
+        peq_id: l.peq_id,
         tiv_id: l.tiv_id,
         descri: l.descri,
         precun: l.precun,
+        descto: l.descto,
         despor: l.despor,
-        tasa: l.tasa,
-        gravada: this.gravadoLinea(l),
-        iva: this.gravadoLinea(l) * (Number(l.tasa) / 100),
         canfac: l.canfac,
         canrec: l.canrec,
+        
       })),
     };
 
@@ -580,7 +769,6 @@ export class FormCompraComponent implements OnInit, OnChanges {
   onCondicionChange(valor: number): void {
     this.form.patchValue({ com_condic: valor });
     const campos = ['com_plzdia', 'com_cuotas', 'com_interv'];
-
     if (valor === 0) {
       campos.forEach((c) => {
         this.form.get(c)?.setValue(null);

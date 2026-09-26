@@ -10,6 +10,7 @@ class CuentaPorPagarResource extends JsonResource
     {
         return [
             'com_id'         => $this->com_id,
+            'com_proid'      => $this->com_proid,
             'com_nrodoc'     => $this->com_nrodoc,
             'com_proraz'     => $this->com_proraz,
             'com_fchaem'     => $this->com_fchaem?->format('Y-m-d'),

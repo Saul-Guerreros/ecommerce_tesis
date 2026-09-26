@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product\Atributo;
 use App\Models\Product\Propiedad;
 use App\Models\Product\EspecificacionProducto;
+use App\Models\PublicacionWeb;
 
 /**
  * NOTA: se asume que tu módulo de Atributos/Propiedades (ya construido) usa
@@ -16,6 +17,14 @@ use App\Models\Product\EspecificacionProducto;
  * Ajusta los nombres si en tu proyecto son distintos.
  *
  * atb_tipo: 1 = Texto | 2 = Número | 3 = Seleccionable | 4 = Seleccionable múltiple
+ *
+ * IMPORTANTE: las especificaciones ahora cuelgan de publicacion_web
+ * (esp_pubid), no de producto directamente (ver DER, módulo Catálogo).
+ * Este controlador sigue recibiendo "producto_id" desde el Angular ya
+ * construido (no se tocó esa pantalla) y resuelve internamente la
+ * publicación web de ese producto, para no romper el contrato del
+ * front-end. Si el producto todavía no fue publicado, se devuelve un
+ * error 422 pidiendo publicarlo primero.
  */
 class EspecificacionProductoController extends Controller
 {
@@ -26,8 +35,13 @@ class EspecificacionProductoController extends Controller
     {
         $request->validate(['producto_id' => 'required|integer']);
 
+        $publicacion = $this->resolverPublicacion($request->producto_id);
+        if ($publicacion instanceof \Illuminate\Http\JsonResponse) {
+            return $publicacion;
+        }
+
         $especificaciones = EspecificacionProducto::with(['atributo', 'propiedad'])
-            ->where('esp_proid', $request->producto_id)
+            ->where('esp_pubid', $publicacion->pub_id)
             ->orderBy('esp_id', 'desc')
             ->get();
 
@@ -53,6 +67,11 @@ class EspecificacionProductoController extends Controller
             'valor_numero'  => 'nullable|numeric',
         ]);
 
+        $publicacion = $this->resolverPublicacion($request->producto_id);
+        if ($publicacion instanceof \Illuminate\Http\JsonResponse) {
+            return $publicacion;
+        }
+
         $atributo = Atributo::findOrFail($request->atributo_id);
 
         $validation = $this->validateValueByType($atributo, $request);
@@ -71,8 +90,8 @@ class EspecificacionProductoController extends Controller
             ]);
         }
 
-        // Anti-duplicados: producto + atributo + propiedad ya existente
-        $duplicado = EspecificacionProducto::where('esp_proid', $request->producto_id)
+        // Anti-duplicados: publicación + atributo + propiedad ya existente
+        $duplicado = EspecificacionProducto::where('esp_pubid', $publicacion->pub_id)
             ->where('esp_atbid', $request->atributo_id)
             ->whereIn('esp_prpid', $request->propiedad_ids)
             ->exists();
@@ -86,7 +105,7 @@ class EspecificacionProductoController extends Controller
         $creadas = [];
         foreach ($request->propiedad_ids as $propiedad_id) {
             $especificacion = EspecificacionProducto::create([
-                'esp_proid' => $request->producto_id,
+                'esp_pubid' => $publicacion->pub_id,
                 'esp_atbid' => $request->atributo_id,
                 'esp_prpid' => $propiedad_id,
                 'esp_valibr' => $request->valor_libre,
@@ -121,6 +140,11 @@ class EspecificacionProductoController extends Controller
             'valor_numero' => 'nullable|numeric',
         ]);
 
+        $publicacion = $this->resolverPublicacion($request->producto_id);
+        if ($publicacion instanceof \Illuminate\Http\JsonResponse) {
+            return $publicacion;
+        }
+
         $atributo = Atributo::findOrFail($request->atributo_id);
 
         $validation = $this->validateValueByType($atributo, $request, true);
@@ -136,7 +160,7 @@ class EspecificacionProductoController extends Controller
             ]);
         }
 
-        $duplicado = EspecificacionProducto::where('esp_proid', $request->producto_id)
+        $duplicado = EspecificacionProducto::where('esp_pubid', $publicacion->pub_id)
             ->where('esp_atbid', $request->atributo_id)
             ->where('esp_prpid', $request->propiedad_id)
             ->where('esp_id', '<>', $id)
@@ -174,6 +198,47 @@ class EspecificacionProductoController extends Controller
 
         return response()->json(['message' => 200]);
     }
+	
+	/**
+ * POST /admin/especificaciones/duplicar
+ * Copia todas las especificaciones de un producto (origen) hacia otro
+ * (destino). Para variantes de color: las características técnicas
+ * suelen ser idénticas, solo cambia el color/edición.
+ */
+	public function duplicar(Request $request)
+	{
+    $request->validate([
+        'producto_id_origen' => 'required|integer|exists:producto,prd_id',
+        'producto_id_destino' => 'required|integer|different:producto_id_origen|exists:producto,prd_id',
+    ]);
+
+    $origen = $this->resolverPublicacion($request->producto_id_origen);
+    if ($origen instanceof \Illuminate\Http\JsonResponse) return $origen;
+
+    $destino = $this->resolverPublicacion($request->producto_id_destino);
+    if ($destino instanceof \Illuminate\Http\JsonResponse) return $destino;
+
+    $creadas = [];
+    foreach (EspecificacionProducto::where('esp_pubid', $origen->pub_id)->get() as $e) {
+        $yaExiste = EspecificacionProducto::where('esp_pubid', $destino->pub_id)
+            ->where('esp_atbid', $e->esp_atbid)
+            ->where('esp_prpid', $e->esp_prpid)
+            ->exists();
+
+        if ($yaExiste) continue;
+
+        $nueva = EspecificacionProducto::create([
+            'esp_pubid' => $destino->pub_id,
+            'esp_atbid' => $e->esp_atbid,
+            'esp_prpid' => $e->esp_prpid,
+            'esp_valibr' => $e->esp_valibr,
+            'esp_valnum' => $e->esp_valnum,
+        ]);
+        $creadas[] = $this->mapEspecificacion($nueva->load(['atributo', 'propiedad']));
+    }
+
+		return response()->json(['message' => 200, 'especificaciones' => $creadas]);
+	}
 
     /**
      * Valida que, según el tipo de atributo, venga el valor libre o numérico correspondiente.
@@ -200,11 +265,33 @@ class EspecificacionProductoController extends Controller
         return null;
     }
 
+    /**
+     * Busca la publicación web del producto indicado. Si el producto
+     * todavía no tiene ficha web, devuelve un JsonResponse 422 explicando
+     * que hay que publicarlo primero (en vez de crear una publicación
+     * "vacía" implícita, lo cual escondería el paso al usuario).
+     *
+     * @return PublicacionWeb|\Illuminate\Http\JsonResponse
+     */
+    private function resolverPublicacion(int $productoId)
+    {
+        $publicacion = PublicacionWeb::where('pub_prdid', $productoId)->first();
+
+        if (! $publicacion) {
+            return response()->json([
+                'message' => 422,
+                'message_text' => 'ESTE PRODUCTO TODAVÍA NO TIENE UNA PUBLICACIÓN WEB. PUBLÍCALO PRIMERO PARA PODER AGREGARLE ESPECIFICACIONES.',
+            ], 422);
+        }
+
+        return $publicacion;
+    }
+
     private function mapEspecificacion(EspecificacionProducto $e): array
     {
         return [
             'esp_id' => $e->esp_id,
-            'esp_proid' => $e->esp_proid,
+            'esp_pubid' => $e->esp_pubid,
             'esp_atbid' => $e->esp_atbid,
             'atributo' => $e->atributo ? [
                 'atb_id' => $e->atributo->atb_id,

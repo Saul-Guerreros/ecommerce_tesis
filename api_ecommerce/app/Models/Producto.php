@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Compras\TipoIva;
 use App\Models\Compras\UnidadMedida;
 
@@ -17,7 +18,12 @@ class Producto extends Model
     protected $primaryKey = 'prd_id';
     public $timestamps = false;
 
+    // La tabla solo tiene prd_creado, no tiene updated_at
+    const CREATED_AT = 'prd_creado';
+    const UPDATED_AT = null;
+
     protected $fillable = [
+        'prd_padre_id',
         'prd_marid',
         'prd_tivid',
         'prd_umdid',
@@ -64,16 +70,38 @@ class Producto extends Model
         return $this->belongsTo(UnidadMedida::class, 'prd_umdid', 'umd_id');
     }
 
-    public function imagenes(): HasMany
-    {
-        return $this->hasMany(ImagenProducto::class, 'img_prdid', 'prd_id');
-    }
+    // NOTA: ya no existe una relación imagenes() directa aquí. Las imágenes
+    // viven en publicacion_web (img_pubid), no en producto: accedé a ellas
+    // vía $producto->publicacionWeb?->imagenes (puede ser null si el
+    // producto todavía no tiene ficha web).
 
     public function stock(): HasMany
     {
         return $this->hasMany(\App\Models\Compras\Stock::class, 'sto_prdid', 'prd_id');
     }
 
+
+    /**
+     * Ficha web (categoría, título, descripción, imágenes, estado de
+     * publicación). Puede no existir todavía: un producto recién cargado
+     * en inventario no está necesariamente publicado en la tienda.
+     */
+    public function publicacionWeb(): HasOne
+    {
+        return $this->hasOne(PublicacionWeb::class, 'pub_prdid', 'prd_id');
+    }
+
+    /** El producto "modelo base" del que este es una variante (color, edición, etc.) */
+    public function padre(): BelongsTo
+    {
+        return $this->belongsTo(Producto::class, 'prd_padre_id', 'prd_id');
+    }
+
+    /** Otros productos que apuntan a ESTE como su modelo base */
+    public function variantes(): HasMany
+    {
+        return $this->hasMany(Producto::class, 'prd_padre_id', 'prd_id');
+    }
     // Para ProductoEquivalencias
     public function equivalencias(): HasMany
     {

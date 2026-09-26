@@ -12,13 +12,20 @@
           <strong>NC N° {{ n.ncr_numero }}</strong>
           <span class="text-muted">{{ n.ncr_fecha }}</span>
         </div>
-        <div class="text-muted small mb-2">{{ n.ncr_motivo }}</div>
+
+        <div class="small mb-2">
+          <span class="text-muted">{{ n.motivo?.mnc_codigo }} — {{ n.motivo?.mnc_descri }}</span>
+          <span class="badge ms-2" [ngClass]="n.motivo?.mnc_afesto === 1 ? 'bg-warning text-dark' : 'bg-info'">
+            {{ n.motivo?.mnc_afesto === 1 ? 'Afectó stock' : 'Solo costo' }}
+          </span>
+        </div>
 
         <table cTable small striped>
           <thead>
             <tr>
               <th>Producto</th><th class="text-end">Cantidad</th>
               <th class="text-end">Gravado</th><th class="text-center">IVA</th><th class="text-end">Total</th>
+              <th class="text-end">Ajustado en stock</th>
             </tr>
           </thead>
           <tbody>
@@ -28,6 +35,7 @@
               <td class="text-end">{{ d.dnc_base_gravada | number:'1.0-2' }}</td>
               <td class="text-center">{{ d.dnc_iva | number:'1.0-2' }}</td>
               <td class="text-end">{{ d.dnc_total | number:'1.0-2' }}</td>
+              <td class="text-end">{{ d.dnc_canaju | number:'1.0-4' }}</td>
             </tr>
           </tbody>
         </table>

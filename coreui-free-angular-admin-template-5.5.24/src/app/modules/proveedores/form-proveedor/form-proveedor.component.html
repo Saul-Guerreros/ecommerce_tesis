@@ -176,7 +176,8 @@
       </div>
     </form>
   </c-modal-body>
-  <!-- ================= TIMBRADOS (solo en edicion) ================= -->
+  
+    <!-- ================= TIMBRADOS (solo en edicion) ================= -->
   <c-modal-body *ngIf="esEdicion" class="border-top pt-3">
     <h6>Timbrados del proveedor</h6>
 
@@ -185,7 +186,7 @@
     <table cTable small striped *ngIf="!cargandoTimbrados && timbrados.length > 0">
       <thead>
         <tr>
-          <th>Timbrado</th><th>Tipo</th><th>Vigencia</th>
+          <th>Timbrado</th><th>Tipo</th><th>Vencimiento</th>
           <th class="text-center">Situación</th><th class="text-center">Compras</th>
           <th class="text-end" *ngIf="!soloLectura">Acciones</th>
         </tr>
@@ -194,7 +195,7 @@
         <tr *ngFor="let t of timbrados" [class.table-active]="t.tpv_id === editandoTimbradoId">
           <td class="fw-semibold">{{ t.tpv_numero }}</td>
           <td>{{ t.tco_descri }}</td>
-          <td>{{ fmt(t.tpv_fechin) }} – {{ fmt(t.tpv_fechfn) }}</td>
+          <td>{{ fmt(t.tpv_fechfn) }}</td>
           <td class="text-center">
             <c-badge [color]="situacionTimbrado(t).color">{{ situacionTimbrado(t).texto }}</c-badge>
           </td>
@@ -229,7 +230,7 @@
     <!-- Mini-formulario de alta/edicion: oculto en modo Ver -->
     <form *ngIf="!soloLectura" [formGroup]="timbradoForm" (ngSubmit)="guardarTimbrado()" class="border rounded p-3 mt-2">
       <div class="row g-2 align-items-start">
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label cLabel class="small">Tipo <span class="text-danger">*</span></label>
           <select cSelect formControlName="tpv_tcoid">
             <option [ngValue]="null">Seleccione</option>
@@ -239,21 +240,14 @@
             {{ errorBackendTimbrado('tpv_tcoid') || 'Obligatorio.' }}
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label cLabel class="small">N° timbrado <span class="text-danger">*</span></label>
-          <input cFormControl formControlName="tpv_numero" maxlength="8" placeholder="00000000" />
+          <input cFormControl formControlName="tpv_numero" maxlength="8" inputmode="numeric" placeholder="00000000" />
           <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_numero')">
             {{ errorBackendTimbrado('tpv_numero') || 'Hasta 8 dígitos.' }}
           </div>
         </div>
-        <div class="col-md-3">
-          <label cLabel class="small">Inicio vigencia <span class="text-danger">*</span></label>
-          <input cFormControl type="date" formControlName="tpv_fechin" />
-          <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_fechin')">
-            {{ errorBackendTimbrado('tpv_fechin') || 'Obligatorio.' }}
-          </div>
-        </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label cLabel class="small">Vencimiento <span class="text-danger">*</span></label>
           <input cFormControl type="date" formControlName="tpv_fechfn" />
           <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_fechfn')">
@@ -271,4 +265,5 @@
       </div>
     </form>
   </c-modal-body>
+
 </c-modal>

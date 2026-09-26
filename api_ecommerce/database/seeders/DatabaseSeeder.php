@@ -21,6 +21,9 @@ class DatabaseSeeder extends Seeder
             // Otros catálogos actuales del sistema
             TipoComprobanteSeeder::class,
             UnidadMedidaSeeder::class,
+            MotivoNotaCreditoSeeder::class,   // <-- nuevo
+
+
         ]);
     }
 }

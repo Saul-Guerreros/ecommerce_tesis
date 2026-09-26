@@ -41,6 +41,30 @@ class ProductoResource extends JsonResource
              */
             'stock_actual'    => $this->whenNotNull($this->stock_actual),
             'precio_sugerido' => $this->whenNotNull($this->precio_sugerido),
+
+            /**
+             * Resumen de la publicación web (null si el producto todavía no
+             * fue publicado en la tienda). Ver PublicacionWebResumen en el
+             * frontend (producto.model.ts) para el shape esperado.
+             */
+            'publicacion_web' => $this->whenLoaded('publicacionWeb', function () {
+                if (! $this->publicacionWeb) {
+                    return null;
+                }
+
+                $imagenPrincipal = $this->publicacionWeb->imagenes
+                    ->firstWhere('img_princi', 1)
+                    ?? $this->publicacionWeb->imagenes->first();
+
+                return [
+                    'pub_id'           => $this->publicacionWeb->pub_id,
+                    'pub_titulo'       => $this->publicacionWeb->pub_titulo,
+                    'pub_prevta'       => $this->publicacionWeb->pub_prevta,
+                    'pub_estado'       => $this->publicacionWeb->pub_estado,
+                    'categoria'        => $this->publicacionWeb->categoria?->cat_nombre,
+                    'imagen_principal' => $imagenPrincipal?->img_url,
+                ];
+            }),
         ];
     }
 }

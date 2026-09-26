@@ -1,4 +1,5 @@
 <?php
+// app/Models/Compras/ProductoEquivalencia.php
 
 namespace App\Models\Compras;
 
@@ -29,5 +30,17 @@ class ProductoEquivalencia extends Model
     public function unidadMedida()
     {
         return $this->belongsTo(UnidadMedida::class, 'peq_umdid', 'umd_id');
+    }
+
+    /** Líneas de compra que usaron esta presentación. */
+    public function detallesCompra()
+    {
+        return $this->hasMany(CompraDetalle::class, 'cmd_peqid', 'peq_id');
+    }
+
+    /** 12.0000 → "12" · 0.5000 → "0.5" (para etiquetas legibles). */
+    public function getFactorFormateadoAttribute(): string
+    {
+        return rtrim(rtrim(number_format((float) $this->peq_factor, 4, '.', ''), '0'), '.');
     }
 }

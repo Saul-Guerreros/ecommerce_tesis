@@ -1,7 +1,7 @@
 <?php
-// app/Http/Resources/Compra/CuotaCompraResource.php
 namespace App\Http\Resources\Compra;
 
+use App\Models\Compras\CuotaCompra;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,10 +17,11 @@ class CuotaCompraResource extends JsonResource
             'cuo_importe' => $this->cuo_importe,
             'cuo_estado'  => $this->cuo_estado,
             'cuo_fecpago' => $this->cuo_fecpago?->format('Y-m-d'),
-            'com_nrodoc' => $this->whenLoaded('compraCab', fn () => $this->compraCab->com_nrodoc),
-            'com_proraz' => $this->whenLoaded('compraCab', fn () => $this->compraCab->com_proraz),
-            'cuo_saldo' => round((float) $this->cuo_importe - (float) $this->pagos->sum('pgo_importe'), 2),
-            'pagos'     => PagoCompraResource::collection($this->whenLoaded('pagos')),
-            ];
+            'com_nrodoc'  => $this->whenLoaded('compraCab', fn () => $this->compraCab->com_nrodoc),
+            'com_proraz'  => $this->whenLoaded('compraCab', fn () => $this->compraCab->com_proraz),
+            'com_proid'   => $this->whenLoaded('compraCab', fn () => $this->compraCab->com_proid),
+            'cuo_saldo'   => $this->cuo_estado === CuotaCompra::ESTADO_PAGADA ? 0 : (float) $this->cuo_importe,
+            'pago'        => $this->whenLoaded('pago', fn () => $this->pago ? new PagoCompraResource($this->pago) : null),
+        ];
     }
 }

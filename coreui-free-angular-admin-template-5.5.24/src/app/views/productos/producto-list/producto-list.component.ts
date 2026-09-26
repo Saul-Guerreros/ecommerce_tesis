@@ -13,10 +13,9 @@ import {
   ModalModule,
 } from '@coreui/angular';
 import { IconModule } from '@coreui/icons-angular';
-import { environment } from '../../../../environments/environment';
 import { CatalogoService } from '../../../core/services/catalogo.service';
 import { ProductoService } from '../../../core/services/producto.service';
-import { Categoria, Marca, Producto } from '../../../core/models/producto.model';
+import { Categoria, Marca, Producto, TipoIva, UnidadMedida } from '../../../core/models/producto.model';
 import { ProductoFormComponent } from '../producto-form/producto-form.component';
 import { RouterLink } from '@angular/router';
 
@@ -45,6 +44,8 @@ export class ProductoListComponent implements OnInit {
   productos: Producto[] = [];
   categorias: Categoria[] = [];
   marcas: Marca[] = [];
+  tiposIva: TipoIva[] = [];
+  unidadesMedida: UnidadMedida[] = [];
 
   cargando = false;
   error: string | null = null;
@@ -79,6 +80,8 @@ export class ProductoListComponent implements OnInit {
   ngOnInit(): void {
     this.catalogoService.categorias().subscribe((data) => (this.categorias = data));
     this.catalogoService.marcas().subscribe((data) => (this.marcas = data));
+    this.catalogoService.tiposIva().subscribe((data) => (this.tiposIva = data));
+    this.catalogoService.unidadesMedida().subscribe((data) => (this.unidadesMedida = data));
     this.cargarProductos();
   }
 
@@ -167,9 +170,25 @@ export class ProductoListComponent implements OnInit {
       },
     });
   }
+  
+	duplicarComoVariante(producto: Producto): void {
+		this.productoSeleccionado = {...producto,prd_padre_id: producto.prd_padre_id ?? producto.prd_id,  prd_id: undefined,};
+	this.mostrarFormulario = true;
+	}
 
-  imagenPrincipal(producto: Producto): string | null {
-    const principal = producto.imagenes?.find((i) => i.img_princi) ?? producto.imagenes?.[0];
-    return principal ? `${environment.URL_BACKEND}/storage/${principal.img_url}` : null;
+  /** Texto + color del badge de estado de PUBLICACIÓN (distinto del estado de inventario). */
+  estadoPublicacion(producto: Producto): { texto: string; color: string } {
+    if (!producto.publicacion_web) {
+      return { texto: 'Sin publicar', color: 'secondary' };
+    }
+
+    switch (producto.publicacion_web.pub_estado) {
+      case 1:
+        return { texto: 'Publicado', color: 'success' };
+      case 2:
+        return { texto: 'Archivado', color: 'dark' };
+      default:
+        return { texto: 'Borrador', color: 'warning' };
+    }
   }
 }

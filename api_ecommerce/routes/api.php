@@ -8,6 +8,8 @@ use App\Http\Controllers\Admin\Product\VariacionProductoController;
 use App\Http\Controllers\Admin\Product\EspecificacionProductoController;
 use App\Http\Controllers\Admin\Cupone\CuponeController;
 use App\Http\Controllers\Admin\Discount\DiscountController;
+use App\Http\Controllers\Api\PublicacionWebController;
+use App\Http\Controllers\Api\VitrinaController;
 use App\Http\Controllers\AuthController;
 
 use App\Http\Controllers\Api\UsuarioController;
@@ -70,6 +72,9 @@ use App\Http\Controllers\Admin\Compras\LibroCompraController;
 
 use App\Http\Controllers\Admin\Compras\TimbradoProveedorController;
 
+use App\Http\Controllers\Admin\Compras\PagoCompraController;
+
+use App\Http\Controllers\Carrito\CarritoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -105,9 +110,36 @@ Route::group([
 
 });
 
+// Catálogo público paginado — consumido por ProductoPublicoService (URL_SERVICIOS/productos, sin prefijo).
+Route::get('productos', [VitrinaController::class, 'productos']);
+
+// Rutas públicas del ecommerce (sin auth), consumidas por frontend-ecommerce.
 Route::group([
-     'middleware' => ['auth:api'],   // <- solo agregar esta línea
-    'prefix' => 'admin'
+    'prefix' => 'tienda',
+], function ($router) {
+    Route::get('home', [VitrinaController::class, 'home']);
+    Route::get('sliders', [VitrinaController::class, 'sliders']);
+    Route::get('producto/{slug}', [VitrinaController::class, 'detalle']);
+
+    // Carrito de invitado: resuelve precios e imágenes sin persistir nada.
+    Route::post('carrito/previsualizar', [CarritoController::class, 'previsualizar']);
+});
+
+// Rutas privadas de tienda (requieren sesión de cliente autenticado).
+Route::group([
+    'middleware' => ['auth:api'],
+    'prefix' => 'tienda',
+], function ($router) {
+    Route::post('carrito/sincronizar', [CarritoController::class, 'sincronizar']);
+    Route::delete('carrito', [CarritoController::class, 'vaciar']);
+
+    Route::apiResource('carrito', CarritoController::class)
+        ->only(['index', 'store', 'update', 'destroy']);
+});
+
+Route::group([
+    'middleware'=> ['auth:api'],   // <- solo agregar esta línea
+    'prefix'=> 'admin'
 ], function ($router) {
     Route::get('sliders-productos', [SliderController::class, 'productos']);
     Route::get('sliders-productos/{id}', [SliderController::class, 'productoShow']);
@@ -132,6 +164,8 @@ Route::group([
     Route::post('especificaciones', [EspecificacionProductoController::class, 'store']);
     Route::put('especificaciones/{id}', [EspecificacionProductoController::class, 'update']);
     Route::delete('especificaciones/{id}', [EspecificacionProductoController::class, 'destroy']);
+	
+	Route::post('especificaciones/duplicar', [EspecificacionProductoController::class, 'duplicar']);
 	
 	Route::get("cupones/config", [CuponeController::class, "config"]);
     Route::resource("cupones", CuponeController::class);
@@ -215,10 +249,6 @@ Route::group([
     Route::patch('contactos-proveedor/{id}/estado', [ContactoProveedorController::class, 'toggleEstado']);
     Route::apiResource('contactos-proveedor', ContactoProveedorController::class);
 
-    Route::get('timbrados-proveedor', [TimbradoProveedorController::class, 'index']);
-    Route::post('timbrados-proveedor', [TimbradoProveedorController::class, 'store']);
-    Route::patch('timbrados-proveedor/{id}/estado', [TimbradoProveedorController::class, 'toggleEstado']);
-
     // --- Timbrados de proveedor (sub-recurso de Proveedor) ---
     Route::get('timbrados-proveedor/config', [TimbradoProveedorController::class, 'config']);
     Route::patch('timbrados-proveedor/{id}/estado', [TimbradoProveedorController::class, 'toggleEstado']);
@@ -231,6 +261,7 @@ Route::group([
 
     // --- Productos ---
     Route::get('productos/config', [ProductoController::class, 'config']);
+    Route::get('ecommerce/menus', [VitrinaController::class, 'menus']);
     Route::get('productos/select', [ProductoController::class, 'select']);
     Route::patch('productos/{id}/estado', [ProductoController::class, 'toggleEstado']);
     Route::apiResource('productos', ProductoController::class);
@@ -239,6 +270,11 @@ Route::group([
     //solo desde dentro del formulario de un producto puntual) ---
     Route::patch('producto-equivalencias/{id}/estado', [ProductoEquivalenciaController::class, 'toggleEstado']);
     Route::apiResource('producto-equivalencias', ProductoEquivalenciaController::class)->except(['show']);
+
+    // --- Publicación Web (ficha pública de un producto) ---
+    Route::get('productos/{producto}/publicacion', [PublicacionWebController::class, 'show']);
+    Route::post('productos/{producto}/publicacion', [PublicacionWebController::class, 'guardar']);
+    Route::delete('productos/{producto}/publicacion/imagenes/{imagen}', [PublicacionWebController::class, 'eliminarImagen']);
 
     // --- Compras (modulo transaccional: sin apiResource, sin toggleEstado) ---
     Route::get('compras/config', [CompraController::class, 'config']);
@@ -270,6 +306,7 @@ Route::group([
 
     //Precios
     Route::get('precios', [PrecioController::class, 'index']);
+    Route::get('precios/{id}', [PrecioController::class, 'show']);
     Route::patch('precios/{id}', [PrecioController::class, 'update']);
 
     Route::get('tipos-ajuste/select', [TipoAjusteController::class, 'select']);
@@ -287,7 +324,6 @@ Route::group([
 
     // --- Cuotas de credito de Compras ---
     Route::get('compras/{id}/cuotas', [CuotaCompraController::class, 'index']);
-    Route::post('cuotas-compra/{id}/pagos', [CuotaCompraController::class, 'pagar']);
 
     // --- Cuentas por Pagar (reporte transversal sobre cuota_compra) ---
     Route::get('cuentas-por-pagar/config', [CuentaPorPagarController::class, 'config']);
@@ -296,6 +332,11 @@ Route::group([
     // --- Libro de Compras (reporte transversal: FC + NC) ---
     Route::get('libro-compra/config', [LibroCompraController::class, 'config']);
     Route::get('libro-compra', [LibroCompraController::class, 'index']);
+
+    // --- Pagos de compra (1 pago = 1 cuota) ---
+    Route::post('pagos-compra', [PagoCompraController::class, 'store']);
+    Route::patch('pagos-compra/{id}/anular', [PagoCompraController::class, 'anular']);
+    
     
 });
 
@@ -319,6 +360,8 @@ Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {
         ->middleware('permiso:usuarios.gestionar');
         
 });
+
+Route::get('publicaciones', [PublicacionWebController::class, 'index']);
 
 Route::apiResource('categorias', categorieController::class);
 

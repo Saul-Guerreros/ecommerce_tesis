@@ -89,7 +89,7 @@ export class FormProveedorComponent implements OnInit, OnChanges {
     this.timbradoForm = this.fb.group({
       tpv_tcoid:  [null, [Validators.required]],
       tpv_numero: ['', [Validators.required, Validators.pattern(/^\d{1,8}$/)]],
-      tpv_fechin: ['', [Validators.required]],
+    
       tpv_fechfn: ['', [Validators.required]],
     });
   }
@@ -303,7 +303,7 @@ export class FormProveedorComponent implements OnInit, OnChanges {
   /** Estado visible: la vigencia se calcula contra hoy, tpv_estado es manual. */
   situacionTimbrado(t: TimbradoProveedor): { texto: string; color: string } {
     if (t.tpv_estado !== 1)      return { texto: 'Inactivo', color: 'secondary' };
-    if (t.tpv_fechin > this.hoy) return { texto: 'Aún no vigente', color: 'info' };
+    
     if (t.tpv_fechfn < this.hoy) return { texto: 'Vencido', color: 'warning' };
     return { texto: 'Vigente', color: 'success' };
   }
@@ -332,14 +332,14 @@ export class FormProveedorComponent implements OnInit, OnChanges {
   resetearFormTimbrado(): void {
     // Si hay un solo tipo (lo normal: Factura) se preselecciona.
     const tipoUnico = this.tiposComprobante.length === 1 ? this.tiposComprobante[0].tco_id : null;
-    this.timbradoForm.reset({ tpv_tcoid: tipoUnico, tpv_numero: '', tpv_fechin: '', tpv_fechfn: '' });
+    this.timbradoForm.reset({ tpv_tcoid: tipoUnico, tpv_numero: '', tpv_fechfn: '' });
     this.editandoTimbradoId = null;
   }
 
   editarTimbrado(t: TimbradoProveedor): void {
     this.editandoTimbradoId = t.tpv_id!;
     this.timbradoForm.patchValue({
-      tpv_tcoid: t.tpv_tcoid, tpv_numero: t.tpv_numero, tpv_fechin: t.tpv_fechin, tpv_fechfn: t.tpv_fechfn,
+      tpv_tcoid: t.tpv_tcoid, tpv_numero: t.tpv_numero, tpv_fechfn: t.tpv_fechfn 
     });
   }
 
@@ -350,11 +350,6 @@ export class FormProveedorComponent implements OnInit, OnChanges {
     }
 
     const v = this.timbradoForm.value;
-    if (v.tpv_fechfn < v.tpv_fechin) {
-      this.timbradoForm.get('tpv_fechfn')?.setErrors({ backend: 'El vencimiento no puede ser anterior al inicio.' });
-      this.timbradoForm.get('tpv_fechfn')?.markAsTouched();
-      return;
-    }
 
     this.guardandoTimbrado = true;
     const datos: Partial<TimbradoProveedor> = { ...v, tpv_proid: this.proveedor!.pro_id! };

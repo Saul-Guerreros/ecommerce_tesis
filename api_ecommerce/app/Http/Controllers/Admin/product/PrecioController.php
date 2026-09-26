@@ -81,6 +81,31 @@ class PrecioController extends Controller
         return response()->json(['data' => PrecioResource::collection($productos)], 200);
     }
 
+    // GET /api/admin/precios/{id}
+    // Precio de UN producto puntual (ej: para sugerir pub_prevta al crear
+    // su publicación web). El listado de index() no sirve para esto: no
+    // tiene forma práctica de pedir "solo este producto" sin depender de
+    // que el texto de búsqueda matchee exacto.
+    public function show(int $id): JsonResponse
+    {
+        $producto = Producto::with('tipoIva')->find($id);
+
+        if (!$producto) {
+            return response()->json(['message' => 'Producto no encontrado'], 404);
+        }
+
+        $general       = ConfiguracionPrecio::actual();
+        $costoPromedio = $this->costoPromedioGlobal($id);
+
+        $producto->costo_promedio      = $costoPromedio !== null ? round($costoPromedio, 4) : null;
+        $producto->tiv_tasa            = $producto->tipoIva?->tiv_tasa;
+        $producto->margen_min_efectivo = (float) ($producto->prd_marmin ?? $general->cpr_marmin);
+        $producto->margen_maj_efectivo = (float) ($producto->prd_marmaj ?? $general->cpr_marmaj);
+        $producto->umbral_efectivo     = (float) ($producto->prd_canminmaj ?? $general->cpr_canminmaj);
+
+        return response()->json(['data' => new PrecioResource($producto)], 200);
+    }
+
     // PATCH /api/admin/precios/{id}
     public function update(PrecioRequest $request, int $id): JsonResponse
     {

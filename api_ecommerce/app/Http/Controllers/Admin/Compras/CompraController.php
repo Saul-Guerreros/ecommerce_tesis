@@ -7,6 +7,7 @@ use App\Http\Requests\Compra\CompraRequest;
 use App\Http\Resources\Compra\CompraCabResource;
 use App\Models\Compras\CompraCab;
 use App\Models\Compras\TimbradoProveedor;
+use App\Models\Compras\TipoComprobante;
 use App\Services\Compras\CompraService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,7 @@ class CompraController extends Controller
             ->orderBy('pro_razon')
             ->get(['pro_id', 'pro_razon', 'pro_ruc']);
 
-        // NUEVO: sucursales activas; el deposito se filtra por sucursal en Angular.
+        // Sucursales activas; el deposito se filtra por sucursal en Angular.
         $sucursales = DB::table('sucursal')
             ->where('suc_estado', 1)
             ->orderBy('suc_nombre')
@@ -68,10 +69,11 @@ class CompraController extends Controller
             ->orderBy('dpo_nombre')
             ->get(['dpo_id', 'dpo_nombre', 'dpo_sucid', 'dpo_princi', 'suc_nombre']);
 
-        $tiposComprobante = DB::table('tipo_comprobante')
+        // Tipo de comprobante fijo: este formulario solo registra Facturas.
+        $tipoFactura = DB::table('tipo_comprobante')
+            ->where('tco_codigo', TipoComprobante::CODIGO_FACTURA)
             ->where('tco_estado', 1)
-            ->orderBy('tco_descri')
-            ->get(['tco_id', 'tco_descri', 'tco_reqtim']);
+            ->first(['tco_id', 'tco_descri', 'tco_reqtim']);
 
         $tiposIva = DB::table('tipo_iva')
             ->where('tiv_estado', 1)
@@ -79,18 +81,18 @@ class CompraController extends Controller
             ->get(['tiv_id', 'tiv_descri', 'tiv_tasa']);
 
         return response()->json([
-            'proveedores'        => $proveedores,
-            'sucursales'         => $sucursales,
-            'depositos'          => $depositos,
-            'tipos_comprobante'  => $tiposComprobante,
-            'tipos_iva'          => $tiposIva,
+            'proveedores'  => $proveedores,
+            'sucursales'   => $sucursales,
+            'depositos'    => $depositos,
+            'tipo_factura' => $tipoFactura,
+            'tipos_iva'    => $tiposIva,
         ], 200);
     }
 
     // GET /api/admin/compras/{id}
     public function show(int $id): JsonResponse
     {
-    $compra = CompraCab::with(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto', 'detalle.unidadMedida'])->find($id);
+        $compra = CompraCab::with(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto', 'detalle.unidadMedida'])->find($id);
 
         if (!$compra) {
             return response()->json(['message' => 'Compra no encontrada'], 404);
@@ -119,7 +121,7 @@ class CompraController extends Controller
         $datos['com_timbvn'] = $timbrado?->tpv_fechfn?->toDateString();
 
         $compra = $this->service->store($datos, $lineas);
-       $compra->load(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto', 'detalle.unidadMedida']);
+        $compra->load(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto', 'detalle.unidadMedida']);
 
         return response()->json([
             'message' => 'Compra registrada correctamente. Stock y costo promedio actualizados.',
@@ -143,6 +145,7 @@ class CompraController extends Controller
         }
 
         $compra->load(['sucursal', 'deposito', 'tipoComprobante', 'detalle.tipoIva', 'detalle.producto', 'detalle.unidadMedida']);
+
         return response()->json([
             'message' => 'Compra anulada correctamente. Stock revertido.',
             'data'    => new CompraCabResource($compra),

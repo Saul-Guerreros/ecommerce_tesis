@@ -1,4 +1,5 @@
 <?php
+// app/Http/Resources/Compra/ProductoEquivalenciaResource.php
 
 namespace App\Http\Resources\Compra;
 
@@ -13,10 +14,14 @@ class ProductoEquivalenciaResource extends JsonResource
             'peq_id'     => $this->peq_id,
             'peq_prdid'  => $this->peq_prdid,
             'peq_umdid'  => $this->peq_umdid,
-            'peq_factor' => $this->peq_factor,
+            'peq_factor' => (float) $this->peq_factor,
             'peq_estado' => $this->peq_estado,
+
             'umd_codigo' => $this->whenLoaded('unidadMedida', fn () => $this->unidadMedida->umd_codigo),
             'umd_nombre' => $this->whenLoaded('unidadMedida', fn () => $this->unidadMedida->umd_nombre),
+            'etiqueta'   => $this->whenLoaded('unidadMedida',
+                fn () => "{$this->unidadMedida->umd_codigo} (x{$this->factor_formateado})"),
+            'en_uso'     => $this->whenCounted('detallesCompra', fn () => $this->detalles_compra_count > 0),
         ];
     }
 }

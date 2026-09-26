@@ -1,0 +1,9 @@
+<div class="uk-padding-small uk-background-muted uk-border-rounded" *ngIf="cuotas.length">
+  <div class="uk-text-bold uk-text-emphasis uk-margin-xsmall-bottom">Pedí en CUOTAS</div>
+  <div class="uk-text-small uk-margin-xsmall-bottom">¿Cómo querés pagar?</div>
+  <select class="uk-select">
+    <option *ngFor="let c of cuotas" [value]="c.cantidad">
+      {{ c.cantidad }}x {{ c.monto_cuota | currency:'PYG':'symbol-narrow':'1.0-0' }}
+    </option>
+  </select>
+</div>

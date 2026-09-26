@@ -21,13 +21,13 @@
   margin-left: auto;
 }
 
-/* Layout de respaldo para los mega-dropdowns (Categorías, Marcas):
-   uk-grid + uk-child-width-* no se están aplicando, por lo que las
-   listas caen al comportamiento por defecto del navegador (bullets,
-   apiladas verticalmente). Forzamos el grid manualmente. */
+/* Layout de respaldo para los mega-dropdowns (Categorías, Marcas).
+   Acotado a .uk-navbar-dropdown: el selector genérico .uk-grid-small[uk-grid]
+   también alcanzaba las filas del offcanvas del carrito y les rompía el
+   margen negativo de UIkit. */
 
 .uk-navbar-dropdown-grid,
-.uk-grid-small[uk-grid] {
+.uk-navbar-dropdown .uk-grid-small[uk-grid] {
   display: flex;
   flex-wrap: wrap;
   list-style: none;
@@ -36,7 +36,7 @@
 }
 
 .uk-navbar-dropdown-grid > li,
-.uk-grid-small[uk-grid] > li {
+.uk-navbar-dropdown .uk-grid-small[uk-grid] > li {
   box-sizing: border-box;
   padding: 10px;
 }
@@ -45,7 +45,14 @@
   width: 20%;
 }
 
-.uk-grid-small.uk-child-width-1-6 > li {
+.uk-navbar-dropdown .uk-grid-small.uk-child-width-1-6 > li {
   width: 16.6667%;
 }
 
+/* La miniatura del carrito entra completa dentro del recuadro 4:3,
+   sin recorte ni deformación. */
+.tm-media-box-wrap > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

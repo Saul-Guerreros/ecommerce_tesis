@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ToastrService } from 'ngx-toastr';
 import { ButtonModule, ModalModule, SpinnerModule, TableModule } from '@coreui/angular';
 import { Compra } from '../../models/compra.model';
-import { DetNotaCreditoResumen } from '../models/nota-credito.model';
+import { DetNotaCreditoResumen, MotivoNotaCredito } from '../models/nota-credito.model';
 import { NotasCreditoService } from '../service/notas-credito.service';
 
 @Component({
@@ -18,7 +18,15 @@ export class ListNotaCreditoComponent implements OnChanges {
 
   @Output() visibleChange = new EventEmitter<boolean>();
 
-  notas: { ncr_id?: number; ncr_numero: string; ncr_fecha: string; ncr_motivo: string; ncr_total?: number; detalle: DetNotaCreditoResumen[] }[] = [];
+  notas: { 
+    ncr_id?: number; 
+    ncr_numero: string;
+    ncr_fecha: string;
+    motivo?: MotivoNotaCredito | null; 
+    ncr_total?: number
+    detalle: DetNotaCreditoResumen[] 
+  }[] = [];
+
   cargando = false;
 
   constructor(private service: NotasCreditoService, private toastr: ToastrService) {}

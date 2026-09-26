@@ -15,7 +15,7 @@ class ImagenProducto extends Model
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'img_prdid',
+        'img_pubid',
         'img_url',
         'img_orden',
         'img_princi',
@@ -26,8 +26,8 @@ class ImagenProducto extends Model
         'img_princi' => 'boolean',
     ];
 
-    public function producto(): BelongsTo
+    public function publicacionWeb(): BelongsTo
     {
-        return $this->belongsTo(Producto::class, 'img_prdid', 'prd_id');
+        return $this->belongsTo(PublicacionWeb::class, 'img_pubid', 'pub_id');
     }
 }

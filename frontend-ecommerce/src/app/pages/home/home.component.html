@@ -1,1546 +1,779 @@
- <main>
- <section class="uk-position-relative uk-visible-toggle uk-light" uk-slideshow="min-height: 300; max-height: 600;">
+<main>
+        <!-- hero slider -->
+<section
+  class="uk-position-relative uk-visible-toggle uk-light hero-v2"
+  id="hero-slideshow"
+  *ngIf="slidersPrincipales.length > 0"
+>
   <ul class="uk-slideshow-items">
-   <li style="background-color: #0b0a12">
-    <a routerLink="/catalogo">
-     <figure class="uk-container uk-height-1-1 uk-position-relative">
-      <img alt="New Macbook" fetchpriority="high" height="600" loading="eager" src="assets/images/promo/macbook-new.webp" uk-cover="" width="1200"/>
-      <div class="tm-hero-caption">
-       <div class="tm-hero-caption-eyebrow">Nueva llegada</div>
-       <div class="tm-hero-caption-title">El nuevo MacBook</div>
-       <div class="tm-hero-caption-text">La energía se encuentra con la portabilidad. Descubre la línea.</div>
-       <div class="uk-button uk-button-default uk-light uk-width-auto">Comprar ahora</div>
+    <li
+      *ngFor="let slider of slidersPrincipales; trackBy: trackBySlider"
+      class="hero-v2-slide"
+      [style.background-color]="slider.color || '#115061'"
+    >
+      <div class="hero-v2-shapes" aria-hidden="true">
+        <img class="hero-v2-shape hero-v2-shape-1" src="assets/images/slider/shape/slider-shape-1.png" alt="" />
+        <img class="hero-v2-shape hero-v2-shape-2" src="assets/images/slider/shape/slider-shape-2.png" alt="" />
+        <img class="hero-v2-shape hero-v2-shape-3" src="assets/images/slider/shape/slider-shape-3.png" alt="" />
+        <img class="hero-v2-shape hero-v2-shape-4" src="assets/images/slider/shape/slider-shape-4.png" alt="" />
       </div>
-     </figure>
-    </a>
-   </li>
-   <li style="background-color: #ce071e">
-    <a routerLink="/catalogo">
-     <figure class="uk-container uk-height-1-1 uk-position-relative">
-      <img alt="iPhone" decoding="async" height="600" loading="lazy" src="assets/images/promo/iphone.webp" uk-cover="" width="1200"/>
-      <div class="tm-hero-caption">
-       <div class="tm-hero-caption-eyebrow">Más vendido</div>
-       <div class="tm-hero-caption-title">iPhone. Reinventado.</div>
-       <div class="tm-hero-caption-text">Disponible ahora en tienda.</div>
-       <div class="uk-button uk-button-default uk-light uk-width-auto">Comprar ahora</div>
+      <div class="uk-container">
+        <div class="hero-v2-inner">
+          <div class="hero-v2-col hero-v2-col-text">
+            <div class="hero-v2-content">
+              <span class="hero-v2-eyebrow" *ngIf="slider.label" [innerHTML]="resaltarPrecio(slider.label)"></span>
+              <h1 class="hero-v2-title">{{ slider.titulo }}</h1>
+              <p class="hero-v2-offer" *ngIf="slider.subtitulo" [innerHTML]="resaltarOferta(slider.subtitulo)"></p>
+              <a class="hero-v2-btn" [href]="enlaceSlider(slider)">
+                Shop Now
+                <span uk-icon="icon: arrow-right; ratio: .9;"></span>
+              </a>
+            </div>
+          </div>
+          <div class="hero-v2-col hero-v2-col-thumb">
+            <div class="hero-v2-thumb">
+              <img
+                class="hero-v2-img"
+                [alt]="slider.titulo"
+                fetchpriority="high"
+                loading="eager"
+                [src]="imagenSlider(slider)"
+              />
+            </div>
+          </div>
+        </div>
       </div>
-     </figure>
-    </a>
-   </li>
-   <li style="background-color: #1f2024">
-    <a routerLink="/catalogo">
-     <figure class="uk-container uk-height-1-1 uk-position-relative">
-      <img alt="iPad" decoding="async" height="600" loading="lazy" src="assets/images/promo/ipad.webp" uk-cover="" width="1200"/>
-      <div class="tm-hero-caption">
-       <div class="tm-hero-caption-eyebrow">Oferta limitada</div>
-       <div class="tm-hero-caption-title">iPad. Posibilidades infinitas.</div>
-       <div class="tm-hero-caption-text">Desde $329.</div>
-       <div class="uk-button uk-button-default uk-light uk-width-auto">Comprar ahora</div>
-      </div>
-     </figure>
-    </a>
-   </li>
+    </li>
   </ul>
-  <a class="uk-position-center-left uk-position-small uk-hidden-hover" href="#" uk-slidenav-previous="" uk-slideshow-item="previous">
-  </a>
-  <a class="uk-position-center-right uk-position-small uk-hidden-hover" href="#" uk-slidenav-next="" uk-slideshow-item="next">
-  </a>
-  <div class="uk-position-bottom-center uk-position-small">
-   <ul class="uk-slideshow-nav uk-dotnav">
-   </ul>
-  </div>
- </section>
- <!-- TODO: reemplazar por *ngFor/@for con categorías reales desde HomeService (igual que categories_menus en el header) -->
- <section class="uk-section uk-section-default uk-section-small">
+  <a class="hero-v2-arrow hero-v2-arrow-prev" href="#" uk-slidenav-previous="" uk-slideshow-item="previous"></a>
+  <a class="hero-v2-arrow hero-v2-arrow-next" href="#" uk-slidenav-next="" uk-slideshow-item="next"></a>
+  <div class="hero-v2-dots"><ul class="uk-slideshow-nav uk-dotnav"></ul></div>
+</section>
+
+        <!-- USP / trust bar -->
+        <section class="uk-section uk-section-default uk-section-small uk-padding-remove-top" style="padding-top:0;">
+          <div class="uk-container">
+            <div class="uk-box-shadow-medium uk-background-default uk-border-rounded" style="margin-top:-30px;position:relative;z-index:1;box-shadow:0 10px 30px rgba(0,0,0,.08);">
+              <div class="uk-grid-collapse uk-child-width-1-2 uk-child-width-1-4@s uk-text-center" uk-grid="">
+                <div class="uk-padding-small uk-flex uk-flex-middle uk-flex-center" style="gap:12px;padding:20px 15px;">
+                  <span uk-icon="icon: future; ratio: 1.6;" style="color:#1e87f0;"></span>
+                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">Free Shipping</div><div class="uk-text-meta uk-text-xsmall">On orders over $99</div></div>
+                </div>
+                <div class="uk-padding-small uk-flex uk-flex-middle uk-flex-center" style="gap:12px;padding:20px 15px;">
+                  <span uk-icon="icon: lock; ratio: 1.6;" style="color:#1e87f0;"></span>
+                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">Secure Payment</div><div class="uk-text-meta uk-text-xsmall">100% protected checkout</div></div>
+                </div>
+                <div class="uk-padding-small uk-flex uk-flex-middle uk-flex-center" style="gap:12px;padding:20px 15px;">
+                  <span uk-icon="icon: history; ratio: 1.6;" style="color:#1e87f0;"></span>
+                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">Easy Returns</div><div class="uk-text-meta uk-text-xsmall">30-day return policy</div></div>
+                </div>
+                <div class="uk-padding-small uk-flex uk-flex-middle uk-flex-center" style="gap:12px;padding:20px 15px;">
+                  <span uk-icon="icon: receiver; ratio: 1.6;" style="color:#1e87f0;"></span>
+                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">24/7 Support</div><div class="uk-text-meta uk-text-xsmall">Dedicated assistance</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- category grid -->
+        <section class="uk-section uk-section-default uk-section-small">
+          <div class="uk-container">
+            <div class="uk-flex uk-flex-middle uk-flex-between uk-margin">
+              <h2 class="uk-margin-remove">Shop by Category</h2>
+              <a class="uk-link-muted uk-text-uppercase tm-link-to-all uk-visible@s" href="catalog.html"><span>see all categories</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a>
+            </div>
+            <div
+              class="uk-grid-small uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-6@m"
+              uk-grid=""
+            ><div><a
+                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
+                  href="subcategory.html"
+                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
+                          alt="Laptops"
+                          class="item-brand"
+                          decoding="async"
+                          loading="lazy"
+                          src="assets/images/catalog/laptops.webp"
+                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">Laptops</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $149</div></div></a></div><div><a
+                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
+                  href="subcategory.html"
+                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
+                          alt="Smartphones"
+                          class="item-brand"
+                          decoding="async"
+                          loading="lazy"
+                          src="assets/images/catalog/smartphones.webp"
+                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">Smartphones</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $199</div></div></a></div><div><a
+                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
+                  href="subcategory.html"
+                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
+                          alt="Tablets"
+                          class="item-brand"
+                          decoding="async"
+                          loading="lazy"
+                          src="assets/images/catalog/tablets.webp"
+                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">Tablets</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $249</div></div></a></div><div><a
+                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
+                  href="subcategory.html"
+                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
+                          alt="TV"
+                          class="item-brand"
+                          decoding="async"
+                          loading="lazy"
+                          src="assets/images/catalog/tv.svg"
+                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">TV &amp; Video</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $299</div></div></a></div><div><a
+                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
+                  href="subcategory.html"
+                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
+                          alt="Watches"
+                          class="item-brand"
+                          decoding="async"
+                          loading="lazy"
+                          src="assets/images/catalog/watches.webp"
+                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">Watches</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $99</div></div></a></div><div><a
+                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
+                  href="subcategory.html"
+                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
+                          alt="Cameras"
+                          class="item-brand"
+                          decoding="async"
+                          loading="lazy"
+                          src="assets/images/catalog/cameras.webp"
+                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">Cameras</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $129</div></div></a></div></div>
+            <div class="uk-margin uk-text-center uk-hidden@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="catalog.html"><span>see all categories</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div>
+          </div>
+        </section>
+
+     
+        <!-- Trending Products -->
+<section class="uk-section uk-section-default uk-section-small">
   <div class="uk-container">
-   <div class="uk-grid uk-grid-small uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-6@m" uk-grid="">
-    <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
-      <div class="tm-ratio tm-ratio-4-3">
-       <div class="tm-media-box">
-        <figure class="tm-media-box-wrap">
-         <img alt="Laptops" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/laptops.webp"/>
-        </figure>
-       </div>
-      </div>
-      <div class="uk-margin-small-top">
-       <div class="uk-text-truncate">
-        Laptops
-       </div>
-       <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        Desde $149
-       </div>
-      </div>
-     </a>
+    <div class="uk-flex uk-flex-middle uk-flex-between uk-flex-wrap uk-margin">
+      <h2 class="uk-margin-remove">Trending Products</h2>
     </div>
-    <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
-      <div class="tm-ratio tm-ratio-4-3">
-       <div class="tm-media-box">
-        <figure class="tm-media-box-wrap">
-         <img alt="Smartphones" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/smartphones.webp"/>
-        </figure>
-       </div>
-      </div>
-      <div class="uk-margin-small-top">
-       <div class="uk-text-truncate">
-        Smartphones
-       </div>
-       <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        Desde $99
-       </div>
-      </div>
-     </a>
-    </div>
-    <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
-      <div class="tm-ratio tm-ratio-4-3">
-       <div class="tm-media-box">
-        <figure class="tm-media-box-wrap">
-         <img alt="Tablets" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/tablets.webp"/>
-        </figure>
-       </div>
-      </div>
-      <div class="uk-margin-small-top">
-       <div class="uk-text-truncate">
-        Tablets
-       </div>
-       <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        Desde $129
-       </div>
-      </div>
-     </a>
-    </div>
-    <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
-      <div class="tm-ratio tm-ratio-4-3">
-       <div class="tm-media-box">
-        <figure class="tm-media-box-wrap">
-         <img alt="Smartwatches" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/watches.webp"/>
-        </figure>
-       </div>
-      </div>
-      <div class="uk-margin-small-top">
-       <div class="uk-text-truncate">
-        Smartwatches
-       </div>
-       <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        Desde $49
-       </div>
-      </div>
-     </a>
-    </div>
-    <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
-      <div class="tm-ratio tm-ratio-4-3">
-       <div class="tm-media-box">
-        <figure class="tm-media-box-wrap">
-         <img alt="Consolas de videojuegos" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/consoles.webp"/>
-        </figure>
-       </div>
-      </div>
-      <div class="uk-margin-small-top">
-       <div class="uk-text-truncate">
-        Consolas de videojuegos
-       </div>
-       <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        Desde $399
-       </div>
-      </div>
-     </a>
-    </div>
-    <div>
-     <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large" routerLink="/catalogo">
-      <div class="tm-ratio tm-ratio-4-3">
-       <div class="tm-media-box">
-        <figure class="tm-media-box-wrap">
-         <img alt="Cámaras" class="item-brand" decoding="async" loading="lazy" src="assets/images/catalog/cameras.webp"/>
-        </figure>
-       </div>
-      </div>
-      <div class="uk-margin-small-top">
-       <div class="uk-text-truncate">
-        Cámaras
-       </div>
-       <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
-        Desde $129
-       </div>
-      </div>
-     </a>
-    </div>
-   </div>
-   <div class="uk-margin uk-text-center">
-    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" routerLink="/catalogo">
-     <span>
-      ver todas las categorías
-     </span>
-     <span uk-icon="icon: chevron-right; ratio: .75;">
-     </span>
-    </a>
-   </div>
-  </div>
- </section>
- <section class="uk-section uk-section-default uk-section-xsmall">
-  <div class="uk-container">
-   <div class="uk-grid uk-grid-small uk-child-width-1-2 uk-child-width-1-4@s uk-text-center" uk-grid="">
-    <div>
-     <div class="tm-feature-icon"><span uk-icon="icon: world; ratio: 1.3;"></span></div>
-     <div class="uk-text-bolder uk-text-small">Envío gratis</div>
-     <div class="uk-text-meta uk-text-xsmall">En compras mayores a $50</div>
-    </div>
-    <div>
-     <div class="tm-feature-icon"><span uk-icon="icon: receiver; ratio: 1.3;"></span></div>
-     <div class="uk-text-bolder uk-text-small">Soporte 24/7</div>
-     <div class="uk-text-meta uk-text-xsmall">Atención personalizada</div>
-    </div>
-    <div>
-     <div class="tm-feature-icon"><span uk-icon="icon: lock; ratio: 1.3;"></span></div>
-     <div class="uk-text-bolder uk-text-small">Pago seguro</div>
-     <div class="uk-text-meta uk-text-xsmall">100% protegido</div>
-    </div>
-    <div>
-     <div class="tm-feature-icon"><span uk-icon="icon: refresh; ratio: 1.3;"></span></div>
-     <div class="uk-text-bolder uk-text-small">Devoluciones fáciles</div>
-     <div class="uk-text-meta uk-text-xsmall">Garantía de 30 días</div>
-    </div>
-   </div>
-  </div>
- </section>
- <section class="uk-section uk-section-small">
-  <div class="uk-container">
-   <h2 class="uk-text-center">
-    Productos en tendencia
-   </h2>
-   <div class="uk-card uk-card-default tm-ignore-container">
-    <div class="uk-grid uk-grid-collapse uk-child-width-1-3 uk-child-width-1-4@m tm-products-grid" uk-grid="">
-     <article class="tm-product-card">
-      <div class="tm-product-card-media">
-       <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="#" onclick="return false;">
-         <div class="tm-product-card-labels">
-          <span class="uk-label uk-label-warning">
-           más vendido
-          </span>
-          <span class="uk-label uk-label-danger">
-           acepta canje
-          </span>
-         </div>
-         <figure class="tm-media-box-wrap">
-          <img alt='Apple MacBook Pro 15" Touch Bar MPTU2LL/A 256GB (Silver)' decoding="async" loading="lazy" src="assets/images/products/1/1-medium.webp"/>
-         </figure>
-        </a>
-       </div>
-      </div>
-      <div class="tm-product-card-body">
-       <div class="tm-product-card-info">
-        <div class="uk-text-meta uk-margin-xsmall-bottom">
-         Laptop
-        </div>
-        <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="#" onclick="return false;">
-          Apple MacBook Pro 15" Touch Bar MPTU2LL/A 256GB (Silver)
-         </a>
-        </h3>
-        <ul class="uk-list uk-text-small tm-product-card-properties">
-         <li>
-          <span class="uk-text-muted">
-           Pantalla:
-          </span>
-          <span>
-           15.4"
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Procesador:
-          </span>
-          <span>
-           Intel® Core™ i7
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           RAM:
-          </span>
-          <span>
-           16 GB
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Tarjeta gráfica:
-          </span>
-          <span>
-           AMD Radeon Pro 555
-          </span>
-         </li>
-        </ul>
-       </div>
-       <div class="tm-product-card-shop">
-        <div class="tm-product-card-prices">
-         <del class="uk-text-meta">
-          $1899.00
-         </del>
-         <div class="tm-product-card-price">
-          $1599.00
-         </div>
-        </div>
-        <div class="tm-product-card-add">
-         <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites tm-action-button-active js-added-to" title="Agregar a favoritos">
-           <span uk-icon="icon: heart; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a favoritos
-           </span>
-          </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare tm-action-button-active js-added-to" title="Agregar a comparar">
-           <span uk-icon="icon: copy; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a comparar
-           </span>
-          </a>
-         </div>
-         <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine js-add-to-cart">
-          <span class="tm-product-card-add-button-icon" uk-icon="cart">
-          </span>
-          <span class="tm-product-card-add-button-text">
-           agregar al carrito
-          </span>
-         </button>
-        </div>
-       </div>
-      </div>
-     </article>
-     <article class="tm-product-card">
-      <div class="tm-product-card-media">
-       <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="#" onclick="return false;">
-         <div class="tm-product-card-labels">
-          <span class="uk-label uk-label-success">
-           nuevo
-          </span>
-          <span class="uk-label uk-label-danger">
-           acepta canje
-          </span>
-         </div>
-         <figure class="tm-media-box-wrap">
-          <img alt='Apple MacBook 12" MNYN2LL/A 512GB (Rose Gold)' decoding="async" loading="lazy" src="assets/images/products/2/2-medium.webp"/>
-         </figure>
-        </a>
-       </div>
-      </div>
-      <div class="tm-product-card-body">
-       <div class="tm-product-card-info">
-        <div class="uk-text-meta uk-margin-xsmall-bottom">
-         Laptop
-        </div>
-        <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="#" onclick="return false;">
-          Apple MacBook 12" MNYN2LL/A 512GB (Rose Gold)
-         </a>
-        </h3>
-        <ul class="uk-list uk-text-small tm-product-card-properties">
-         <li>
-          <span class="uk-text-muted">
-           Pantalla:
-          </span>
-          <span>
-           12"
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Procesador:
-          </span>
-          <span>
-           Intel® Core™ i5
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           RAM:
-          </span>
-          <span>
-           8 GB
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Tarjeta gráfica:
-          </span>
-          <span>
-           Intel® HD Graphics 615
-          </span>
-         </li>
-        </ul>
-       </div>
-       <div class="tm-product-card-shop">
-        <div class="tm-product-card-prices">
-         <div class="tm-product-card-price">
-          $1549.00
-         </div>
-        </div>
-        <div class="tm-product-card-add">
-         <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites tm-action-button-active js-added-to" title="Agregar a favoritos">
-           <span uk-icon="icon: heart; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a favoritos
-           </span>
-          </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare tm-action-button-active js-added-to" title="Agregar a comparar">
-           <span uk-icon="icon: copy; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a comparar
-           </span>
-          </a>
-         </div>
-         <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine js-add-to-cart">
-          <span class="tm-product-card-add-button-icon" uk-icon="cart">
-          </span>
-          <span class="tm-product-card-add-button-text">
-           agregar al carrito
-          </span>
-         </button>
-        </div>
-       </div>
-      </div>
-     </article>
-     <article class="tm-product-card">
-      <div class="tm-product-card-media">
-       <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="#" onclick="return false;">
-         <figure class="tm-media-box-wrap">
-          <img alt="Lenovo IdeaPad YOGA 920-13IKB 80Y7001RRK (Copper)" decoding="async" loading="lazy" src="assets/images/products/3/3-medium.webp"/>
-         </figure>
-        </a>
-       </div>
-      </div>
-      <div class="tm-product-card-body">
-       <div class="tm-product-card-info">
-        <div class="uk-text-meta uk-margin-xsmall-bottom">
-         Laptop
-        </div>
-        <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="#" onclick="return false;">
-          Lenovo IdeaPad YOGA 920-13IKB 80Y7001RRK (Copper)
-         </a>
-        </h3>
-        <ul class="uk-list uk-text-small tm-product-card-properties">
-         <li>
-          <span class="uk-text-muted">
-           Pantalla:
-          </span>
-          <span>
-           13.9"
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Procesador:
-          </span>
-          <span>
-           Intel® Core™ i7 8550U
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           RAM:
-          </span>
-          <span>
-           16 GB
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Tarjeta gráfica:
-          </span>
-          <span>
-           Intel® HD Graphics 620
-          </span>
-         </li>
-        </ul>
-       </div>
-       <div class="tm-product-card-shop">
-        <div class="tm-product-card-prices">
-         <div class="tm-product-card-price">
-          $1199.00
-         </div>
-        </div>
-        <div class="tm-product-card-add">
-         <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites tm-action-button-active js-added-to" title="Agregar a favoritos">
-           <span uk-icon="icon: heart; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a favoritos
-           </span>
-          </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Agregar a comparar">
-           <span uk-icon="icon: copy; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a comparar
-           </span>
-          </a>
-         </div>
-         <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine js-add-to-cart">
-          <span class="tm-product-card-add-button-icon" uk-icon="cart">
-          </span>
-          <span class="tm-product-card-add-button-text">
-           agregar al carrito
-          </span>
-         </button>
-        </div>
-       </div>
-      </div>
-     </article>
-     <article class="tm-product-card">
-      <div class="tm-product-card-media">
-       <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="#" onclick="return false;">
-         <div class="tm-product-card-labels">
-          <span class="uk-label uk-label-warning">
-           más vendido
-          </span>
-         </div>
-         <figure class="tm-media-box-wrap">
-          <img alt="ASUS Zenbook UX330UA-FC020T (Rose Gold)" decoding="async" loading="lazy" src="assets/images/products/4/4-medium.webp"/>
-         </figure>
-        </a>
-       </div>
-      </div>
-      <div class="tm-product-card-body">
-       <div class="tm-product-card-info">
-        <div class="uk-text-meta uk-margin-xsmall-bottom">
-         Laptop
-        </div>
-        <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="#" onclick="return false;">
-          ASUS Zenbook UX330UA-FC020T (Rose Gold)
-         </a>
-        </h3>
-        <ul class="uk-list uk-text-small tm-product-card-properties">
-         <li>
-          <span class="uk-text-muted">
-           Pantalla:
-          </span>
-          <span>
-           13.3"
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Procesador:
-          </span>
-          <span>
-           Intel® Core™ i7-6500U
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           RAM:
-          </span>
-          <span>
-           8 GB
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Tarjeta gráfica:
-          </span>
-          <span>
-           Intel® HD Graphics 520
-          </span>
-         </li>
-        </ul>
-       </div>
-       <div class="tm-product-card-shop">
-        <div class="tm-product-card-prices">
-         <div class="tm-product-card-price">
-          $749.00
-         </div>
-        </div>
-        <div class="tm-product-card-add">
-         <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Agregar a favoritos">
-           <span uk-icon="icon: heart; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a favoritos
-           </span>
-          </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Agregar a comparar">
-           <span uk-icon="icon: copy; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a comparar
-           </span>
-          </a>
-         </div>
-         <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine js-add-to-cart">
-          <span class="tm-product-card-add-button-icon" uk-icon="cart">
-          </span>
-          <span class="tm-product-card-add-button-text">
-           agregar al carrito
-          </span>
-         </button>
-        </div>
-       </div>
-      </div>
-     </article>
-     <article class="tm-product-card">
-      <div class="tm-product-card-media">
-       <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="#" onclick="return false;">
-         <figure class="tm-media-box-wrap">
-          <img alt="Dell XPS 15 9560-8968 (Silver)" decoding="async" loading="lazy" src="assets/images/products/5/5-medium.webp"/>
-         </figure>
-        </a>
-       </div>
-      </div>
-      <div class="tm-product-card-body">
-       <div class="tm-product-card-info">
-        <div class="uk-text-meta uk-margin-xsmall-bottom">
-         Laptop
-        </div>
-        <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="#" onclick="return false;">
-          Dell XPS 15 9560-8968 (Silver)
-         </a>
-        </h3>
-        <ul class="uk-list uk-text-small tm-product-card-properties">
-         <li>
-          <span class="uk-text-muted">
-           Pantalla:
-          </span>
-          <span>
-           15.6"
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Procesador:
-          </span>
-          <span>
-           Intel® Core™ i7 7700HQ
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           RAM:
-          </span>
-          <span>
-           16 GB
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Tarjeta gráfica:
-          </span>
-          <span>
-           NVIDIA GeForce GTX 960M
-          </span>
-         </li>
-        </ul>
-       </div>
-       <div class="tm-product-card-shop">
-        <div class="tm-product-card-prices">
-         <del class="uk-text-meta">
-          $999.00
-         </del>
-         <div class="tm-product-card-price">
-          $949.00
-         </div>
-        </div>
-        <div class="tm-product-card-add">
-         <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Agregar a favoritos">
-           <span uk-icon="icon: heart; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a favoritos
-           </span>
-          </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Agregar a comparar">
-           <span uk-icon="icon: copy; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a comparar
-           </span>
-          </a>
-         </div>
-         <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine js-add-to-cart">
-          <span class="tm-product-card-add-button-icon" uk-icon="cart">
-          </span>
-          <span class="tm-product-card-add-button-text">
-           agregar al carrito
-          </span>
-         </button>
-        </div>
-       </div>
-      </div>
-     </article>
-     <article class="tm-product-card">
-      <div class="tm-product-card-media">
-       <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="#" onclick="return false;">
-         <div class="tm-product-card-labels">
-          <span class="uk-label uk-label-danger">
-           acepta canje
-          </span>
-         </div>
-         <figure class="tm-media-box-wrap">
-          <img alt='Apple MacBook Air 13" MQD32LL/A 128GB (Silver)' decoding="async" loading="lazy" src="assets/images/products/6/6-medium.webp"/>
-         </figure>
-        </a>
-       </div>
-      </div>
-      <div class="tm-product-card-body">
-       <div class="tm-product-card-info">
-        <div class="uk-text-meta uk-margin-xsmall-bottom">
-         Laptop
-        </div>
-        <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="#" onclick="return false;">
-          Apple MacBook Air 13" MQD32LL/A 128GB (Silver)
-         </a>
-        </h3>
-        <ul class="uk-list uk-text-small tm-product-card-properties">
-         <li>
-          <span class="uk-text-muted">
-           Pantalla:
-          </span>
-          <span>
-           13.3"
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Procesador:
-          </span>
-          <span>
-           Intel® Core™ i5
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           RAM:
-          </span>
-          <span>
-           8 GB
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Tarjeta gráfica:
-          </span>
-          <span>
-           Intel® HD Graphics 6000
-          </span>
-         </li>
-        </ul>
-       </div>
-       <div class="tm-product-card-shop">
-        <div class="tm-product-card-prices">
-         <div class="tm-product-card-price">
-          $849.00
-         </div>
-        </div>
-        <div class="tm-product-card-add">
-         <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Agregar a favoritos">
-           <span uk-icon="icon: heart; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a favoritos
-           </span>
-          </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare tm-action-button-active js-added-to" title="Agregar a comparar">
-           <span uk-icon="icon: copy; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a comparar
-           </span>
-          </a>
-         </div>
-         <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine js-add-to-cart">
-          <span class="tm-product-card-add-button-icon" uk-icon="cart">
-          </span>
-          <span class="tm-product-card-add-button-text">
-           agregar al carrito
-          </span>
-         </button>
-        </div>
-       </div>
-      </div>
-     </article>
-     <article class="tm-product-card">
-      <div class="tm-product-card-media">
-       <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="#" onclick="return false;">
-         <figure class="tm-media-box-wrap">
-          <img alt="Dell Inspiron 5378-2063 (Gray)" decoding="async" loading="lazy" src="assets/images/products/7/7-medium.webp"/>
-         </figure>
-        </a>
-       </div>
-      </div>
-      <div class="tm-product-card-body">
-       <div class="tm-product-card-info">
-        <div class="uk-text-meta uk-margin-xsmall-bottom">
-         Laptop
-        </div>
-        <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="#" onclick="return false;">
-          Dell Inspiron 5378-2063 (Gray)
-         </a>
-        </h3>
-        <ul class="uk-list uk-text-small tm-product-card-properties">
-         <li>
-          <span class="uk-text-muted">
-           Pantalla:
-          </span>
-          <span>
-           13.3"
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Procesador:
-          </span>
-          <span>
-           Intel® Core™ i3-7100U
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           RAM:
-          </span>
-          <span>
-           4 GB
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Capacidad HDD:
-          </span>
-          <span>
-           1 TB
-          </span>
-         </li>
-        </ul>
-       </div>
-       <div class="tm-product-card-shop">
-        <div class="tm-product-card-prices">
-         <del class="uk-text-meta">
-          $599.00
-         </del>
-         <div class="tm-product-card-price">
-          $579.00
-         </div>
-        </div>
-        <div class="tm-product-card-add">
-         <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Agregar a favoritos">
-           <span uk-icon="icon: heart; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a favoritos
-           </span>
-          </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Agregar a comparar">
-           <span uk-icon="icon: copy; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a comparar
-           </span>
-          </a>
-         </div>
-         <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine js-add-to-cart">
-          <span class="tm-product-card-add-button-icon" uk-icon="cart">
-          </span>
-          <span class="tm-product-card-add-button-text">
-           agregar al carrito
-          </span>
-         </button>
-        </div>
-       </div>
-      </div>
-     </article>
-     <article class="tm-product-card">
-      <div class="tm-product-card-media">
-       <div class="tm-ratio tm-ratio-4-3">
-        <a class="tm-media-box" href="#" onclick="return false;">
-         <div class="tm-product-card-labels">
-          <span class="uk-label uk-label-success">
-           nuevo
-          </span>
-         </div>
-         <figure class="tm-media-box-wrap">
-          <img alt="Lenovo Yoga 720-13IKB 80X60059RK (Silver)" decoding="async" loading="lazy" src="assets/images/products/8/8-medium.webp"/>
-         </figure>
-        </a>
-       </div>
-      </div>
-      <div class="tm-product-card-body">
-       <div class="tm-product-card-info">
-        <div class="uk-text-meta uk-margin-xsmall-bottom">
-         Laptop
-        </div>
-        <h3 class="tm-product-card-title">
-         <a class="uk-link-heading" href="#" onclick="return false;">
-          Lenovo Yoga 720-13IKB 80X60059RK (Silver)
-         </a>
-        </h3>
-        <ul class="uk-list uk-text-small tm-product-card-properties">
-         <li>
-          <span class="uk-text-muted">
-           Pantalla:
-          </span>
-          <span>
-           13.3"
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Procesador:
-          </span>
-          <span>
-           Intel® Core™ i5-7200U
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           RAM:
-          </span>
-          <span>
-           8 GB
-          </span>
-         </li>
-         <li>
-          <span class="uk-text-muted">
-           Tarjeta gráfica:
-          </span>
-          <span>
-           Intel® HD Graphics 620
-          </span>
-         </li>
-        </ul>
-       </div>
-       <div class="tm-product-card-shop">
-        <div class="tm-product-card-prices">
-         <div class="tm-product-card-price">
-          $1099.00
-         </div>
-        </div>
-        <div class="tm-product-card-add">
-         <div class="uk-text-meta tm-product-card-actions">
-          <a class="tm-product-card-action js-add-to js-add-to-favorites" title="Agregar a favoritos">
-           <span uk-icon="icon: heart; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a favoritos
-           </span>
-          </a>
-          <a class="tm-product-card-action js-add-to js-add-to-compare" title="Agregar a comparar">
-           <span uk-icon="icon: copy; ratio: .75;">
-           </span>
-           <span class="tm-product-card-action-text">
-            Agregar a comparar
-           </span>
-          </a>
-         </div>
-         <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine js-add-to-cart">
-          <span class="tm-product-card-add-button-icon" uk-icon="cart">
-          </span>
-          <span class="tm-product-card-add-button-text">
-           agregar al carrito
-          </span>
-         </button>
-        </div>
-       </div>
-      </div>
-     </article>
-    </div>
-   </div>
-   <div class="uk-margin uk-text-center">
-    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" routerLink="/catalogo">
-     <span>
-      ver todo
-     </span>
-     <span uk-icon="icon: chevron-right; ratio: .75;">
-     </span>
-    </a>
-   </div>
-  </div>
- </section>
- <section class="uk-section uk-section-default uk-section-small">
-  <div class="uk-container">
-   <h2 class="uk-text-center">
-    Marcas populares
-   </h2>
-   <div class="uk-margin-medium-top" uk-slider="finite: true">
-    <div class="uk-position-relative">
-     <div class="uk-grid uk-grid-small uk-flex-middle" uk-grid="">
-      <div class="uk-visible@m">
-       <a href="#" uk-slidenav-previous="" uk-slider-item="previous">
-       </a>
-      </div>
+
+    <div class="uk-card uk-card-default tm-ignore-container">
+      <div uk-slider="finite: true" *ngIf="trending.length > 0">
+  <div class="uk-position-relative">
+    <div class="uk-grid-small uk-flex-middle" uk-grid="">
+      <div class="uk-visible@m"><a href="#" uk-slidenav-previous="" uk-slider-item="previous"></a></div>
       <div class="uk-width-expand uk-slider-container">
-       <ul class="uk-slider-items uk-child-width-1-3 uk-child-width-1-6@s uk-grid uk-grid-large">
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Apple">
-           <figure class="tm-media-box-wrap">
-            <img alt="Apple" decoding="async" loading="lazy" src="assets/images/brands/apple.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Samsung">
-           <figure class="tm-media-box-wrap">
-            <img alt="Samsung" decoding="async" loading="lazy" src="assets/images/brands/samsung.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Sony">
-           <figure class="tm-media-box-wrap">
-            <img alt="Sony" decoding="async" loading="lazy" src="assets/images/brands/sony.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Microsoft">
-           <figure class="tm-media-box-wrap">
-            <img alt="Microsoft" decoding="async" loading="lazy" src="assets/images/brands/microsoft.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Intel">
-           <figure class="tm-media-box-wrap">
-            <img alt="Intel" decoding="async" loading="lazy" src="assets/images/brands/intel.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="HP">
-           <figure class="tm-media-box-wrap">
-            <img alt="HP" decoding="async" loading="lazy" src="assets/images/brands/hp.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="LG">
-           <figure class="tm-media-box-wrap">
-            <img alt="LG" decoding="async" loading="lazy" src="assets/images/brands/lg.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Lenovo">
-           <figure class="tm-media-box-wrap">
-            <img alt="Lenovo" decoding="async" loading="lazy" src="assets/images/brands/lenovo.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="ASUS">
-           <figure class="tm-media-box-wrap">
-            <img alt="ASUS" decoding="async" loading="lazy" src="assets/images/brands/asus.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Acer">
-           <figure class="tm-media-box-wrap">
-            <img alt="Acer" decoding="async" loading="lazy" src="assets/images/brands/acer.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Dell">
-           <figure class="tm-media-box-wrap">
-            <img alt="Dell" decoding="async" loading="lazy" src="assets/images/brands/dell.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-        <li>
-         <div class="tm-ratio tm-ratio-16-9">
-          <a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Canon">
-           <figure class="tm-media-box-wrap">
-            <img alt="Canon" decoding="async" loading="lazy" src="assets/images/brands/canon.svg"/>
-           </figure>
-          </a>
-         </div>
-        </li>
-       </ul>
+        <ul class="uk-slider-items uk-grid uk-child-width-1-2 uk-child-width-1-4@m uk-grid-medium" uk-grid="">
+          <li *ngFor="let producto of trending; trackBy: trackByVitrina">
+            <article class="tm-product-card uk-height-1-1">
+              <div class="tm-product-card-media">
+                <div class="tm-ratio tm-ratio-4-3">
+                   <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
+                    <div class="tm-product-card-labels" *ngIf="producto.descuento_pct">
+                      <span class="uk-label uk-label-danger">-{{ producto.descuento_pct }}%</span>
+                    </div>
+                    <figure class="tm-media-box-wrap">
+                      <img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" />
+                    </figure>
+                  </a>
+                </div>
+              </div>
+              <div class="tm-product-card-body">
+                <div class="tm-product-card-info">
+                  <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
+                  <h3 class="tm-product-card-title">
+                    <a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a>
+                  </h3>
+                </div>
+                <div class="tm-product-card-shop">
+                  <div class="tm-product-card-prices">
+                    <del class="uk-text-meta" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</del>
+                    <div class="tm-product-card-price">{{ producto.precio_final | currency }}</div>
+                  </div>
+                  <div class="tm-product-card-add">
+                    <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine"
+                            type="button"
+                            [disabled]="enProceso(producto) || sinStockVitrina(producto)"
+                            (click)="agregarAlCarrito(producto)">
+                      <span class="tm-product-card-add-button-icon" uk-icon="cart"></span>
+                      <span class="tm-product-card-add-button-text">
+                        {{ sinStockVitrina(producto) ? 'sin stock' : 'add to cart' }}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </li>
+        </ul>
       </div>
-      <div class="uk-visible@m">
-       <a href="#" uk-slidenav-next="" uk-slider-item="next">
-       </a>
-      </div>
-     </div>
+      <div class="uk-visible@m"><a href="#" uk-slidenav-next="" uk-slider-item="next"></a></div>
     </div>
-    <ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin-medium-top uk-hidden@m">
-    </ul>
-   </div>
-   <div class="uk-margin uk-text-center">
-    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="#" onclick="return false;">
-     <span>
-      ver todas las marcas
-     </span>
-     <span uk-icon="icon: chevron-right; ratio: .75;">
-     </span>
-    </a>
-   </div>
+    <ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin-medium-top uk-hidden@m"></ul>
   </div>
- </section>
- <section class="uk-section uk-section-default uk-section-small">
-  <div class="uk-container">
-   <div class="uk-grid uk-grid-small uk-child-width-1-1 uk-child-width-1-3@s" uk-grid="">
-    <div>
-     <a class="tm-banner" routerLink="/catalogo">
-      <div class="tm-ratio tm-ratio-4-3">
-       <img alt="Laptops &amp; Tablets" src="assets/images/catalog/laptops.webp" uk-cover="" loading="lazy" decoding="async"/>
-      </div>
-      <div class="tm-banner-caption">
-       <div class="tm-banner-caption-eyebrow">Desde $149</div>
-       <div class="tm-banner-caption-title">Laptops &amp; Tablets</div>
-      </div>
-     </a>
+</div>
+
+<div *ngIf="trending.length === 0" class="uk-text-center uk-text-meta uk-padding">
+  Todavía no hay productos en tendencia.
+</div>
+          
     </div>
-    <div>
-     <a class="tm-banner" routerLink="/catalogo">
-      <div class="tm-ratio tm-ratio-4-3">
-       <img alt="Smartphones" src="assets/images/catalog/smartphones.webp" uk-cover="" loading="lazy" decoding="async"/>
-      </div>
-      <div class="tm-banner-caption">
-       <div class="tm-banner-caption-eyebrow">Desde $99</div>
-       <div class="tm-banner-caption-title">Smartphones</div>
-      </div>
-     </a>
-    </div>
-    <div>
-     <a class="tm-banner" routerLink="/catalogo">
-      <div class="tm-ratio tm-ratio-4-3">
-       <img alt="Gaming Consoles" src="assets/images/catalog/consoles.webp" uk-cover="" loading="lazy" decoding="async"/>
-      </div>
-      <div class="tm-banner-caption">
-       <div class="tm-banner-caption-eyebrow">Desde $399</div>
-       <div class="tm-banner-caption-title">Consolas de videojuegos</div>
-      </div>
-     </a>
-    </div>
-   </div>
-  </div>
- </section>
- <section class="uk-section uk-section-primary uk-section-small uk-light">
-  <div class="uk-container">
-   <div class="uk-flex uk-flex-center">
-    <div class="uk-width-1-1 uk-width-2-3@s uk-text-center">
-     <div class="uk-text-meta uk-text-uppercase">Oferta del día</div>
-     <h2 class="uk-margin-remove-top">Apple MacBook Pro 15" Touch Bar</h2>
-     <p class="uk-text-small uk-margin-small-top">256GB, Plateada. Intel&reg; Core&trade; i7, 16 GB RAM, AMD Radeon Pro 555.</p>
-     <div class="uk-grid uk-grid-small uk-flex-middle uk-flex-center" uk-grid="">
-      <div><del class="uk-text-meta">$1899.00</del></div>
-      <div class="uk-h3 uk-margin-remove">$1599.00</div>
-     </div>
-     <!-- Los atributos data-unit se mantienen en inglés: home.component.ts los busca por estos valores exactos -->
-     <div class="uk-margin tm-countdown uk-flex-center" id="tm-deal-countdown">
-      <div class="tm-countdown-item"><strong data-unit="days">00</strong><span>Días</span></div>
-      <div class="tm-countdown-item"><strong data-unit="hours">00</strong><span>Horas</span></div>
-      <div class="tm-countdown-item"><strong data-unit="minutes">00</strong><span>Min</span></div>
-      <div class="tm-countdown-item"><strong data-unit="seconds">00</strong><span>Seg</span></div>
-     </div>
-     <a class="uk-button uk-button-default uk-light uk-margin-medium-top" href="#" onclick="return false;">Ver esta oferta</a>
-    </div>
-   </div>
-  </div>
- </section>
- <section class="uk-section uk-section-small">
-  <div class="uk-container">
-   <!-- TODO: reemplazar por @for con artículos reales desde un BlogService -->
-   <h2 class="uk-text-center">
-    Blog
-   </h2>
-   <div class="uk-grid uk-grid-medium uk-grid-match uk-child-width-1-1 uk-child-width-1-2@s" uk-grid="">
-    <div>
-     <a href="#" onclick="return false;">
-      <article class="uk-card uk-card-default uk-card-small uk-article uk-overflow-hidden uk-box-shadow-hover-large uk-height-1-1 tm-ignore-container">
-       <div class="tm-ratio tm-ratio-16-9">
-        <figure class="tm-media-box uk-cover-container uk-margin-remove">
-         <img alt="Todo lo que necesitas saber sobre la MacBook Pro" decoding="async" loading="lazy" src="assets/images/articles/macbook-photo.webp" uk-cover="uk-cover"/>
-        </figure>
-       </div>
-       <div class="uk-card-body">
-        <div class="uk-article-body">
-         <div class="uk-article-meta uk-margin-xsmall-bottom">
-          <time>
-           21 de mayo, 2018
-          </time>
-         </div>
-         <div>
-          <h3 class="uk-margin-remove">
-           Todo lo que necesitas saber sobre la MacBook Pro
-          </h3>
-         </div>
-         <div class="uk-margin-small-top">
-          <p>
-           Repasamos las características clave de la nueva MacBook Pro y qué la hace
-                            una gran opción para trabajo y estudio.
-          </p>
-         </div>
-        </div>
-       </div>
-      </article>
-     </a>
-    </div>
-    <div>
-     <a href="#" onclick="return false;">
-      <article class="uk-card uk-card-default uk-card-small uk-article uk-overflow-hidden uk-box-shadow-hover-large uk-height-1-1 tm-ignore-container">
-       <div class="tm-ratio tm-ratio-16-9">
-        <figure class="tm-media-box uk-cover-container uk-margin-remove">
-         <img alt="Apple presenta macOS Mojave" decoding="async" loading="lazy" src="assets/images/articles/macos.webp" uk-cover="uk-cover"/>
-        </figure>
-       </div>
-       <div class="uk-card-body">
-        <div class="uk-article-body">
-         <div class="uk-article-meta uk-margin-xsmall-bottom">
-          <time>
-           21 de mayo, 2018
-          </time>
-         </div>
-         <div>
-          <h3 class="uk-margin-remove">
-           Apple presenta macOS Mojave
-          </h3>
-         </div>
-         <div class="uk-margin-small-top">
-          <p>
-           Un repaso a las novedades del nuevo sistema operativo y cómo mejora
-                            el rendimiento de tus equipos.
-          </p>
-         </div>
-        </div>
-       </div>
-      </article>
-     </a>
-    </div>
-   </div>
-   <div class="uk-margin uk-text-center">
-    <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="#" onclick="return false;">
-     <span>
-      ver todos los artículos
-     </span>
-     <span uk-icon="icon: chevron-right; ratio: .75;">
-     </span>
-    </a>
-   </div>
-  </div>
- </section>
- <section class="uk-section uk-section-default uk-section-small">
-  <div class="uk-container">
-   <div class="uk-grid uk-grid-medium uk-child-width-1-1 uk-child-width-1-2@s" uk-grid="">
-    <section>
-     <h2 class="uk-text-center uk-text-left@s">
-      Sobre nosotros
-     </h2>
-     <p>
-      Somos una tienda de tecnología con base en Capiatá, Paraguay, dedicada a ofrecer
-                  laptops, smartphones, productos de gaming y accesorios al mejor precio, con atención
-                  cercana y asesoramiento real antes y después de tu compra.
-     </p>
-     <p>
-      Trabajamos con marcas reconocidas y priorizamos la calidad, el soporte postventa y
-                  la confianza de nuestros clientes en cada compra, ya sea en tienda o a través de
-                  nuestra plataforma en línea.
-     </p>
-     <div class="uk-text-center uk-text-left@s">
-      <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="#" onclick="return false;">
-       <span>
-        ver más
-       </span>
-       <span uk-icon="icon: chevron-right; ratio: .75;">
-       </span>
+
+    <div class="uk-margin uk-text-center">
+      <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="catalog.html">
+        <span>shop all products</span><span uk-icon="icon: chevron-right; ratio: .75;"></span>
       </a>
-     </div>
-    </section>
-    <!-- TODO: reemplazar por @for con noticias reales desde un BlogService/NewsService -->
-    <section>
-     <h2 class="uk-text-center uk-text-left@s">
-      Últimas noticias
-     </h2>
-     <ul class="uk-list uk-list-small uk-list-divider">
-      <li>
-       <article class="uk-article">
-        <div class="uk-article-body">
-         <div class="uk-article-meta uk-margin-xsmall-bottom">
-          <time>
-           4 de junio, 2018
-          </time>
-         </div>
-         <h3 class="uk-h4 uk-margin-remove">
-          <a class="uk-link-heading" href="#" onclick="return false;">
-           Lo más destacado de la WWDC
-          </a>
-         </h3>
-         <div class="uk-margin-xsmall-top uk-text-small">
-          <p>
-           Repasamos los anuncios más importantes del evento y qué significan
-                            para los próximos lanzamientos de la marca.
-          </p>
-         </div>
-        </div>
-       </article>
-      </li>
-      <li>
-       <article class="uk-article">
-        <div class="uk-article-body">
-         <div class="uk-article-meta uk-margin-xsmall-bottom">
-          <time>
-           4 de junio, 2018
-          </time>
-         </div>
-         <h3 class="uk-h4 uk-margin-remove">
-          <a class="uk-link-heading" href="#" onclick="return false;">
-           Apple presenta macOS Mojave
-          </a>
-         </h3>
-         <div class="uk-margin-xsmall-top uk-text-small">
-          <p>
-           Conocé las principales novedades de la nueva versión del sistema
-                            operativo de escritorio.
-          </p>
-         </div>
-        </div>
-       </article>
-      </li>
-      <li>
-       <article class="uk-article">
-        <div class="uk-article-body">
-         <div class="uk-article-meta uk-margin-xsmall-bottom">
-          <time>
-           29 de mayo, 2018
-          </time>
-         </div>
-         <h3 class="uk-h4 uk-margin-remove">
-          <a class="uk-link-heading" href="#" onclick="return false;">
-           iOS 11.4 incorpora audio en estéreo y multihabitación con AirPlay 2
-          </a>
-         </h3>
-         <div class="uk-margin-xsmall-top uk-text-small">
-          <p>
-           Un vistazo a las funciones de audio que trae la última actualización
-                            del sistema operativo móvil.
-          </p>
-         </div>
-        </div>
-       </article>
-      </li>
-     </ul>
-     <div class="uk-margin uk-text-center uk-text-left@s">
-      <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="#" onclick="return false;">
-       <span>
-        ver todas las noticias
-       </span>
-       <span uk-icon="icon: chevron-right; ratio: .75;">
-       </span>
-      </a>
-     </div>
-    </section>
-   </div>
+    </div>
   </div>
- </section>
- <section class="uk-section uk-section-small">
+</section>
+
+		  <!-- banner area: promo banners (2 carruseles independientes: izquierda y derecha) -->
+<section
+  class="uk-section uk-section-small uk-padding-remove-top"
+  *ngIf="slidersSecundariosIzquierda.length > 0 || slidersSecundariosDerecha.length > 0"
+>
   <div class="uk-container">
-   <h2 class="uk-text-center">Seguinos en Instagram</h2>
-   <div class="uk-text-center uk-margin-small-bottom uk-text-meta">&#64;tienda</div>
-   <div class="uk-grid uk-child-width-1-3 uk-child-width-1-6@s uk-grid-collapse uk-margin-medium-top tm-instagram-grid" uk-grid="">
-    <div>
-     <a class="tm-instagram-item" href="#">
-      <div class="tm-ratio tm-ratio-4-3"><img alt="Apple MacBook Pro 15&quot; Touch Bar" src="assets/images/products/1/1-medium.webp" uk-cover="" loading="lazy" decoding="async"/></div>
-      <div class="tm-instagram-item-overlay"><span uk-icon="icon: instagram; ratio: 1.3;"></span></div>
-     </a>
+    <div class="promo-row">
+
+      <!-- Banner secundario izquierdo (estilo Black Friday) -->
+      <div class="promo-col promo-col-lg" *ngIf="slidersSecundariosIzquierda.length > 0">
+        <div id="slider-secundario-izq" uk-slider="autoplay: true; autoplay-interval: 5000">
+          <div class="uk-slider-container uk-position-relative">
+            <ul class="uk-slider-items uk-child-width-1-1">
+              <li *ngFor="let slider of slidersSecundariosIzquierda; trackBy: trackBySlider">
+                <a
+                  class="promo-hero"
+                  [href]="enlaceSlider(slider)"
+                  [ngStyle]="{ '--promo-accent': slider.color || '#e0263a' }"
+                >
+                  <span class="promo-hero-glow"></span>
+                  <span class="promo-hero-band"></span>
+
+                  <span class="promo-hero-thumb">
+                    <img class="promo-hero-img" [src]="imagenSlider(slider)" [alt]="slider.titulo" loading="lazy" decoding="async" />
+                    <span class="promo-hero-badge" *ngIf="slider.label">
+                      <span class="promo-hero-badge-top">Get Upto</span>
+                      <span class="promo-hero-badge-value">{{ slider.label }}</span>
+                      <span class="promo-hero-badge-sale">Sale</span>
+                    </span>
+                  </span>
+
+                  <span class="promo-hero-content">
+                    <span class="promo-hero-title">{{ slider.titulo }}</span>
+                    <span class="promo-hero-sub" *ngIf="slider.subtitulo">{{ slider.subtitulo }}</span>
+                    <span class="promo-hero-btn">
+                      Order Now
+                      <span class="promo-hero-btn-icon" uk-icon="icon: arrow-right; ratio: .7;"></span>
+                    </span>
+                  </span>
+                </a>
+              </li>
+            </ul>
+          </div>
+          <ul class="uk-slider-nav uk-dotnav promo-dots"></ul>
+        </div>
+      </div>
+
+      <!-- Banner secundario derecho -->
+      <div class="promo-col promo-col-sm" *ngIf="slidersSecundariosDerecha.length > 0">
+        <div id="slider-secundario-der" uk-slider="autoplay: true; autoplay-interval: 5000">
+          <div class="uk-slider-container uk-position-relative">
+            <ul class="uk-slider-items uk-child-width-1-1">
+              <li *ngFor="let slider of slidersSecundariosDerecha; trackBy: trackBySlider">
+                <a                        
+                  class="promo-story"
+                  [class.promo-story-claro]="!esColorOscuro(slider.color)"
+                  [href]="enlaceSlider(slider)"
+                  [ngStyle]="{ '--promo-accent': slider.color || '#1a7fd4' }"
+                >
+                  <span class="promo-story-wave"></span>
+
+                  <span class="promo-story-title">{{ slider.titulo }}</span>
+                  <span class="promo-story-sub" *ngIf="slider.subtitulo">{{ slider.subtitulo }}</span>
+
+                  <span class="promo-story-body">
+                    <span class="promo-story-badge" *ngIf="slider.label">
+                      <span class="promo-story-badge-top">Sale Upto</span>
+                      <span class="promo-story-badge-value">{{ slider.label }}</span>
+                      <span class="promo-story-badge-bottom">Discount</span>
+                    </span>
+                    <span class="promo-story-thumb">
+                      <img class="promo-story-img" [src]="imagenSlider(slider)" [alt]="slider.titulo" loading="lazy" decoding="async" />
+                    </span>
+                  </span>
+
+                  <span class="promo-story-btn">
+                    Order Now
+                    <span class="promo-story-btn-icon" uk-icon="icon: arrow-right; ratio: .7;"></span>
+                  </span>
+                </a>
+              </li>
+            </ul>
+          </div>
+          <ul class="uk-slider-nav uk-dotnav promo-dots"></ul>
+        </div>
+      </div>
+
     </div>
-    <div>
-     <a class="tm-instagram-item" href="#">
-      <div class="tm-ratio tm-ratio-4-3"><img alt="Apple MacBook 12&quot;" src="assets/images/products/2/2-medium.webp" uk-cover="" loading="lazy" decoding="async"/></div>
-      <div class="tm-instagram-item-overlay"><span uk-icon="icon: instagram; ratio: 1.3;"></span></div>
-     </a>
-    </div>
-    <div>
-     <a class="tm-instagram-item" href="#">
-      <div class="tm-ratio tm-ratio-4-3"><img alt="Lenovo IdeaPad YOGA 920-13IKB" src="assets/images/products/3/3-medium.webp" uk-cover="" loading="lazy" decoding="async"/></div>
-      <div class="tm-instagram-item-overlay"><span uk-icon="icon: instagram; ratio: 1.3;"></span></div>
-     </a>
-    </div>
-    <div>
-     <a class="tm-instagram-item" href="#">
-      <div class="tm-ratio tm-ratio-4-3"><img alt="ASUS Zenbook UX330UA-FC020T" src="assets/images/products/4/4-medium.webp" uk-cover="" loading="lazy" decoding="async"/></div>
-      <div class="tm-instagram-item-overlay"><span uk-icon="icon: instagram; ratio: 1.3;"></span></div>
-     </a>
-    </div>
-    <div>
-     <a class="tm-instagram-item" href="#">
-      <div class="tm-ratio tm-ratio-4-3"><img alt="Dell XPS 15 9560-8968" src="assets/images/products/5/5-medium.webp" uk-cover="" loading="lazy" decoding="async"/></div>
-      <div class="tm-instagram-item-overlay"><span uk-icon="icon: instagram; ratio: 1.3;"></span></div>
-     </a>
-    </div>
-    <div>
-     <a class="tm-instagram-item" href="#">
-      <div class="tm-ratio tm-ratio-4-3"><img alt="Apple MacBook Air 13&quot;" src="assets/images/products/6/6-medium.webp" uk-cover="" loading="lazy" decoding="async"/></div>
-      <div class="tm-instagram-item-overlay"><span uk-icon="icon: instagram; ratio: 1.3;"></span></div>
-     </a>
-    </div>
-   </div>
   </div>
- </section>
- <section class="uk-section uk-section-primary uk-section-small uk-light">
+</section>
+
+        <!-- Deal of the Day -->
+<section class="uk-section uk-section-small" style="background:#f8f8f8;">
   <div class="uk-container">
-   <div class="uk-text-center">
-    <div class="uk-h2 uk-margin-remove">
-     Suscribite para recibir novedades
+    <div class="uk-flex uk-flex-middle uk-flex-between uk-flex-wrap uk-margin">
+      <h2 class="uk-margin-remove">Deal of The Day</h2>
+      <a class="uk-button uk-button-primary" href="catalog.html">View All Deals<span class="uk-margin-small-left" uk-icon="icon: chevron-right; ratio: .75;"></span></a>
     </div>
-    <div>
-     Enterate de nuevos productos y ofertas especiales.
+
+    <div uk-slider="finite: true" *ngIf="ofertaDelDia.length > 0">
+      <div class="uk-position-relative">
+        <div class="uk-grid-small uk-flex-middle" uk-grid="">
+          <div class="uk-visible@m"><a href="#" uk-slidenav-previous="" uk-slider-item="previous"></a></div>
+          <div class="uk-width-expand uk-slider-container">
+            <ul class="uk-slider-items uk-grid uk-child-width-1-2 uk-child-width-1-4@m uk-grid-medium" uk-grid="">
+              <li *ngFor="let producto of ofertaDelDia; trackBy: trackByVitrina">
+                <article class="tm-product-card uk-height-1-1">
+                  <div class="tm-product-card-media">
+                    <div class="tm-ratio tm-ratio-4-3">
+                      <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
+                        <div class="tm-product-card-labels" *ngIf="producto.descuento_pct">
+                          <span class="uk-label uk-label-danger">-{{ producto.descuento_pct }}%</span>
+                        </div>
+                        <figure class="tm-media-box-wrap">
+                          <img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" />
+                        </figure>
+                      </a>
+                    </div>
+                  </div>
+                  <div class="tm-product-card-body">
+                    <div class="tm-product-card-info">
+                      <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
+                    <h3 class="tm-product-card-title"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h3>
+                      <div class="uk-margin-xsmall-top">
+                        <del class="uk-text-meta" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</del>
+                        <span class="uk-text-bolder">{{ producto.precio_final | currency }}</span>
+                      </div>
+                      <div class="uk-margin-small-top" [attr.uk-countdown]="'date: ' + producto.oferta_fin" *ngIf="producto.oferta_fin">
+                        <div class="uk-flex uk-flex-middle" style="gap:8px;">
+                          <div class="uk-text-center"><div class="uk-text-bolder uk-text-small" uk-countdown-days=""></div><div class="uk-text-meta" style="font-size:9px;">Days</div></div>
+                          <div class="uk-text-muted uk-text-small">:</div>
+                          <div class="uk-text-center"><div class="uk-text-bolder uk-text-small" uk-countdown-hours=""></div><div class="uk-text-meta" style="font-size:9px;">Hrs</div></div>
+                          <div class="uk-text-muted uk-text-small">:</div>
+                          <div class="uk-text-center"><div class="uk-text-bolder uk-text-small" uk-countdown-minutes=""></div><div class="uk-text-meta" style="font-size:9px;">Min</div></div>
+                          <div class="uk-text-muted uk-text-small">:</div>
+                          <div class="uk-text-center"><div class="uk-text-bolder uk-text-small" uk-countdown-seconds=""></div><div class="uk-text-meta" style="font-size:9px;">Sec</div></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="tm-product-card-add uk-margin-small-top">
+                      <button class="uk-button uk-button-primary uk-width-1-1 tm-product-card-add-button tm-shine"
+                              type="button"
+                              [disabled]="enProceso(producto) || sinStockVitrina(producto)"
+                              (click)="agregarAlCarrito(producto)">
+                        <span class="tm-product-card-add-button-icon" uk-icon="cart"></span>
+                        <span class="tm-product-card-add-button-text">
+                          {{ sinStockVitrina(producto) ? 'sin stock' : 'add to cart' }}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              </li>
+            </ul>
+          </div>
+          <div class="uk-visible@m"><a href="#" uk-slidenav-next="" uk-slider-item="next"></a></div>
+        </div>
+        <ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin-medium-top uk-hidden@m"></ul>
+      </div>
     </div>
-   </div>
-   <div class="uk-margin">
-    <form>
-     <div class="uk-grid uk-grid-small uk-flex-center" uk-grid="">
-      <div class="uk-width-1-1 uk-width-medium@s">
-       <div class="uk-inline uk-width-1-1">
-        <span class="uk-form-icon" uk-icon="mail">
-        </span>
-        <input class="uk-input" placeholder="Tu correo" required="" type="email"/>
-       </div>
-      </div>
-      <div>
-       <button class="uk-button uk-button-primary">
-        suscribirse
-       </button>
-      </div>
-     </div>
-    </form>
-   </div>
+
+    <div *ngIf="ofertaDelDia.length === 0" class="uk-text-center uk-text-meta uk-padding">
+      Todavía no hay ofertas del día activas.
+    </div>
   </div>
- </section>
- <!-- Carrusel de puntos fuertes de la tienda (contenido de la plantilla, editar por texto propio) -->
- <section class="uk-section uk-section-default uk-section-small">
+</section>
+        
+        <!-- Product spotlight slider -->
+        <section class="uk-section uk-section-small" *ngIf="slidersTerciarios.length > 0">
+          <div class="uk-container">
+            <div id="slider-terciario" uk-slider="autoplay: true; autoplay-interval: 7000">
+              <div class="uk-position-relative uk-visible-toggle">
+                <ul class="uk-slider-items uk-child-width-1-1">
+                  <li *ngFor="let slider of slidersTerciarios; trackBy: trackBySlider">
+                    <a
+                      class="spotlight-banner"
+                      [href]="enlaceSlider(slider)"
+                      [ngStyle]="{ '--spotlight-accent': slider.color || '#ff6a00' }"
+                    >
+                      <!-- Formas de fondo: burbuja arriba-izquierda + ola abajo-derecha.
+                           viewBox fijo con preserveAspectRatio="none" para que las curvas
+                           se estiren a cualquier ancho. Sin <defs> ni id porque el bloque
+                           se repite por cada slide y los id quedarían duplicados. -->
+                      <svg
+                        class="spotlight-shapes"
+                        viewBox="0 0 1200 460"
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                        focusable="false"
+                      >
+                        <path
+                          class="spotlight-shape-wave-back"
+                          d="M1200,180 C1068,226 958,296 872,368 C808,422 736,452 654,460 L1200,460 Z"
+                        ></path>
+                        <path
+                          class="spotlight-shape-wave"
+                          d="M1200,250 C1094,284 1002,338 928,398 C876,440 820,456 764,460 L1200,460 Z"
+                        ></path>
+                        <path
+                          class="spotlight-shape-blob"
+                          d="M0,0 L243,0 C267,66 264,152 216,208 C168,264 90,284 0,281 Z"
+                        ></path>
+                      </svg>
+
+                      <!-- Marcas decorativas del diseño: el chevron sólido dentro de la
+                           burbuja y su versión "fantasma" sobre el lado derecho. Van en
+                           SVG aparte, con el aspecto conservado, para que no se deformen
+                           como las curvas del fondo. -->
+                      <svg class="spotlight-mark spotlight-mark-left" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+                        <path d="M10,46 H50 V86"></path>
+                        <path d="M60,14 H100 V54"></path>
+                      </svg>
+                      <svg class="spotlight-mark spotlight-mark-right" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+                        <path d="M10,46 H50 V86"></path>
+                        <path d="M60,14 H100 V54"></path>
+                      </svg>
+
+                      <!-- Columna de texto -->
+                      <span class="spotlight-content">
+                        <ng-container *ngIf="tituloSpotlight(slider) as titulo">
+                          <span class="spotlight-title">
+                            <span class="spotlight-title-first">{{ titulo.inicio }}</span>
+                            <span class="spotlight-title-rest" *ngIf="titulo.resto">{{ titulo.resto }}</span>
+                          </span>
+                        </ng-container>
+
+                        <span class="spotlight-sub" *ngIf="slider.subtitulo">{{ slider.subtitulo }}</span>
+
+                        <span class="spotlight-cta">
+                          <span class="spotlight-cta-text">Order Now</span>
+                          <span class="spotlight-cta-icon" uk-icon="icon: arrow-right; ratio: .9"></span>
+                        </span>
+                      </span>
+
+                      <!-- Columna del producto + sello de descuento -->
+                      <span class="spotlight-thumb-col">
+                        <img
+                          class="spotlight-img"
+                          [src]="imagenSlider(slider)"
+                          [alt]="slider.titulo"
+                          loading="lazy"
+                          decoding="async"
+                        />
+
+                        <span class="spotlight-badge" *ngIf="slider.label">
+                          <span class="spotlight-badge-top">Get Upto</span>
+                          <span class="spotlight-badge-value">{{ slider.label }}</span>
+                          <span class="spotlight-badge-tag">Discount</span>
+                          <svg
+                            class="spotlight-badge-arrow"
+                            viewBox="0 0 140 120"
+                            aria-hidden="true"
+                            focusable="false"
+                          >
+                            <path d="M126,10 C138,60 104,96 34,100"></path>
+                            <path d="M60,80 L32,100 L62,114"></path>
+                          </svg>
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin-medium-top"></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- New Arrivals slider -->
+<section class="uk-section uk-section-default uk-section-small">
   <div class="uk-container">
-   <div uk-slider="">
-    <ul class="uk-slider-items uk-child-width-1-1 uk-child-width-1-2@s uk-child-width-1-5@m uk-grid">
-     <li>
-      <div class="uk-grid uk-grid-small uk-flex-center uk-flex-left@s" uk-grid="">
-       <div>
-        <span uk-icon="icon: star; ratio: 2.5;">
-        </span>
-       </div>
-       <div class="uk-text-center uk-text-left@s uk-width-expand@s">
-        <div>
-         Calidad garantizada
+    <div class="uk-flex uk-flex-middle uk-flex-between uk-margin">
+      <h2 class="uk-margin-remove">New Arrivals</h2>
+      <a class="uk-link-muted uk-text-uppercase tm-link-to-all uk-visible@s" href="catalog.html"><span>see all</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a>
+    </div>
+    <div uk-slider="finite: true" *ngIf="nuevos.length > 0">
+      <div class="uk-position-relative">
+        <div class="uk-grid-small uk-flex-middle" uk-grid="">
+          <div class="uk-visible@m"><a href="#" uk-slidenav-previous="" uk-slider-item="previous"></a></div>
+          <div class="uk-width-expand uk-slider-container">
+            <ul class="uk-slider-items uk-grid uk-child-width-1-2 uk-child-width-1-4@m uk-grid-medium" uk-grid="">
+              <li *ngFor="let producto of nuevos; trackBy: trackByVitrina">
+                <article class="tm-product-card uk-height-1-1">
+                  <div class="tm-product-card-media">
+                    <div class="tm-ratio tm-ratio-4-3">
+                    <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
+                        <div class="tm-product-card-labels"><span class="uk-label uk-label-success">New</span></div>
+                        <figure class="tm-media-box-wrap">
+                          <img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" />
+                        </figure>
+                      </a>
+                    </div>
+                  </div>
+                  <div class="tm-product-card-body">
+                    <div class="tm-product-card-info">
+                      <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
+                       <h3 class="tm-product-card-title"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h3>
+                    </div>
+                    <div class="tm-product-card-shop">
+                      <div class="tm-product-card-prices"><div class="tm-product-card-price">{{ producto.precio_final | currency }}</div></div>
+                      <div class="tm-product-card-add">
+                        <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine"
+                                type="button"
+                                [disabled]="enProceso(producto) || sinStockVitrina(producto)"
+                                (click)="agregarAlCarrito(producto)">
+                          <span class="tm-product-card-add-button-icon" uk-icon="cart"></span>
+                          <span class="tm-product-card-add-button-text">
+                            {{ sinStockVitrina(producto) ? 'sin stock' : 'add to cart' }}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </li>
+            </ul>
+          </div>
+          <div class="uk-visible@m"><a href="#" uk-slidenav-next="" uk-slider-item="next"></a></div>
         </div>
-        <div class="uk-text-meta">
-         Productos originales con garantía oficial
-        </div>
-       </div>
       </div>
-     </li>
-     <li>
-      <div class="uk-grid uk-grid-small uk-flex-center uk-flex-left@s" uk-grid="">
-       <div>
-        <span uk-icon="icon: receiver; ratio: 2.5;">
-        </span>
-       </div>
-       <div class="uk-text-center uk-text-left@s uk-width-expand@s">
-        <div>
-         Atención personalizada
-        </div>
-        <div class="uk-text-meta">
-         Te asesoramos antes y después de tu compra
-        </div>
-       </div>
-      </div>
-     </li>
-     <li>
-      <div class="uk-grid uk-grid-small uk-flex-center uk-flex-left@s" uk-grid="">
-       <div>
-        <span uk-icon="icon: location; ratio: 2.5;">
-        </span>
-       </div>
-       <div class="uk-text-center uk-text-left@s uk-width-expand@s">
-        <div>
-         Entrega rápida
-        </div>
-        <div class="uk-text-meta">
-         Envíos a todo el país
-        </div>
-       </div>
-      </div>
-     </li>
-     <li>
-      <div class="uk-grid uk-grid-small uk-flex-center uk-flex-left@s" uk-grid="">
-       <div>
-        <span uk-icon="icon: comments; ratio: 2.5;">
-        </span>
-       </div>
-       <div class="uk-text-center uk-text-left@s uk-width-expand@s">
-        <div>
-         Opiniones reales
-        </div>
-        <div class="uk-text-meta">
-         Miles de clientes ya confiaron en nosotros
-        </div>
-       </div>
-      </div>
-     </li>
-     <li>
-      <div class="uk-grid uk-grid-small uk-flex-center uk-flex-left@s" uk-grid="">
-       <div>
-        <span uk-icon="icon: happy; ratio: 2.5;">
-        </span>
-       </div>
-       <div class="uk-text-center uk-text-left@s uk-width-expand@s">
-        <div>
-         Clientes satisfechos
-        </div>
-        <div class="uk-text-meta">
-         Tu satisfacción es nuestra prioridad
-        </div>
-       </div>
-      </div>
-     </li>
-    </ul>
-    <ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin-medium-top">
-    </ul>
-   </div>
+      <ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin-medium-top uk-hidden@m"></ul>
+    </div>
+    <div *ngIf="nuevos.length === 0" class="uk-text-center uk-text-meta uk-padding">
+      Todavía no hay productos nuevos publicados.
+    </div>
   </div>
- </section>
-</main>
+</section>
+
+
+
+        <!-- quick product lists -->
+        <section class="uk-section uk-section-default uk-section-small">
+          <div class="uk-container">
+            <div class="uk-grid-large uk-child-width-1-1 uk-child-width-1-3@s" uk-grid="">
+			
+                            <div>
+                <h3 class="uk-h4 uk-margin-remove-bottom">Discount Products</h3>
+                <ul class="uk-list uk-margin-remove">
+                  <li class="uk-flex" style="gap:14px;padding:10px 0;border-bottom:1px solid #eee;" *ngFor="let producto of enOferta; trackBy: trackByVitrina">
+                     <a class="uk-flex-none" style="width:64px;" [routerLink]="['/producto', producto.slug]"><img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" style="width:64px;height:64px;object-fit:contain;" /></a>
+                    <div>
+                      <div class="uk-text-meta uk-text-xsmall">{{ producto.categoria }}</div>
+                      <h4 class="uk-margin-remove uk-text-small"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h4>
+                      <div>
+                        <del class="uk-text-meta uk-text-xsmall" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</del>
+                        <span class="uk-text-bolder">{{ producto.precio_final | currency }}</span>
+                      </div>
+                    </div>
+                  </li>
+                  <li *ngIf="enOferta.length === 0" class="uk-text-meta uk-text-small">Todavía no hay productos en oferta.</li>
+                </ul>
+              </div>
+	  
+             
+              <div>
+                <h3 class="uk-h4 uk-margin-remove-bottom">Featured Products</h3>
+                <ul class="uk-list uk-margin-remove">
+                  <li class="uk-flex" style="gap:14px;padding:10px 0;border-bottom:1px solid #eee;" *ngFor="let producto of destacados; trackBy: trackByVitrina">
+                   
+				    <a class="uk-flex-none" style="width:64px;" [routerLink]="['/producto', producto.slug]"><img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" style="width:64px;height:64px;object-fit:contain;" /></a>
+                    <div>
+                      <div class="uk-text-meta uk-text-xsmall">{{ producto.categoria }}</div>
+                      <h4 class="uk-margin-remove uk-text-small"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h4>
+                      <div class="uk-text-bolder">{{ producto.precio_final | currency }}</div>
+                    </div>
+					
+                  </li>
+                  <li *ngIf="destacados.length === 0" class="uk-text-meta uk-text-small">Todavía no hay productos destacados.</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 class="uk-h4 uk-margin-remove-bottom">Selling Products</h3>
+                <ul class="uk-list uk-margin-remove">
+                  <li class="uk-flex" style="gap:14px;padding:10px 0;border-bottom:1px solid #eee;" *ngFor="let producto of masVendidos; trackBy: trackByVitrina">
+                   
+			     <a class="uk-flex-none" style="width:64px;" [routerLink]="['/producto', producto.slug]"><img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" style="width:64px;height:64px;object-fit:contain;" /></a>
+                    <div>
+                      <div class="uk-text-meta uk-text-xsmall">{{ producto.categoria }}</div>
+                      <h4 class="uk-margin-remove uk-text-small"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h4>
+                      <div class="uk-text-bolder">{{ producto.precio_final | currency }}</div>
+                    </div>
+					
+                  </li>
+                  <li *ngIf="masVendidos.length === 0" class="uk-text-meta uk-text-small">Todavía no hay productos más vendidos.</li>
+                </ul>
+				</div>
+
+              </div>
+            </div>
+        
+        </section>
+        <!-- popular brands -->
+        <section class="uk-section uk-section-default uk-section-small">
+          <div class="uk-container">
+            <h2 class="uk-text-center">Popular Brands</h2>
+            <div class="uk-margin-medium-top" uk-slider="finite: true"><div class="uk-position-relative"><div class="uk-grid-small uk-flex-middle" uk-grid=""><div class="uk-visible@m"><a href="#" uk-slidenav-previous="" uk-slider-item="previous"></a></div><div class="uk-width-expand uk-slider-container"><ul class="uk-slider-items uk-child-width-1-3 uk-child-width-1-6@s uk-grid uk-grid-large"><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Apple"><figure class="tm-media-box-wrap"><img alt="Apple" decoding="async" loading="lazy" src="assets/images/brands/apple.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Samsung"><figure class="tm-media-box-wrap"><img alt="Samsung" decoding="async" loading="lazy" src="assets/images/brands/samsung.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Sony"><figure class="tm-media-box-wrap"><img alt="Sony" decoding="async" loading="lazy" src="assets/images/brands/sony.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Microsoft"><figure class="tm-media-box-wrap"><img alt="Microsoft" decoding="async" loading="lazy" src="assets/images/brands/microsoft.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Intel"><figure class="tm-media-box-wrap"><img alt="Intel" decoding="async" loading="lazy" src="assets/images/brands/intel.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="HP"><figure class="tm-media-box-wrap"><img alt="HP" decoding="async" loading="lazy" src="assets/images/brands/hp.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="LG"><figure class="tm-media-box-wrap"><img alt="LG" decoding="async" loading="lazy" src="assets/images/brands/lg.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Lenovo"><figure class="tm-media-box-wrap"><img alt="Lenovo" decoding="async" loading="lazy" src="assets/images/brands/lenovo.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="ASUS"><figure class="tm-media-box-wrap"><img alt="ASUS" decoding="async" loading="lazy" src="assets/images/brands/asus.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Acer"><figure class="tm-media-box-wrap"><img alt="Acer" decoding="async" loading="lazy" src="assets/images/brands/acer.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Dell"><figure class="tm-media-box-wrap"><img alt="Dell" decoding="async" loading="lazy" src="assets/images/brands/dell.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Canon"><figure class="tm-media-box-wrap"><img alt="Canon" decoding="async" loading="lazy" src="assets/images/brands/canon.svg" /></figure></a></div></li></ul></div><div class="uk-visible@m"><a href="#" uk-slidenav-next="" uk-slider-item="next"></a></div></div></div><ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin-medium-top uk-hidden@m"></ul></div>
+            <div class="uk-margin uk-text-center"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="brands.html"><span>see all brands</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div>
+          </div>
+        </section>
+        <!-- testimonials -->
+        <section class="uk-section uk-section-small" style="background:#f8f8f8;">
+          <div class="uk-container">
+            <h2 class="uk-text-center">What Our Customers Say</h2>
+            <div class="uk-margin-medium-top" uk-slider="finite: true">
+              <div class="uk-position-relative">
+                <div class="uk-grid-small uk-flex-middle" uk-grid="">
+                  <div class="uk-visible@m"><a href="#" uk-slidenav-previous="" uk-slider-item="previous"></a></div>
+                  <div class="uk-width-expand uk-slider-container">
+                    <ul class="uk-slider-items uk-child-width-1-1 uk-child-width-1-3@s uk-grid-medium" uk-grid="">
+                      <li>
+                        <div class="uk-card uk-card-default uk-card-body uk-height-1-1">
+                          <div class="uk-margin-small-bottom" style="color:#faa05a;"><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span></div>
+                          <p class="uk-text-small">"Great selection and even better prices. My MacBook arrived two days early and the packaging was flawless."</p>
+                          <div class="uk-flex uk-flex-middle uk-margin-small-top" style="gap:12px;">
+                            <img alt="Carol" class="uk-border-circle" decoding="async" height="40" loading="lazy" src="assets/images/about/carol.svg" width="40" />
+                            <div><div class="uk-text-bolder uk-text-small">Carol Danvers</div><div class="uk-text-meta uk-text-xsmall">Verified buyer</div></div>
+                          </div>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="uk-card uk-card-default uk-card-body uk-height-1-1">
+                          <div class="uk-margin-small-bottom" style="color:#faa05a;"><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span></div>
+                          <p class="uk-text-small">"Customer support helped me pick the right laptop for video editing. Couldn't be happier with the recommendation."</p>
+                          <div class="uk-flex uk-flex-middle uk-margin-small-top" style="gap:12px;">
+                            <img alt="George" class="uk-border-circle" decoding="async" height="40" loading="lazy" src="assets/images/about/george.svg" width="40" />
+                            <div><div class="uk-text-bolder uk-text-small">George Miller</div><div class="uk-text-meta uk-text-xsmall">Verified buyer</div></div>
+                          </div>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="uk-card uk-card-default uk-card-body uk-height-1-1">
+                          <div class="uk-margin-small-bottom" style="color:#faa05a;"><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span></div>
+                          <p class="uk-text-small">"Fast checkout, transparent pricing and the trade-in program saved me almost $200 on my new phone."</p>
+                          <div class="uk-flex uk-flex-middle uk-margin-small-top" style="gap:12px;">
+                            <img alt="Nicole" class="uk-border-circle" decoding="async" height="40" loading="lazy" src="assets/images/about/nicole.svg" width="40" />
+                            <div><div class="uk-text-bolder uk-text-small">Nicole Adams</div><div class="uk-text-meta uk-text-xsmall">Verified buyer</div></div>
+                          </div>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="uk-card uk-card-default uk-card-body uk-height-1-1">
+                          <div class="uk-margin-small-bottom" style="color:#faa05a;"><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span></div>
+                          <p class="uk-text-small">"I've ordered three times now and every delivery has been on time. This is my go-to electronics store."</p>
+                          <div class="uk-flex uk-flex-middle uk-margin-small-top" style="gap:12px;">
+                            <img alt="Thomas" class="uk-border-circle" decoding="async" height="40" loading="lazy" src="assets/images/about/thomas.svg" width="40" />
+                            <div><div class="uk-text-bolder uk-text-small">Thomas Reed</div><div class="uk-text-meta uk-text-xsmall">Verified buyer</div></div>
+                          </div>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="uk-visible@m"><a href="#" uk-slidenav-next="" uk-slider-item="next"></a></div>
+                </div>
+              </div>
+              <ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin-medium-top uk-hidden@m"></ul>
+            </div>
+          </div>
+        </section>
+        <!-- blog -->
+        <section class="uk-section uk-section-small">
+          <div class="uk-container">
+            <div class="uk-flex uk-flex-middle uk-flex-between uk-margin">
+              <h2 class="uk-margin-remove">From the Blog</h2>
+              <a class="uk-link-muted uk-text-uppercase tm-link-to-all uk-visible@s" href="blog.html"><span>see all articles</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a>
+            </div>
+            <div
+              class="uk-grid-medium uk-grid-match uk-child-width-1-1 uk-child-width-1-3@s"
+              uk-grid=""
+            ><div><a href="article.html"><article
+                    class="uk-card uk-card-default uk-card-small uk-article uk-overflow-hidden uk-box-shadow-hover-large uk-height-1-1 tm-ignore-container"
+                  ><div class="tm-ratio tm-ratio-16-9"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img
+                          alt="Everything You Need to Know About the MacBook Pro"
+                          decoding="async"
+                          loading="lazy"
+                          src="assets/images/articles/macbook-photo.webp"
+                          uk-cover="uk-cover"
+                        /></figure></div><div class="uk-card-body"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>May 21, 2018</time></div><div><h3 class="uk-margin-remove">Everything You Need to Know About the MacBook Pro</h3></div><div class="uk-margin-small-top"><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id aliquam. Nam consectetur interdum nibh eget sodales.</p></div></div></div></article></a></div><div><a href="article.html"><article
+                    class="uk-card uk-card-default uk-card-small uk-article uk-overflow-hidden uk-box-shadow-hover-large uk-height-1-1 tm-ignore-container"
+                  ><div class="tm-ratio tm-ratio-16-9"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img
+                          alt="Apple introduces macOS Mojave"
+                          decoding="async"
+                          loading="lazy"
+                          src="assets/images/articles/macos.webp"
+                          uk-cover="uk-cover"
+                        /></figure></div><div class="uk-card-body"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>May 21, 2018</time></div><div><h3 class="uk-margin-remove">Apple introduces macOS Mojave</h3></div><div class="uk-margin-small-top"><p>Praesent consequat justo eu massa malesuada posuere. Donec ultricies tincidunt nisl, sed euismod nulla venenatis maximus.</p></div></div></div></article></a></div><div><a href="article.html"><article
+                    class="uk-card uk-card-default uk-card-small uk-article uk-overflow-hidden uk-box-shadow-hover-large uk-height-1-1 tm-ignore-container"
+                  ><div class="tm-ratio tm-ratio-16-9"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img
+                          alt="How to choose the right laptop for you"
+                          decoding="async"
+                          loading="lazy"
+                          src="assets/images/articles/macbook-promo-2.webp"
+                          uk-cover="uk-cover"
+                        /></figure></div><div class="uk-card-body"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>May 18, 2018</time></div><div><h3 class="uk-margin-remove">How to choose the right laptop for you</h3></div><div class="uk-margin-small-top"><p>A quick buyer's guide covering display size, processors and battery life to help you pick the perfect laptop.</p></div></div></div></article></a></div></div>
+            <div class="uk-margin uk-text-center uk-hidden@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="blog.html"><span>see all articles</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div>
+          </div>
+        </section>
+
+        <!-- instagram gallery -->
+        <section class="uk-section uk-section-default uk-section-small uk-padding-remove-top">
+          <div class="uk-container">
+            <h2 class="uk-text-center">Follow Us on Instagram</h2>
+            <div class="uk-margin-medium-top" style="max-width:760px;margin-left:auto;margin-right:auto;">
+              <div class="uk-grid-small uk-child-width-1-3 uk-child-width-1-6@s" uk-grid="">
+              <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/products/1/1-medium.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
+                </a></div>
+              <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/products/6/6-medium.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
+                </a></div>
+              <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/articles/macbook-photo.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
+                </a></div>
+              <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/products/8/8-medium.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
+                </a></div>
+              <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/promo/iphone.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
+                </a></div>
+              <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/promo/ipad.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
+                </a></div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- about + latest news -->
+        <section class="uk-section uk-section-default uk-section-small" style="background:#f8f8f8;">
+          <div class="uk-container">
+            <div class="uk-grid-medium uk-child-width-1-1 uk-child-width-1-2@s" uk-grid=""><section><h2 class="uk-text-center uk-text-left@s">About</h2><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc at neque vulputate, vestibulum magna in, accumsan urna. Nulla feugiat ipsum ex, molestie porttitor nibh faucibus at. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam hendrerit lorem ut finibus semper. Donec ac vehicula erat, nec consequat massa.</p><p>Quisque rhoncus fermentum sapien id congue. Nam at rutrum turpis. Aliquam sagittis imperdiet tortor vel dignissim. Ut ipsum nunc, egestas et odio id, vestibulum posuere orci. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.</p><div class="uk-text-center uk-text-left@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="about.html"><span>read more</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div></section><section><h2 class="uk-text-center uk-text-left@s">Latest News</h2><ul class="uk-list uk-list-small uk-list-divider"><li><article class="uk-article"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>June 4, 2018</time></div><h3 class="uk-h4 uk-margin-remove"><a class="uk-link-heading" href="article.html">Highlights from WWDC</a></h3><div class="uk-margin-xsmall-top uk-text-small"><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id aliquam. Nam consectetur interdum nibh eget sodales. Cras volutpat efficitur ornare.</p></div></div></article></li><li><article class="uk-article"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>June 4, 2018</time></div><h3 class="uk-h4 uk-margin-remove"><a class="uk-link-heading" href="article.html">Apple introduces macOS Mojave</a></h3><div class="uk-margin-xsmall-top uk-text-small"><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id aliquam. Nam consectetur interdum nibh eget sodales. Cras volutpat efficitur ornare.</p></div></div></article></li><li><article class="uk-article"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>May 29, 2018</time></div><h3 class="uk-h4 uk-margin-remove"><a class="uk-link-heading" href="article.html">iOS 11.4 brings stereo pairs and multi-room audio with AirPlay 2</a></h3><div class="uk-margin-xsmall-top uk-text-small"><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id aliquam. Nam consectetur interdum nibh eget sodales. Cras volutpat efficitur ornare.</p></div></div></article></li></ul><div class="uk-margin uk-text-center uk-text-left@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="news.html"><span>see all news</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div></section></div>
+          </div>
+        </section>
+
+        <!-- newsletter -->
+        <section class="uk-section uk-section-primary uk-section-small uk-light">
+          <div class="uk-container">
+            <div class="uk-text-center">
+              <span uk-icon="icon: mail; ratio: 2;"></span>
+              <div class="uk-h2 uk-margin-small-top uk-margin-remove-bottom">Subscribe for updates</div>
+              <div>Be aware of new products and special offers.</div>
+            </div>
+            <div class="uk-margin">
+              <form>
+                <div class="uk-grid-small uk-flex-center" uk-grid=""><div class="uk-width-1-1 uk-width-medium@s"><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="mail"></span><input class="uk-input" placeholder="Your email" required="" type="email" /></div></div><div><button class="uk-button uk-button-primary">subscribe</button></div></div>
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>

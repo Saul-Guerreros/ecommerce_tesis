@@ -49,39 +49,29 @@
     <table cTable hover responsive *ngIf="!cargando && productos.length">
       <thead>
         <tr>
-          <th style="width: 60px">Img</th>
-          <th>Título</th>
           <th>Código</th>
-          <th>Categoría</th>
+          <th>Descripción interna</th>
           <th>Marca</th>
+          <th>IVA</th>
           <th class="text-end">Precio</th>
           <th class="text-center">Stock</th>
           <th class="text-center">Estado</th>
+          <th class="text-center">Publicación</th>
           <th class="text-center">Acciones</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let p of productos">
-          <td>
-            <img
-              *ngIf="imagenPrincipal(p) as img"
-              [src]="img"
-              alt="{{ p.prd_titulo }}"
-              width="40"
-              height="40"
-              style="object-fit: cover; border-radius: 4px;"
-            />
-            <span *ngIf="!imagenPrincipal(p)" class="text-muted">—</span>
-          </td>
-          <td>{{ p.prd_titulo }}</td>
           <td>{{ p.prd_codinv }}</td>
-          <td>{{ p.categoria?.cat_nombre }}</td>
+          <td>{{ p.prd_descri }}</td>
           <td>{{ p.marca?.mar_descri }}</td>
-          <td class="text-end">{{ p.prd_precio | currency }}</td>
+          <td>{{ p.tipo_iva?.tiv_descri }}</td>
+          <td class="text-end">{{ p.prd_prevta | currency }}</td>
           <td class="text-center">
-            <span [class.text-danger]="p.stock_bajo" [class.fw-bold]="p.stock_bajo">
-              {{ p.prd_stock }}
+            <span *ngIf="p.prd_afestk; else sinStock" [class.text-danger]="p.stock_bajo" [class.fw-bold]="p.stock_bajo">
+              {{ p.stock_actual ?? 0 }}
             </span>
+            <ng-template #sinStock><span class="text-muted">—</span></ng-template>
           </td>
           <td class="text-center">
             <c-badge [color]="p.prd_estado === 1 ? 'success' : 'secondary'">
@@ -89,13 +79,21 @@
             </c-badge>
           </td>
           <td class="text-center">
-            <button cButton color="light" size="sm" [routerLink]="['/productos', p.prd_id, 'variations']">
+            <a [routerLink]="['/publicaciones', p.prd_id]" title="Ver/editar ficha web">
+              <c-badge [color]="estadoPublicacion(p).color">{{ estadoPublicacion(p).texto }}</c-badge>
+            </a>
+          </td>
+          <td class="text-center">
+            <button cButton color="light" size="sm" [routerLink]="['/productos', p.prd_id, 'variations']" title="Especificaciones y variaciones">
               <svg cIcon name="cilList"></svg>
             </button>
-            <button cButton size="sm" color="info" variant="ghost" (click)="abrirEditar(p)">
+			<button cButton size="sm" color="success" variant="ghost" (click)="duplicarComoVariante(p)" title="Crear variante de color/edición a partir de este">
+			<svg cIcon name="cilCopy"></svg>
+			</button>
+            <button cButton size="sm" color="info" variant="ghost" (click)="abrirEditar(p)" title="Editar datos de inventario">
               <svg cIcon name="cilPencil"></svg>
             </button>
-            <button cButton size="sm" color="danger" variant="ghost" (click)="confirmarEliminar(p)">
+            <button cButton size="sm" color="danger" variant="ghost" (click)="confirmarEliminar(p)" title="Eliminar producto">
               <svg cIcon name="cilTrash"></svg>
             </button>
           </td>
@@ -124,12 +122,13 @@
   </c-card-body>
 </c-card>
 
-<!-- Modal formulario crear/editar -->
+<!-- Modal formulario crear/editar (solo datos de inventario) -->
 <app-producto-form
   [visible]="mostrarFormulario"
   [producto]="productoSeleccionado"
-  [categorias]="categorias"
   [marcas]="marcas"
+  [tiposIva]="tiposIva"
+  [unidadesMedida]="unidadesMedida"
   (cerrar)="mostrarFormulario = false"
   (guardado)="onGuardado()"
 ></app-producto-form>
@@ -140,8 +139,9 @@
     <h5 cModalTitle>Eliminar producto</h5>
   </c-modal-header>
   <c-modal-body>
-    ¿Seguro que deseas eliminar
-    <strong>{{ productoAEliminar?.prd_titulo }}</strong>? Esta acción no se puede deshacer.
+    ¿Seguro que deseas eliminar el producto <strong>{{ productoAEliminar?.prd_codinv }}</strong>
+    ({{ productoAEliminar?.prd_descri }})?
+    Esta acción también eliminará su publicación web e imágenes. No se puede deshacer.
   </c-modal-body>
   <c-modal-footer>
     <button cButton color="secondary" (click)="mostrarConfirmacion = false">Cancelar</button>

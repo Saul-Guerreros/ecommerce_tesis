@@ -50,7 +50,7 @@ export interface TimbradoProveedor {
   tpv_proid: number;
   tpv_tcoid: number | null;
   tpv_numero: string;
-  tpv_fechin: string;      // YYYY-MM-DD
+
   tpv_fechfn: string;      // YYYY-MM-DD
   tpv_estado?: number;
   tco_descri?: string;

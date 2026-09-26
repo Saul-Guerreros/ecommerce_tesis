@@ -9,15 +9,25 @@ class PagoCompra extends Model
     protected $primaryKey = 'pgo_id';
     public    $timestamps = false;
 
+    const FORMAS = ['Efectivo', 'Transferencia', 'Cheque', 'Otro'];
+
+    const ESTADO_ANULADO = 0;
+    const ESTADO_ACTIVO  = 1;
+
     protected $fillable = [
-        'pgo_cuoid', 'pgo_fecha', 'pgo_importe', 'pgo_formapa', 'pgo_observ', 'pgo_usuid',
+        'pgo_cuoid', 'pgo_fecha', 'pgo_importe', 'pgo_formapa',
+        'pgo_referencia', 'pgo_observ', 'pgo_estado', 'pgo_usuid',
+        'pgo_motanu',
     ];
 
     protected $casts = [
         'pgo_id'      => 'integer',
+        'pgo_cuoid'   => 'integer',
         'pgo_fecha'   => 'date',
         'pgo_importe' => 'decimal:2',
+        'pgo_estado'  => 'integer',
         'pgo_creado'  => 'datetime',
+        'pgo_fecanu'  => 'datetime',
     ];
 
     public function cuota()

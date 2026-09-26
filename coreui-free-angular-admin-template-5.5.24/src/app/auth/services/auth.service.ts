@@ -33,11 +33,7 @@ export class AuthService {
 
   login(email: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, { email, password }).pipe(
-      tap((res) => {
-        localStorage.setItem(TOKEN_KEY, res.access_token);
-        localStorage.setItem(USER_KEY, JSON.stringify(res.user));
-        this.currentUser.set(res.user);
-      })
+      tap((res) => this.guardarSesion(res))
     );
   }
 
@@ -46,6 +42,40 @@ export class AuthService {
       next: () => this.clearSession(),
       error: () => this.clearSession() // limpiamos igual aunque falle la petición
     });
+  }
+
+  
+
+  /**
+   * Paso 2: valida el código recibido por correo (sin cambiar aún la contraseña).
+   */
+  verifyResetCode(code: string): Observable<{ message: number }> {
+    return this.http.post<{ message: number }>(`${this.apiUrl}/auth/verified_code`, { code });
+  }
+
+  /**
+   * Refresca el usuario actual contra /auth/me (útil tras recargar la página
+   * si se quiere validar que el token siga vigente y traer permisos frescos).
+   */
+  fetchCurrentUser(): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/auth/me`, {}).pipe(
+      tap((res) => {
+        const user: User = {
+          full_name: res.full_name,
+          email: res.email,
+          rol: res.rol,
+          permisos: res.permisos ?? []
+        };
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        this.currentUser.set(user);
+      })
+    );
+  }
+
+  private guardarSesion(res: LoginResponse): void {
+    localStorage.setItem(TOKEN_KEY, res.access_token);
+    localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+    this.currentUser.set(res.user);
   }
 
   private clearSession(): void {

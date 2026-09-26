@@ -32,8 +32,21 @@ class CuotaCompra extends Model
         return $this->belongsTo(CompraCab::class, 'cuo_comid', 'com_id');
     }
 
+    /** Pago activo de la cuota (null si esta pendiente, o si su unico pago fue anulado). */
+    public function pago()
+    {
+        return $this->hasOne(PagoCompra::class, 'pgo_cuoid', 'cuo_id')
+                     ->where('pgo_estado', PagoCompra::ESTADO_ACTIVO);
+    }
+
+    /** Historial completo (incluye pagos anulados) — util para auditoria. */
     public function pagos()
     {
         return $this->hasMany(PagoCompra::class, 'pgo_cuoid', 'cuo_id');
+    }
+
+    public function saldoPendiente(): float
+    {
+        return $this->cuo_estado === self::ESTADO_PAGADA ? 0.0 : (float) $this->cuo_importe;
     }
 }

@@ -1,4 +1,5 @@
 <?php
+// app/Http/Requests/Compra/ProductoEquivalenciaRequest.php
 
 namespace App\Http\Requests\Compra;
 
@@ -17,21 +18,22 @@ class ProductoEquivalenciaRequest extends FormRequest
 
         return [
             'peq_prdid'  => ['required', 'integer', 'exists:producto,prd_id'],
-            'peq_umdid'  => [
-                'required', 'integer', 'exists:unidad_medida,umd_id',
-                Rule::unique('producto_equivalencia', 'peq_umdid')
-                    ->where(fn ($q) => $q->where('peq_prdid', $this->input('peq_prdid')))
+            'peq_umdid'  => ['required', 'integer', 'exists:unidad_medida,umd_id'],
+
+            // Único por producto + unidad + factor (cuenta también las desactivadas).
+            'peq_factor' => [
+                'required', 'numeric', 'min:0.0001', 'max:999999.9999',
+                Rule::unique('producto_equivalencia', 'peq_factor')
+                    ->where(fn ($q) => $q->where('peq_prdid', $this->input('peq_prdid'))
+                                         ->where('peq_umdid', $this->input('peq_umdid')))
                     ->ignore($id, 'peq_id'),
             ],
-            'peq_factor' => ['required', 'numeric', 'min:0.0001'],
+
             'peq_estado' => ['nullable', 'integer', 'in:0,1'],
         ];
     }
 
-    /**
-     * La unidad alternativa no puede ser la misma unidad de stock del
-     * producto: esa ya es la base, con factor 1 implícito.
-     */
+    /** La unidad de stock del producto es la base (factor 1 implícito): no lleva equivalencia. */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
@@ -55,9 +57,11 @@ class ProductoEquivalenciaRequest extends FormRequest
         return [
             'peq_prdid.required'  => 'Falta indicar el producto.',
             'peq_umdid.required'  => 'Debe seleccionar la unidad alternativa.',
-            'peq_umdid.unique'    => 'Este producto ya tiene una equivalencia registrada para esa unidad.',
-            'peq_factor.required' => 'Debe indicar el factor de conversión.',
-            'peq_factor.min'      => 'El factor debe ser mayor a 0.',
+            'peq_factor.required' => 'Debe indicar la equivalencia.',
+            'peq_factor.numeric'  => 'La equivalencia debe ser un número.',
+            'peq_factor.min'      => 'La equivalencia debe ser mayor a 0.',
+            'peq_factor.max'      => 'La equivalencia es demasiado grande.',
+            'peq_factor.unique'   => 'Ya existe una unidad alternativa con la misma equivalencia.',
         ];
     }
 }

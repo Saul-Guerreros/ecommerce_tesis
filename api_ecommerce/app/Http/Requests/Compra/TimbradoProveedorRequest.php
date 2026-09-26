@@ -15,15 +15,14 @@ class TimbradoProveedorRequest extends FormRequest
     }
 
     public function rules(): array
-    {
-        return [
-            'tpv_proid'  => ['required', 'integer', 'exists:proveedor,pro_id'],
-            'tpv_tcoid'  => ['required', 'integer', 'exists:tipo_comprobante,tco_id'],
-            'tpv_numero' => ['required', 'digits_between:1,8'],
-            'tpv_fechin' => ['required', 'date_format:Y-m-d'],
-            'tpv_fechfn' => ['required', 'date_format:Y-m-d', 'after_or_equal:tpv_fechin'],
-        ];
-    }
+{
+    return [
+        'tpv_proid'  => ['required', 'integer', 'exists:proveedor,pro_id'],
+        'tpv_tcoid'  => ['required', 'integer', 'exists:tipo_comprobante,tco_id'],
+        'tpv_numero' => ['required', 'digits_between:1,8'],
+        'tpv_fechfn' => ['required', 'date_format:Y-m-d'],
+    ];
+}
 
     /**
      * UNIQUE (proveedor, tipo, numero) validado aca porque el numero se
@@ -51,14 +50,12 @@ class TimbradoProveedorRequest extends FormRequest
     }
 
     public function messages(): array
-    {
-        return [
-            'tpv_tcoid.required'        => 'Debe seleccionar el tipo de comprobante.',
-            'tpv_numero.required'       => 'El número de timbrado es obligatorio.',
-            'tpv_numero.digits_between' => 'El timbrado debe tener hasta 8 dígitos numéricos.',
-            'tpv_fechin.required'       => 'La fecha de inicio de vigencia es obligatoria.',
-            'tpv_fechfn.required'       => 'La fecha de vencimiento es obligatoria.',
-            'tpv_fechfn.after_or_equal' => 'El vencimiento no puede ser anterior al inicio de vigencia.',
-        ];
-    }
+{
+    return [
+        'tpv_tcoid.required'        => 'Debe seleccionar el tipo de comprobante.',
+        'tpv_numero.required'       => 'El número de timbrado es obligatorio.',
+        'tpv_numero.digits_between' => 'El timbrado debe tener hasta 8 dígitos numéricos.',
+        'tpv_fechfn.required'       => 'La fecha de vencimiento es obligatoria.',
+    ];
+}
 }

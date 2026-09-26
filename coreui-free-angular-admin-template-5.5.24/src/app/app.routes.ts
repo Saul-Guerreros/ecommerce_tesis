@@ -30,6 +30,11 @@ export const routes: Routes = [
       loadChildren: () => import('./modules/productos/productos.module').then((m) => m.ProductosModule),
       data: { title: 'Productos' },
      },
+	 {
+      path: 'publicaciones',
+      loadChildren: () => import('./views/publicaciones/publicaciones.routes').then((m) => m.routes),
+      data: { title: 'Publicación Web' },
+     },
       {
       path: 'categories',
       loadChildren: () => import('./modules/categories/categories.module').then(m => m.CategoriesModule),

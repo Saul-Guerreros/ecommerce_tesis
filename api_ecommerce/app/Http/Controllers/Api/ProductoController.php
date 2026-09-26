@@ -6,33 +6,36 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductoRequest;
 use App\Http\Requests\UpdateProductoRequest;
 use App\Http\Resources\ProductoResource;
-use App\Models\ImagenProducto;
 use App\Models\Producto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ProductoController extends Controller
 {
     /**
      * GET /api/productos
-     * Soporta: ?search=, ?categoria=, ?marca=, ?estado=, ?per_page=
+     * Soporta: ?search=, ?categoria=, ?marca=, ?estado=, ?estado_publicacion=, ?per_page=
+     *
+     * NOTA: "categoria" ahora vive en publicacion_web (pub_catid), por eso
+     * el filtro se resuelve con whereHas. "estado" sigue siendo el estado
+     * de INVENTARIO (prd_estado: activo/inactivo). "estado_publicacion"
+     * (sin_publicar | borrador | publicado | archivado) filtra por publicacion_web.
      */
     public function index(Request $request): JsonResponse
     {
         $query = Producto::query()
-            ->with(['categoria', 'marca', 'imagenes']);
+            ->with(['marca', 'tipoIva', 'unidadMedida', 'publicacionWeb.categoria', 'publicacionWeb.imagenes','padre','variantes.publicacionWeb.imagenes']);
 
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
-                $q->where('prd_titulo', 'like', "%{$search}%")
-                    ->orWhere('prd_codinv', 'like', "%{$search}%");
+                $q->where('prd_codinv', 'like', "%{$search}%")
+                    ->orWhereHas('publicacionWeb', fn ($p) => $p->where('pub_titulo', 'like', "%{$search}%"));
             });
         }
 
         if ($request->filled('categoria')) {
-            $query->where('prd_catid', $request->query('categoria'));
+            $query->whereHas('publicacionWeb', fn ($p) => $p->where('pub_catid', $request->query('categoria')));
         }
 
         if ($request->filled('marca')) {
@@ -41,6 +44,18 @@ class ProductoController extends Controller
 
         if ($request->filled('estado')) {
             $query->where('prd_estado', $request->query('estado'));
+        }
+
+        // Filtro por estado de PUBLICACIÓN (distinto del estado de inventario
+        // de arriba). Usado por la sección "Publicación Web" del dashboard.
+        if ($request->filled('estado_publicacion')) {
+            match ($request->query('estado_publicacion')) {
+                'sin_publicar' => $query->whereDoesntHave('publicacionWeb'),
+                'borrador'     => $query->whereHas('publicacionWeb', fn ($p) => $p->where('pub_estado', 0)),
+                'publicado'    => $query->whereHas('publicacionWeb', fn ($p) => $p->where('pub_estado', 1)),
+                'archivado'    => $query->whereHas('publicacionWeb', fn ($p) => $p->where('pub_estado', 2)),
+                default        => null,
+            };
         }
 
         $perPage = (int) $request->query('per_page', 10);
@@ -59,21 +74,17 @@ class ProductoController extends Controller
 
     /**
      * POST /api/productos
+     * Solo datos de inventario/compra. La publicación web (categoría,
+     * título, imágenes) se crea aparte, en /productos/{producto}/publicacion.
      */
     public function store(StoreProductoRequest $request): JsonResponse
     {
-        $producto = DB::transaction(function () use ($request) {
-            $producto = Producto::create($request->safe()->except('imagenes'));
+        $producto = Producto::create($request->validated());
 
-            $this->guardarImagenes($producto, $request);
-
-            return $producto;
-        });
-
-        $producto->load(['categoria', 'marca', 'imagenes']);
+        $producto->load(['marca', 'tipoIva', 'unidadMedida', 'publicacionWeb.categoria', 'publicacionWeb.imagenes','padre','variantes.publicacionWeb.imagenes']);
 
         return response()->json([
-            'message' => 'Producto creado correctamente.',
+            'message' => 'Producto creado correctamente. Ahora puedes publicarlo en la web.',
             'data' => new ProductoResource($producto),
         ], 201);
     }
@@ -83,7 +94,7 @@ class ProductoController extends Controller
      */
     public function show(Producto $producto): JsonResponse
     {
-        $producto->load(['categoria', 'marca', 'imagenes']);
+        $producto->load(['marca', 'tipoIva', 'unidadMedida', 'publicacionWeb.categoria', 'publicacionWeb.imagenes','padre','variantes.publicacionWeb.imagenes']);
 
         return response()->json([
             'data' => new ProductoResource($producto),
@@ -95,13 +106,9 @@ class ProductoController extends Controller
      */
     public function update(UpdateProductoRequest $request, Producto $producto): JsonResponse
     {
-        DB::transaction(function () use ($request, $producto) {
-            $producto->update($request->safe()->except('imagenes'));
+        $producto->update($request->validated());
 
-            $this->guardarImagenes($producto, $request);
-        });
-
-        $producto->load(['categoria', 'marca', 'imagenes']);
+        $producto->load(['marca', 'tipoIva', 'unidadMedida', 'publicacionWeb.categoria', 'publicacionWeb.imagenes','padre','variantes.publicacionWeb.imagenes']);
 
         return response()->json([
             'message' => 'Producto actualizado correctamente.',
@@ -111,58 +118,22 @@ class ProductoController extends Controller
 
     /**
      * DELETE /api/productos/{producto}
+     * Al borrar el producto se borra en cascada su publicación web
+     * (FK pub_prdid ON DELETE CASCADE) y, con ella, sus imágenes en BD.
+     * Los archivos físicos hay que borrarlos aparte, antes del delete.
      */
     public function destroy(Producto $producto): JsonResponse
     {
-        DB::transaction(function () use ($producto) {
-            foreach ($producto->imagenes as $imagen) {
-                Storage::disk('public')->delete($imagen->img_url);
-                $imagen->delete();
-            }
+        $producto->loadMissing('publicacionWeb.imagenes');
 
-            $producto->delete();
-        });
+        foreach ($producto->publicacionWeb?->imagenes ?? [] as $imagen) {
+            Storage::disk('public')->delete($imagen->img_url);
+        }
+
+        $producto->delete();
 
         return response()->json([
             'message' => 'Producto eliminado correctamente.',
         ]);
-    }
-
-    /**
-     * DELETE /api/productos/{producto}/imagenes/{imagen}
-     */
-    public function eliminarImagen(Producto $producto, ImagenProducto $imagen): JsonResponse
-    {
-        abort_if($imagen->img_prdid !== $producto->prd_id, 404);
-
-        Storage::disk('public')->delete($imagen->img_url);
-        $imagen->delete();
-
-        return response()->json([
-            'message' => 'Imagen eliminada correctamente.',
-        ]);
-    }
-
-    private function guardarImagenes(Producto $producto, Request $request): void
-    {
-        if (! $request->hasFile('imagenes')) {
-            return;
-        }
-
-        $ordenActual = $producto->imagenes()->max('img_orden') ?? 0;
-        $tieneImagenPrincipal = $producto->imagenes()->where('img_princi', 1)->exists();
-
-        foreach ($request->file('imagenes') as $index => $archivo) {
-            $ruta = $archivo->store('productos', 'public');
-
-            ImagenProducto::create([
-                'img_prdid'  => $producto->prd_id,
-                'img_url'    => $ruta,
-                'img_orden'  => ++$ordenActual,
-                'img_princi' => (! $tieneImagenPrincipal && $index === 0) ? 1 : 0,
-            ]);
-
-            $tieneImagenPrincipal = true;
-        }
     }
 }

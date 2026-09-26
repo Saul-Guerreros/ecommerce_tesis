@@ -3,7 +3,7 @@
 namespace App\Services\Compras;
 
 use App\Models\Producto;
-use App\Models\Compras\{CompraCab, CompraDetalle, Stock, MovimientoStock, LibroCompra, CuotaCompra, PagoCompra}; // <-- agregar CuotaComprause 
+use App\Models\Compras\{CompraCab, CompraDetalle, Stock, MovimientoStock, LibroCompra, CuotaCompra, PagoCompra};
 use App\Services\Precio\PriceService;
 use Illuminate\Support\Facades\{DB, Auth};
 
@@ -17,7 +17,7 @@ class CompraService
      * Guarda la factura completa (cabecera + detalle), impacta el stock y
      * registra la fila del Libro de Compras, todo en la MISMA transaccion.
      */
-    public function store(array $datosCab, array $lineas): CompraCab
+        public function store(array $datosCab, array $lineas): CompraCab
     {
         return DB::transaction(function () use ($datosCab, $lineas) {
             $datosCab['com_estfac'] = CompraCab::ESTADO_CONFIRMADA;
@@ -25,50 +25,67 @@ class CompraService
 
             $compra = CompraCab::create($datosCab);
 
+            // Subtotales por tasa, IVA INCLUIDO (como figuran en la factura).
+            $subtotales = [0 => 0.0, 5 => 0.0, 10 => 0.0];
+
             foreach ($lineas as $orden => $linea) {
-                $precioBruto       = (float) $linea['precun'];
-                $cantidadFacturada = (float) $linea['canfac'];
-                $despor            = (float) ($linea['despor'] ?? 0);
-                $tasa              = (float) ($linea['tasa'] ?? 0);
+                $precio   = (float) $linea['precun'];
+                $cantidad = (float) $linea['canfac'];
+                // La tasa sale de tipo_iva, nunca del cliente.
+                $tasa = (float) DB::table('tipo_iva')->where('tiv_id', $linea['tiv_id'])->value('tiv_tasa');
 
-                // El backend recalcula gravada/iva/descto: nunca se confia
-                // en lo que manda Angular para los importes de la factura.
-                $importeDescuento = round($precioBruto * $cantidadFacturada * $despor / 100, 2);
-                $gravada          = round(($precioBruto * $cantidadFacturada) - $importeDescuento, 2);
-                $iva              = round($gravada * $tasa / 100, 2);
+                // Fuente de verdad: descuento UNITARIO (Gs.). El % se deriva.
+                $descUnit = $this->descuentoUnitario($linea, $precio);
+                $despor   = $precio > 0 ? round($descUnit / $precio * 100, 2) : 0;
 
-                // Precio unitario YA neto de descuento: es lo que entra al costeo.
-                $precioNetoUnitario = $despor > 0
-                    ? round($precioBruto * (1 - $despor / 100), 4)
-                    : $precioBruto;
+                $precioNeto = $precio - $descUnit;                   // unitario, IVA incluido
+               $totalLinea = round($precioNeto * $cantidad);     // "total operacion" (Gs. no tiene decimales)
+                $ivaLinea   = $this->ivaIncluido($totalLinea, $tasa); // informativo por linea
 
-                [$factor, $costoUnitStock] = $this->resolverConversion(
-                    $linea['prd_id'], $linea['umd_id'], $precioNetoUnitario
+                // El IVA de compra es credito fiscal: el costo entra SIN IVA
+                // (PriceService agrega margen e IVA para el precio de venta).
+                $precioSinIva = $tasa > 0 ? $precioNeto / (1 + $tasa / 100) : $precioNeto;
+
+                [$factor, $costoUnitStock, $equivalenciaId] = $this->resolverConversion(
+                    (int) $linea['prd_id'], (int) $linea['umd_id'], $linea['peq_id'] ?? null, $precioSinIva
                 );
 
                 $detalle = CompraDetalle::create([
                     'cmd_comid'    => $compra->com_id,
                     'cmd_prdid'    => $linea['prd_id'],
                     'cmd_umdid'    => $linea['umd_id'],
+                    'cmd_peqid'    => $equivalenciaId,
                     'cmd_factconv' => $factor,
                     'cmd_tivid'    => $linea['tiv_id'],
                     'cmd_nroprd'   => $orden + 1,
                     'cmd_descri'   => $linea['descri'],
-                    'cmd_precun'   => $precioBruto,       // lo que dice la factura, SIN descuento
-                    'cmd_costo'    => $costoUnitStock,    // ya neto de descuento
+                    'cmd_precun'   => $precio,          // precio impreso, sin descuento
+                    'cmd_costo'    => $costoUnitStock,  // neto de descuento y de IVA, en unidad de stock
                     'cmd_despor'   => $despor,
-                    'cmd_descto'   => $importeDescuento,
+                    'cmd_descto'   => $descUnit,        // descuento UNITARIO
                     'cmd_tasa'     => $tasa,
-                    'cmd_gravada'  => $gravada,
-                    'cmd_iva'      => $iva,
-                    'cmd_canfac'   => round($cantidadFacturada * $factor, 4),
+                    'cmd_gravada'  => $totalLinea,      // total de la linea, IVA incluido
+                    'cmd_iva'      => $ivaLinea,
+                    'cmd_canfac'   => round($cantidad * $factor, 4),
                     'cmd_canrec'   => round((float) $linea['canrec'] * $factor, 4),
                 ]);
+
+                $subtotales[(int) $tasa] = ($subtotales[(int) $tasa] ?? 0) + $totalLinea;
 
                 if ((float) $detalle->cmd_canrec > 0) {
                     $this->registrarEntrada($detalle, $datosCab['com_depid']);
                 }
             }
+
+            // Liquidacion del IVA sobre los subtotales: 10% = /11, 5% = /21.
+            $compra->update([
+                'com_exenta' => $subtotales[0],
+                'com_grav5'  => $subtotales[5],
+                'com_grav10' => $subtotales[10],
+                'com_iva5'   => $this->ivaIncluido($subtotales[5], 5),
+                'com_iva10'  => $this->ivaIncluido($subtotales[10], 10),
+                'com_total'  => $subtotales[0] + $subtotales[5] + $subtotales[10],
+            ]);
 
             $compra->refresh();
 
@@ -91,8 +108,22 @@ class CompraService
             ]);
 
             return $compra->load('detalle');
-
         });
+    }
+
+    /** Si llega el monto se usa tal cual; si solo llega el %, se calcula el monto. */
+    private function descuentoUnitario(array $linea, float $precio): float
+    {
+        if (isset($linea['descto']) && $linea['descto'] !== '') {
+            return round((float) $linea['descto'], 2);
+        }
+        return round($precio * (float) ($linea['despor'] ?? 0) / 100, 2);
+    }
+
+    /** IVA contenido en un monto con IVA incluido: tasa/(100+tasa) → 10% = /11, 5% = /21. */
+    private function ivaIncluido(float $monto, float $tasa): float
+    {
+        return $tasa > 0 ? round($monto * $tasa / (100 + $tasa)) : 0.0;
     }
 
     /**
@@ -100,26 +131,29 @@ class CompraService
      * partir del precio unitario (ya neto de descuento) facturado en la
      * unidad elegida.
      */
-    private function resolverConversion(int $productoId, int $unidadId, float $precioUnitario): array
+    private function resolverConversion(int $productoId, int $unidadId, ?int $equivalenciaId, float $precioUnitario): array
     {
         $producto = Producto::findOrFail($productoId);
 
         if ($unidadId === (int) $producto->prd_umdid) {
             $factor = 1.0;
+            $peqId  = null;
         } else {
-            $equivalencia = \App\Models\Compras\ProductoEquivalencia::where('peq_prdid', $productoId)
+            $equivalencia = \App\Models\Compras\ProductoEquivalencia::where('peq_id', $equivalenciaId)
+                ->where('peq_prdid', $productoId)
                 ->where('peq_umdid', $unidadId)
                 ->where('peq_estado', 1)
                 ->first();
 
             if (!$equivalencia) {
-                throw new \DomainException('No existe una equivalencia activa para la unidad seleccionada.');
+                throw new \DomainException('No existe una equivalencia activa para la presentación seleccionada.');
             }
 
             $factor = (float) $equivalencia->peq_factor;
+            $peqId  = $equivalencia->peq_id;
         }
 
-        return [$factor, round($precioUnitario / $factor, 4)];
+        return [$factor, round($precioUnitario / $factor, 4), $peqId];
     }
 
     /**
@@ -202,8 +236,9 @@ class CompraService
         // NUEVO: si ya se registró algun pago (total o parcial) sobre alguna
         // cuota de esta compra, no se puede anular sin dejar un pago_compra
         // huerfano apuntando a una cuota que ya no existiria.
+       // AHORA — apunta a la relacion 'pago' (solo el ACTIVO; un pago anulado no bloquea)
         $tienePagos = CuotaCompra::where('cuo_comid', $compra->com_id)
-            ->whereHas('pagos')
+            ->whereHas('pago')
             ->exists();
 
         if ($tienePagos) {
@@ -339,31 +374,70 @@ class CompraService
      * pasa a Pagada cuando la suma de sus pagos cubre cuo_importe. El pago
      * en si nunca se borra ni se edita — es un registro contable.
      */
-    public function registrarPago(CuotaCompra $cuota, array $datosPago): CuotaCompra
+        /**
+     * Un pago cubre 1 a N cuotas del MISMO proveedor (incluso de facturas
+     * distintas). Ya viene validado por PagoCompraRequest: saldo suficiente,
+     * cuotas del proveedor correcto, no repetidas.
+     */
+       /**
+     * Registra el pago de UNA cuota (Opcion B: sin caja, sin pago
+     * parcial). El pago no se edita ni se borra; para corregir un
+     * error se usa anularPago().
+     */
+    public function registrarPago(array $datos): PagoCompra
     {
-        return DB::transaction(function () use ($cuota, $datosPago) {
+        return DB::transaction(function () use ($datos) {
+            $cuota = CuotaCompra::lockForUpdate()->findOrFail($datos['cuo_id']);
+
             if ($cuota->cuo_estado === CuotaCompra::ESTADO_PAGADA) {
-                throw new \DomainException('La cuota ya fue pagada.');
+                throw new \DomainException('Esta cuota ya está pagada.');
             }
 
-            PagoCompra::create([
-                'pgo_cuoid'   => $cuota->cuo_id,
-                'pgo_fecha'   => $datosPago['pgo_fecha'],
-                'pgo_importe' => $datosPago['pgo_importe'],
-                'pgo_formapa' => $datosPago['pgo_formapa'],
-                'pgo_observ'  => $datosPago['pgo_observ'] ?? null,
-                'pgo_usuid'   => Auth::id(),
+            $pago = PagoCompra::create([
+                'pgo_cuoid'      => $cuota->cuo_id,
+                'pgo_fecha'      => $datos['pgo_fecha'],
+                'pgo_importe'    => $cuota->cuo_importe,
+                'pgo_formapa'    => $datos['pgo_formapa'],
+                'pgo_referencia' => $datos['pgo_referencia'] ?? null,
+                'pgo_observ'     => $datos['pgo_observ'] ?? null,
+                'pgo_estado'     => PagoCompra::ESTADO_ACTIVO,
+                'pgo_usuid'      => Auth::id(),
             ]);
 
-            $saldo = round((float) $cuota->cuo_importe - (float) $cuota->pagos()->sum('pgo_importe'), 2);
+            $cuota->cuo_estado  = CuotaCompra::ESTADO_PAGADA;
+            $cuota->cuo_fecpago = $datos['pgo_fecha'];
+            $cuota->cuo_pagusu  = Auth::id();
+            $cuota->save();
 
-            if ($saldo <= 0) {
-                $cuota->cuo_estado  = CuotaCompra::ESTADO_PAGADA;
-                $cuota->cuo_fecpago = $datosPago['pgo_fecha'];
-                $cuota->save();
-            }
-
-            return $cuota->fresh('pagos');
+            return $pago->load('cuota.compraCab');
         });
     }
+
+    /**
+     * Anula un pago: la cuota vuelve a Pendiente. El pago no se borra
+     * (trazabilidad); queda marcado pgo_estado = Anulado.
+     */
+    public function anularPago(PagoCompra $pago, string $motivo): PagoCompra
+    {
+        if ($pago->pgo_estado === PagoCompra::ESTADO_ANULADO) {
+            throw new \DomainException('El pago ya está anulado.');
+        }
+
+        return DB::transaction(function () use ($pago, $motivo) {
+            $pago->pgo_estado = PagoCompra::ESTADO_ANULADO;
+            $pago->pgo_fecanu = now();
+            $pago->pgo_anusid = Auth::id();
+            $pago->pgo_motanu = $motivo;
+            $pago->save();
+
+            $cuota = CuotaCompra::lockForUpdate()->findOrFail($pago->pgo_cuoid);
+            $cuota->cuo_estado  = CuotaCompra::ESTADO_PENDIENTE;
+            $cuota->cuo_fecpago = null;
+            $cuota->cuo_pagusu  = null;
+            $cuota->save();
+
+            return $pago->load('cuota.compraCab');
+        });
+    }
+
 }

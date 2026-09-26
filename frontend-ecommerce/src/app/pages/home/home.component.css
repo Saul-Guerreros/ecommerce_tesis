@@ -1,0 +1,1233 @@
+/* ===== Hero banner v2 (inspirado en plantilla Shofy) ===== */
+
+.hero-v2 { overflow: hidden; }
+
+.hero-v2-slide {
+  min-height: 620px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  /* isolation crea un contexto de mezcla propio: el mix-blend-mode de la
+     imagen se mezcla solo con este slide y no con el resto de la pagina. */
+  isolation: isolate;
+}
+
+/* UIkit oculta los inactivos con `.uk-slideshow-items > :not(.uk-active)`.
+   Solo aplicamos la regla si YA hay un slide activo, para que la seccion
+   no desaparezca si el slideshow no llegara a inicializarse. */
+.uk-slideshow-items:has(.uk-active) > .hero-v2-slide:not(.uk-active) {
+  display: none;
+}
+
+/* ---- formas decorativas de fondo (PNG de la plantilla) ---- */
+.hero-v2-shapes {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.hero-v2-shape { position: absolute; }
+.hero-v2-shape-1 { top: 0; right: 0; mix-blend-mode: luminosity; opacity: 0.1; }
+.hero-v2-shape-2 { bottom: 13%; right: 28%; }
+.hero-v2-shape-3 { top: 8%; right: 33%; }
+.hero-v2-shape-4 { top: 30%; left: 6%; }
+@media (max-width: 959px) {
+  .hero-v2-shapes { display: none; }
+}
+
+/* ---- layout de las dos columnas ---- */
+/* El <li> es flex: sin width el .uk-container se encogia al contenido. */
+.hero-v2-slide > .uk-container {
+  flex: 1 1 100%;
+  width: 100%;
+}
+
+/* position sin z-index: alcanza para quedar por encima de las formas
+   (z-index: 0) SIN crear contexto de apilamiento, que es lo que anulaba
+   el mix-blend-mode de la imagen. */
+.hero-v2-inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  width: 100%;
+  min-height: 620px;
+}
+.hero-v2-col-text { flex: 0 0 42%; max-width: 42%; }
+.hero-v2-col-thumb { flex: 1 1 auto; min-width: 0; }
+
+@media (max-width: 959px) {
+  .hero-v2-inner {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+    text-align: center;
+  }
+  .hero-v2-col-text,
+  .hero-v2-col-thumb { flex: none; width: 100%; max-width: 100%; }
+}
+
+.hero-v2-content { padding: 50px 0; }
+
+/* ---- tipografia ---- */
+.hero-v2-eyebrow {
+  display: inline-block;
+  font-family: 'Jost', sans-serif;
+  font-size: 18px;
+  color: #fff;
+  margin-bottom: 14px;
+}
+:host ::ng-deep .hero-v2-eyebrow b { font-weight: 700; }
+
+.hero-v2-title {
+  font-family: 'Jost', sans-serif;
+  font-weight: 900;
+  font-size: 68px;
+  line-height: 1.05;
+  color: #fff;
+  margin: 0 0 16px;
+}
+@media (max-width: 1199px) { .hero-v2-title { font-size: 56px; } }
+@media (max-width: 991px)  { .hero-v2-title { font-size: 45px; } }
+@media (max-width: 575px)  { .hero-v2-title { font-size: 37px; } }
+
+/* Oregano es la tipografia manuscrita que usa la plantilla en esta linea */
+.hero-v2-offer {
+  font-family: 'Oregano', cursive;
+  font-weight: 400;
+  font-size: 34px;
+  color: #fff;
+  margin: 0 0 44px;
+}
+
+/* raya amarilla manuscrita bajo el descuento.
+   Mismo motivo que arriba: el <span> viene de [innerHTML], por eso ::ng-deep. */
+:host ::ng-deep .hero-v2-discount {
+  position: relative;
+  display: inline-block;
+  color: #ffd43a;
+  padding-bottom: 6px;
+}
+:host ::ng-deep .hero-v2-discount::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  bottom: -4px;
+  height: 10px;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10'%3E%3Cpath d='M0,7 Q30,0 60,6 T100,4' stroke='%23ffd43a' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* ---- boton ---- */
+.hero-v2-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  color: #010f1c !important;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  padding: 15px 36px;
+  border: 1px solid #fff;
+  border-radius: 6px;
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+.hero-v2-btn:hover {
+  background: transparent;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.2);
+  text-decoration: none;
+}
+.hero-v2-btn [uk-icon] { transition: transform 0.25s ease; }
+.hero-v2-btn:hover [uk-icon] { transform: translateX(3px); }
+
+/* ---- imagen ---- */
+/* Sin position/z-index: cualquiera de los dos crearia un contexto de
+   apilamiento y el mix-blend-mode dejaria de "ver" el color del slide. */
+.hero-v2-thumb { text-align: center; line-height: 0; }
+.hero-v2-img {
+  max-width: 100%;
+  max-height: 560px;
+  width: auto;
+  height: auto;
+  display: inline-block;
+}
+@media (min-width: 960px) {
+  .hero-v2-thumb { text-align: right; }
+}
+@media (max-width: 959px) {
+  .hero-v2-img { max-height: 300px; margin-bottom: 40px; }
+}
+
+/* ---- entrada escalonada del slide activo ---- */
+.uk-active .hero-v2-eyebrow { animation: heroUp 1s 0.3s both; }
+.uk-active .hero-v2-title   { animation: heroUp 1s 0.5s both; }
+.uk-active .hero-v2-offer   { animation: heroUp 1s 0.7s both; }
+.uk-active .hero-v2-btn     { animation: heroUp 1s 0.9s both; }
+.uk-active .hero-v2-img     { animation: heroRight 1s 0.9s both; }
+
+@keyframes heroUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes heroRight {
+  from { opacity: 0; transform: translateX(50px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ---- flechas: ocultas y desplazadas hacia afuera hasta el hover ---- */
+.hero-v2-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  z-index: 2;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+.hero-v2-arrow-prev { left: 0; }
+.hero-v2-arrow-next { right: 0; }
+.hero-v2:hover .hero-v2-arrow { opacity: 1; visibility: visible; }
+.hero-v2:hover .hero-v2-arrow-prev { left: 40px; }
+.hero-v2:hover .hero-v2-arrow-next { right: 40px; }
+.hero-v2-arrow:hover {
+  background-color: #fff;
+  border-color: #fff;
+  color: #010f1c;
+}
+@media (max-width: 991px) {
+  .hero-v2-arrow { display: none; }
+}
+
+/* ---- dots inferiores ---- */
+.hero-v2-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 25px;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+.hero-v2-dots .uk-dotnav > * > * {
+  width: 8px;
+  height: 8px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.25);
+}
+.hero-v2-dots .uk-dotnav > .uk-active > * { background-color: #fff; }
+
+
+
+/* ===== Banners promo secundarios (inspirado en .tp-banner-item de Shofy) ===== */
+
+.promo-row {
+  display: flex;
+  gap: 30px;
+  align-items: stretch;
+}
+.promo-col-lg { flex: 2 1 0; min-width: 0; }
+.promo-col-sm { flex: 1 1 0; min-width: 0; }
+@media (max-width: 959px) { .promo-row { flex-direction: column; } }
+
+#slider-secundario-izq,
+#slider-secundario-der { position: relative; }
+
+.promo-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 290px;
+  padding: 44px 48px;
+  border-radius: 12px;
+  overflow: hidden;
+  color: #010f1c;
+  text-decoration: none;
+  box-shadow: 0 4px 20px rgba(1, 15, 28, 0.06);
+  transition: box-shadow 0.35s ease, transform 0.35s ease;
+}
+.promo-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px rgba(1, 15, 28, 0.16);
+}
+.promo-card-sm { padding: 38px 32px; }
+
+/* Formas decorativas: dos círculos translúcidos que rompen el color plano
+   y dan profundidad sin depender de imágenes externas. */
+.promo-card::before {
+  content: '';
+  position: absolute;
+  top: -70px;
+  right: -50px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+.promo-card::after {
+  content: '';
+  position: absolute;
+  bottom: -90px;
+  left: -60px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 28px solid rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.promo-card-content {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 55%;
+  min-width: 0;
+  display: block;
+}
+.promo-card-sm .promo-card-content { flex: 1 1 58%; }
+
+/* label como badge */
+.promo-card-label {
+  display: inline-block;
+  font-family: 'Roboto', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: inherit;
+  background: rgba(1, 15, 28, 0.08);
+  padding: 5px 12px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+}
+
+.promo-card-title {
+  display: block;
+  font-family: 'Jost', sans-serif;
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+  transition: opacity 0.25s ease;
+}
+.promo-card-sm .promo-card-title { font-size: 22px; }
+.promo-card:hover .promo-card-title { opacity: 0.85; }
+
+.promo-card-text {
+  display: block;
+  font-family: 'Roboto', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.7;
+  margin-bottom: 26px;
+}
+
+/* CTA con subrayado animado */
+.promo-card-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 15px;
+  padding-bottom: 4px;
+}
+.promo-card-btn::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.35s ease;
+}
+.promo-card:hover .promo-card-btn::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.promo-card-btn [uk-icon] { transition: transform 0.3s ease; }
+.promo-card:hover .promo-card-btn [uk-icon] { transform: translateX(5px); }
+
+/* Medallón circular: encierra la foto y absorbe el fondo blanco del JPG,
+   convirtiendo el recuadro en un elemento intencional del diseño. */
+.promo-card-thumb {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  width: 210px;
+  height: 210px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(1, 15, 28, 0.18), 0 0 0 12px rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  transition: transform 0.4s ease;
+}
+.promo-card:hover .promo-card-thumb { transform: scale(1.04); }
+.promo-card-sm .promo-card-thumb { width: 150px; height: 150px; }
+
+.promo-card-img {
+  max-width: 78%;
+  max-height: 78%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  transition: transform 0.4s ease;
+}
+.promo-card:hover .promo-card-img { transform: scale(1.06); }
+
+/* Variante para banners con color de fondo oscuro */
+.promo-card-oscuro,
+.promo-card-oscuro .promo-card-title,
+.promo-card-oscuro .promo-card-text,
+.promo-card-oscuro .promo-card-btn { color: #fff; }
+.promo-card-oscuro .promo-card-label {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* dots */
+.promo-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 3;
+  margin: 0;
+}
+.promo-dots > * > * {
+  width: 7px;
+  height: 7px;
+  border: none;
+  background-color: #fff;;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+.promo-dots > .uk-active > * {
+  width: 20px;
+  border-radius: 4px;
+  background-color: #fff;;
+}
+.promo-card-oscuro ~ .promo-dots > * > * { background-color: #fff; }
+.promo-card-oscuro ~ .promo-dots > .uk-active > * { background-color: #fff; }
+#slider-secundario-izq .promo-dots > * > * {
+  background-color: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: none;
+}
+#slider-secundario-izq .promo-dots > .uk-active > * {
+  background-color: #fff;
+  border-color: #fff;
+  box-shadow: none;
+}
+
+@media (max-width: 575px) {
+  .promo-card,
+  .promo-card-sm {
+    flex-direction: column;
+    text-align: center;
+    padding: 36px 24px 52px;
+    min-height: auto;
+  }
+  .promo-card-content { flex: none; }
+  .promo-card-thumb { margin: 22px auto 0; width: 170px; height: 170px; }
+}
+
+#slider-secundario-izq,
+#slider-secundario-der { position: relative; }
+
+
+/* Variante para banners con color de fondo oscuro */
+.promo-card-oscuro,
+.promo-card-oscuro .promo-card-label,
+.promo-card-oscuro .promo-card-title,
+.promo-card-oscuro .promo-card-text,
+.promo-card-oscuro .promo-card-btn { color: #fff; }
+.promo-card-oscuro:hover .promo-card-title { color: #ffd43a; }
+.promo-card-oscuro .promo-dots > * > * { background-color: rgba(255, 255, 255, 0.3); }
+.promo-card-oscuro .promo-dots > .uk-active > * { background-color: #fff; }
+
+
+/* ===== Banner promo izquierdo: estilo "Black Friday" =====
+   Base negra fija; --promo-accent llega desde el color cargado en el panel
+   y tiñe glow, banda, badge y CTA. Un solo punto de personalización. */
+
+.promo-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 320px;
+  padding: 40px 48px;
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  color: #fff;
+  background: radial-gradient(circle at 30% 40%, #2a2a2e 0%, #121214 45%, #08080a 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  transition: box-shadow 0.35s ease, transform 0.35s ease;
+}
+.promo-hero:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+}
+
+/* Luz ambiental superior: elipse muy ancha, anclada por encima del borde
+   de arriba, que irradia hacia abajo y se apaga antes del centro.
+   Ocupa todo el ancho para que sea un arco y no un foco puntual. */
+.promo-hero-glow {
+  position: absolute;
+  left: -42%;
+  top: -102%;
+  width: 125%;
+  height: 130%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 50% 72%,
+    var(--promo-accent) 0%,
+    color-mix(in srgb, var(--promo-accent) 45%, transparent) 42%,
+    transparent 68%
+  );
+  opacity: 0.5;
+  filter: blur(55px) saturate(1.2);
+  pointer-events: none;
+}
+
+/* borde de luz más definido justo sobre la línea del arco */
+.promo-hero-glow::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 20%;
+  width: 92%;
+  height: 30%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: var(--promo-accent);
+  opacity: 0.28;
+  filter: blur(40px);
+}
+
+/* banda diagonal inferior: el negro final arranca más tarde, así el acento
+   ocupa más superficie y no se apaga contra el fondo. */
+.promo-hero-band {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -18%;
+  height: 46%;
+  background: linear-gradient(
+    90deg,
+    var(--promo-accent) 0%,
+    var(--promo-accent) 42%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+  transform: rotate(-4deg);
+  opacity: 1;
+  filter: brightness(1.15) saturate(1.1);
+  pointer-events: none;
+}
+
+/* ---- producto + badge ---- */
+.promo-hero-thumb {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 46%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+}
+.promo-hero-img {
+  max-width: 100%;
+  max-height: 250px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.55));
+  transition: transform 0.4s ease;
+}
+.promo-hero:hover .promo-hero-img { transform: scale(1.04); }
+
+.promo-hero-badge {
+  position: absolute;
+  right: 4%;
+  top: 22%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: var(--promo-accent);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  transform: rotate(-4deg);
+  text-align: center;
+  line-height: 1;
+}
+.promo-hero-badge-top {
+  font-family: 'Roboto', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+.promo-hero-badge-value {
+  font-family: 'Jost', sans-serif;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+.promo-hero-badge-sale {
+  font-family: 'Jost', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 10px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: #fff;
+  color: var(--promo-accent);
+}
+
+/* ---- textos ---- */
+.promo-hero-content {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 54%;
+  min-width: 0;
+  display: block;
+  text-align: center;
+}
+
+.promo-hero-title {
+  display: block;
+  font-family: 'Jost', sans-serif;
+  font-weight: 900;
+  font-size: 54px;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+.promo-hero-sub {
+  display: block;
+  font-family: 'Oregano', cursive;
+  font-size: 26px;
+  color: var(--promo-accent);
+  margin-bottom: 24px;
+  filter: brightness(1.4);
+}
+
+.promo-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  padding: 11px 12px 11px 26px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 100px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+.promo-hero:hover .promo-hero-btn {
+  background: var(--promo-accent);
+  border-color: var(--promo-accent);
+}
+.promo-hero-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--promo-accent);
+  transition: transform 0.3s ease, background-color 0.3s ease;
+}
+.promo-hero:hover .promo-hero-btn-icon {
+  background: #fff;
+  color: var(--promo-accent);
+  transform: translateX(3px);
+}
+
+@media (max-width: 1199px) {
+  .promo-hero-title { font-size: 42px; }
+  .promo-hero-img { max-height: 200px; }
+}
+@media (max-width: 575px) {
+  .promo-hero {
+    flex-direction: column;
+    padding: 34px 22px 54px;
+    min-height: auto;
+  }
+  .promo-hero-thumb { flex: none; width: 100%; }
+  .promo-hero-title { font-size: 34px; }
+}
+
+/* ===== Banner promo derecho: estilo "story" =====
+   El color del panel llega en --promo-accent; el resto (blanco, relieve
+   del titulo, onda) es fijo, para que el diseño no dependa del color. */
+
+.promo-story {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 338px;
+  padding: 30px 26px 34px;
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  text-align: center;
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, #fff 22%, var(--promo-accent)) 0%, transparent 60%),
+    var(--promo-accent);
+  box-shadow: 0 4px 20px rgba(1, 15, 28, 0.15);
+  transition: box-shadow 0.35s ease, transform 0.35s ease;
+}
+.promo-story:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px rgba(1, 15, 28, 0.28);
+}
+
+/* onda blanca diagonal del fondo */
+.promo-story-wave {
+  position: absolute;
+  left: -30%;
+  right: -30%;
+  top: 42%;
+  height: 60%;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 50% 50% 0 0 / 34% 34% 0 0;
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
+.promo-story-title {
+  position: relative;
+  z-index: 2;
+  display: block;
+  font-family: 'Jost', sans-serif;
+  font-weight: 900;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  /* relieve: sombra dura oscura + halo blanco, como en la referencia */
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.35),
+    0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.promo-story-sub {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  font-family: 'Roboto', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ---- medallon + producto ---- */
+.promo-story-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin: 4px 0;
+}
+
+.promo-story-img {
+  max-width: 100%;
+  max-height: 200px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.4));
+  transition: transform 0.4s ease;
+}
+
+.promo-story-badge {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--promo-accent);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  line-height: 1;
+}
+.promo-story-badge-top,
+.promo-story-badge-bottom {
+  font-family: 'Roboto', sans-serif;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.promo-story-badge-value {
+  font-family: 'Jost', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  margin: 2px 0;
+}
+
+.promo-story-thumb {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.promo-story:hover .promo-story-img { transform: scale(1.05); }
+
+/* ---- CTA ---- */
+.promo-story-btn {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--promo-accent);
+  background: #fff;
+  padding: 8px 8px 8px 20px;
+  border-radius: 100px;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.promo-story-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--promo-accent);
+  color: #fff;
+  transition: transform 0.3s ease;
+}
+.promo-story:hover .promo-story-btn-icon { transform: translateX(3px); }
+
+/* dots sobre fondo de color */
+#slider-secundario-der .promo-dots > * > * {
+  background-color: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: none;
+}
+#slider-secundario-der .promo-dots > .uk-active > * {
+  background-color: #fff;
+  border-color: #fff;
+  box-shadow: none;
+}
+
+/* Variante para colores claros: las luces blancas se pierden sobre un fondo
+   claro, así que se invierte el modelado (sombras en vez de brillos) y el
+   texto pasa a oscuro para mantener el contraste. */
+.promo-story-claro {
+  color: #0d1b2a;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.65) 0%, transparent 62%),
+    var(--promo-accent);
+}
+.promo-story-claro .promo-story-wave {
+  background: rgba(13, 27, 42, 0.1);
+}
+.promo-story-claro .promo-story-title {
+  text-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.7),
+    0 6px 14px rgba(13, 27, 42, 0.25);
+}
+.promo-story-claro .promo-story-sub {
+  background: rgba(13, 27, 42, 0.12);
+}
+.promo-story-claro .promo-story-badge {
+  background: #0d1b2a;
+  color: #fff;
+}
+.promo-story-claro .promo-story-btn {
+  background: #0d1b2a;
+  color: #fff;
+}
+.promo-story-claro .promo-story-btn-icon {
+  background: #fff;
+  color: #0d1b2a;
+}
+.promo-story-claro .promo-story-img {
+  filter: drop-shadow(0 14px 22px rgba(13, 27, 42, 0.28));
+}
+#slider-secundario-der .promo-story-claro ~ .promo-dots > * > * {
+  background-color: rgba(13, 27, 42, 0.3);
+  border-color: rgba(13, 27, 42, 0.4);
+}
+
+
+/* ===== Banner terciario (Product spotlight): estilo "Black Friday" =====
+   Todo el diseño se deriva de un único color: el que llega en
+   --spotlight-accent (sld_color) desde el template. A partir de él se
+   calculan el fondo oscuro, el halo detrás del producto, la burbuja
+   superior izquierda y la ola inferior derecha, para que el banner quede
+   coherente sea cual sea el color cargado en el panel admin.
+   La tipografía usa Jost 900/700 en oblicua sintética (font-style: italic),
+   que es lo que da el aire de afiche promocional del diseño de referencia. */
+
+.spotlight-banner {
+  /* base oscura teñida con el acento: nunca un negro plano */
+  --spotlight-dark: color-mix(in srgb, var(--spotlight-accent) 16%, #0f0a07);
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 380px;
+  border-radius: 18px;
+  overflow: hidden;
+  text-decoration: none;
+  background-color: var(--spotlight-dark);
+  /* halo cálido detrás del producto + luz suave sobre la burbuja */
+  background-image:
+    radial-gradient(
+      115% 95% at 66% 52%,
+      color-mix(in srgb, var(--spotlight-accent) 60%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      80% 70% at 12% 10%,
+      color-mix(in srgb, var(--spotlight-accent) 30%, transparent) 0%,
+      transparent 70%
+    );
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+  transition: box-shadow 0.35s ease, transform 0.35s ease;
+}
+.spotlight-banner:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.32);
+}
+
+/* --- Formas de fondo (SVG) --- */
+.spotlight-shapes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  display: block;
+}
+.spotlight-shape-blob,
+.spotlight-shape-wave {
+  fill: var(--spotlight-accent);
+}
+/* ola de atrás en un tono más apagado: da profundidad al ángulo inferior */
+.spotlight-shape-wave-back {
+  fill: color-mix(in srgb, var(--spotlight-accent) 62%, #000);
+}
+
+/* --- Marcas decorativas (chevrones) --- */
+.spotlight-mark {
+  position: absolute;
+  fill: none;
+  stroke-width: 20;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+/* sólido y oscuro, apoyado dentro de la burbuja del ángulo superior izquierdo */
+.spotlight-mark-left {
+  z-index: 1;
+  top: 24%;
+  left: 4.5%;
+  width: 76px;
+  height: 76px;
+  stroke: color-mix(in srgb, var(--spotlight-accent) 32%, #1a0b04);
+}
+/* versión apagada sobre el fondo oscuro de la derecha: queda detrás del
+   producto (z-index 1 contra el 2 de la columna de imagen) */
+.spotlight-mark-right {
+  z-index: 1;
+  top: 20%;
+  right: 3%;
+  width: 100px;
+  height: 100px;
+  stroke: color-mix(in srgb, var(--spotlight-accent) 72%, #fff);
+  opacity: 0.28;
+}
+
+/* --- Columna de texto --- */
+/* el padding izquierdo va en % para que el texto se corra hacia el centro
+   de forma proporcional al ancho del banner, no con un valor fijo */
+.spotlight-content {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 50%;
+  max-width: 50%;
+  padding: 44px 14px 44px 13%;
+}
+
+.spotlight-title {
+  display: block;
+  font-family: 'Jost', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 62px;
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+/* primera palabra del título en el color del banner, el resto en blanco
+   y en mayúsculas: es el contraste "Black" / "FRIDAY" del diseño */
+.spotlight-title-first {
+  display: block;
+  font-size: 0.82em;
+  color: var(--spotlight-accent);
+}
+.spotlight-title-rest {
+  display: block;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.spotlight-sub {
+  display: block;
+  margin: 4px 0 28px 0.3em;
+  font-family: 'Jost', sans-serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 30px;
+  line-height: 1.1;
+  color: #fff;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Botón CTA: píldora del color del banner + círculo oscuro con flecha --- */
+.spotlight-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 7px 7px 26px;
+  border-radius: 100px;
+  background: var(--spotlight-accent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--spotlight-accent) 40%, transparent);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.spotlight-cta-text {
+  font-family: 'Jost', sans-serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.spotlight-cta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #14100d;
+  color: #fff;
+  transition: transform 0.3s ease;
+}
+.spotlight-banner:hover .spotlight-cta {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 32px color-mix(in srgb, var(--spotlight-accent) 50%, transparent);
+}
+.spotlight-banner:hover .spotlight-cta-icon {
+  transform: translateX(3px);
+}
+
+/* --- Columna del producto --- */
+.spotlight-thumb-col {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  padding: 28px 46px 28px 0;
+}
+.spotlight-img {
+  /* desplazamiento solo visual: `right` sobre un elemento relativo no altera
+     el layout, así que la imagen se corre a la izquierda sin encogerse ni
+     mover el sello de descuento. El % es sobre el ancho de la columna, por
+     lo que el corrimiento acompaña proporcionalmente a cada breakpoint. */
+  position: relative;
+  right: 41%;
+  max-width: 100%;
+  max-height: 300px;
+  width: auto;
+  object-fit: contain;
+  transform: rotate(-5deg);
+  filter: drop-shadow(0 28px 34px rgba(0, 0, 0, 0.55));
+  transition: transform 0.4s ease;
+}
+.spotlight-banner:hover .spotlight-img {
+  transform: rotate(-5deg) scale(1.03);
+}
+
+/* --- Sello de descuento: "Get Upto / NN% / Discount" + flecha curva --- */
+.spotlight-badge {
+  position: absolute;
+  z-index: 3;
+  /* acompaña el corrimiento de .spotlight-img para conservar la relación
+     entre el sello y el producto. El % es sobre el ancho de la columna, así
+     que el desplazamiento escala igual que el de la imagen en cada
+     breakpoint. En móvil la regla no aplica: el sello pasa a static. */
+  left: -37%;
+  bottom: 12%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+.spotlight-badge-top {
+  font-family: 'Jost', sans-serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 22px;
+  color: #fff;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+.spotlight-badge-value {
+  font-family: 'Jost', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 72px;
+  line-height: 0.9;
+  color: var(--spotlight-accent);
+  text-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+/* el skew convierte el rectángulo blanco en el paralelogramo del diseño */
+.spotlight-badge-tag {
+  margin-top: 8px;
+  padding: 5px 18px;
+  background: #fff;
+  color: #14100d;
+  font-family: 'Jost', sans-serif;
+  font-weight: 800;
+  font-style: italic;
+  font-size: 22px;
+  transform: skewX(-10deg);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+}
+.spotlight-badge-arrow {
+  position: absolute;
+  left: calc(100% + 6px);
+  bottom: -12px;
+  width: 118px;
+  height: 100px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+/* --- Responsive --- */
+@media (max-width: 1199px) {
+  .spotlight-content { padding: 38px 12px 38px 11%; }
+  .spotlight-mark-left { width: 64px; height: 64px; }
+  .spotlight-mark-right { width: 84px; height: 84px; }
+  .spotlight-title { font-size: 52px; }
+  .spotlight-sub { font-size: 26px; margin-bottom: 24px; }
+  .spotlight-badge-value { font-size: 60px; }
+  .spotlight-img { max-height: 260px; }
+}
+@media (max-width: 959px) {
+  .spotlight-banner { min-height: 320px; }
+  .spotlight-content { padding: 30px 10px 30px 8%; }
+  .spotlight-mark-left { width: 50px; height: 50px; stroke-width: 22; }
+  .spotlight-mark-right { display: none; }
+  .spotlight-title { font-size: 40px; }
+  .spotlight-sub { font-size: 21px; margin-bottom: 20px; }
+  .spotlight-cta { padding-left: 20px; }
+  .spotlight-cta-text { font-size: 13px; }
+  .spotlight-cta-icon { width: 30px; height: 30px; }
+  .spotlight-thumb-col { padding-right: 24px; }
+  .spotlight-img { max-height: 200px; }
+  .spotlight-badge-top { font-size: 15px; }
+  .spotlight-badge-value { font-size: 44px; }
+  .spotlight-badge-tag { font-size: 16px; padding: 4px 14px; }
+  .spotlight-badge-arrow { display: none; }
+}
+@media (max-width: 639px) {
+  .spotlight-banner {
+    flex-direction: column;
+    min-height: auto;
+    padding: 32px 20px 36px;
+    text-align: center;
+    /* sin las curvas SVG, el acento se resuelve con el degradado inferior */
+    background-image:
+      radial-gradient(
+        95% 45% at 50% 84%,
+        color-mix(in srgb, var(--spotlight-accent) 65%, transparent) 0%,
+        transparent 65%
+      ),
+      radial-gradient(
+        85% 40% at 50% 8%,
+        color-mix(in srgb, var(--spotlight-accent) 28%, transparent) 0%,
+        transparent 70%
+      );
+  }
+  .spotlight-shapes,
+  .spotlight-mark { display: none; }
+  .spotlight-content { flex: none; max-width: 100%; padding: 0 0 22px; }
+  .spotlight-title { font-size: 38px; }
+  .spotlight-sub { margin: 4px 0 22px; }
+  .spotlight-thumb-col {
+    flex: none;
+    width: 100%;
+    flex-direction: column;
+    gap: 18px;
+    padding: 0;
+  }
+  .spotlight-img { max-height: 180px; transform: none; right: 0; }
+  .spotlight-banner:hover .spotlight-img { transform: scale(1.03); }
+  .spotlight-badge { position: static; align-items: center; }
+}

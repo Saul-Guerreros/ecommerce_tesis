@@ -99,16 +99,23 @@ class ProductoController extends Controller
         return $productos;
     }
 
-    // GET /api/admin/productos?search=&marca=&estado=
+    // GET /api/admin/productos?search=&marca=&estado=&categoria=&estado_publicacion=&page=&per_page=
     public function index(Request $request): JsonResponse
     {
-        $query = Producto::with(['marca', 'tipoIva', 'unidadMedida']);
+        $query = Producto::with([
+            'marca',
+            'tipoIva',
+            'unidadMedida',
+            'publicacionWeb.categoria',
+            'publicacionWeb.imagenes',
+        ]);
 
         if ($request->filled('search')) {
             $search = '%' . strtolower($request->search) . '%';
             $query->where(function ($q) use ($search) {
                 $q->whereRaw('LOWER(prd_descri) LIKE ?', [$search])
-                  ->orWhereRaw('LOWER(prd_codinv) LIKE ?', [$search]);
+                  ->orWhereRaw('LOWER(prd_codinv) LIKE ?', [$search])
+                  ->orWhereHas('publicacionWeb', fn ($p) => $p->whereRaw('LOWER(pub_titulo) LIKE ?', [$search]));
             });
         }
 
@@ -120,16 +127,42 @@ class ProductoController extends Controller
             $query->where('prd_estado', $request->estado);
         }
 
-        $productos = $query->orderBy('prd_descri')->get();
-        $usos      = $this->contarUsos();
+        // Filtro de CATEGORÍA: vive en publicacion_web.pub_catid, no en producto.
+        if ($request->filled('categoria')) {
+            $categoria = $request->categoria;
+            $query->whereHas('publicacionWeb', fn ($p) => $p->where('pub_catid', $categoria));
+        }
 
-        $productos->each(function ($p) use ($usos) {
+        // Filtro de ESTADO DE PUBLICACIÓN (distinto de prd_estado, que es inventario).
+        if ($request->filled('estado_publicacion')) {
+            switch ($request->estado_publicacion) {
+                case 'sin_publicar':
+                    $query->doesntHave('publicacionWeb');
+                    break;
+                case 'borrador':
+                    $query->whereHas('publicacionWeb', fn ($p) => $p->where('pub_estado', 0));
+                    break;
+                case 'publicado':
+                    $query->whereHas('publicacionWeb', fn ($p) => $p->where('pub_estado', 1));
+                    break;
+                case 'archivado':
+                    $query->whereHas('publicacionWeb', fn ($p) => $p->where('pub_estado', 2));
+                    break;
+            }
+        }
+
+        $perPage  = (int) ($request->per_page ?? 10);
+        $productos = $query->orderBy('prd_descri')->paginate($perPage);
+
+        $usos = $this->contarUsos();
+
+        $productos->getCollection()->each(function ($p) use ($usos) {
             $p->usos_count = array_sum($usos[$p->prd_id] ?? []);
         });
 
-        $productos = $this->conStock($productos);
+        $productos->setCollection($this->conStock($productos->getCollection()));
 
-        return response()->json(['data' => ProductoResource::collection($productos)], 200);
+        return ProductoResource::collection($productos)->response();
     }
 
     // GET /api/admin/productos/config

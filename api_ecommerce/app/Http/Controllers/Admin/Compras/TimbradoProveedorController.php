@@ -18,7 +18,8 @@ class TimbradoProveedorController extends Controller
      * fuera de rango. Solo se permite desactivarlo.
      */
     private const DEPENDENCIAS = [
-        'compra_cab' => ['columna' => 'com_tpvid', 'etiqueta' => 'compra(s) registrada(s)'],
+        'compra_cab'   => ['columna' => 'com_tpvid', 'etiqueta' => 'compra(s) registrada(s)'],
+        'nota_credito' => ['columna' => 'ncr_tpvid', 'etiqueta' => 'nota(s) de crédito registrada(s)'],
     ];
 
     private function contarUsos(int $id): array
@@ -58,7 +59,7 @@ class TimbradoProveedorController extends Controller
         ]);
 
         $query = TimbradoProveedor::with('tipoComprobante')
-            ->withCount('compras')
+           ->withCount(['compras', 'notasCredito'])
             ->where('tpv_proid', $request->proveedor);
 
         if ($request->filled('tipo')) {
@@ -78,7 +79,7 @@ class TimbradoProveedorController extends Controller
     public function store(TimbradoProveedorRequest $request): JsonResponse
     {
         $timbrado = TimbradoProveedor::create($request->validated() + ['tpv_estado' => 1]);
-        $timbrado->load('tipoComprobante')->loadCount('compras');
+        $timbrado->load('tipoComprobante')->loadCount(['compras', 'notasCredito']);
 
         return response()->json([
             'message' => 'Timbrado registrado correctamente.',
@@ -105,7 +106,7 @@ class TimbradoProveedorController extends Controller
 
         // El proveedor dueño no se cambia en una edicion.
         $timbrado->update($request->safe()->except('tpv_proid'));
-        $timbrado->load('tipoComprobante')->loadCount('compras');
+        $timbrado->load('tipoComprobante')->loadCount(['compras', 'notasCredito']);
 
         return response()->json([
             'message' => 'Timbrado actualizado correctamente.',
@@ -144,7 +145,7 @@ class TimbradoProveedorController extends Controller
 
         $timbrado->tpv_estado = $timbrado->tpv_estado === 1 ? 0 : 1;
         $timbrado->save();
-        $timbrado->load('tipoComprobante')->loadCount('compras');
+        $timbrado->load('tipoComprobante')->loadCount(['compras', 'notasCredito']);
 
         return response()->json([
             'message' => $timbrado->tpv_estado === 1 ? 'Timbrado activado correctamente.' : 'Timbrado desactivado correctamente.',

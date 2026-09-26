@@ -3,12 +3,24 @@
 namespace App\Http\Requests\Compra;
 
 use App\Models\Compras\TimbradoProveedor;
+use App\Models\Compras\TipoComprobante;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Validator;
 
 class CompraRequest extends FormRequest
 {
+    public const DIAS_MAX_ANTIGUEDAD = 10;
+
+    /**
+     * El tipo de comprobante NO viene del cliente: este formulario solo
+     * registra Facturas. Se fuerza aca para que no se pueda manipular.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['com_tcoid' => TipoComprobante::idFactura()]);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -22,15 +34,18 @@ class CompraRequest extends FormRequest
             'com_depid' => ['required', 'integer', 'exists:deposito,dpo_id'],
             'com_tcoid' => ['required', 'integer', 'exists:tipo_comprobante,tco_id'],
 
-            // CAMBIO: ya no se reciben com_timbra / com_timbvn escritos a mano.
             // Se recibe el ID del timbrado del proveedor y el controlador
             // copia numero y vencimiento como snapshot.
             'com_tpvid'  => ['nullable', 'integer', 'exists:timbrado_proveedor,tpv_id'],
 
             'com_nrodoc' => ['required', 'string', 'regex:/^\d{3}-\d{3}-\d{7}$/'],
-            // CAMBIO: no se permiten fechas futuras (depende de APP_TIMEZONE).
-            'com_fchaem' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'com_nrorem' => ['nullable', 'string', 'max:15'],
+
+            // No futura y con antiguedad maxima de 10 dias (APP_TIMEZONE = America/Asuncion).
+            'com_fchaem' => [
+                'required', 'date_format:Y-m-d', 'before_or_equal:today',
+                'after_or_equal:' . now()->subDays(self::DIAS_MAX_ANTIGUEDAD)->toDateString(),
+            ],
+
 
             'com_condic' => ['required', 'integer', 'in:0,1'],
             'com_plzdia' => ['nullable', 'integer', 'min:0'],
@@ -43,23 +58,19 @@ class CompraRequest extends FormRequest
             'detalle'              => ['required', 'array', 'min:1'],
             'detalle.*.prd_id'     => ['required', 'integer', 'exists:producto,prd_id'],
             'detalle.*.umd_id'     => ['required', 'integer', 'exists:unidad_medida,umd_id'],
+            'detalle.*.peq_id'     => ['nullable', 'integer', 'exists:producto_equivalencia,peq_id'],
             'detalle.*.tiv_id'     => ['required', 'integer', 'exists:tipo_iva,tiv_id'],
             'detalle.*.descri'     => ['required', 'string', 'max:150'],
             'detalle.*.precun'     => ['required', 'numeric', 'min:0.0001'],
             'detalle.*.canfac'     => ['required', 'numeric', 'min:0.0001'],
             'detalle.*.canrec'     => ['required', 'numeric', 'min:0'],
             'detalle.*.despor'     => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'detalle.*.descto'     => ['nullable', 'numeric', 'min:0'],
+            'detalle.*.descto'     => ['nullable', 'numeric', 'min:0'],   // descuento UNITARIO en Gs. (fuente de verdad)
             'detalle.*.tasa'       => ['nullable', 'numeric', 'min:0'],
             'detalle.*.gravada'    => ['nullable', 'numeric', 'min:0'],
             'detalle.*.iva'        => ['nullable', 'numeric', 'min:0'],
 
-            'com_exenta' => ['required', 'numeric', 'min:0'],
-            'com_grav5'  => ['required', 'numeric', 'min:0'],
-            'com_grav10' => ['required', 'numeric', 'min:0'],
-            'com_iva5'   => ['required', 'numeric', 'min:0'],
-            'com_iva10'  => ['required', 'numeric', 'min:0'],
-            'com_total'  => ['required', 'numeric', 'min:0'],
+            // Totales de cabecera: ya NO se reciben; los calcula CompraService.
         ];
     }
 
@@ -152,9 +163,9 @@ class CompraRequest extends FormRequest
 
         if ($this->filled('com_fchaem') && !$timbrado->cubreFecha($this->com_fchaem)) {
             $v->errors()->add(
-                'com_fchaem',
-                'La fecha de emisión está fuera de la vigencia del timbrado ('
-                . $timbrado->tpv_fechin->format('d/m/Y') . ' al ' . $timbrado->tpv_fechfn->format('d/m/Y') . ').'
+                'com_tpvid',
+                'El timbrado venció el ' . $timbrado->tpv_fechfn->format('d/m/Y')
+                . ', antes de la fecha de emisión. Registre el timbrado nuevo del proveedor.'
             );
         }
 
@@ -186,6 +197,12 @@ class CompraRequest extends FormRequest
     private function validarDetalle(Validator $v): void
     {
         foreach ((array) $this->input('detalle', []) as $i => $linea) {
+            $precio = (float) ($linea['precun'] ?? 0);
+            $descto = (float) ($linea['descto'] ?? 0);
+            if ($descto > $precio) {
+                $v->errors()->add("detalle.$i.descto", 'El descuento unitario no puede superar el precio unitario.');
+            }
+
             if (empty($linea['prd_id'])) continue;
 
             $producto = DB::table('producto')->where('prd_id', $linea['prd_id'])->first();
@@ -195,17 +212,36 @@ class CompraRequest extends FormRequest
                 $v->errors()->add("detalle.$i.prd_id", 'Uno de los productos seleccionados está inactivo.');
             }
 
-            if (!empty($linea['umd_id']) && (int) $linea['umd_id'] !== (int) $producto->prd_umdid) {
-                $existe = DB::table('producto_equivalencia')
-                    ->where('peq_prdid', $linea['prd_id'])
-                    ->where('peq_umdid', $linea['umd_id'])
-                    ->where('peq_estado', 1)
-                    ->exists();
+            
+            $umdBase  = (int) $producto->prd_umdid;
+            $umdLinea = (int) ($linea['umd_id'] ?? 0);
+            $peqId    = $linea['peq_id'] ?? null;
 
-                if (!$existe) {
-                    $v->errors()->add("detalle.$i.umd_id", 'Esa unidad no tiene una equivalencia activa registrada para este producto.');
+            // Unidad de stock: factor 1 implícito, no lleva presentación.
+            if ($umdLinea === $umdBase) {
+                if (!empty($peqId)) {
+                    $v->errors()->add("detalle.$i.peq_id", 'La unidad de stock no usa equivalencia.');
                 }
+                continue;
             }
+
+            // Unidad alternativa: debe indicar QUÉ presentación (Caja x10, Caja x12...).
+            if (empty($peqId)) {
+                $v->errors()->add("detalle.$i.peq_id", 'Debe seleccionar la presentación de la unidad elegida.');
+                continue;
+            }
+
+            $existe = DB::table('producto_equivalencia')
+                ->where('peq_id', $peqId)
+                ->where('peq_prdid', $linea['prd_id'])
+                ->where('peq_umdid', $umdLinea)
+                ->where('peq_estado', 1)
+                ->exists();
+
+            if (!$existe) {
+                $v->errors()->add("detalle.$i.peq_id", 'La presentación seleccionada no está activa o no corresponde al producto y la unidad.');
+            }
+
         }
     }
 
@@ -216,13 +252,14 @@ class CompraRequest extends FormRequest
             'com_proid.exists'    => 'El proveedor seleccionado no existe.',
             'com_sucid.required'  => 'Debe seleccionar la sucursal.',
             'com_depid.required'  => 'Debe seleccionar el depósito.',
-            'com_tcoid.required'  => 'Debe seleccionar el tipo de comprobante.',
+            'com_tcoid.required'  => 'No está configurado el tipo de comprobante Factura.',
             'com_tpvid.exists'    => 'El timbrado seleccionado no existe.',
             'com_nrodoc.required' => 'El número de factura es obligatorio.',
             'com_nrodoc.regex'    => 'El número de factura debe tener el formato 001-001-0000000.',
-            'com_fchaem.required' => 'La fecha de emisión es obligatoria.',
+            'com_fchaem.required'        => 'La fecha de emisión es obligatoria.',
             'com_fchaem.date_format'     => 'La fecha de emisión no es válida.',
             'com_fchaem.before_or_equal' => 'La fecha de emisión no puede ser posterior a hoy.',
+            'com_fchaem.after_or_equal'  => 'La fecha de emisión no puede tener más de ' . self::DIAS_MAX_ANTIGUEDAD . ' días de antigüedad.',
             'com_cuotas.required_if'     => 'Debe indicar la cantidad de cuotas cuando la condición es Crédito.',
             'detalle.required'    => 'Debe cargar al menos un ítem.',
             'detalle.min'         => 'Debe cargar al menos un ítem.',

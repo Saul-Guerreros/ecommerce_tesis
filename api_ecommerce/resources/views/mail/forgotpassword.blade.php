@@ -165,7 +165,7 @@
 																											<tr>
 																												<td class="title-22 a-center py-20 px-50 mpx-15" style="border-radius: 10px; border: 1px dashed #b4b4d4; font-size:22px; line-height:26px; color:#282828; font-family:'PT Sans', Arial, sans-serif; min-width:auto !important; text-align:center; padding-top: 20px; padding-bottom: 20px; padding-left: 50px; padding-right: 50px;" bgcolor="#f4ecfa">
 																													<multiline>
-																														<strong>USE CODE : <span class="c-purple" style="color:#9128df;">{{$user->code_verified}}</span></strong>
+																														<strong>USE CODE : <span class="c-purple" style="color:#9128df;">{{ $codigo }}</span></strong>
 																													</multiline>
 																												</td>
 																											</tr>

@@ -7,59 +7,189 @@
     <div class="text-center py-3" *ngIf="cargandoConfig"><c-spinner color="primary"></c-spinner></div>
 
     <form [formGroup]="form" *ngIf="!cargandoConfig">
+      <!-- Proveedor: read-only, viene de la factura (sin duplicar dato) -->
       <div class="row g-3 mb-3">
-        <div class="col-md-4">
-          <label cLabel>N° de Nota de Crédito <span class="text-danger">*</span></label>
-          <input cFormControl formControlName="ncr_numero" maxlength="15" />
+        <div class="col-md-6">
+          <label cLabel>Proveedor</label>
+          <input cFormControl [value]="proveedorRazon" disabled />
         </div>
-        <div class="col-md-4">
-          <label cLabel>Fecha <span class="text-danger">*</span></label>
-          <input cFormControl type="date" formControlName="ncr_fecha" />
+        <div class="col-md-3">
+          <label cLabel>RUC</label>
+          <input cFormControl [value]="proveedorRuc" disabled />
         </div>
-        <div class="col-md-4">
-          <label cLabel>Motivo <span class="text-danger">*</span></label>
-          <input cFormControl formControlName="ncr_motivo" maxlength="100" placeholder="Descuento comercial" />
+        <div class="col-md-3">
+          <label cLabel>Fecha de factura</label>
+          <input cFormControl [value]="fmt(fechaMinima)" disabled />
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label cLabel for="ncr_numero">N° de Nota de Crédito <span class="text-danger">*</span></label>
+          <input cFormControl id="ncr_numero" formControlName="ncr_numero" placeholder="000-000-0000000"
+                 maxlength="15" inputmode="numeric" autocomplete="off"
+                 [class.is-invalid]="!!errorNumero" (input)="onNumeroInput($event)" />
+          <div class="d-flex justify-content-between small">
+            <span class="text-danger">{{ errorNumero }}</span>
+            <span class="text-muted">{{ digitosNumero }}/{{ digitosRequeridos }}</span>
+          </div>
+        </div>
+
+        <!-- Timbrado propio de la Nota de Crédito -->
+        <div class="col-md-3">
+          <label cLabel for="ncr_tpvid">Timbrado (Nota de Crédito) <span class="text-danger">*</span></label>
+          <div class="d-flex gap-2">
+            <select cSelect id="ncr_tpvid" formControlName="ncr_tpvid" [class.is-invalid]="!!errorTimbrado">
+              <option [ngValue]="null">{{ placeholderTimbrado }}</option>
+              <option *ngFor="let t of timbrados" [ngValue]="t.tpv_id" [disabled]="timbradoInutilizable(t)">
+                {{ etiquetaTimbrado(t) }}
+              </option>
+            </select>
+            <button cButton variant="outline" type="button" title="Registrar timbrado nuevo del proveedor"
+                    [color]="errorTimbrado || todosVencidos ? 'warning' : 'secondary'"
+                    [disabled]="!proveedorId" (click)="abrirNuevoTimbrado()">+</button>
+          </div>
+          <div class="text-danger small" *ngIf="errorTimbrado">{{ errorTimbrado }}</div>
+          <div class="text-warning small" *ngIf="!errorTimbrado && todosVencidos">
+            Todos los timbrados están vencidos. Registre uno nuevo con +.
+          </div>
+        </div>
+
+        <div class="col-md-2">
+          <label cLabel>Vto. timbrado</label>
+          <input cFormControl [value]="vtoTimbrado || '—'" disabled />
+        </div>
+
+        <div class="col-md-2">
+          <label cLabel for="ncr_fecha">Fecha <span class="text-danger">*</span></label>
+          <input cFormControl type="date" id="ncr_fecha" formControlName="ncr_fecha"
+                 [min]="fechaMinima" [max]="hoy" [class.is-invalid]="!!errorFecha" />
+          <div class="text-danger small" *ngIf="errorFecha">{{ errorFecha }}</div>
+        </div>
+
+        <div class="col-md-2">
+          <label cLabel for="ncr_mncid">Motivo <span class="text-danger">*</span></label>
+          <select cSelect id="ncr_mncid" formControlName="ncr_mncid"
+                  [class.is-invalid]="!!errorMotivo" (change)="onMotivoChange()">
+            <option [ngValue]="null">Seleccione un motivo</option>
+            <option *ngFor="let m of motivos" [ngValue]="m.mnc_id">
+              {{ m.mnc_codigo }} — {{ m.mnc_descri }}
+            </option>
+          </select>
+          <div class="text-danger small" *ngIf="errorMotivo">{{ errorMotivo }}</div>
+        </div>
+      </div>
+
+      <!-- Aviso del efecto en stock segun el motivo elegido -->
+      <div class="mb-3" *ngIf="motivoSeleccionado">
+        <div class="alert py-2 px-3 mb-0 small"
+             [ngClass]="afectaStock ? 'alert-warning' : 'alert-info'">
+          <strong>{{ motivoSeleccionado!.mnc_codigo }}</strong> —
+          <ng-container *ngIf="afectaStock">
+            Este motivo <strong>descuenta cantidad del stock</strong>. El importe se toma del precio
+            facturado y no es editable.
+          </ng-container>
+          <ng-container *ngIf="!afectaStock">
+            Este motivo <strong>no afecta la cantidad en stock</strong>: solo ajusta el costo promedio
+            del saldo disponible. Ingrese el importe unitario a acreditar.
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- Alta rápida de timbrado -->
+      <div class="row g-3 mb-3" *ngIf="mostrarNuevoTimbrado">
+        <div class="col-12">
+          <div class="border rounded p-3 bg-body-tertiary" [formGroup]="timbradoForm">
+            <div class="fw-semibold mb-2">Nuevo timbrado (Nota de Crédito) del proveedor</div>
+            <div class="row g-2 align-items-start">
+              <div class="col-md-4">
+                <label cLabel>N° timbrado <span class="text-danger">*</span></label>
+                <input cFormControl formControlName="tpv_numero" maxlength="8" inputmode="numeric" placeholder="00000000"
+                       [class.is-invalid]="campoTimbradoInvalido('tpv_numero')" />
+                <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_numero')">
+                  {{ timbradoForm.get('tpv_numero')?.errors?.['backend'] || 'Obligatorio, hasta 8 dígitos.' }}
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label cLabel>Vencimiento <span class="text-danger">*</span></label>
+                <input cFormControl type="date" formControlName="tpv_fechfn"
+                       [class.is-invalid]="campoTimbradoInvalido('tpv_fechfn')" />
+                <div class="text-danger small" *ngIf="campoTimbradoInvalido('tpv_fechfn')">
+                  {{ timbradoForm.get('tpv_fechfn')?.errors?.['backend']
+                    || (timbradoForm.get('tpv_fechfn')?.errors?.['inutil']
+                        ? 'Ese timbrado vence antes del ' + fmt(fechaMinima) + ' y no cubre ninguna NC cargable.'
+                        : 'El vencimiento es obligatorio.') }}
+                </div>
+              </div>
+              <div class="col-md-4 d-flex gap-2" style="margin-top: 1.9rem;">
+                <button cButton color="primary" type="button" class="flex-fill"
+                        [disabled]="guardandoTimbrado || timbradoForm.invalid" (click)="guardarNuevoTimbrado()">
+                  <c-spinner size="sm" *ngIf="guardandoTimbrado" class="me-1"></c-spinner>
+                  {{ guardandoTimbrado ? 'Guardando...' : 'Guardar' }}
+                </button>
+                <button cButton color="secondary" variant="ghost" type="button" (click)="mostrarNuevoTimbrado = false">✕</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <table cTable small striped>
         <thead>
           <tr>
-            <th></th><th>Producto</th><th class="text-end">Precio fact.</th><th class="text-end">Saldo fact.</th>
-            <th class="text-end">Cantidad</th><th class="text-end">Desc. %</th>
-            <th class="text-end">Descuento (gravado)</th>
-            <th class="text-center">IVA</th><th class="text-end">Total</th>
+            <th></th><th>Producto</th>
+            <th class="text-end">Precio unit.</th>
+            <th class="text-end">Saldo acred.</th>
+            <th class="text-end" *ngIf="afectaStock">Stock disp.</th>
+            <th class="text-end">Cantidad</th>
+            <th class="text-end">%</th>
+            <th class="text-end">Importe unit. (Gs.)</th>
+            <th class="text-end">Importe (IVA incl.)</th>
+            <th class="text-center">IVA incluido</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let fila of detalle.controls" [formGroup]="$any(fila)">
-            <td><input type="checkbox" formControlName="incluir" /></td>
-            <td>{{ fila.value.cmd_descri }}</td>
-            <td class="text-end">{{ fila.value.cmd_precun | number:'1.0-2' }}</td>
+            <td>
+              <input type="checkbox" formControlName="incluir"
+                     [disabled]="sinStockParaDevolver(fila.value)" />
+            </td>
+            <td>
+              {{ fila.value.cmd_descri }}
+              <span class="badge bg-secondary ms-1" *ngIf="sinStockParaDevolver(fila.value)">Sin stock</span>
+            </td>
+            <td class="text-end">{{ fila.value.precio_neto | number:'1.0-2' }}</td>
             <td class="text-end">{{ fila.value.saldo_acreditable | number:'1.0-4' }}</td>
+            <td class="text-end" *ngIf="afectaStock">{{ fila.value.stock_disponible | number:'1.0-4' }}</td>
             <td class="text-end">
-              <input cFormControl type="number" formControlName="cantidad" min="0" [max]="fila.value.saldo_acreditable"
-                     step="0.0001"  placeholder="0" [disabled]="!fila.value.incluir" (input)="recalcularDescuento(fila)" style="width: 90px" />
+              <input cFormControl type="number" formControlName="cantidad" min="0"
+                     [max]="maximoCantidad(fila.value)" step="0.0001" placeholder="0"
+                     [disabled]="!fila.value.incluir" (input)="onCantidadChange(fila)" style="width: 90px" />
             </td>
             <td class="text-end">
-              <input cFormControl type="number" formControlName="despor" min="0" max="100"
-                     step="0.01"  placeholder="0"  [disabled]="!fila.value.incluir" (input)="recalcularDescuento(fila)" style="width: 75px" />
+              <input cFormControl type="number" formControlName="despor" min="0" max="100" step="0.01"
+                     placeholder="0" [disabled]="!fila.value.incluir || afectaStock"
+                     (input)="onDesporChange(fila)" style="width: 75px" />
             </td>
             <td class="text-end">
-              <input cFormControl type="number" formControlName="base_gravada" min="0" step="0.01"  placeholder="0" [disabled]="!fila.value.incluir" style="width: 110px" />
+              <input cFormControl type="number" formControlName="descuento_unitario" min="0" step="1"
+                     placeholder="0" [disabled]="!fila.value.incluir || afectaStock"
+                     (input)="onDescuentoUnitChange(fila)" style="width: 110px" />
             </td>
+            <td class="text-end">{{ fila.value.importe | number:'1.0-2' }}</td>
             <td class="text-center">{{ ivaLinea(fila.value) | number:'1.0-2' }}</td>
-            <td class="text-end">{{ (fila.value.base_gravada + ivaLinea(fila.value)) | number:'1.0-2' }}</td>
           </tr>
           <tr *ngIf="detalle.length === 0">
-            <td colspan="9" class="text-center text-muted fst-italic">Esta compra no tiene saldo acreditable</td>
+            <td [attr.colspan]="afectaStock ? 10 : 9" class="text-center text-muted fst-italic">
+              Esta compra no tiene saldo acreditable
+            </td>
           </tr>
         </tbody>
       </table>
 
       <div class="row g-2 mt-2">
-        <div class="col"><label cLabel>Gravada</label><input cFormControl [value]="totalGravada | number:'1.0-2'" disabled /></div>
-        <div class="col"><label cLabel>IVA</label><input cFormControl [value]="totalIva | number:'1.0-2'" disabled /></div>
+        <div class="col"><label cLabel>Gravado (IVA incl.)</label><input cFormControl [value]="totalGravada | number:'1.0-2'" disabled /></div>
+        <div class="col"><label cLabel>IVA incluido</label><input cFormControl [value]="totalIva | number:'1.0-2'" disabled /></div>
         <div class="col"><label cLabel>Total NC</label><input cFormControl class="fw-bold" [value]="totalGeneral | number:'1.0-2'" disabled /></div>
       </div>
 

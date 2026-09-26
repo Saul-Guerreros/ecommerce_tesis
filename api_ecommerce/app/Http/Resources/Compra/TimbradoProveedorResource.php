@@ -14,11 +14,12 @@ class TimbradoProveedorResource extends JsonResource
             'tpv_proid'     => $this->tpv_proid,
             'tpv_tcoid'     => $this->tpv_tcoid,
             'tpv_numero'    => $this->tpv_numero,
-            'tpv_fechin'    => $this->tpv_fechin?->format('Y-m-d'),
+            
             'tpv_fechfn'    => $this->tpv_fechfn?->format('Y-m-d'),
             'tpv_estado'    => $this->tpv_estado,
             'tco_descri'    => $this->whenLoaded('tipoComprobante', fn () => $this->tipoComprobante->tco_descri),
             'compras_count' => $this->whenCounted('compras'),
+            'notas_credito_count' => $this->whenCounted('notasCredito'),
         ];
     }
 }

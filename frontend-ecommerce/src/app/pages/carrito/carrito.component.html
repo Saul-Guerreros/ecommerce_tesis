@@ -1,0 +1,142 @@
+<main>
+  <section class="uk-section uk-section-small">
+    <div class="uk-container">
+
+      <ul class="uk-breadcrumb">
+        <li><a routerLink="/">Inicio</a></li>
+        <li><span>Carrito de compra</span></li>
+      </ul>
+
+      <h1 class="uk-margin-small-top">Carrito de compra</h1>
+
+      <!-- Cargando -->
+      <div class="uk-text-center" style="padding: 60px 0;" *ngIf="cargando">
+        <div uk-spinner="ratio: 2"></div>
+      </div>
+
+      <!-- Vacío -->
+      <div class="uk-text-center" style="padding: 60px 0;" *ngIf="!cargando && items.length === 0">
+        <p class="uk-text-meta">Tu carrito está vacío.</p>
+        <a class="uk-button uk-button-primary" routerLink="/">Ver productos</a>
+      </div>
+
+      <!-- Listado -->
+      <div class="uk-grid-medium" uk-grid *ngIf="!cargando && items.length > 0">
+
+        <div class="uk-width-expand@m">
+          <div class="uk-card uk-card-default uk-card-small">
+            <div class="uk-card-body">
+
+              <!-- Contador de resultados (regla de la sección 7 del estándar) -->
+              <p class="uk-text-meta uk-margin-small-bottom">
+                {{ items.length }} producto{{ items.length === 1 ? '' : 's' }} en el carrito
+              </p>
+
+              <ul class="uk-list uk-list-divider">
+                @for (item of items; track claveItem(item)) {
+                  <li class="uk-visible-toggle">
+                    <article>
+                      <div class="uk-grid-small uk-flex-middle" uk-grid>
+
+                        <div class="uk-width-1-5">
+                          <div class="tm-ratio tm-ratio-4-3">
+                            <a class="tm-media-box" [routerLink]="enlace(item)">
+              <figure class="tm-media-box-wrap">
+                <img [src]="resolverImagen(item.publicacion_web?.imagen)" [alt]="titulo(item)">
+              </figure>
+                            </a>
+                          </div>
+                        </div>
+
+                        <div class="uk-width-expand">
+                          <a class="uk-link-heading" [routerLink]="enlace(item)">{{ titulo(item) }}</a>
+
+                          @if (item.variacion) {
+                            <div class="uk-text-xsmall uk-text-meta uk-margin-xsmall-top">
+                              @for (prop of item.variacion.propiedades; track prop.atb_nombre) {
+                                <div>{{ prop.atb_nombre }}: {{ prop.prp_nombre }}</div>
+                              }
+                            </div>
+                          }
+
+                          <div class="uk-text-small uk-margin-xsmall-top">
+                            {{ item.car_precio | currency:'PYG':'symbol-narrow':'1.0-0' }} c/u
+                          </div>
+                        </div>
+
+                        <!-- Cantidad -->
+                        <div class="uk-width-auto">
+                          <div class="uk-grid-collapse uk-flex-middle" uk-grid>
+                            <a class="uk-icon-link"
+                               href="#" onclick="return false;"
+                               [class.uk-disabled]="enProceso(item) || item.car_cantid <= 1"
+                               (click)="disminuir(item)"
+                               uk-icon="icon: minus; ratio: .75"></a>
+                            <span class="uk-margin-small-left uk-margin-small-right">
+                              {{ item.car_cantid }}
+                            </span>
+                            <a class="uk-icon-link"
+                               href="#" onclick="return false;"
+                               [class.uk-disabled]="enProceso(item)"
+                               (click)="aumentar(item)"
+                               uk-icon="icon: plus; ratio: .75"></a>
+                          </div>
+                        </div>
+
+                        <div class="uk-width-auto uk-text-bolder">
+                          {{ item.car_total | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                        </div>
+
+                        <div class="uk-width-auto">
+                          <a class="uk-icon-link uk-text-danger"
+                             href="#" onclick="return false;"
+                             [class.uk-disabled]="enProceso(item)"
+                             (click)="eliminar(item)"
+                             uk-icon="icon: close; ratio: .75"
+                             uk-tooltip="Eliminar"></a>
+                        </div>
+
+                      </div>
+                    </article>
+                  </li>
+                }
+              </ul>
+
+              <div class="uk-margin-top">
+                <button class="uk-button uk-button-text uk-text-danger" (click)="vaciar()">
+                  Vaciar carrito
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Resumen -->
+        <div class="uk-width-1-3@m">
+          <div class="uk-card uk-card-default uk-card-small">
+            <div class="uk-card-header">
+              <h3 class="uk-card-title uk-margin-remove">Resumen</h3>
+            </div>
+            <div class="uk-card-body">
+              <div class="uk-grid-small" uk-grid>
+                <div class="uk-width-expand uk-text-muted">Subtotal</div>
+                <div class="uk-text-bolder">
+                  {{ total | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                </div>
+              </div>
+            </div>
+            <div class="uk-card-footer">
+              <a class="uk-button uk-button-primary uk-width-1-1"
+                 href="#" onclick="return false;"
+                 (click)="finalizarCompra()">
+                Continuar con el pago
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+</main>

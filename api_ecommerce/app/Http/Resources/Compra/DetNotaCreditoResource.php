@@ -18,6 +18,8 @@ class DetNotaCreditoResource extends JsonResource
             'dnc_canaju'       => $this->dnc_canaju,
             'cmd_descri'       => $this->whenLoaded('compraDetalle', fn () => $this->compraDetalle->cmd_descri),
             'prd_codinv'       => $this->whenLoaded('compraDetalle', fn () => $this->compraDetalle->producto->prd_codinv ?? null),
+            'dnc_despor'             => $this->dnc_despor,
+            'dnc_descuento_unitario' => $this->dnc_descuento_unitario,    
         ];
     }
 }

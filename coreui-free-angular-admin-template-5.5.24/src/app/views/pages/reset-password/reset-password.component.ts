@@ -88,14 +88,10 @@ export class ResetPasswordComponent {
       next: () => {
         this.loading = false;
         this.exito = true;
-      },
-      //Se recomendó quitar esto por un error
-      /*
-      error: (err) => {
+      },error: (err) => {
         this.loading = false;
         this.errorMsg = 'El código es inválido o ya expiró. Solicita uno nuevo.';
       }
-        */
     });
   }
 

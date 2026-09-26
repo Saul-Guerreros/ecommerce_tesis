@@ -1,0 +1,75 @@
+.tm-variation-swatch {
+  display: block;
+  width: 26px;
+  height: 26px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.tm-quantity-input {
+  cursor: default;
+}
+
+.tm-product-description :last-child {
+  margin-bottom: 0;
+}
+
+/* Visor de zoom propio */
+.tm-zoom-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1010;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+
+.tm-zoom-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  cursor: default;
+}
+
+.tm-zoom-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: transparent;
+  border: 0;
+  color: #fff;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.tm-zoom-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #fff;
+  padding: 10px;
+  opacity: 0.7;
+}
+
+.tm-zoom-arrow:hover {
+  opacity: 1;
+  color: #fff;
+}
+
+
+.tm-rating-empty {
+  color: #ccc;
+}
+
+.tm-zoom-arrow-left {
+  left: 20px;
+}
+
+.tm-zoom-arrow-right {
+  right: 20px;
+}

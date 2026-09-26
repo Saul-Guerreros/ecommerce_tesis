@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/Admin/Compras/ProductoEquivalenciaController.php
 
 namespace App\Http\Controllers\Admin\Compras;
 
@@ -12,14 +13,21 @@ use Illuminate\Support\Facades\DB;
 
 class ProductoEquivalenciaController extends Controller
 {
+    /** tabla => [columna que referencia a peq_id, etiqueta para el mensaje] */
+    private const DEPENDENCIAS = [
+        'compra_detalle' => ['cmd_peqid', 'líneas de compra'],
+    ];
+
     // GET /api/admin/producto-equivalencias?producto=<prd_id>  (obligatorio)
     public function index(Request $request): JsonResponse
     {
         $request->validate(['producto' => ['required', 'integer', 'exists:producto,prd_id']]);
 
         $equivalencias = ProductoEquivalencia::with('unidadMedida')
+            ->withCount('detallesCompra')
             ->where('peq_prdid', $request->producto)
-            ->orderBy('peq_id')
+            ->orderBy('peq_umdid')
+            ->orderBy('peq_factor')
             ->get();
 
         return response()->json(['data' => ProductoEquivalenciaResource::collection($equivalencias)], 200);
@@ -31,7 +39,8 @@ class ProductoEquivalenciaController extends Controller
         $datos = $request->validated();
         $datos['peq_estado'] = $datos['peq_estado'] ?? 1;
 
-        $equivalencia = ProductoEquivalencia::create($datos)->load('unidadMedida');
+        $equivalencia = ProductoEquivalencia::create($datos);
+        $equivalencia->load('unidadMedida')->loadCount('detallesCompra');
 
         return response()->json([
             'message' => 'Equivalencia registrada correctamente',
@@ -39,39 +48,50 @@ class ProductoEquivalenciaController extends Controller
         ], 201);
     }
 
-    // PUT /api/admin/producto-equivalencias/{id}
+    /**
+     * PUT /api/admin/producto-equivalencias/{id}
+     * Solo se edita el FACTOR, y únicamente si la presentación nunca se usó en una compra.
+     * Producto + unidad son su identidad: no se reasignan.
+     */
     public function update(ProductoEquivalenciaRequest $request, int $id): JsonResponse
     {
         $equivalencia = ProductoEquivalencia::find($id);
         if (!$equivalencia) return response()->json(['message' => 'Equivalencia no encontrada'], 404);
 
-        $equivalencia->update($request->validated());
+        if ((int) $request->peq_prdid !== $equivalencia->peq_prdid
+            || (int) $request->peq_umdid !== $equivalencia->peq_umdid) {
+            return response()->json(['errors' => [
+                'peq_umdid' => ['No se puede cambiar el producto ni la unidad de una equivalencia existente. Cree una nueva.'],
+            ]], 422);
+        }
+
+        $cambiaFactor = round((float) $request->peq_factor, 4) !== round((float) $equivalencia->peq_factor, 4);
+
+        if ($cambiaFactor && $this->contarUsos($id)) {
+            return response()->json([
+                'message' => 'No se puede modificar la equivalencia: ya fue usada en compras registradas. Cree una nueva y desactive esta.',
+            ], 409);
+        }
+
+        $equivalencia->update(['peq_factor' => $request->peq_factor]);
+        $equivalencia->load('unidadMedida')->loadCount('detallesCompra');
 
         return response()->json([
             'message' => 'Equivalencia actualizada correctamente',
-            'data'    => new ProductoEquivalenciaResource($equivalencia->fresh('unidadMedida')),
+            'data'    => new ProductoEquivalenciaResource($equivalencia),
         ], 200);
     }
 
-    /**
-     * DELETE /api/admin/producto-equivalencias/{id}
-     * Bloqueada si ya fue usada en una compra (cmd_umdid, Fase B): el
-     * factor queda "congelado" en cmd_factconv de esa línea, pero borrar
-     * la fuente rompería la trazabilidad de por qué se usó ese valor.
-     */
+    // DELETE /api/admin/producto-equivalencias/{id}
     public function destroy(int $id): JsonResponse
     {
         $equivalencia = ProductoEquivalencia::find($id);
         if (!$equivalencia) return response()->json(['message' => 'Equivalencia no encontrada'], 404);
 
-        $enUso = DB::table('compra_detalle')
-            ->where('cmd_prdid', $equivalencia->peq_prdid)
-            ->where('cmd_umdid', $equivalencia->peq_umdid) // columna de la Fase B
-            ->exists();
-
-        if ($enUso) {
+        $usos = $this->contarUsos($id);
+        if ($usos) {
             return response()->json([
-                'message' => 'No se puede eliminar: esta equivalencia ya fue usada en compras registradas. Desactívela en su lugar.',
+                'message' => 'No se puede eliminar: ya se usó en ' . $this->detalleUsos($usos) . '. Desactívela en su lugar.',
             ], 409);
         }
 
@@ -88,10 +108,29 @@ class ProductoEquivalenciaController extends Controller
 
         $equivalencia->peq_estado = $equivalencia->peq_estado == 1 ? 0 : 1;
         $equivalencia->save();
+        $equivalencia->load('unidadMedida')->loadCount('detallesCompra');
 
         return response()->json([
             'message' => $equivalencia->peq_estado == 1 ? 'Equivalencia activada correctamente' : 'Equivalencia desactivada correctamente',
             'data'    => new ProductoEquivalenciaResource($equivalencia),
         ], 200);
+    }
+
+    // ------------------------------------------------------------------
+
+    /** @return array<string,int> etiqueta => cantidad de usos (vacío si no se usó) */
+    private function contarUsos(int $id): array
+    {
+        $usos = [];
+        foreach (self::DEPENDENCIAS as $tabla => [$columna, $etiqueta]) {
+            $n = DB::table($tabla)->where($columna, $id)->count();
+            if ($n > 0) $usos[$etiqueta] = $n;
+        }
+        return $usos;
+    }
+
+    private function detalleUsos(array $usos): string
+    {
+        return implode(', ', array_map(fn ($etiqueta, $n) => "$n $etiqueta", array_keys($usos), $usos));
     }
 }

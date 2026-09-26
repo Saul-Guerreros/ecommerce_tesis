@@ -29,6 +29,7 @@ class Slider extends Model
         'sld_enlace',
         'sld_orden',
         'sld_tipo',
+        'sld_posicion',
         'sld_estado',
         'sld_color',    
     ];

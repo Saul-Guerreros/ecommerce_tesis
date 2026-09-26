@@ -124,9 +124,12 @@ export class ProductVariationsComponent implements OnInit {
   }
 
   loadProduct(): void {
-    // GET /productos/{id} -> { data: { prd_id, prd_titulo, prd_codinv, ... } } (ProductoResource)
+    // GET /productos/{id} -> { data: { prd_id, prd_codinv, ..., publicacion_web: {...} | null } }
+    // (ProductoResource). prd_titulo se movió a publicacion_web.pub_titulo:
+    // si el producto todavía no fue publicado, se muestra el código como
+    // referencia visual en el header de esta pantalla.
     this.service.showProduct(this.productId).subscribe((resp: any) => {
-      this.productTitle = resp.data?.prd_titulo ?? '';
+      this.productTitle = resp.data?.publicacion_web?.pub_titulo ?? resp.data?.prd_codinv ?? '';
       this.productSku = resp.data?.prd_codinv ?? '';
     });
   }

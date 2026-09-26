@@ -23,6 +23,7 @@ import {
 } from '@coreui/angular';
 
 import { IconDirective } from '@coreui/icons-angular';
+import { AuthService } from '../../../auth/services/auth.service';
 
 @Component({
   selector: 'app-default-header',
@@ -33,6 +34,11 @@ export class DefaultHeaderComponent extends HeaderComponent {
 
   readonly #colorModeService = inject(ColorModeService);
   readonly colorMode = this.#colorModeService.colorMode;
+
+  private authService = inject(AuthService);
+
+  // Usuario logueado (persona.nombre_completo, email, rol) - viene de /auth/login o /auth/me
+  readonly currentUser = this.authService.currentUser;
 
   readonly colorModes = [
     { name: 'light', text: 'Light', icon: 'cilSun' },
@@ -50,6 +56,10 @@ export class DefaultHeaderComponent extends HeaderComponent {
   }
 
   sidebarId = input('sidebar1');
+
+  logout(): void {
+    this.authService.logout();
+  }
 
   public newMessages = [
     {

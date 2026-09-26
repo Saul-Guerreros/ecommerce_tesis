@@ -12,7 +12,7 @@ class TimbradoProveedor extends Model
 
     protected $fillable = [
         'tpv_proid', 'tpv_tcoid', 'tpv_numero',
-        'tpv_fechin', 'tpv_fechfn', 'tpv_estado',
+        'tpv_fechfn', 'tpv_estado',
     ];
 
     protected $casts = [
@@ -20,7 +20,7 @@ class TimbradoProveedor extends Model
         'tpv_proid'  => 'integer',
         'tpv_tcoid'  => 'integer',
         'tpv_estado' => 'integer',
-        'tpv_fechin' => 'date',
+     
         'tpv_fechfn' => 'date',
         'tpv_creado' => 'datetime',
     ];
@@ -45,10 +45,15 @@ class TimbradoProveedor extends Model
      * no la fecha de hoy. Un timbrado vencido hoy sigue siendo valido
      * para facturas emitidas mientras estaba vigente.
      */
+    
+    /**
+     * La FECHA DE EMISION no puede ser posterior al vencimiento.
+     * Un timbrado vencido hoy sigue siendo valido para facturas
+     * emitidas antes de su vencimiento.
+     */
     public function cubreFecha(string $fecha): bool
     {
-        return $fecha >= $this->tpv_fechin->toDateString()
-            && $fecha <= $this->tpv_fechfn->toDateString();
+        return $fecha <= $this->tpv_fechfn->toDateString();
     }
 
     public function setTpvNumeroAttribute($value): void
@@ -56,5 +61,9 @@ class TimbradoProveedor extends Model
         $this->attributes['tpv_numero'] = str_pad(trim($value), 8, '0', STR_PAD_LEFT);
     }
 
+        public function notasCredito()
+    {
+        return $this->hasMany(NotaCredito::class, 'ncr_tpvid', 'tpv_id');
+    }
     
 }
