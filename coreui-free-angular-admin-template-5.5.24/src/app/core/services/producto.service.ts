@@ -12,6 +12,10 @@ export interface ProductoFiltros {
   // Filtro de estado de PUBLICACIÓN (distinto de "estado" que es inventario).
   // Usado por la sección "Publicación Web": 'sin_publicar' | 'borrador' | 'publicado'.
   estado_publicacion?: string | null;
+  // El listado de /admin/productos viene colapsado por defecto (solo
+  // modelos base). Publicación Web necesita ver también las variantes,
+  // cada una publica por separado -- por eso este flag.
+  incluir_variantes?: boolean;
   page?: number;
   per_page?: number;
 }

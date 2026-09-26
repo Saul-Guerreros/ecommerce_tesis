@@ -40,28 +40,73 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let p of productos">
-          <td>{{ p.prd_id }}</td>
-          <td>{{ p.prd_codinv }}</td>
-          <td>{{ p.prd_descri }}</td>
-          <td>{{ p.mar_descri }}</td>
-          <td>{{ p.umd_codigo }}</td>
-          <td class="text-center">{{ p.stock_actual }}</td>
-          <td class="text-center">
-            <c-badge [color]="p.prd_estado === 1 ? 'success' : 'secondary'">{{ p.prd_estado === 1 ? 'Activo' : 'Inactivo' }}</c-badge>
-          </td>
-          <td class="text-end">
-            <div class="d-flex justify-content-end gap-1 flex-wrap">
-              <button cButton size="sm" color="secondary" variant="outline" (click)="abrirVer(p)">Ver</button>
-              <button cButton size="sm" color="info" class="text-white" (click)="abrirEditar(p)">Editar</button>
-              <button cButton size="sm" [color]="p.prd_estado === 1 ? 'warning' : 'success'" class="text-white" (click)="cambiarEstado(p)">
-                {{ p.prd_estado === 1 ? 'Desactivar' : 'Activar' }}
-              </button>
-              <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(p)">Eliminar</button>
-            </div>
-          </td>
-        </tr>
-        <tr *ngIf="productos.length === 0"><td colspan="8" class="text-center">No hay productos registrados</td></tr>
+        <ng-container *ngFor="let p of productos">
+          <tr>
+		  
+            <td class="text-center">
+              <div class="d-flex flex-column align-items-center">
+                <span>{{ p.prd_id }}</span>
+                <button cButton size="sm" color="link" class="p-0 text-decoration-none text-dark fs-3 lh-1" *ngIf="p.variantes_count"
+                        (click)="toggleExpandir(p)"
+                        [title]="filasExpandidas.has(p.prd_id!) ? 'Ocultar variantes' : 'Ver variantes'">
+                  {{ filasExpandidas.has(p.prd_id!) ? '▾' : '▸' }}
+                </button>
+              </div>
+            </td>
+			
+            <td>{{ p.prd_codinv }}</td>
+            <td>
+              {{ p.prd_descri }}
+              <c-badge color="secondary" class="ms-1" *ngIf="p.variantes_count">{{ p.variantes_count }} variante(s)</c-badge>
+            </td>
+            <td>{{ p.mar_descri }}</td>
+            <td>{{ p.umd_codigo }}</td>
+            <td class="text-center">{{ p.stock_actual }}</td>
+            <td class="text-center">
+              <c-badge [color]="p.prd_estado === 1 ? 'success' : 'secondary'">{{ p.prd_estado === 1 ? 'Activo' : 'Inactivo' }}</c-badge>
+            </td>
+            <td class="text-end">
+              <div class="d-flex justify-content-end gap-1 flex-wrap">
+                <button cButton size="sm" color="secondary" variant="outline" (click)="abrirVer(p)">Ver</button>
+                <button cButton size="sm" color="info" class="text-white" (click)="abrirEditar(p)">Editar</button>
+                <button cButton size="sm" [color]="p.prd_estado === 1 ? 'warning' : 'success'" class="text-white" (click)="cambiarEstado(p)">
+                  {{ p.prd_estado === 1 ? 'Desactivar' : 'Activar' }}
+                </button>
+                <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(p)">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+
+          <tr *ngIf="filasExpandidas.has(p.prd_id!) && cargandoVariantes.has(p.prd_id!)">
+            <td [attr.colspan]="8" class="text-center py-2"><c-spinner size="sm" color="primary"></c-spinner></td>
+          </tr>
+
+          <tr *ngFor="let v of (filasExpandidas.has(p.prd_id!) ? variantesPorFila.get(p.prd_id!) : [])" class="table-light">
+            <td></td>
+            <td>{{ v.prd_codinv }}</td>
+            <td>
+              ↳ {{ v.prd_descri }}
+              <c-badge color="info" class="text-white ms-1">Variante</c-badge>
+            </td>
+            <td>{{ v.mar_descri }}</td>
+            <td>{{ v.umd_codigo }}</td>
+            <td class="text-center">{{ v.stock_actual }}</td>
+            <td class="text-center">
+              <c-badge [color]="v.prd_estado === 1 ? 'success' : 'secondary'">{{ v.prd_estado === 1 ? 'Activo' : 'Inactivo' }}</c-badge>
+            </td>
+            <td class="text-end">
+              <div class="d-flex justify-content-end gap-1 flex-wrap">
+                <button cButton size="sm" color="secondary" variant="outline" (click)="abrirVer(v)">Ver</button>
+                <button cButton size="sm" color="info" class="text-white" (click)="abrirEditar(v)">Editar</button>
+                <button cButton size="sm" [color]="v.prd_estado === 1 ? 'warning' : 'success'" class="text-white" (click)="cambiarEstado(v)">
+                  {{ v.prd_estado === 1 ? 'Desactivar' : 'Activar' }}
+                </button>
+                <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(v)">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+        <tr *ngIf="productos.length === 0"><td [attr.colspan]="8" class="text-center">No hay productos registrados</td></tr>
       </tbody>
     </table>
   </c-card-body>
@@ -70,5 +115,5 @@
 <app-form-producto [visible]="formModalVisible" [producto]="productoSeleccionado" [soloLectura]="soloLectura"
   (visibleChange)="formModalVisible = $event" (guardado)="cargar()"></app-form-producto>
 
-<app-delete-producto [visible]="deleteModalVisible" [producto]="productoSeleccionado"
+<app-delete-producto [visible]="deleteModalVisible" [producto]="productoAEliminar"
   (visibleChange)="deleteModalVisible = $event" (confirmar)="confirmarEliminar()"></app-delete-producto>

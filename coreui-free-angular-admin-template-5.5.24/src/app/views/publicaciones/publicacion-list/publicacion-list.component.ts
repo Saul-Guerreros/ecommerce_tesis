@@ -82,6 +82,7 @@ export class PublicacionListComponent implements OnInit {
         search: this.search,
         categoria: this.categoriaFiltro,
         estado_publicacion: this.estadoPublicacionFiltro,
+        incluir_variantes: true,
         page: this.page,
         per_page: this.perPage,
       })
