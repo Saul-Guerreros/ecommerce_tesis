@@ -1,26 +1,38 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
-import { ActivatedRoute,Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { URL_BACKEND } from '../../config/config';
-import { CuoteroComponent } from '../../shared/components/cuotero/cuotero.component';
+import { SelectorCantidadComponent } from '../../shared/components/selector-cantidad/selector-cantidad.component';
 import {
   ColorDisponible,
   EspecificacionDetalle,
+  OpcionesCompra,
   ProductoDetalle,
+  StockAvisos,
+  TramoPrecio,
 } from '../../core/models/producto-detalle.model';
-import { ProductoVitrina } from '../../core/models/vitrina.model';
+import { CuotaOpcion, ProductoVitrina } from '../../core/models/vitrina.model';
+import { LineaContado, SolicitudCredito } from '../../core/models/solicitud-compra.model';
 import { ProductoDetalleService } from '../../core/services/producto-detalle.service';
 
 import { AuthService } from '../auth/service/auth.service';
 import { CarritoService } from '../../core/services/carrito.service';
+import { CarritoUiService } from '../../core/services/carrito-ui.service';
+import { SolicitudCreditoService } from '../../core/services/solicitud-credito.service';
+
 
 type TabDetalle = 'descripcion' | 'especificaciones' | 'resenas';
+
+/** Opción de cuotas del backend + la cuota por la cantidad elegida. */
+interface CuotaVista extends CuotaOpcion {
+  monto_cuota_total: number;
+}
 
 @Component({
   selector: 'app-producto-detalle',
   standalone: true,
-   imports: [CommonModule, CurrencyPipe, RouterModule, CuoteroComponent],
+     imports: [CommonModule, CurrencyPipe, RouterModule, SelectorCantidadComponent],
   templateUrl: './producto-detalle.component.html',
   styleUrl: './producto-detalle.component.css',
 })
@@ -38,8 +50,18 @@ export class ProductoDetalleComponent implements OnInit {
 
   slugActual: string | null = null;
   imagenActivaIndex = 0;
-  cantidad = 1;
   tabActiva: TabDetalle = 'descripcion';
+
+  // --- Compra (Contado / Cuotas) ---------------------------------------
+  // Las dos cantidades son INDEPENDIENTES a propósito: cada modalidad es
+  // una acción de compra distinta. Nunca se sincronizan entre sí.
+  compra: OpcionesCompra | null = null;
+  stockAvisos: StockAvisos | null = null;
+  cantidadContado = 1;
+  cantidadCuotas = 1;
+  /** Nº de cuotas elegido (3, 6, 12...). Se guarda el número, no el objeto,
+   *  para conservar la elección cuando el selector cambia de tramo. */
+  private cuotaElegidaN: number | null = null;
 
   favoritoActivo = false;
   compararActivo = false;
@@ -71,15 +93,16 @@ export class ProductoDetalleComponent implements OnInit {
   }
   constructor(
     private route: ActivatedRoute,
-    private router: Router,
     private productoDetalleService: ProductoDetalleService,
     private toastr: ToastrService,
     private carritoService: CarritoService,
     private authService: AuthService,
-    
+    private carritoUi: CarritoUiService,
+    private solicitudCredito: SolicitudCreditoService,
   ) {}
 
   agregando = false;
+  botonAgregando: 'cuotas' | 'contado' | null = null;
   ngOnInit(): void {
     this.route.paramMap.subscribe((params) => {
       const slug = params.get('slug');
@@ -105,9 +128,15 @@ export class ProductoDetalleComponent implements OnInit {
         this.coloresDisponibles = res.data.colores_disponibles ?? [];
         this.relacionados = res.data.relacionados ?? [];
         this.sucursalesPickup = res.data.sucursales_pickup ?? [];
+        this.compra = res.data.compra ?? null;
+        this.stockAvisos = res.data.stock_avisos ?? null;
 
         this.imagenActivaIndex = 0;
-        this.cantidad = 1;
+        // Ambas cantidades arrancan en el mínimo de compra: 1, o el mínimo
+        // mayorista si el producto se vende solo al por mayor.
+        this.cantidadContado = this.cantidadMinima;
+        this.cantidadCuotas = this.cantidadMinima;
+        this.cuotaElegidaN = null;
         this.favoritoActivo = false;
         this.compararActivo = false;
         this.tabActiva = 'descripcion';
@@ -286,22 +315,200 @@ export class ProductoDetalleComponent implements OnInit {
     return this.stockDisponible !== null && this.stockDisponible <= 0;
   }
 
-  incrementarCantidad(): void {
-    const max = this.stockDisponible;
-    if (max !== null && this.cantidad >= max) {
-      return;
-    }
-    this.cantidad++;
+  // ---------------------------------------------------------------
+  // Compra: tramo de precio, cuotas y límites de cantidad
+  //
+  // Orden de la regla (ver instrucciones, punto 14): primero se determina
+  // el TRAMO de precio (minorista / mayorista) según la cantidad y recién
+  // después se toman las cuotas de ese tramo. El backend ya entrega ambos
+  // tramos con sus cuotas calculadas; acá solo se elige, no se calcula.
+  // ---------------------------------------------------------------
+
+  /** Piso de ambos controles de unidades. */
+  get cantidadMinima(): number {
+    return Math.max(1, this.compra?.cantidad_minima ?? 1);
   }
 
-  decrementarCantidad(): void {
-    if (this.cantidad > 1) {
-      this.cantidad--;
-    }
+  /** Tope por stock; null = el producto no controla stock. */
+  get stockMaximo(): number | null {
+    const stock = this.stockDisponible;
+    return stock === null ? null : Math.floor(stock);
   }
 
-  get subtotal(): number {
-    return (this.producto?.precio_final ?? 0) * this.cantidad;
+  /** Producto con al menos un tramo de precio vendible. */
+  get tieneOpcionDeCompra(): boolean {
+    return !!(this.compra?.minorista || this.compra?.mayorista);
+  }
+
+  /** El stock no alcanza ni para la compra mínima (caso solo mayorista). */
+  get stockInsuficienteParaMinimo(): boolean {
+    const max = this.stockMaximo;
+    return max !== null && max > 0 && max < this.cantidadMinima;
+  }
+
+  // --- Avisos de stock (configurables desde el panel admin) ---
+
+  /** "Solo quedan X unidades": null si no corresponde mostrarlo. */
+  get mensajePocoStock(): string | null {
+    const avisos = this.stockAvisos;
+
+    if (!avisos?.poco_stock || avisos.unidades === null || this.sinStock) {
+      return null;
+    }
+
+    return avisos.unidades === 1
+      ? 'Solo queda 1 unidad'
+      : `Solo quedan ${avisos.unidades} unidades`;
+  }
+
+    /**
+   * Se pidieron tantas unidades como hay disponibles (el selector ya
+   * clampeó cualquier valor mayor al stock real). Esto NO es una táctica
+   * de venta como "poco stock": es manejo de error, así que siempre se
+   * evalúa igual, sin depender de ninguna configuración del admin.
+   */
+  private alMaximo(cantidad: number): boolean {
+    const max = this.stockMaximo;
+
+    return max !== null && max >= this.cantidadMinima && cantidad >= max;
+  }
+
+  get alMaximoCuotas(): boolean {
+    return this.alMaximo(this.cantidadCuotas);
+  }
+
+  get alMaximoContado(): boolean {
+    return this.alMaximo(this.cantidadContado);
+  }
+
+  /**
+   * Mensaje genérico a propósito: nunca debe revelar la cantidad real en
+   * stock. Revelar el número solo tiene sentido como aviso de urgencia
+   * ("Solo quedan X"), configurable por el admin; acá es solo el límite
+   * de lo que se puede pedir, y no hay ningún motivo de negocio para
+   * mostrar el dato exacto.
+   */
+  get mensajeMaximo(): string {
+    return 'No hay suficiente stock para la cantidad solicitada';
+  }
+
+  get puedeComprar(): boolean {
+    return (
+      this.tieneOpcionDeCompra &&
+      !this.sinStock &&
+      !this.stockInsuficienteParaMinimo &&
+      !this.agregando
+    );
+  }
+
+  /** Tramo que corresponde a una cantidad: mayorista si la alcanza. */
+  private tramoPara(cantidad: number): TramoPrecio | null {
+    const mayorista = this.compra?.mayorista ?? null;
+    const minorista = this.compra?.minorista ?? null;
+
+    if (mayorista && cantidad >= mayorista.cantidad_minima) {
+      return mayorista;
+    }
+
+    return minorista ?? mayorista;
+  }
+
+  // --- Contado ---
+
+  get tramoContado(): TramoPrecio | null {
+    return this.tramoPara(this.cantidadContado);
+  }
+
+  get precioUnitarioContado(): number {
+    return this.tramoContado?.precio_unitario ?? 0;
+  }
+
+  /**
+   * El descuento de campaña aplica al precio `precio_final` de la vitrina.
+   * Se muestra (precio anterior tachado + %) solo cuando el precio del tramo
+   * vigente ES ese precio: no en el tramo mayorista de un producto que
+   * también se vende al por menor, que usa el precio de Gestión de Precios
+   * sin descuento.
+   */
+  get descuentoVigenteContado(): boolean {
+    return (
+      !!this.producto?.descuento_pct &&
+      this.precioUnitarioContado === this.producto.precio_final
+    );
+  }
+
+  /** Solo multiplica el precio unitario del tramo por las unidades. */
+  get totalContado(): number {
+    return this.precioUnitarioContado * this.cantidadContado;
+  }
+
+  // --- Cuotas ---
+
+  /** La sección "Comprá en Cuotas" existe si el producto tiene cuotas en
+   *  algún tramo (estable: no parpadea al cruzar el mínimo mayorista). */
+  get tieneCuotas(): boolean {
+    return (
+      (this.compra?.minorista?.cuotas.length ?? 0) > 0 ||
+      (this.compra?.mayorista?.cuotas.length ?? 0) > 0
+    );
+  }
+
+  get tramoCuotas(): TramoPrecio | null {
+    return this.tramoPara(this.cantidadCuotas);
+  }
+
+  /**
+   * Opciones del selector: la cuota mostrada es la de la CANTIDAD elegida.
+   *
+   * No se recalcula el recargo: se parte del precio financiado unitario que
+   * entrega el backend (`total`) y solo se multiplica por las unidades.
+   * Se multiplica ANTES de dividir en cuotas y se redondea una sola vez;
+   * multiplicar la cuota unitaria ya redondeada acumularía el error
+   * (10 u. a 6 cuotas: 155.833 correcto vs 155.830).
+   */
+  get cuotasDisponibles(): CuotaVista[] {
+    const unidades = this.cantidadCuotas;
+
+    return (this.tramoCuotas?.cuotas ?? []).map((c) => ({
+      ...c,
+      monto_cuota_total: Math.round((c.total * unidades) / c.cantidad),
+    }));
+  }
+
+  /** Opción elegida dentro del tramo vigente (por defecto, la primera). */
+  get cuotaElegida(): CuotaVista | null {
+    return (
+      this.cuotasDisponibles.find((c) => c.cantidad === this.cuotaElegidaN) ??
+      this.cuotasDisponibles[0] ??
+      null
+    );
+  }
+
+  seleccionarCuota(valor: string): void {
+    this.cuotaElegidaN = Number(valor);
+  }
+
+  get puedeSolicitarCredito(): boolean {
+    return this.puedeComprar && this.cuotaElegida !== null;
+  }
+
+  // --- Mensaje de precio mayorista ---
+
+  /** null cuando el producto solo tiene precio minorista. */
+  get mensajeMayorista(): string | null {
+    const mayorista = this.compra?.mayorista;
+
+    if (!mayorista) {
+      return null;
+    }
+
+    return this.compra?.minorista
+      ? `Se aplica precio mayorista a partir de ${mayorista.cantidad_minima} unidades`
+      : `Este producto se vende únicamente a partir de ${mayorista.cantidad_minima} unidades`;
+  }
+
+  trackByCuota(_indice: number, cuota: CuotaVista): number {
+    return cuota.cantidad;
   }
 
   /** 5 posiciones, true = estrella llena, según producto.rating redondeado. */
@@ -339,28 +546,145 @@ export class ProductoDetalleComponent implements OnInit {
   // Acciones
   // ---------------------------------------------------------------
 
-  agregarAlCarrito(): void {
-    if (!this.producto || this.sinStock || this.agregando) {
+  /**
+   * Compra al contado (o "Agregar al Carrito" si el producto no tiene
+   * cuotas: es la misma acción). Prepara la línea y la agrega al carrito
+   * con modalidad = contado. NO se manda el precio: lo recalcula
+   * CarritoController::precioPara() y aceptarlo del navegador permitiría
+   * manipular el importe a cobrar.
+   */
+  comprarContado(): void {
+    if (!this.producto || !this.puedeComprar) {
       return;
     }
-  
-    // TODO: acá debería ir la lógica real (llamar a carritoService.agregar(...))
-    this.toastr.success(`${this.cantidad} × ${this.producto.titulo}`, 'Added to cart');
+
+    const linea = this.prepararLineaContado();
+
+    if (!linea) {
+      return;
+    }
+
+    this.agregando = true;
+
+    this.carritoService
+      .agregar({
+        car_idpro: linea.producto_id,
+        car_idvarp: null,
+        car_cantid: linea.cantidad,
+        car_modpag: linea.modalidad,
+        car_numcuo: null,
+      })
+      .subscribe({
+        next: () => {
+          this.agregando = false;
+          this.carritoUi.confirmarAgregado();
+        },
+        error: (err) => {
+          this.agregando = false;
+          this.toastr.error(this.mensajeErrorCarrito(err), 'No se pudo agregar');
+        },
+      });
   }
 
-    /**
-     * TODO: este proyecto todavía no tiene una página/ruta real de checkout
-     * (el header enlaza a "/carrito-de-compra" pero esa ruta no existe todavía).
-     * Por ahora "Buy Now" hace lo mismo que "Add to cart"; cuando exista el
-     * checkout, reemplazar el toast por: this.agregarAlCarrito(); this.router.navigate(['/carrito-de-compra']);
-     */
-    comprarAhora(): void {
-      if (!this.producto || this.sinStock) {
-        return;
-      }
-      this.toastr.success(`${this.cantidad} × ${this.producto.titulo}`, 'Added to cart');
+  /**
+  * Agrega la línea en modalidad crédito. Igual que comprarContado():
+  * solo viajan producto, cantidad, modalidad y nº de cuotas. El recargo
+  * y el monto de cuota los recalcula CarritoController::resolverFinanciacion().
+  */
+  comprarEnCuotas(): void {
+    const cuota = this.cuotaElegida;
+
+    if (!this.producto || !cuota || !this.puedeComprar) {
+      return;
     }
-    
+      
+    this.agregando = true;
+
+    this.carritoService
+    .agregar({
+      car_idpro: this.producto.prd_id,
+      car_idvarp: null,
+      car_cantid: this.cantidadCuotas,
+      car_modpag: 'credito',
+      car_numcuo: cuota.cantidad,
+    })
+    .subscribe({
+      next: () => {
+        this.agregando = false;
+        this.carritoUi.confirmarAgregado();
+      },
+      error: (err) => {
+        this.agregando = false;
+        this.toastr.error(this.mensajeErrorCarrito(err), 'No se pudo agregar');
+      },
+    });
+  }
+  
+
+  /**
+   * Solicitar Crédito: por ahora SOLO prepara la información y la deja
+   * guardada para el flujo siguiente (datos personales, laborales y
+   * referenciales, que se implementa después). No agrega nada al carrito.
+   */
+  solicitarCredito(): void {
+    if (!this.puedeSolicitarCredito) {
+      return;
+    }
+
+    const solicitud = this.prepararSolicitudCredito();
+
+    if (!solicitud) {
+      return;
+    }
+
+    this.solicitudCredito.preparar(solicitud);
+
+    this.toastr.success(
+      `${solicitud.cantidad} u. en ${solicitud.numero_cuotas} cuotas`,
+      'Solicitud de crédito preparada'
+    );
+  }
+
+  private prepararLineaContado(): LineaContado | null {
+    if (!this.producto || !this.tramoContado) {
+      return null;
+    }
+
+    return {
+      producto_id: this.producto.prd_id,
+      cantidad: this.cantidadContado,
+      modalidad: 'contado',
+      precio_unitario: this.tramoContado.precio_unitario,
+    };
+  }
+
+  private prepararSolicitudCredito(): SolicitudCredito | null {
+    const cuota = this.cuotaElegida;
+
+    if (!this.producto || !cuota) {
+      return null;
+    }
+
+    return {
+      producto_id: this.producto.prd_id,
+      cantidad: this.cantidadCuotas,
+      modalidad: 'credito',
+      numero_cuotas: cuota.cantidad,
+      porcentaje_recargo: cuota.recargo_pct,
+      precio_unitario_financiado: cuota.total,
+      monto_cuota: cuota.monto_cuota,
+      monto_cuota_total: cuota.monto_cuota_total,
+    };
+  }
+
+  private mensajeErrorCarrito(err: any): string {
+    const errores = err?.error?.errors;
+    if (errores) {
+      const primerCampo = Object.keys(errores)[0];
+      return errores[primerCampo]?.[0] ?? 'Intentá nuevamente.';
+    }
+    return err?.error?.message ?? 'Intentá nuevamente.';
+  }
 
   toggleFavorito(): void {
     this.favoritoActivo = !this.favoritoActivo;

@@ -117,11 +117,19 @@ class PrecioController extends Controller
 
         $datos = $request->validated();
 
+        $producto->prd_habmin = (bool) $datos['prd_habmin'];
+        $producto->prd_habmaj = (bool) $datos['prd_habmaj'];
+
         // null = "volver a usar el general": se guarda tal cual, nunca
         // se reemplaza por un valor inventado.
-        $producto->prd_marmin    = $datos['prd_marmin']    ?? null;
-        $producto->prd_marmaj    = $datos['prd_marmaj']    ?? null;
-        $producto->prd_canminmaj = $datos['prd_canminmaj'] ?? null;
+        //
+        // La configuracion de una modalidad DESHABILITADA se descarta: no
+        // tiene sentido conservar un markup para algo que no se vende, y
+        // dejarlo colgado haria que al reactivar la modalidad reviviera un
+        // valor viejo que el admin ya no recuerda haber puesto.
+        $producto->prd_marmin    = $producto->prd_habmin ? ($datos['prd_marmin'] ?? null) : null;
+        $producto->prd_marmaj    = $producto->prd_habmaj ? ($datos['prd_marmaj'] ?? null) : null;
+        $producto->prd_canminmaj = $producto->prd_habmaj ? ($datos['prd_canminmaj'] ?? null) : null;
         $producto->save();
 
         $costoPromedio = $this->costoPromedioGlobal($id);

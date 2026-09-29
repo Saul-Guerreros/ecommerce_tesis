@@ -62,6 +62,8 @@ use App\Http\Controllers\Admin\Compras\ProductoEquivalenciaController;
 
 use App\Http\Controllers\Admin\product\ConfiguracionPrecioController;
 
+use App\Http\Controllers\Admin\Configuracion\ConfiguracionTiendaController;
+
 use App\Http\Controllers\Admin\Compras\NotaCreditoController;
 
 use App\Http\Controllers\Admin\Compras\CuotaCompraController;
@@ -75,6 +77,9 @@ use App\Http\Controllers\Admin\Compras\TimbradoProveedorController;
 use App\Http\Controllers\Admin\Compras\PagoCompraController;
 
 use App\Http\Controllers\Carrito\CarritoController;
+
+use App\Http\Controllers\Admin\Configuracion\ConfiguracionCuotaController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -271,6 +276,11 @@ Route::group([
     Route::patch('producto-equivalencias/{id}/estado', [ProductoEquivalenciaController::class, 'toggleEstado']);
     Route::apiResource('producto-equivalencias', ProductoEquivalenciaController::class)->except(['show']);
 
+    // --- Configuración de Cuotas por producto (Gestión de Cuotas) ---
+    Route::get('configuraciones-cuota/productos', [ConfiguracionCuotaController::class, 'productos']);
+    Route::patch('configuraciones-cuota/{id}/estado', [ConfiguracionCuotaController::class, 'toggleEstado']);
+    Route::apiResource('configuraciones-cuota', ConfiguracionCuotaController::class)->except(['show']);
+
     // --- Publicación Web (ficha pública de un producto) ---
     Route::get('productos/{producto}/publicacion', [PublicacionWebController::class, 'show']);
     Route::post('productos/{producto}/publicacion', [PublicacionWebController::class, 'guardar']);
@@ -317,6 +327,11 @@ Route::group([
     Route::get('configuracion-precio', [ConfiguracionPrecioController::class, 'show']);
     Route::patch('configuracion-precio', [ConfiguracionPrecioController::class, 'update']);
  
+    
+    // Configuración general de la tienda (singleton: avisos de stock)
+    Route::get('configuracion-tienda', [ConfiguracionTiendaController::class, 'show']);
+    Route::patch('configuracion-tienda', [ConfiguracionTiendaController::class, 'update']);
+
     // junto al bloque de "Compras":
     Route::get('compras/{id}/notas-credito/config', [NotaCreditoController::class, 'config']);
     Route::get('compras/{id}/notas-credito', [NotaCreditoController::class, 'index']);

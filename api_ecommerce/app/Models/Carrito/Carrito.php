@@ -34,6 +34,10 @@ class Carrito extends Model{
         'car_precio',
         'car_subtot',
         'car_total',
+        'car_modpag',
+        'car_numcuo',
+        'car_recargopct',
+        'car_montocuo',
     ];
 
     protected $casts= [
@@ -50,6 +54,9 @@ class Carrito extends Model{
         'car_creado'=> 'datetime',
         'car_actual'=> 'datetime',
         'car_elimin'=> 'datetime',
+        'car_numcuo'     => 'integer',
+        'car_recargopct' => 'decimal:2',
+        'car_montocuo'   => 'decimal:2',
     ];
 
     public function usuario(): BelongsTo{

@@ -109,7 +109,7 @@ export const navItems: INavData[] = [
   },
   
   {
-  name: 'Configuración de Precios',
+  name: 'Configuración del Margen',
   url: '/configuracion-precio',
   iconComponent: { name: 'cil-settings' }
   },
@@ -118,6 +118,18 @@ export const navItems: INavData[] = [
     name: 'Gestión de Precios',
     url: '/precios',
     iconComponent: { name: 'cil-dollar' }
+  },
+
+    {
+    name: 'Alerta de Stock en Tienda',
+    url: '/configuracion-tienda',
+    iconComponent: { name:  'cil-bell' }
+  },
+
+  {
+    name: 'Gestión de Cuotas',
+    url: '/gestion-cuotas',
+    iconComponent: { name: 'cil-calculator' }
   },
 
   {

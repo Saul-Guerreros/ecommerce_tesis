@@ -56,7 +56,12 @@ export interface PublicacionWeb {
   pub_descwb?: string | null;
   pub_meta_titulo?: string | null;
   pub_meta_descripcion?: string | null;
+
   pub_estado: number; // 0 = Borrador, 1 = Publicado, 2 = Archivado
+  // Override individual del umbral de "poco stock" (ver Configuración de la
+  // Tienda). null = usa el general.
+  pub_pocstk_umbral?: number | null;
+
   // Destacar en el home del ecommerce (sección "Featured Products"):
   // null = no destacado; número = posición en esa sección (1 = primero).
   pub_destacado_orden?: number | null;

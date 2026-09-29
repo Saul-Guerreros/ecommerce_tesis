@@ -7,48 +7,60 @@
         <li><span>Carrito de compra</span></li>
       </ul>
 
-      <h1 class="uk-margin-small-top">Carrito de compra</h1>
-
+<h1 class="uk-margin-small-top cc-titulo-pagina" style="padding-bottom: 40px;">Carrito de compra</h1>     
       <!-- Cargando -->
       <div class="uk-text-center" style="padding: 60px 0;" *ngIf="cargando">
         <div uk-spinner="ratio: 2"></div>
       </div>
 
-      <!-- Vacío -->
-      <div class="uk-text-center" style="padding: 60px 0;" *ngIf="!cargando && items.length === 0">
+      <!-- Vacío: ninguna modalidad tiene productos (punto 18) -->
+      <div class="uk-text-center" style="padding: 60px 0;" *ngIf="!cargando && carritoVacio">
         <p class="uk-text-meta">Tu carrito está vacío.</p>
         <a class="uk-button uk-button-primary" routerLink="/">Ver productos</a>
       </div>
 
-      <!-- Listado -->
-      <div class="uk-grid-medium" uk-grid *ngIf="!cargando && items.length > 0">
+      <!-- ============ SECCIÓN: COMPRAS AL CONTADO ============ -->
+      <div class="uk-grid-medium uk-margin-top" uk-grid *ngIf="!cargando && itemsContado.length > 0">
+
+        <div class="uk-width-1-1">
+          <h2 class="cc-seccion-titulo">Compras al Contado</h2>
+        </div>
 
         <div class="uk-width-expand@m">
-          <div class="uk-card uk-card-default uk-card-small">
+          <div class="uk-card uk-card-default uk-card-small cc-lista">
             <div class="uk-card-body">
 
-              <!-- Contador de resultados (regla de la sección 7 del estándar) -->
               <p class="uk-text-meta uk-margin-small-bottom">
-                {{ items.length }} producto{{ items.length === 1 ? '' : 's' }} en el carrito
+                {{ itemsContado.length }} producto{{ itemsContado.length === 1 ? '' : 's' }} al contado
               </p>
 
+              <div class="cc-row cc-header">
+                <div class="cc-item-img-col"></div>
+                <div class="cc-col-nombre">Producto</div>
+                <div class="cc-datos">
+                  <div class="cc-col-precio">Precio</div>
+                  <div class="cc-col-cantidad">Cantidad</div>
+                  <div class="cc-col-subtotal">Subtotal</div>
+                  <div class="cc-col-eliminar"></div>
+                </div>
+              </div>
+
               <ul class="uk-list uk-list-divider">
-                @for (item of items; track claveItem(item)) {
+                @for (item of itemsContado; track claveItem(item)) {
                   <li class="uk-visible-toggle">
                     <article>
-                      <div class="uk-grid-small uk-flex-middle" uk-grid>
+                      <div class="cc-row">
 
-                        <div class="uk-width-1-5">
-                          <div class="tm-ratio tm-ratio-4-3">
-                            <a class="tm-media-box" [routerLink]="enlace(item)">
-              <figure class="tm-media-box-wrap">
-                <img [src]="resolverImagen(item.publicacion_web?.imagen)" [alt]="titulo(item)">
-              </figure>
-                            </a>
-                          </div>
+                        <div class="cc-item-img-col">
+                          <a class="cc-item-img" [routerLink]="enlace(item)">
+                            <img [src]="resolverImagen(item.publicacion_web?.imagen)" [alt]="titulo(item)">
+                          </a>
                         </div>
 
-                        <div class="uk-width-expand">
+                        <div class="cc-col-nombre">
+                          @if (item.publicacion_web?.categoria; as categoria) {
+                            <div class="uk-text-meta uk-text-xsmall">{{ categoria }}</div>
+                          }
                           <a class="uk-link-heading" [routerLink]="enlace(item)">{{ titulo(item) }}</a>
 
                           @if (item.variacion) {
@@ -59,41 +71,53 @@
                             </div>
                           }
 
-                          <div class="uk-text-small uk-margin-xsmall-top">
-                            {{ item.car_precio | currency:'PYG':'symbol-narrow':'1.0-0' }} c/u
+                          @if (item.solo_mayorista) {
+                            <div class="cc-badge cc-badge--info">
+                              Venta solo mayorista · mínimo {{ item.cantidad_minima }} un.
+                            </div>
+                          }
+
+                          @if (excedeStock(item)) {
+                            <div class="cc-badge cc-badge--alerta">
+                              Solo quedan {{ item.stock_disponible }} disponibles: reducí la cantidad.
+                            </div>
+                          }
+                        </div>
+
+                        <div class="cc-datos">
+                          <!-- Precio unitario -->
+                          <div class="cc-col-precio" data-label="Precio">
+                            {{ item.car_precio | currency:'PYG':'symbol-narrow':'1.0-0' }}
                           </div>
-                        </div>
 
-                        <!-- Cantidad -->
-                        <div class="uk-width-auto">
-                          <div class="uk-grid-collapse uk-flex-middle" uk-grid>
-                            <a class="uk-icon-link"
-                               href="#" onclick="return false;"
-                               [class.uk-disabled]="enProceso(item) || item.car_cantid <= 1"
-                               (click)="disminuir(item)"
-                               uk-icon="icon: minus; ratio: .75"></a>
-                            <span class="uk-margin-small-left uk-margin-small-right">
-                              {{ item.car_cantid }}
-                            </span>
-                            <a class="uk-icon-link"
-                               href="#" onclick="return false;"
-                               [class.uk-disabled]="enProceso(item)"
-                               (click)="aumentar(item)"
-                               uk-icon="icon: plus; ratio: .75"></a>
+                          <!-- Cantidad -->
+                          <div class="cc-col-cantidad" data-label="Cantidad">
+                            <div class="tm-qty">
+                              <button type="button" class="tm-qty__btn"
+                                      aria-label="Disminuir cantidad"
+                                      [disabled]="enProceso(item) || enMinimo(item)"
+                                      (click)="disminuir(item)">&minus;</button>
+                              <span class="tm-qty__valor">{{ item.car_cantid }}</span>
+                              <button type="button" class="tm-qty__btn"
+                                      aria-label="Aumentar cantidad"
+                                      [disabled]="enProceso(item) || enMaximo(item)"
+                                      (click)="aumentar(item)">+</button>
+                            </div>
                           </div>
-                        </div>
 
-                        <div class="uk-width-auto uk-text-bolder">
-                          {{ item.car_total | currency:'PYG':'symbol-narrow':'1.0-0' }}
-                        </div>
+                          <!-- Subtotal de línea -->
+                          <div class="cc-col-subtotal uk-text-bolder" data-label="Subtotal">
+                            {{ item.car_total | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                          </div>
 
-                        <div class="uk-width-auto">
-                          <a class="uk-icon-link uk-text-danger"
-                             href="#" onclick="return false;"
-                             [class.uk-disabled]="enProceso(item)"
-                             (click)="eliminar(item)"
-                             uk-icon="icon: close; ratio: .75"
-                             uk-tooltip="Eliminar"></a>
+                          <div class="cc-col-eliminar">
+                            <button type="button" class="tm-cart-row__delete"
+                               [disabled]="enProceso(item)"
+                               (click)="eliminar(item)"
+                               uk-tooltip="Eliminar">
+                              <span uk-icon="icon: trash; ratio: .9"></span>
+                            </button>
+                          </div>
                         </div>
 
                       </div>
@@ -102,27 +126,45 @@
                 }
               </ul>
 
-              <div class="uk-margin-top">
-                <button class="uk-button uk-button-text uk-text-danger" (click)="vaciar()">
-                  Vaciar carrito
-                </button>
-              </div>
-
             </div>
           </div>
         </div>
 
-        <!-- Resumen -->
-        <div class="uk-width-1-3@m">
+        <!-- Resumen de compra al contado (punto 12) -->
+        <div class="uk-width-1-4@m">
           <div class="uk-card uk-card-default uk-card-small">
             <div class="uk-card-header">
-              <h3 class="uk-card-title uk-margin-remove">Resumen</h3>
+              <h3 class="uk-card-title uk-margin-remove">Resumen de Compra al Contado</h3>
             </div>
             <div class="uk-card-body">
-              <div class="uk-grid-small" uk-grid>
+              <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
                 <div class="uk-width-expand uk-text-muted">Subtotal</div>
-                <div class="uk-text-bolder">
-                  {{ total | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                <div>{{ subtotalContado | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+              </div>
+              <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
+                <div class="uk-width-expand uk-text-muted">IVA incluido</div>
+                <div>{{ impuestosContado | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+              </div>
+              <hr class="uk-margin-small">
+              <div class="uk-grid-small" uk-grid>
+                <div class="uk-width-expand uk-text-bolder">Total del Pedido</div>
+                <div class="uk-text-bolder">{{ totalContado | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+              </div>
+
+              <!-- Código de descuento: solo estructura visual (punto 17) -->
+              <div class="uk-margin-top">
+                <label class="uk-form-label uk-text-small" for="cc-cupon-contado">
+                  Aplicar código de descuento
+                </label>
+                <div class="uk-grid-collapse" uk-grid>
+                  <div class="uk-width-expand">
+                    <input id="cc-cupon-contado" class="uk-input" type="text"
+                           placeholder="Código" [(ngModel)]="codigoDescuentoContado">
+                  </div>
+                  <div class="uk-width-auto">
+                    <button class="uk-button uk-button-default" type="button"
+                            (click)="aplicarDescuento('contado')">Aplicar</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -130,13 +172,190 @@
               <a class="uk-button uk-button-primary uk-width-1-1"
                  href="#" onclick="return false;"
                  (click)="finalizarCompra()">
-                Continuar con el pago
+                Finalizar Compra
               </a>
             </div>
           </div>
         </div>
 
       </div>
+
+      <!-- ============ SECCIÓN: COMPRAS A CRÉDITO ============ -->
+      <div class="uk-grid-medium uk-margin-large-top" uk-grid *ngIf="!cargando && itemsCredito.length > 0">
+
+        <div class="uk-width-1-1">
+          <h2 class="cc-seccion-titulo">Compras a Crédito</h2>
+        </div>
+
+        <div class="uk-width-expand@m">
+          <div class="uk-card uk-card-default uk-card-small cc-lista">
+            <div class="uk-card-body">
+
+              <p class="uk-text-meta uk-margin-small-bottom">
+                {{ itemsCredito.length }} producto{{ itemsCredito.length === 1 ? '' : 's' }} a crédito
+              </p>
+
+              <div class="cc-row cc-header cc-row--credito">
+                <div class="cc-item-img-col"></div>
+                <div class="cc-col-nombre">Producto</div>
+                <div class="cc-datos">
+                  <div class="cc-col-precio">Precio</div>
+                  <div class="cc-col-cantidad">Cantidad</div>
+                  <div class="cc-col-cuota">Cuota Mensual</div>
+                  <div class="cc-col-eliminar"></div>
+                </div>
+              </div>
+
+              <ul class="uk-list uk-list-divider">
+                @for (item of itemsCredito; track claveItem(item)) {
+                  <li class="uk-visible-toggle">
+                    <article>
+                      <div class="cc-row cc-row--credito">
+
+                        <div class="cc-item-img-col">
+                          <a class="cc-item-img" [routerLink]="enlace(item)">
+                            <img [src]="resolverImagen(item.publicacion_web?.imagen)" [alt]="titulo(item)">
+                          </a>
+                        </div>
+
+                        <div class="cc-col-nombre">
+                          @if (item.publicacion_web?.categoria; as categoria) {
+                            <div class="uk-text-meta uk-text-xsmall">{{ categoria }}</div>
+                          }
+                          <a class="uk-link-heading" [routerLink]="enlace(item)">{{ titulo(item) }}</a>
+
+                          @if (item.variacion) {
+                            <div class="uk-text-xsmall uk-text-meta uk-margin-xsmall-top">
+                              @for (prop of item.variacion.propiedades; track prop.atb_nombre) {
+                                <div>{{ prop.atb_nombre }}: {{ prop.prp_nombre }}</div>
+                              }
+                            </div>
+                          }
+
+                          @if (item.solo_mayorista) {
+                            <div class="cc-badge cc-badge--info">
+                              Venta solo mayorista · mínimo {{ item.cantidad_minima }} un.
+                            </div>
+                          }
+
+                          @if (excedeStock(item)) {
+                            <div class="cc-badge cc-badge--alerta">
+                              Solo quedan {{ item.stock_disponible }} disponibles: reducí la cantidad.
+                            </div>
+                          }
+                        </div>
+
+                        <div class="cc-datos">
+                          <!-- Precio (financiacion): la "foto" que se tomo al agregar
+                               (car_montocuo), no un calculo nuevo en el frontend. -->
+                          <div class="cc-col-precio" data-label="Precio">
+                            <div class="cc-badge cc-badge--credito">
+                              {{ item.car_numcuo }} cuotas x
+                              {{ item.car_montocuo | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                            </div>
+                          </div>
+
+                          <!-- Cantidad -->
+                          <div class="cc-col-cantidad" data-label="Cantidad">
+                            <div class="tm-qty">
+                              <button type="button" class="tm-qty__btn"
+                                      aria-label="Disminuir cantidad"
+                                      [disabled]="enProceso(item) || enMinimo(item)"
+                                      (click)="disminuir(item)">&minus;</button>
+                              <span class="tm-qty__valor">{{ item.car_cantid }}</span>
+                              <button type="button" class="tm-qty__btn"
+                                      aria-label="Aumentar cantidad"
+                                      [disabled]="enProceso(item) || enMaximo(item)"
+                                      (click)="aumentar(item)">+</button>
+                            </div>
+                          </div>
+
+                          <!-- Cuota mensual de la línea (punto 3) -->
+                          <div class="cc-col-cuota" data-label="Cuota mensual">
+                            <div class="uk-text-bolder">
+                              {{ cuotaMensualLinea(item) | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                            </div>
+                            <div class="uk-text-xsmall uk-text-meta">cuota mensual</div>
+                          </div>
+
+                          <div class="cc-col-eliminar">
+                            <button type="button" class="tm-cart-row__delete"
+                               [disabled]="enProceso(item)"
+                               (click)="eliminar(item)"
+                               uk-tooltip="Eliminar">
+                              <span uk-icon="icon: trash; ratio: .9"></span>
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    </article>
+                  </li>
+                }
+              </ul>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Resumen de compra a crédito (punto 13) -->
+        <div class="uk-width-1-4@m">
+          <div class="uk-card uk-card-default uk-card-small">
+            <div class="uk-card-header">
+              <h3 class="uk-card-title uk-margin-remove">Resumen de Compra a Cuotas</h3>
+            </div>
+            <div class="uk-card-body">
+              <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
+                <div class="uk-width-expand uk-text-muted">Subtotal</div>
+                <div>{{ subtotalCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+              </div>
+              <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
+                <div class="uk-width-expand uk-text-muted">IVA incluido</div>
+                <div>{{ impuestosCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+              </div>
+              <hr class="uk-margin-small">
+              <div class="uk-grid-small" uk-grid>
+                <div class="uk-width-expand uk-text-bolder">Total del Pedido</div>
+                <div class="uk-text-bolder">{{ totalCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+              </div>
+
+              <!-- Código de descuento: solo estructura visual (punto 17) -->
+              <div class="uk-margin-top">
+                <label class="uk-form-label uk-text-small" for="cc-cupon-credito">
+                  Aplicar código de descuento
+                </label>
+                <div class="uk-grid-collapse" uk-grid>
+                  <div class="uk-width-expand">
+                    <input id="cc-cupon-credito" class="uk-input" type="text"
+                           placeholder="Código" [(ngModel)]="codigoDescuentoCredito">
+                  </div>
+                  <div class="uk-width-auto">
+                    <button class="uk-button uk-button-default" type="button"
+                            (click)="aplicarDescuento('credito')">Aplicar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="uk-card-footer">
+              <a class="uk-button uk-button-secondary uk-width-1-1"
+                 href="#" onclick="return false;"
+                 (click)="solicitarCredito()">
+                Solicitar Crédito
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Vaciar todo el carrito: al pie de la página, esquina inferior
+           izquierda (antes iba arriba, junto al título). -->
+      <div class="uk-margin-large-top uk-text-left" *ngIf="!cargando && !carritoVacio">
+        <button class="uk-button uk-button-text uk-text-danger" (click)="vaciar()">
+          Vaciar todo el carrito
+        </button>
+      </div>
+
     </div>
   </section>
 </main>

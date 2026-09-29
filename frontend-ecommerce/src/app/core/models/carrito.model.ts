@@ -1,36 +1,23 @@
-/**
- * Propiedad de una variación (ej: "Color: Rojo"), tal como la arma
- * CarritoResource::variacion.propiedades en el backend.
- */
 export interface CarritoPropiedad {
   atb_nombre: string;
   prp_nombre: string;
 }
 
-/**
- * Variación seleccionada para este ítem del carrito. null cuando el
- * producto se agregó sin variación (producto simple).
- */
 export interface CarritoVariacion {
   var_proid: number;
   var_preadi: number;
   propiedades: CarritoPropiedad[];
 }
 
-/**
- * Resumen de la ficha web del producto (publicacion_web), lo mínimo para
- * pintar la fila del carrito: título, slug (para el link) e imagen.
- */
 export interface CarritoPublicacionWeb {
   pub_titulo: string;
   pub_slug: string | null;
   imagen: string | null;
+  categoria: string | null;
 }
 
-/**
- * Shape de cada fila que devuelve CarritoResource (backend), consumido
- * por GET/POST/PUT /api/tienda/carrito.
- */
+export type ModalidadPago = 'contado' | 'credito';
+
 export interface CarritoItem {
   car_id: number;
   car_idpro: number;
@@ -48,25 +35,47 @@ export interface CarritoItem {
   car_total: number;
   car_creado: string;
 
+  /**
+   * car_recargopct y car_montocuo son una FOTO del momento en que se agregó.
+   * Los tres últimos vienen en null cuando la modalidad es contado.
+   */
+  car_modpag: ModalidadPago;
+  car_numcuo: number | null;
+  car_recargopct: number | null;
+  car_montocuo: number | null;
+
+  stock_disponible?: number | null;
+  controla_stock?: boolean;
+
+  /**
+   * Solo vienen cuando el producto se carga con la fila (whenLoaded).
+   * cantidad_minima es el piso real del selector: 1 en general, o el
+   * umbral mayorista cuando solo_mayorista es true (punto 8 de la
+   * instrucción "Carrito Completo").
+   */
+  cantidad_minima?: number | null;
+  solo_mayorista?: boolean;
+
+  /**
+   * IVA contenido en car_total (no se suma aparte: car_total ya lo trae
+   * adentro). Es el desglose informativo que exige mostrar la Ley 6380/2019.
+   */
+  car_iva?: number;
+
   prd_descri: string;
   publicacion_web: CarritoPublicacionWeb | null;
   variacion: CarritoVariacion | null;
 }
 
-// ----- Shapes de respuesta, uno por cada fila del contrato de API (punto 6 del estándar) -----
-
-/** GET /api/tienda/carrito */
 export interface CarritoListResponse {
   data: CarritoItem[];
 }
 
-/** POST y PUT /api/tienda/carrito(/{id}) */
 export interface CarritoItemResponse {
   message: string;
   data: CarritoItem;
 }
 
-/** DELETE /api/tienda/carrito(/{id}) */
 export interface CarritoMensajeResponse {
   message: string;
 }

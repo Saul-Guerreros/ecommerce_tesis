@@ -1,0 +1,61 @@
+/*
+  Las variables --pd-* se declaran en :host del detalle del producto y se
+  heredan hasta acá. Los valores de respaldo permiten usar el componente
+  fuera de esa página.
+*/
+.sc-qty {
+  display: flex;
+  align-items: center;
+  width: 122px;
+  height: 46px;
+  background: var(--pd-bg-soft, #f5f7f9);
+}
+
+.sc-qty.is-disabled {
+  opacity: 0.55;
+}
+
+.sc-btn {
+  width: 34px;
+  height: 46px;
+  border: 0;
+  background: transparent;
+  color: var(--pd-text, #55585b);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sc-btn:hover:not(:disabled) {
+  color: var(--pd-primary, #1e87f0);
+}
+
+.sc-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.sc-input {
+  flex: 1;
+  width: 0;
+  height: 46px;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  font-size: 15px;
+  color: var(--pd-black, #16181b);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.sc-input:focus {
+  outline: none;
+}
+
+/* Sin las flechitas nativas: los botones − y + ya cumplen esa función. */
+.sc-input::-webkit-outer-spin-button,
+.sc-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

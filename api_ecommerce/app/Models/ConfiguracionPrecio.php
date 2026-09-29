@@ -24,13 +24,25 @@ class ConfiguracionPrecio extends Model
         'cpr_creado'    => 'datetime',
     ];
 
+    /** Instancia memoizada durante el request (ver actual()). */
+    private static ?self $memo = null;
+
     /**
      * Devuelve la única fila de configuración. Lanza excepción clara si
      * el seeder no corrió, en vez de fallar en cascada dentro de
      * PriceService con un error confuso de "null given".
+     *
+     * Se memoiza porque se consulta una vez POR PRODUCTO en varios
+     * recorridos (margenEfectivo(), umbralMayorista()): sin esto, un
+     * listado de 70 productos dispara 70 consultas idénticas.
+     *
+     * Devolver siempre la MISMA instancia también evita que el cache
+     * quede viejo: ConfiguracionPrecioController::update() modifica y
+     * guarda ese mismo objeto, así que el valor memoizado ya refleja
+     * el cambio cuando PriceService recalcula a continuación.
      */
     public static function actual(): self
     {
-        return static::query()->firstOrFail();
+        return static::$memo ??= static::query()->firstOrFail();
     }
 }

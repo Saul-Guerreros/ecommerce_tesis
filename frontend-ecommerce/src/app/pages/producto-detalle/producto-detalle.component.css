@@ -253,6 +253,17 @@
   line-height: 1;
   padding: 5px 12px;
 }
+/* Aviso "Solo quedan X unidades": mismo molde que el badge de stock, en ámbar. */
+.pd-stock-low {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #b45309;
+  background-color: #fff4e5;
+  line-height: 1;
+  padding: 5px 12px;
+}
+
 .pd-stock.is-out {
   color: var(--pd-danger);
   background-color: rgba(240, 80, 110, 0.08);
@@ -729,4 +740,186 @@
 .pd-flash-icon {
   vertical-align: -1px;
   margin-right: 4px;
+}
+
+/* =====================================================================
+   Compra: Comprá en Cuotas + Precio al Contado (cantidades independientes)
+
+   Cada sección es UNA fila: [campo que crece] [unidades 122px] [botón].
+   Las dos filas comparten los mismos anchos fijos a la derecha, así que
+   las unidades y los botones quedan alineados en vertical.
+   Si la columna es angosta (< 490px), el botón baja a su propia línea
+   a ancho completo (ver @container al final).
+   ===================================================================== */
+/* 36px arriba (hasta el stock/rating) y abajo (hasta wishlist). La línea
+   divisoria es del bloque completo, así aparece haya o no nota mayorista. */
+.pd-compra {
+  margin: 36px 0;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--pd-border-light);
+  container-type: inline-size;
+}
+
+.pd-compra-seccion {
+  margin-bottom: 16px;
+}
+
+/* Separación entre la sección de cuotas y la de contado. */
+.pd-compra-seccion + .pd-compra-seccion {
+  margin-top: 36px;
+}
+
+.pd-compra-titulo {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--pd-black);
+  margin: 0 0 10px;
+}
+
+.pd-compra-fila {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 122px minmax(172px, 200px);
+  align-items: start;
+  gap: 12px 16px;
+}
+
+/* Etiqueta (18px) + separación (6px) + control (46px). */
+.pd-compra-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.pd-compra-campo--crece {
+  flex: 1 1 180px;
+  min-width: 180px;
+}
+
+.pd-compra-label {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--pd-muted);
+}
+
+.pd-compra-select {
+  width: 100%;
+  height: 46px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--pd-border);
+  background: #fff;
+  font-size: 15px;
+  color: var(--pd-black);
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.pd-compra-select:focus {
+  outline: none;
+  border-color: var(--pd-primary);
+}
+
+.pd-compra-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Precio unitario al contado; el descuento (si hay) baja a la línea siguiente. */
+.pd-compra-precio {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  min-height: 46px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--pd-black);
+}
+
+.pd-compra-precio-old {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--pd-muted);
+}
+
+.pd-compra-total {
+  font-size: 12px;
+  color: var(--pd-muted);
+}
+
+/* margin-top = alto de la etiqueta + separación: alinea el botón con los controles. */
+.pd-compra-btn {
+  width: 100%;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  margin-top: 24px;
+  padding: 0 12px;
+  border: 0;
+  background: var(--pd-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.pd-compra-btn:hover:not(:disabled),
+.pd-compra-btn:active:not(:disabled) {
+  background: var(--pd-black);     /* negro al pasar el mouse o hacer clic */
+}
+
+.pd-compra-btn--credito {
+  background: var(--pd-primary);
+}
+
+.pd-compra-btn--credito:hover:not(:disabled) {
+  background: var(--pd-black);
+}
+
+.pd-compra-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/*Nuevo*/
+.pd-compra-campo--crece {
+  min-width: 0;
+}
+
+/* Aviso al llegar al máximo disponible: va debajo de la fila que lo alcanzó. */
+.pd-compra-stockmax {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #b45309;
+}
+
+.pd-compra-nota {
+  margin: 0;
+  font-size: 13px;
+  color: var(--pd-muted);
+}
+
+.pd-compra-aviso {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--pd-danger);
+  background: #fdf0f3;
+}
+
+/* Columna angosta (tablet / móvil): no entran las 3 piezas en una línea
+   (164 + 122 + 172 + 2 x 16 = 490px). El botón pasa a su propia fila. */
+@container (max-width: 480px) {
+  .pd-compra-fila {
+    grid-template-columns: minmax(160px, 1fr) 122px;
+  }
+  .pd-compra-btn {
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
 }

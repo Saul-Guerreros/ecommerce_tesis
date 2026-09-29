@@ -1,0 +1,27 @@
+@if (visible) {
+  <!-- Un clic en cualquier parte del fondo cierra el panel al instante:
+       así no bloquea la navegación, aunque se cierre solo a los 3 s. -->
+  <div class="tm-confirm" (click)="cerrar(true)">
+
+    <!-- stopPropagation para que hacer clic DENTRO del panel no lo cierre -->
+    <div class="tm-confirm__panel" (click)="$event.stopPropagation()"
+         role="alert" aria-live="polite">
+
+      <button type="button" class="tm-confirm__close"
+              aria-label="Cerrar" (click)="cerrar(true)">&times;</button>
+
+      <svg class="tm-confirm__icon" viewBox="0 0 80 80" aria-hidden="true">
+        <circle class="tm-confirm__circle" cx="40" cy="40" r="34" />
+        <polyline class="tm-confirm__check" points="24,41 35,52 57,29" />
+      </svg>
+
+      <!-- Texto fijo del frontend: no viene de la respuesta de la API -->
+      <p class="tm-confirm__title">¡Listo!</p>
+      <p class="tm-confirm__text">Producto agregado al carrito</p>
+
+      <button type="button" class="tm-confirm__btn" (click)="irAlCarrito()">
+        Ir al carrito
+      </button>
+    </div>
+  </div>
+}

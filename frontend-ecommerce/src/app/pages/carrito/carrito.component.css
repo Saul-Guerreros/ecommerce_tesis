@@ -1,5 +1,322 @@
-.tm-media-box-wrap > img {
+/* =====================================================================
+   CARRITO DE COMPRA - LAYOUT DE FILA
+   ---------------------------------------------------------------------
+   La fila del carrito es una TABLA visual: todas las filas deben
+   compartir las mismas columnas. Antes se simulaba con flexbox +
+   anchos fijos (flex: 0 0 Npx) y flex-wrap:nowrap, lo que causaba dos
+   bugs al angostar la ventana:
+     a) las columnas fijas no podian encogerse, asi que la unica que
+        cedia era el nombre, que se achicaba por debajo del ancho de sus
+        palabras y el texto se DESBORDABA encima del precio;
+     b) el bloque de datos terminaba saliendose de la tarjeta.
+
+   Solucion: CSS Grid. Cada fila declara la MISMA grilla, por lo que las
+   columnas quedan alineadas entre filas por definicion, y en pantallas
+   chicas la grilla se reconfigura (apilado) en vez de desbordarse.
+   ===================================================================== */
+
+/* Ancho de la columna "Precio" como variable: al contado es un numero
+   corto; a credito lleva el badge de cuotas y necesita mas espacio. */
+.cc-row {
+  --cc-precio-w: 115px;
+
+  display: grid;
+  grid-template-columns:
+    60px                 /* foto (define el alto de la fila)        */
+    minmax(0, 1fr)       /* PRODUCTO: se queda con todo el sobrante  */
+    var(--cc-precio-w)   /* precio    (minimo util: ~110px)         */
+    118px                /* cantidad  (el control -n+ mide 104px)   */
+    125px                /* subtotal/cuota                          */
+    40px;                /* eliminar  (el boton mide 30px)          */
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 10px;
+  padding: 8px 0;        /* aire vertical entre productos */
   width: 100%;
-  height: 100%;
+}
+
+.cc-row--credito {
+  /* No baja mas: el badge "N cuotas x G 00.000" va en nowrap. */
+  --cc-precio-w: 150px;
+}
+
+/* ---------- Aire dentro de la tarjeta de productos ----------
+   uk-card-small trae un padding chico pensado para tarjetas compactas;
+   aca la tarjeta es la lista completa del carrito y necesita margen
+   interno. ::ng-deep porque .uk-card-body es una clase global de UIkit,
+   y .cc-lista limita el cambio a la lista (no toca los resumenes). */
+:host ::ng-deep .cc-lista .uk-card-body {
+  padding: 20px 32px;
+}
+
+/* .cc-datos es solo un contenedor semantico del HTML: con display:contents
+   sus hijos (precio, cantidad, subtotal, eliminar) pasan a ser celdas
+   directas de la grilla de la fila. Asi no hay que tocar la estructura
+   del HTML y las columnas siguen siendo reales. */
+.cc-datos {
+  display: contents;
+}
+
+/* Blindaje anti-encimado: aunque la celda quede mas angosta que una
+   palabra, el texto corta en vez de desbordarse sobre la celda vecina. */
+.cc-row > *,
+.cc-datos > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Columnas ---------- */
+.cc-col-nombre {
+  /* Compacto: el bloque categoria + titulo no debe estirar la fila. */
+  line-height: 1.3;
+}
+
+.cc-col-nombre .uk-text-meta {
+  line-height: 1.2;
+  margin-bottom: 1px;
+}
+
+.cc-col-precio {
+  text-align: left;
+}
+
+.cc-col-cantidad {
+  display: flex;
+  justify-content: center;
+}
+
+.cc-col-subtotal,
+.cc-col-cuota {
+  text-align: right;
+}
+
+.cc-col-eliminar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---------- Fila de encabezados ---------- */
+.cc-header {
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #ececec;
+}
+
+.cc-header > div,
+.cc-header .cc-datos > div {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: #888;
+  white-space: nowrap;
+}
+
+/* El encabezado alinea cada rotulo con su columna de datos. */
+.cc-header .cc-col-cantidad { justify-content: center; }
+.cc-header .cc-col-subtotal,
+.cc-header .cc-col-cuota    { text-align: right; }
+
+/* Rotulos inline (solo modo apilado; ocultos en escritorio). */
+.cc-datos > [data-label]::before {
+  display: none;
+  content: attr(data-label);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: #999;
+  margin-bottom: 2px;
+}
+
+/* =====================================================================
+   RESPONSIVE
+   ===================================================================== */
+
+/* Tablet / ventana reducida: se conservan las columnas pero mas angostas. */
+@media (max-width: 1199px) {
+  .cc-row {
+    --cc-precio-w: 110px;
+    column-gap: 12px;
+    grid-template-columns: 56px minmax(0, 1fr) var(--cc-precio-w) 112px 118px 38px;
+  }
+  .cc-row--credito { --cc-precio-w: 146px; }
+  :host ::ng-deep .cc-lista .uk-card-body { padding: 20px 22px; }
+  .cc-item-img,
+  .cc-item-img-col { width: 56px; height: 56px; }
+}
+
+/* Ventana chica: la fila se APILA. Foto a la izquierda; nombre arriba y
+   debajo, en una linea que envuelve, precio / cantidad / total / borrar.
+   Aca es donde antes se encimaba todo. */
+@media (max-width: 959px) {
+  .cc-header { display: none; }
+
+  :host ::ng-deep .cc-lista .uk-card-body { padding: 18px 16px; }
+
+  .cc-row {
+    grid-template-columns: 72px minmax(0, 1fr);
+    align-items: start;
+    column-gap: 14px;
+    row-gap: 12px;
+  }
+
+  /* Deja de ser transparente: pasa a ser una sola celda (columna 2)
+     con sus hijos en flex que envuelve. */
+  .cc-datos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+    grid-column: 2 / -1;
+  }
+
+  .cc-datos > * {
+    flex: 0 0 auto;
+    text-align: left;
+  }
+
+  .cc-datos > [data-label]::before { display: block; }
+
+  .cc-col-cantidad  { justify-content: flex-start; }
+  .cc-col-eliminar  { margin-left: auto; }
+  .cc-col-subtotal,
+  .cc-col-cuota     { text-align: left; }
+}
+
+/* Celular */
+@media (max-width: 479px) {
+  .cc-row {
+    grid-template-columns: 60px minmax(0, 1fr);
+    column-gap: 10px;
+  }
+  .cc-item-img,
+  .cc-item-img-col { width: 60px; height: 60px; }
+  .cc-datos { gap: 10px 14px; }
+}
+
+/* =====================================================================
+   MINIATURA
+   ===================================================================== */
+.cc-item-img-col {
+  width: 60px;
+}
+
+.cc-item-img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.cc-item-img img {
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
+}
+
+/* Contenedor mas ancho SOLO en esta pagina (uk-container es global de
+   UIkit: 1200px). ::ng-deep atraviesa la encapsulacion de Angular y
+   :host la limita a lo que renderiza este componente. */
+:host ::ng-deep .uk-container {
+  max-width: 1600px;
+}
+
+/* =====================================================================
+   CONTROL DE CANTIDAD (- n +)
+   Mismas reglas que .tm-qty del offcanvas: Angular encapsula el CSS por
+   componente, asi que se repiten aca para que se vean identicos.
+   ===================================================================== */
+.tm-qty {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d7d7d7;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.tm-qty__btn {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: #1e87f0;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tm-qty__btn:hover:not(:disabled) { background: #f2f8ff; }
+.tm-qty__btn:disabled { color: #ccc; cursor: not-allowed; }
+
+.tm-qty__valor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 30px;
+  border-left: 1px solid #ededed;
+  border-right: 1px solid #ededed;
+  font-size: 13.5px;
+  color: #333;
+}
+
+/* ---------- Boton eliminar ---------- */
+.tm-cart-row__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #1e87f0;
+  border-radius: 3px;
+  background: #fff;
+  color: #1e87f0;
+  cursor: pointer;
+}
+.tm-cart-row__delete:hover:not(:disabled) { background: #1e87f0; color: #fff; }
+.tm-cart-row__delete:disabled { opacity: .6; cursor: default; }
+
+/* =====================================================================
+   TITULOS Y BADGES
+   ===================================================================== */
+.cc-seccion-titulo {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #ececec;
+}
+
+.cc-badge {
+  display: inline-block;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+
+.cc-badge--credito {
+  background: #eaf4ff;
+  color: #1e87f0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cc-badge--info,
+.cc-badge--alerta {
+  margin-top: 4px;
+}
+
+.cc-badge--info {
+  background: #f3f3f3;
+  color: #666;
+}
+
+.cc-badge--alerta {
+  background: #fdecea;
+  color: #c0392b;
 }

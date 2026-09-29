@@ -7,9 +7,12 @@ use App\Models\Categoria;
 use App\Models\Discount\Discount;
 use App\Models\Producto;
 use App\Models\Product\EspecificacionProducto;
+use App\Models\Carrito\ConfiguracionCuota;
+
+use App\Models\Configuracion\ConfiguracionTienda;
 use App\Models\PublicacionWeb;
+
 use App\Models\Slider;
-use App\Services\Cuota\CuotaService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,17 +39,6 @@ use Illuminate\Support\Collection;
  */
 class VitrinaController extends Controller
 {
-    /**
-     * El cuotero de cada tarjeta se calcula en el backend para que el home
-     * y el detalle muestren siempre los mismos importes. El service se
-     * inyecta por constructor (el container de Laravel lo resuelve solo) y
-     * cachea los planes durante el request, así formatear ~70 productos no
-     * dispara ~70 consultas a plan_cuota.
-     */
-    public function __construct(private readonly CuotaService $cuotaService)
-    {
-    }
-
     // GET /api/tienda/home — público, consumido por el frontend del ecommerce (sin auth)
     public function home(Request $request): JsonResponse
     {
@@ -58,7 +50,7 @@ class VitrinaController extends Controller
     $descuentos = $this->descuentosActivosPorProducto();
  
     $nuevos = PublicacionWeb::publicadas()
-        ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
+        ->with(['producto.marca', 'producto.configuracionesCuota', 'producto.stock', 'categoria', 'imagenes'])
         ->orderByDesc('pub_creado')
         ->limit($limite)
         ->get()
@@ -66,21 +58,21 @@ class VitrinaController extends Controller
  
     $destacados = PublicacionWeb::publicadas()
         ->destacadas()
-        ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
+        ->with(['producto.marca', 'producto.configuracionesCuota', 'producto.stock', 'categoria', 'imagenes'])
         ->limit($limite)
         ->get()
         ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
  
     $trending = PublicacionWeb::publicadas()
         ->trending()
-        ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
+        ->with(['producto.marca', 'producto.configuracionesCuota', 'producto.stock', 'categoria', 'imagenes'])
         ->limit($limite)
         ->get()
         ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
  
     $masVendidos = PublicacionWeb::publicadas()
         ->selling()
-        ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
+        ->with(['producto.marca', 'producto.configuracionesCuota', 'producto.stock', 'categoria', 'imagenes'])
         ->limit($limite)
         ->get()
         ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
@@ -178,7 +170,7 @@ class VitrinaController extends Controller
 
         $formateados = PublicacionWeb::publicadas()
             ->whereIn('pub_prdid', $descuentosPorProducto->keys())
-            ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
+            ->with(['producto.marca', 'producto.configuracionesCuota', 'producto.stock', 'categoria', 'imagenes'])
             ->get()
             ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentosPorProducto));
 
@@ -249,7 +241,10 @@ class VitrinaController extends Controller
             return null;
         }
 
-        $precioBase = (float) ($pub->pub_prevta ?? $pub->producto->prd_precio);
+        // Antes: pub_prevta ?? producto->prd_precio. prd_precio ya no
+        // existe (se renombro a prd_prevta y despues a prd_pvtmin), asi que
+        // Eloquent devolvia null y el descuento se calculaba sobre 0.
+        $precioBase = (float) $pub->producto->precioVitrina();
 
         return $descuentos
             ->map(fn (Discount $descuento) => [
@@ -289,7 +284,10 @@ class VitrinaController extends Controller
     private function formatearProducto(PublicacionWeb $pub, ?array $mejorOferta = null): array
     {
         $producto = $pub->producto;
-        $precioOriginal = (float) ($pub->pub_prevta ?? $producto->prd_pvtmin);
+        // El precio sale del PRODUCTO (Gestion de Precios), no de la ficha
+        // web: publicacion_web decide SI el producto aparece en la tienda y
+        // COMO se ve, no a cuanto se vende.
+        $precioOriginal = (float) $producto->precioVitrina();
         $precioFinal = $precioOriginal;
         $descuentoPct = null;
         $ofertaFin = null;
@@ -318,9 +316,28 @@ class VitrinaController extends Controller
             'imagen' => $this->imagenPrincipal($pub),
             'precio_original' => $precioOriginal,
             'precio_final' => $precioFinal,
+            // Datos de venta al por mayor. El frontend los usa para la
+            // leyenda "desde X unidades" y, en el detalle, para conmutar el
+            // precio segun la cantidad elegida. La regla real vive en el
+            // backend (Producto::precioPara()): el frontend solo muestra.
+            'precio_mayorista' => $producto->prd_habmaj ? $producto->prd_pvtmay : null,
+            'cantidad_minima_mayorista' => $producto->prd_habmaj ? $producto->umbralMayorista() : null,
+            // true = no se vende por unidad suelta: la compra minima es el
+            // umbral mayorista.
+            'solo_mayorista' => $producto->soloMayorista(),
+            'cantidad_minima' => $producto->cantidadMinimaVenta(),
             // Las cuotas se calculan sobre el precio YA con descuento: es lo
             // que el cliente va a financiar realmente.
-            'cuotas' => $this->cuotaService->calcularOpciones($precioFinal),
+
+            // La cuota se calcula sobre el importe que realmente entra al
+            // carrito (precio con descuento x cantidad mínima de compra).
+            // Para un producto normal la cantidad es 1; para uno solo
+            // mayorista es su compra mínima.
+            'cuotas' => $this->opcionesCuota(
+                $producto,
+                $precioFinal * $producto->cantidadMinimaVenta()
+            ),
+
             'descuento_pct' => $descuentoPct,
             'oferta_fin' => $ofertaFin,
             'es_flash' => $esFlash,
@@ -332,8 +349,54 @@ class VitrinaController extends Controller
             // adapt_producto_table_to_der), así que se suma la tabla stock.
             // controla_stock = false significa "no se controla stock para
             // este producto" (prd_afestk = 0), no "sin datos".
-            'stock' => $this->stockDisponible($producto),
+           'stock' => $this->stockDisponible($producto),
             'controla_stock' => (bool) $producto->prd_afestk,
+            // "Solo quedan X en existencia" también en las tarjetas del Home,
+            // no solo en el Detalle. Usa el umbral de este producto si tiene
+            // override en Publicación Web; si no, el general de la tienda.
+            'poco_stock' => $this->pocoStock($producto, $pub),
+        ];
+    }
+
+     private function pocoStock(Producto $producto, PublicacionWeb $pub): bool
+    {
+        if (! $producto->prd_afestk) {
+            return false;
+        }
+
+        $config = ConfiguracionTienda::actual();
+        $umbral = $pub->pub_pocstk_umbral ?? $config->ctn_pocstk_umbral;
+        $unidades = (int) floor($this->stockDisponible($producto));
+
+        return $config->ctn_pocstk_activo && $unidades > 0 && $unidades <= $umbral;
+    }
+
+    /**
+     * Avisos de stock del Detalle del Producto.
+     *
+     *  - poco_stock: se evalúa acá (ver pocoStock()). El frontend solo lo
+     *    muestra, no conoce el umbral.
+     *  - mostrar_maximo: solo indica si el aviso "Máximo disponible" está
+     *    habilitado (config general — no tiene override por producto). Si
+     *    se alcanzó el máximo depende de la cantidad que el cliente elige
+     *    en pantalla, así que eso lo resuelve el frontend.
+     *
+     * @return array{poco_stock: bool, unidades: int|null, mostrar_maximo: bool}
+     */
+         private function avisosStock(Producto $producto, PublicacionWeb $pub): array
+    {
+        $controlaStock = (bool) $producto->prd_afestk;
+
+        if (! $controlaStock) {
+            return [
+                'poco_stock' => false,
+                'unidades'   => null,
+            ];
+        }
+
+        return [
+            'poco_stock' => $this->pocoStock($producto, $pub),
+            'unidades'   => (int) floor($this->stockDisponible($producto)),
         ];
     }
 
@@ -343,6 +406,100 @@ class VitrinaController extends Controller
      * adapt_producto_table_to_der): el inventario se deriva de la
      * relación Producto::stock() -> Compras\Stock.
      */
+    /**
+     * Opciones de cuotas configuradas para ESTE producto (configuracion_cuota),
+     * activas y ordenadas. Reemplaza al viejo CuotaService/plan_cuota, que
+     * era un plan único para toda la tienda.
+     *
+     * Se calculan sobre $precioContado (que ya viene con descuento aplicado,
+     * si corresponde) para que el cliente financie lo que realmente va a
+     * pagar, no el precio de lista.
+     *
+     * @return array<int, array{cantidad:int, recargo_pct:float, monto_cuota:float, total:float}>
+     */
+    private function opcionesCuota(Producto $producto, float $precioContado): array
+    {
+        if ($precioContado <= 0) {
+            return [];
+        }
+
+        return $producto->configuracionesCuota
+            ->where('cfc_estado', true)
+            ->sortBy('cfc_cantidad')
+            ->map(fn (ConfiguracionCuota $cfg) => [
+                'cantidad'    => (int) $cfg->cfc_cantidad,
+                'recargo_pct' => (float) $cfg->cfc_recargo_pct,
+                'monto_cuota' => $cfg->montoCuota($precioContado),
+                'total'       => $cfg->precioFinanciado($precioContado),
+            ])
+            ->values()
+            ->all();
+    }
+
+     /**
+     * Opciones de compra del detalle: un TRAMO de precio por modalidad
+     * (minorista / mayorista), cada uno con sus cuotas calculadas sobre el
+     * precio UNITARIO de ese tramo.
+     *
+     * Así el frontend solo elige el tramo según la cantidad y no recalcula
+     * recargos: la financiación se calcula acá, con ConfiguracionCuota, la
+     * misma lógica que usa el carrito. El orden es el pedido: primero el
+     * precio que corresponde, después la financiación sobre ese precio.
+     *
+     * Nota: opcionesCuota() de la vitrina calcula sobre "precio x cantidad
+     * mínima", que en un producto solo mayorista da la cuota del lote
+     * completo. Acá las cuotas son POR UNIDAD, igual que car_montocuo.
+     *
+     * @return array{
+     *   solo_mayorista: bool,
+     *   cantidad_minima: int,
+     *   minorista: array{precio_unitario: float, cuotas: array}|null,
+     *   mayorista: array{precio_unitario: float, cantidad_minima: int, cuotas: array}|null
+     * }
+     */
+    private function opcionesCompra(Producto $producto, array $formateado): array
+    {
+        $minorista = null;
+ 
+        if ($producto->prd_habmin && $producto->prd_pvtmin !== null) {
+            // precio_final ya trae el descuento vigente sobre el minorista.
+            $precio = (float) $formateado['precio_final'];
+ 
+            $minorista = [
+                'precio_unitario' => $precio,
+                'cuotas'          => $this->opcionesCuota($producto, $precio),
+            ];
+        }
+ 
+        $mayorista = null;
+ 
+        if ($producto->prd_habmaj && $producto->prd_pvtmay !== null) {
+            // Producto solo mayorista: precio_final (con su descuento, si hay)
+            // es el precio que se ve en el Home. Con ambas modalidades se usa
+            // el precio mayorista de Gestión de Precios.
+            $precio = $minorista === null
+                ? (float) $formateado['precio_final']
+                : (float) $producto->prd_pvtmay;
+ 
+            $mayorista = [
+                'precio_unitario' => $precio,
+                // Cantidades enteras: q >= 10.5 equivale a q >= ceil(10.5).
+                'cantidad_minima' => max(1, (int) ceil($producto->umbralMayorista())),
+                'cuotas'          => $this->opcionesCuota($producto, $precio),
+            ];
+        }
+ 
+        $soloMayorista = $minorista === null && $mayorista !== null;
+ 
+        return [
+            'solo_mayorista'  => $soloMayorista,
+            'cantidad_minima' => $soloMayorista ? $mayorista['cantidad_minima'] : 1,
+            'minorista'       => $minorista,
+            'mayorista'       => $mayorista,
+        ];
+    }
+ 
+
     private function stockDisponible(Producto $producto): float
     {
         return (float) $producto->stock->sum(
@@ -427,7 +584,7 @@ class VitrinaController extends Controller
                 ->where(fn ($w) => $w
                     ->whereNull('prd_padre_id')
                     ->orWhere('prd_padre_id', '!=', $familiaId)))
-            ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes', 'vitrinas'])
+            ->with(['producto.marca', 'producto.configuracionesCuota', 'producto.stock', 'categoria', 'imagenes', 'vitrinas'])
             ->orderByDesc('pub_id');
 
         $familiaDe = fn (PublicacionWeb $p) => $p->producto->prd_padre_id ?? $p->producto->prd_id;
@@ -488,8 +645,8 @@ class VitrinaController extends Controller
         }
 
         // Precio parecido: 1.0 si cuestan igual, tiende a 0 mientras más se alejan.
-        $a = (float) $actual->pub_prevta;
-        $b = (float) $candidata->pub_prevta;
+        $a = (float) $actual->producto->precioVitrina();
+        $b = (float) $candidata->producto->precioVitrina();
         if ($a > 0 && $b > 0) {
             $puntos += 20 * (min($a, $b) / max($a, $b));
         }
@@ -512,7 +669,7 @@ class VitrinaController extends Controller
     {
         $pub = PublicacionWeb::publicadas()
             ->where('pub_slug', $slug)
-            ->with(['producto.marca', 'producto.stock.deposito.sucursal', 'producto.padre.publicacionWeb', 'categoria', 'imagenes'])
+            ->with(['producto.marca', 'producto.configuracionesCuota', 'producto.stock.deposito.sucursal', 'producto.padre.publicacionWeb', 'categoria', 'imagenes'])
             ->firstOrFail();
 
         $producto = $pub->producto;
@@ -564,9 +721,14 @@ class VitrinaController extends Controller
         // Relacionados: otros productos afines (ver resolverRelacionados()).
         $relacionados = $this->resolverRelacionados($pub, $producto, $descuentos);
 
+             
+        $productoFormateado = $this->formatearConOferta($pub, $descuentos);
+ 
         return response()->json([
             'data' => [
-                'producto' => $this->formatearConOferta($pub, $descuentos),
+                'producto' => $productoFormateado,
+                'compra' => $this->opcionesCompra($producto, $productoFormateado),
+                'stock_avisos' => $this->avisosStock($producto, $pub),
                 // pub_descwb: puede venir null si no se completó todavía.
                 'descripcion' => $pub->pub_descwb,
                 'galeria' => $galeria,

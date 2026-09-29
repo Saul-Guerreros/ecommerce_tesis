@@ -157,6 +157,24 @@ export const routes: Routes = [
       },
 
       {
+        path: 'configuracion-tienda',
+        loadChildren: () =>
+          import('./modules/configuracion-tienda/configuracion-tienda.module').then(
+            (m) => m.ConfiguracionTiendaModule
+          ),
+        data: { title: 'Configuración de la Tienda' },
+      },
+
+      {
+        path: 'gestion-cuotas',
+        loadChildren: () =>
+          import('./modules/gestion-cuotas/gestion-cuotas.module').then(
+            (m) => m.GestionCuotasModule
+          ),
+        data: { title: 'Gestión de Cuotas' },
+      },
+
+      {
         path: 'inventario/ajustes',
         loadChildren: () => import('./modules/ajustes-inventario/ajustes-inventario.module').then(m => m.AjustesInventarioModule),
         data: { title: 'Ajuste de Inventario' },

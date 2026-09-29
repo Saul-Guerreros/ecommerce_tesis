@@ -1,9 +1,52 @@
-<div class="uk-padding-small uk-background-muted uk-border-rounded" *ngIf="cuotas.length">
-  <div class="uk-text-bold uk-text-emphasis uk-margin-xsmall-bottom">Pedí en CUOTAS</div>
-  <div class="uk-text-small uk-margin-xsmall-bottom">¿Cómo querés pagar?</div>
-  <select class="uk-select">
-    <option *ngFor="let c of cuotas" [value]="c.cantidad">
-      {{ c.cantidad }}x {{ c.monto_cuota | currency:'PYG':'symbol-narrow':'1.0-0' }}
-    </option>
-  </select>
+<div class="tm-cuotero">
+
+  <!-- Comprá en Cuotas: solo si el admin configuró opciones -->
+  <ng-container *ngIf="tieneCuotas">
+    <div class="tm-cuotero-label">Comprá en Cuotas</div>
+
+    <div class="tm-cuotero-row">
+      <select class="uk-select tm-cuotero-select"
+              [disabled]="procesando || sinStock"
+              [value]="cuotaSeleccionada?.cantidad"
+              (change)="seleccionarCuota($any($event.target).value)"
+              aria-label="Cantidad de cuotas">
+        <option *ngFor="let c of cuotas" [value]="c.cantidad">
+          {{ c.cantidad }}x {{ c.monto_cuota | currency:'PYG':'Gs. ':'1.0-0' }}
+        </option>
+      </select>
+
+      <button class="uk-button uk-button-primary tm-cuotero-button tm-shine"
+              type="button"
+              [disabled]="procesando || sinStock || !cuotaSeleccionada"
+              (click)="comprarEnCuotas()"
+              aria-label="Agregar al carrito en cuotas">
+        <span uk-icon="cart"></span>
+      </button>
+    </div>
+  </ng-container>
+
+  <!-- Comprá al Contado: siempre visible (con o sin cuotas) -->
+  <div class="tm-cuotero-label" [class.uk-margin-small-top]="tieneCuotas">Comprá al Contado</div>
+
+  <div class="tm-cuotero-row">
+    <div class="tm-cuotero-precio">
+      {{ totalContado | currency:'PYG':'Gs. ':'1.0-0' }}
+    </div>
+
+    <button class="uk-button uk-button-primary tm-cuotero-button tm-shine"
+            type="button"
+            [disabled]="procesando || sinStock"
+            (click)="comprarAlContado()"
+            aria-label="Agregar al carrito al contado">
+      <span uk-icon="cart"></span>
+    </button>
+  </div>
+
+  <div class="uk-text-meta uk-text-xsmall tm-cuotero-note" *ngIf="esPorVarias">
+    Precio y cuotas por {{ cantidad }} unidades (compra mínima)
+  </div>
+
+  <div class="uk-text-meta uk-text-xsmall uk-text-danger tm-cuotero-note" *ngIf="sinStock">
+    Sin stock disponible
+  </div>
 </div>

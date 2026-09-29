@@ -30,12 +30,6 @@
               </a>
 
               <div class="uk-navbar-dropdown uk-margin-remove" uk-drop="mode: click; pos: bottom-right;">
-                <!--
-                 <ul class="uk-nav uk-dropdown-nav">
-                  <li *ngIf="currency == 'PEN'"><a href="#" onclick="return false;" (click)="changeCurrency('USD')">USD</a></li>
-                  <li *ngIf="currency == 'USD'"><a href="#" onclick="return false;" (click)="changeCurrency('PEN')">PEN</a></li>
-                </ul>
-                -->
               </div>
 
             </li>
@@ -188,7 +182,7 @@
 
         <!-- CORRECCIÓN 1: listCarts ya no es un signal -> sin paréntesis -->
         <a class="uk-navbar-item uk-link-muted tm-navbar-button" href="#" onclick="return false" uk-toggle="target: #cart-offcanvas">
-          <span uk-icon="cart"></span><span class="uk-badge">{{ listCarts.length }}</span>
+          <span uk-icon="cart"></span><span class="uk-badge">{{ totalUnidades }}</span>
         </a>
       </div>
     </div>
@@ -247,82 +241,9 @@
   </aside>
 </div>
 
-<!-- ==================== OFFCANVAS: CARRITO ==================== -->
-<div id="cart-offcanvas" uk-offcanvas="overlay: true; flip: true">
-  <aside class="uk-offcanvas-bar uk-padding-remove">
-    <div class="uk-card uk-card-default uk-card-small uk-height-1-1 uk-flex uk-flex-column tm-shadow-remove">
-      <header class="uk-card-header uk-flex uk-flex-middle">
-        <div class="uk-grid-small uk-flex-1" uk-grid>
-          <div class="uk-width-expand"><div class="uk-h3">Carrito de compra</div></div>
-          <button class="uk-offcanvas-close" type="button" uk-close></button>
-        </div>
-      </header>
+<!-- ==================== OFFCANVAS: CARRITO ====================
+     La marcación vive en su propio componente: el header solo lo monta.  -->
+<app-carrito-offcanvas />
 
-      <div class="uk-card-body uk-overflow-auto">
-        <ul class="uk-list uk-list-divider">
-          <!-- CORRECCIÓN 2: sin paréntesis + track por claveItem().
-               car_id viene null en el carrito de invitado (instancias no
-               persistidas), así que trackear por car_id daría claves
-               duplicadas y Angular lanzaría NG0955. -->
-          @for (cart of listCarts; track claveItem(cart)) {
-            <li class="uk-visible-toggle">
-              <article>
-                <div class="uk-grid-small" uk-grid>
-                  <div class="uk-width-1-4">
-                    <div class="tm-ratio tm-ratio-4-3">
-                      <a class="tm-media-box" [routerLink]="enlaceItem(cart)">
-                        <figure class="tm-media-box-wrap">
-                          <img [src]="resolverImagen(cart.publicacion_web?.imagen)" [alt]="tituloItem(cart)">
-                        </figure>
-                      </a>
-                    </div>
-                  </div>
-                  <div class="uk-width-expand">
-                    <a class="uk-link-heading uk-text-small" [routerLink]="enlaceItem(cart)">
-                      {{ tituloItem(cart) }}
-                    </a>
-                    <div class="uk-margin-xsmall-top uk-text-xsmall uk-text-meta">
-                      <div>{{ cart.car_precio | number:'1.0-0' }} Gs. x{{ cart.car_cantid }}</div>
-                      <div class="uk-text-bolder uk-text-small">
-                        Total: {{ cart.car_total | number:'1.0-0' }} Gs.
-                      </div>
-                      @if (cart.variacion) {
-                        @for (prop of cart.variacion.propiedades; track prop.atb_nombre) {
-                          <div>{{ prop.atb_nombre }}: {{ prop.prp_nombre }}</div>
-                        }
-                      }
-                    </div>
-                  </div>
-                  <div>
-                    <a class="uk-icon-link uk-text-danger uk-invisible-hover"
-                       href="#" onclick="return false;"
-                       (click)="eliminarDelCarrito(cart)"
-                       uk-icon="icon: close; ratio: .75"
-                       uk-tooltip="Eliminar"></a>
-                  </div>
-                </div>
-              </article>
-            </li>
-          }
-
-          <!-- CORRECCIÓN 3: sin paréntesis -->
-          @if (listCarts.length == 0) {
-            <li class="uk-text-center uk-text-muted uk-margin">Tu carrito está vacío</li>
-          }
-        </ul>
-      </div>
-
-      <footer class="uk-card-footer" *ngIf="isLoading">
-        <div class="uk-grid-small" uk-grid>
-          <div class="uk-width-expand uk-text-muted uk-h4">Subtotal</div>
-          <!-- CORRECCIÓN 4: sin paréntesis -->
-          <div class="uk-h4 uk-text-bolder">{{ totalCarts | number:'1.0-0' }} Gs.</div>
-        </div>
-        <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@m uk-margin-small" uk-grid>
-          <div><a class="uk-button uk-button-default uk-margin-small uk-width-1-1" routerLink="/carrito-de-compra">ver carrito</a></div>
-          <div><a class="uk-button uk-button-primary uk-margin-small uk-width-1-1" routerLink="/proceso-de-pago">pagar</a></div>
-        </div>
-      </footer>
-    </div>
-  </aside>
-</div>
+<!-- Panel "¡Listo! Producto agregado al carrito" (se autocierra a los 3 s) -->
+<app-confirmacion-carrito />

@@ -9,12 +9,23 @@ import {
   CarritoItemResponse,
   CarritoListResponse,
   CarritoMensajeResponse,
+  ModalidadPago,
 } from '../models/carrito.model';
 
-/** Lo único que se guarda en el navegador del invitado: nunca precios. */
+/** Lo único que se guarda en el navegador: NUNCA precios ni montos de cuota. */
 interface ItemInvitado {
   car_idpro: number;
   car_cantid: number;
+  car_modpag: ModalidadPago;
+  car_numcuo: number | null;
+}
+
+export interface AgregarAlCarrito {
+  car_idpro: number;
+  car_idvarp?: number | null;
+  car_cantid: number;
+  car_modpag?: ModalidadPago;
+  car_numcuo?: number | null;
 }
 
 const CLAVE_INVITADO = 'carrito_invitado';
@@ -22,16 +33,16 @@ const CLAVE_INVITADO = 'carrito_invitado';
 @Injectable({ providedIn: 'root' })
 export class CarritoService {
 
-  // ---------- Estado reactivo (patrón Observer) ----------
-  // BehaviorSubject y no Subject: todo componente que se suscriba después
-  // (ej. el header al navegar) recibe de inmediato el último valor emitido.
   private readonly carrito = new BehaviorSubject<CarritoItem[]>([]);
 
-  /** Único canal de lectura público. Nadie fuera del service llama a next(). */
   readonly carrito$: Observable<CarritoItem[]> = this.carrito.asObservable();
 
-  /** Derivados: evitan que cada componente recalcule lo mismo. */
   readonly cantidadItems$ = this.carrito$.pipe(map((items) => items.length));
+
+  readonly cantidadUnidades$ = this.carrito$.pipe(
+    map((items) => items.reduce((suma, i) => suma + Number(i.car_cantid), 0))
+  );
+
   readonly totalCarrito$ = this.carrito$.pipe(
     map((items) => items.reduce((suma, i) => suma + Number(i.car_total), 0))
   );
@@ -47,11 +58,6 @@ export class CarritoService {
   }
 
   // ---------- Mutadores del estado en memoria ----------
-  // Equivalen a changeCart/removeCart/resetCart del curso, con dos correcciones:
-  //   1) se emite un ARRAY NUEVO (el curso muta el array y reemite la misma
-  //      referencia, lo que rompe la detección de cambios con OnPush);
-  //   2) la identidad de la fila contempla producto + variación, no solo el id
-  //      (el invitado no tiene car_id porque su carrito no está persistido).
 
   cambiarItem(item: CarritoItem): void {
     const lista = [...this.carrito.getValue()];
@@ -76,12 +82,21 @@ export class CarritoService {
     this.carrito.next(items);
   }
 
+  /**
+   * La modalidad y el nº de cuotas forman parte de la identidad de la fila:
+   * el mismo producto al contado y en 6 cuotas son DOS filas distintas.
+   */
   private esMismaFila(a: CarritoItem, b: CarritoItem): boolean {
     if (a.car_id && b.car_id) {
       return a.car_id === b.car_id;
     }
-    return a.car_idpro === b.car_idpro
-        && (a.car_idvarp ?? null) === (b.car_idvarp ?? null);
+
+    return (
+      a.car_idpro === b.car_idpro &&
+      (a.car_idvarp ?? null) === (b.car_idvarp ?? null) &&
+      (a.car_modpag ?? 'contado') === (b.car_modpag ?? 'contado') &&
+      (a.car_numcuo ?? null) === (b.car_numcuo ?? null)
+    );
   }
 
   // ---------- Lectura ----------
@@ -92,10 +107,10 @@ export class CarritoService {
         .get<CarritoListResponse>(`${URL_SERVICIOS}/tienda/carrito`)
         .pipe(tap((resp) => this.reiniciar(resp.data)));
     }
+
     return this.previsualizarInvitado();
   }
 
-  /** Resuelve contra el backend los ids que el invitado tiene en localStorage. */
   private previsualizarInvitado(): Observable<CarritoListResponse> {
     const guardados = this.leerInvitado();
 
@@ -114,27 +129,59 @@ export class CarritoService {
 
   // ---------- Escritura ----------
 
-  agregar(datos: {
-    car_idpro: number;
-    car_idvarp?: number | null;
-    car_cantid: number;
-  }): Observable<CarritoItemResponse> {
+  agregar(datos: AgregarAlCarrito): Observable<CarritoItemResponse> {
+    const modalidad: ModalidadPago = datos.car_modpag ?? 'contado';
+    const numeroCuotas = modalidad === 'credito' ? (datos.car_numcuo ?? null) : null;
 
     if (this.authService.isLoggedIn()) {
+      // store() responde 422 si esa combinación ya está: se traduce a un
+      // PUT de cantidad acumulada para que "agregar otra vez" siga sumando.
+      const existente = this.carrito.getValue().find(
+        (i) =>
+          i.car_idpro === datos.car_idpro &&
+          (i.car_idvarp ?? null) === (datos.car_idvarp ?? null) &&
+          (i.car_modpag ?? 'contado') === modalidad &&
+          (i.car_numcuo ?? null) === numeroCuotas
+      );
+
+      if (existente) {
+        return this.actualizarCantidad(
+          existente,
+          Number(existente.car_cantid) + datos.car_cantid
+        );
+      }
+
       return this.http
-        .post<CarritoItemResponse>(`${URL_SERVICIOS}/tienda/carrito`, datos)
+        .post<CarritoItemResponse>(`${URL_SERVICIOS}/tienda/carrito`, {
+          car_idpro: datos.car_idpro,
+          car_idvarp: datos.car_idvarp ?? null,
+          car_cantid: datos.car_cantid,
+          car_modpag: modalidad,
+          car_numcuo: numeroCuotas,
+        })
         .pipe(tap((resp) => this.cambiarItem(resp.data)));
     }
 
+    // Invitado: PRIMERO se persiste en localStorage y DESPUÉS se previsualiza.
     const guardados = this.leerInvitado();
-    const existente = guardados.find((i) => i.car_idpro === datos.car_idpro);
+    const indice = guardados.findIndex(
+      (i) =>
+        i.car_idpro === datos.car_idpro &&
+        i.car_modpag === modalidad &&
+        (i.car_numcuo ?? null) === numeroCuotas
+    );
 
-    if (existente) {
-      existente.car_cantid += datos.car_cantid;
+    if (indice !== -1) {
+      guardados[indice] = {
+        ...guardados[indice],
+        car_cantid: Number(guardados[indice].car_cantid) + datos.car_cantid,
+      };
     } else {
-      guardados.unshift({
+      guardados.push({
         car_idpro: datos.car_idpro,
         car_cantid: datos.car_cantid,
+        car_modpag: modalidad,
+        car_numcuo: numeroCuotas,
       });
     }
 
@@ -143,7 +190,12 @@ export class CarritoService {
     return this.previsualizarInvitado().pipe(
       map((resp): CarritoItemResponse => ({
         message: 'Producto agregado al carrito.',
-        data: resp.data.find((i) => i.car_idpro === datos.car_idpro)!,
+        data: resp.data.find(
+          (i) =>
+            i.car_idpro === datos.car_idpro &&
+            (i.car_modpag ?? 'contado') === modalidad &&
+            (i.car_numcuo ?? null) === numeroCuotas
+        )!,
       }))
     );
   }
@@ -163,14 +215,14 @@ export class CarritoService {
     }
 
     const guardados = this.leerInvitado().map((i) =>
-      i.car_idpro === item.car_idpro ? { ...i, car_cantid } : i
+      this.esMismoInvitado(i, item) ? { ...i, car_cantid } : i
     );
     this.guardarInvitado(guardados);
 
     return this.previsualizarInvitado().pipe(
       map((resp): CarritoItemResponse => ({
         message: 'Cantidad actualizada.',
-        data: resp.data.find((i) => i.car_idpro === item.car_idpro)!,
+        data: resp.data.find((i) => this.esMismaFila(i, item))!,
       }))
     );
   }
@@ -185,7 +237,7 @@ export class CarritoService {
     }
 
     this.guardarInvitado(
-      this.leerInvitado().filter((i) => i.car_idpro !== item.car_idpro)
+      this.leerInvitado().filter((i) => !this.esMismoInvitado(i, item))
     );
     this.quitarItem(item);
 
@@ -230,10 +282,30 @@ export class CarritoService {
 
   // ---------- localStorage ----------
 
+  private esMismoInvitado(guardado: ItemInvitado, item: CarritoItem): boolean {
+    return (
+      guardado.car_idpro === item.car_idpro &&
+      guardado.car_modpag === (item.car_modpag ?? 'contado') &&
+      (guardado.car_numcuo ?? null) === (item.car_numcuo ?? null)
+    );
+  }
+
   private leerInvitado(): ItemInvitado[] {
     if (!this.esNavegador) return [];
+
     try {
-      return JSON.parse(localStorage.getItem(CLAVE_INVITADO) ?? '[]');
+      const crudos = JSON.parse(localStorage.getItem(CLAVE_INVITADO) ?? '[]');
+
+      if (!Array.isArray(crudos)) return [];
+
+      // Carritos guardados antes de esta funcionalidad no tienen modalidad:
+      // se asumen al contado en vez de descartarlos.
+      return crudos.map((i: any) => ({
+        car_idpro: Number(i.car_idpro),
+        car_cantid: Number(i.car_cantid),
+        car_modpag: i.car_modpag === 'credito' ? 'credito' : 'contado',
+        car_numcuo: i.car_numcuo ?? null,
+      }));
     } catch {
       return [];
     }

@@ -4,20 +4,27 @@ import { RouterModule } from '@angular/router';
 import { DomSanitizer, SafeHtml, SafeStyle } from '@angular/platform-browser';
 import { Producto } from '../../core/models/producto.model';
 import { ProductoPublicoService } from '../../core/services/producto-publico.service';
-import { ProductoVitrina } from '../../core/models/vitrina.model';
+
+import { ProductoVitrina, SeleccionCompra } from '../../core/models/vitrina.model';
+import { CuoteroComponent } from '../../shared/components/cuotero/cuotero.component';
+
 import { VitrinaHomeService } from '../../core/services/vitrina-home.service';
 import { URL_BACKEND } from '../../config/config';
 import { SliderVitrina } from '../../core/models/slider.model';
 import { SliderPublicoService } from '../../core/services/slider-publico.service';
 import { ToastrService } from 'ngx-toastr';
 import { CarritoService } from '../../core/services/carrito.service';
+// --- import nuevo ---
+import { CarritoUiService } from '../../core/services/carrito-ui.service';
 
 declare const UIkit: any;
 
 @Component({
   selector: 'app-home',
   standalone: true,
-    imports: [CommonModule, CurrencyPipe, RouterModule],
+
+  imports: [CommonModule, CurrencyPipe, RouterModule, CuoteroComponent],
+
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })
@@ -52,8 +59,9 @@ export class HomeComponent implements OnInit {
 		private sliderPublicoService: SliderPublicoService,
 		private sanitizer: DomSanitizer,
 		private carritoService: CarritoService,
+		private carritoUi: CarritoUiService,      // ← nuevo
 		private toastr: ToastrService
-  ) {
+  ) { /* ... sin cambios ... */ 
     // afterNextRender solo corre en el navegador (nunca en SSR) y después
     // de que el DOM quedó pintado/hidratado: es el punto seguro para
     // inicializar librerías que tocan el DOM directamente, como UIkit.
@@ -303,27 +311,34 @@ cargarVitrinaHome(): void {
    */
   agregando = new Set<number>();
 
-  agregarAlCarrito(producto: ProductoVitrina): void {
+  
+    /**
+   * Agrega el producto con la modalidad elegida en la tarjeta.
+   * Solo viajan producto, cantidad, modalidad y nº de cuotas: ni el precio
+   * ni el monto de la cuota salen del navegador, el backend los recalcula.
+   */
+  agregarAlCarrito(
+    producto: ProductoVitrina,
+    seleccion: SeleccionCompra = { modalidad: 'contado' }
+  ): void {
     if (this.agregando.has(producto.prd_id) || this.sinStockVitrina(producto)) {
       return;
     }
 
     this.agregando.add(producto.prd_id);
 
-    // No se exige login: carritoService resuelve internamente si hay sesion
-    // (BD) o es invitado (localStorage). El login solo se pide al pagar.
-    // Tampoco se manda precio ni total: los calcula el backend a partir de
-    // publicacion_web.pub_prevta.
     this.carritoService
       .agregar({
         car_idpro: producto.prd_id,
         car_idvarp: null,
-        car_cantid: 1,
+        car_cantid: this.cantidadAAgregar(producto),
+        car_modpag: seleccion.modalidad,
+        car_numcuo: seleccion.numero_cuotas ?? null,
       })
       .subscribe({
-        next: (resp) => {
+        next: () => {
           this.agregando.delete(producto.prd_id);
-          this.toastr.success(resp.message, producto.titulo);
+          this.carritoUi.confirmarAgregado();
         },
         error: (err) => {
           this.agregando.delete(producto.prd_id);
@@ -332,8 +347,46 @@ cargarVitrinaHome(): void {
       });
   }
 
+
   enProceso(producto: ProductoVitrina): boolean {
     return this.agregando.has(producto.prd_id);
+  }
+
+  // ---------------------------------------------------------------
+  // Venta al por mayor
+  // ---------------------------------------------------------------
+
+  /**
+   * Producto que SOLO se vende al por mayor: la tarjeta muestra el precio
+   * mayorista y no permite comprar una unidad suelta. La regla la impone
+   * el backend (Producto::precioPara()); esto es solo la experiencia.
+   */
+  esSoloMayorista(producto: ProductoVitrina): boolean {
+    return producto.solo_mayorista === true;
+  }
+
+  /** Cantidad que se agrega al carrito desde la tarjeta del home. */
+  cantidadAAgregar(producto: ProductoVitrina): number {
+    return producto.cantidad_minima && producto.cantidad_minima > 1
+      ? producto.cantidad_minima
+      : 1;
+  }
+
+  /**
+   * Leyenda del precio por volumen. Se muestra en dos casos:
+   * solo mayorista (es el único precio) y mixto (es un beneficio por
+   * cantidad que conviene anunciar antes de que el cliente lo descubra).
+   */
+  leyendaMayorista(producto: ProductoVitrina): string | null {
+    const minima = producto.cantidad_minima_mayorista;
+
+    if (!minima || producto.precio_mayorista == null) {
+      return null;
+    }
+
+    return this.esSoloMayorista(producto)
+      ? `Venta por mayor · mínimo ${minima} unidades`
+      : `Desde ${minima} unidades: precio mayorista`;
   }
 
   /**
@@ -343,6 +396,14 @@ cargarVitrinaHome(): void {
    */
   sinStockVitrina(producto: ProductoVitrina): boolean {
     return producto.controla_stock === true && (producto.stock ?? 0) <= 0;
+  }
+
+    /** Texto del badge de poco stock para una tarjeta del Home. */
+  mensajePocoStockVitrina(producto: ProductoVitrina): string | null {
+    if (!producto.poco_stock || this.sinStockVitrina(producto)) {
+      return null;
+    }
+    return producto.stock === 1 ? 'Solo queda 1 unidad' : `Solo quedan ${producto.stock} unidades`;
   }
 
   /** Primer mensaje del 422 de Laravel: { errors: { campo: ["..."] } } */
@@ -362,4 +423,5 @@ cargarVitrinaHome(): void {
   trackByVitrina(_index: number, producto: ProductoVitrina): number {
     return producto.pub_id;
   }
+  
 }

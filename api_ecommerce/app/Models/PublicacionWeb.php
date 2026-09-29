@@ -43,10 +43,12 @@ class PublicacionWeb extends Model
         'pub_meta_titulo',
         'pub_meta_descripcion',
         'pub_estado',
+        'pub_pocstk_umbral',
     ];
 
     protected $casts = [
         'pub_estado' => 'integer',
+        'pub_pocstk_umbral' => 'integer',
         'pub_prevta' => 'decimal:2',
         'pub_creado' => 'datetime',
         'pub_actualizado' => 'datetime',

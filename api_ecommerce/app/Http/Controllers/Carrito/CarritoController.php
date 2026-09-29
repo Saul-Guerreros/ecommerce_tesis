@@ -4,29 +4,26 @@ namespace App\Http\Controllers\Carrito;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Carrito\CarritoRequest;
+use App\Http\Requests\Carrito\SincronizarCarritoRequest;
 use App\Http\Resources\Carrito\CarritoResource;
 use App\Models\Carrito\Carrito;
-use App\Models\Compras\Stock;
+use App\Models\Carrito\ConfiguracionCuota;
 use App\Models\product\VariacionProducto;
 use App\Models\Producto;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-use App\Http\Requests\Carrito\SincronizarCarritoRequest;
-use Illuminate\Support\Facades\DB;
-
 class CarritoController extends Controller{
-    /**
-     * Relaciones que CarritoResource necesita, para evitar N+1 al listar.
-     */
     private const CON=[
         'producto.publicacionWeb.imagenes',
+        'producto.publicacionWeb.categoria', // para mostrar la categoría junto al nombre
+        'producto.stock',
+        'producto.tipoIva', // punto 16: CarritoResource usa esto para desglosar el IVA incluido.
         'variacion.propiedades.atributo',
     ];
 
-    /**
-     * GET /api/tienda/carrito
-     */
+    // GET /api/tienda/carrito
     public function index(): JsonResponse{
         $usuario = auth('api')->user();
 
@@ -40,23 +37,23 @@ class CarritoController extends Controller{
         ]);
     }
 
-    /**
-     * POST /api/tienda/carrito
-     */
+    // POST /api/tienda/carrito
     public function store(CarritoRequest $request): JsonResponse{
         $usuario = auth('api')->user();
         $datos = $request->validated();
 
-        // where('car_idvarp', null) en Eloquent se traduce solo a
-        // whereNull() -- no compara "= NULL" (eso nunca matchea en SQL).
+        // Modalidad y cuotas entran en el chequeo de duplicado: el mismo
+        // producto al contado y en 6 cuotas son dos filas distintas.
         $duplicado = Carrito::where('car_idusu', $usuario->usu_id)
             ->where('car_idpro', $datos['car_idpro'])
             ->where('car_idvarp', $datos['car_idvarp'] ?? null)
+            ->where('car_modpag', $datos['car_modpag'] ?? 'contado')
+            ->where('car_numcuo', $datos['car_numcuo'] ?? null)
             ->exists();
 
         if ($duplicado){
             throw ValidationException::withMessages([
-                'car_idpro' => 'Ese producto ya está en tu carrito. Actualiza la cantidad en vez de agregarlo de nuevo.',
+                'car_idpro' => 'Ese producto ya está en tu carrito con esa modalidad. Actualiza la cantidad en vez de agregarlo de nuevo.',
             ]);
         }
 
@@ -73,19 +70,30 @@ class CarritoController extends Controller{
             ]);
         }
 
-        // El precio NUNCA se toma del request: se recalcula acá a partir
-        // del precio publicado (pub_prevta) + el adicional de la variación.
-        $precioUnitario= $this->precioUnitario($producto, $variacion);
-        $total= $precioUnitario * $datos['car_cantid'];
+        // El precio NUNCA viene del request.
+        $precioUnitario = $this->precioUnitarioOFallar($producto, $variacion, (float) $datos['car_cantid']);
 
-        $carrito= Carrito::create([
-            'car_idusu'  => $usuario->usu_id,
-            'car_idpro'  => $producto->prd_id,
-            'car_idvarp' => $variacion?->var_proid,
-            'car_cantid' => $datos['car_cantid'],
-            'car_precio' => $precioUnitario,
-            'car_subtot' => $precioUnitario,
-            'car_total'  => $total,
+        // El recargo y el monto de la cuota TAMPOCO: se recalculan acá.
+        $financiacion = $this->resolverFinanciacion(
+            $producto,
+            $datos['car_modpag'] ?? 'contado',
+            $datos['car_numcuo'] ?? null,
+            $precioUnitario,
+            true
+        );
+
+        $carrito = Carrito::create([
+            'car_idusu'      => $usuario->usu_id,
+            'car_idpro'      => $producto->prd_id,
+            'car_idvarp'     => $variacion?->var_proid,
+            'car_modpag'     => $financiacion['modalidad'],
+            'car_numcuo'     => $financiacion['numero_cuotas'],
+            'car_recargopct' => $financiacion['recargo_pct'],
+            'car_montocuo'   => $financiacion['monto_cuota'],
+            'car_cantid'     => $datos['car_cantid'],
+            'car_precio'     => $precioUnitario,
+            'car_subtot'     => $financiacion['total_unitario'],
+            'car_total'      => $financiacion['total_unitario'] * $datos['car_cantid'],
         ]);
 
         $carrito->load(self::CON);
@@ -96,10 +104,7 @@ class CarritoController extends Controller{
         ], 201);
     }
 
-    /**
-     * PUT/PATCH /api/tienda/carrito/{carrito}
-     * Solo cambia la cantidad -- precio y total se recalculan siempre.
-     */
+    // PUT/PATCH /api/tienda/carrito/{carrito} — solo cambia la cantidad
     public function update(CarritoRequest $request, Carrito $carrito): JsonResponse{
         $this->verificarPropietario($carrito);
 
@@ -115,14 +120,27 @@ class CarritoController extends Controller{
             ]);
         }
 
-        $precioUnitario = $this->precioUnitario($producto, $variacion);
-        $total = $precioUnitario * $datos['car_cantid'];
+        $precioUnitario = $this->precioUnitarioOFallar($producto, $variacion, (float) $datos['car_cantid']);
+
+        // Modo NO estricto: si la opción de cuotas fue dada de baja entre
+        // medio, no se rompe el carrito, se cae a contado.
+        $financiacion = $this->resolverFinanciacion(
+            $producto,
+            $carrito->car_modpag,
+            $carrito->car_numcuo,
+            $precioUnitario,
+            false
+        );
 
         $carrito->update([
-            'car_cantid' => $datos['car_cantid'],
-            'car_precio' => $precioUnitario,
-            'car_subtot' => $precioUnitario,
-            'car_total'  => $total,
+            'car_cantid'     => $datos['car_cantid'],
+            'car_precio'     => $precioUnitario,
+            'car_modpag'     => $financiacion['modalidad'],
+            'car_numcuo'     => $financiacion['numero_cuotas'],
+            'car_recargopct' => $financiacion['recargo_pct'],
+            'car_montocuo'   => $financiacion['monto_cuota'],
+            'car_subtot'     => $financiacion['total_unitario'],
+            'car_total'      => $financiacion['total_unitario'] * $datos['car_cantid'],
         ]);
 
         $carrito->load(self::CON);
@@ -133,20 +151,16 @@ class CarritoController extends Controller{
         ]);
     }
 
-    /**
-     * DELETE /api/tienda/carrito/{carrito}
-     */
+    // DELETE /api/tienda/carrito/{carrito}
     public function destroy(Carrito $carrito): JsonResponse{
         $this->verificarPropietario($carrito);
 
-        $carrito->delete(); // soft delete (car_elimin)
+        $carrito->delete();
 
         return response()->json(['message'=> 'Producto eliminado del carrito.']);
     }
 
-    /**
-     * DELETE /api/tienda/carrito
-     */
+    // DELETE /api/tienda/carrito
     public function vaciar(): JsonResponse{
         $usuario= auth('api')->user();
 
@@ -169,29 +183,91 @@ class CarritoController extends Controller{
             return (float) $variacion->var_stock;
         }
 
-        return (float) Stock::where('sto_prdid', $producto->prd_id)
-            ->selectRaw('COALESCE(SUM(sto_cantid - sto_reserv), 0) as disponible')
-            ->value('disponible');
+        $producto->loadMissing('stock');
+
+        return $producto->stockDisponible();
     }
 
-    private function precioUnitario(Producto $producto, ?VariacionProducto $variacion):float{
-        $precioBase= (float)($producto->publicacionWeb?->pub_prevta ?? 0);
+    /**
+     * Único lugar donde se resuelve la financiación: store, update,
+     * sincronizar y previsualizar lo comparten, así la cuota que el cliente
+     * ve en el Home es exactamente la que se guarda.
+     *
+     * $estricto = true  -> opción inexistente/inactiva corta con 422.
+     * $estricto = false -> cae a contado sin romper la operación.
+     */
+    private function resolverFinanciacion(
+        Producto $producto,
+        ?string $modalidad,
+        $numeroCuotas,
+        float $precioUnitario,
+        bool $estricto
+    ): array {
+        $contado = [
+            'modalidad'      => 'contado',
+            'numero_cuotas'  => null,
+            'recargo_pct'    => null,
+            'monto_cuota'    => null,
+            'total_unitario' => $precioUnitario,
+        ];
+
+        if ($modalidad !== 'credito' || ! $numeroCuotas){
+            return $contado;
+        }
+
+        $config = ConfiguracionCuota::where('cfc_prdid', $producto->prd_id)
+            ->where('cfc_cantidad', (int) $numeroCuotas)
+            ->where('cfc_estado', true)
+            ->first();
+
+        if (! $config){
+            if ($estricto){
+                throw ValidationException::withMessages([
+                    'car_numcuo' => 'Esa cantidad de cuotas ya no está disponible para este producto.',
+                ]);
+            }
+
+            return $contado;
+        }
+
+        return [
+            'modalidad'      => 'credito',
+            'numero_cuotas'  => (int) $config->cfc_cantidad,
+            'recargo_pct'    => (float) $config->cfc_recargo_pct,
+            'monto_cuota'    => $config->montoCuota($precioUnitario),
+            'total_unitario' => $config->precioFinanciado($precioUnitario),
+        ];
+    }
+
+    private function precioUnitario(Producto $producto, ?VariacionProducto $variacion, float $cantidad): ?float{
+        $precioBase = $producto->precioPara($cantidad);
+
+        if ($precioBase === null){
+            return null;
+        }
+
         $adicional= (float)($variacion?->var_preadi ?? 0);
 
         return $precioBase + $adicional;
     }
 
-        /**
-     * POST /api/tienda/carrito/sincronizar
-     *
-     * Vuelca el carrito que el invitado armó en localStorage al carrito
-     * persistente del usuario recién autenticado. Si el producto ya estaba
-     * en el carrito, suma las cantidades (topeadas al stock disponible).
-     *
-     * Los ítems que ya no se pueden agregar (sin stock, producto dado de
-     * baja) no abortan la operación: se omiten y se informan, para que el
-     * frontend le avise al usuario sin perderle el resto del carrito.
-     */
+    private function precioUnitarioOFallar(Producto $producto, ?VariacionProducto $variacion, float $cantidad): float{
+        $precio = $this->precioUnitario($producto, $variacion, $cantidad);
+
+        if ($precio !== null){
+            return $precio;
+        }
+
+        $minima = $producto->cantidadMinimaVenta();
+
+        throw ValidationException::withMessages([
+            'car_cantid' => $producto->soloMayorista()
+                ? "Este producto se vende únicamente al por mayor: la cantidad mínima es {$minima}."
+                : 'Este producto no tiene un precio de venta configurado.',
+        ]);
+    }
+
+    // POST /api/tienda/carrito/sincronizar
     public function sincronizar(SincronizarCarritoRequest $request): JsonResponse
     {
         $usuario = auth('api')->user();
@@ -201,7 +277,7 @@ class CarritoController extends Controller{
             foreach ($request->validated()['items'] as $item) {
                 $producto = Producto::find($item['car_idpro']);
 
-                if (!$producto) {
+                if (! $producto) {
                     continue;
                 }
 
@@ -215,16 +291,19 @@ class CarritoController extends Controller{
                     continue;
                 }
 
+                $modalidad    = $item['car_modpag'] ?? 'contado';
+                $numeroCuotas = $item['car_numcuo'] ?? null;
+
                 $existente = Carrito::where('car_idusu', $usuario->usu_id)
                     ->where('car_idpro', $producto->prd_id)
                     ->whereNull('car_idvarp')
+                    ->where('car_modpag', $modalidad)
+                    ->where('car_numcuo', $numeroCuotas)
                     ->first();
 
                 $cantidadDeseada = ($existente ? (float) $existente->car_cantid : 0)
                     + (float) $item['car_cantid'];
 
-                // Se topea en vez de rechazar: el usuario igual se lleva
-                // lo que si hay, y el frontend le avisa del ajuste.
                 $cantidadFinal = min($cantidadDeseada, $disponible);
 
                 if ($cantidadFinal < $cantidadDeseada) {
@@ -234,13 +313,29 @@ class CarritoController extends Controller{
                     ];
                 }
 
-                $precioUnitario = $this->precioUnitario($producto, null);
+                $precioUnitario = $this->precioUnitario($producto, null, $cantidadFinal);
+
+                if ($precioUnitario === null) {
+                    $omitidos[] = [
+                        'car_idpro' => $producto->prd_id,
+                        'motivo'    => "Cantidad minima no alcanzada: {$producto->cantidadMinimaVenta()} unidades.",
+                    ];
+                    continue;
+                }
+
+                $financiacion = $this->resolverFinanciacion(
+                    $producto, $modalidad, $numeroCuotas, $precioUnitario, false
+                );
 
                 $valores = [
-                    'car_cantid' => $cantidadFinal,
-                    'car_precio' => $precioUnitario,
-                    'car_subtot' => $precioUnitario,
-                    'car_total'  => $precioUnitario * $cantidadFinal,
+                    'car_cantid'     => $cantidadFinal,
+                    'car_precio'     => $precioUnitario,
+                    'car_modpag'     => $financiacion['modalidad'],
+                    'car_numcuo'     => $financiacion['numero_cuotas'],
+                    'car_recargopct' => $financiacion['recargo_pct'],
+                    'car_montocuo'   => $financiacion['monto_cuota'],
+                    'car_subtot'     => $financiacion['total_unitario'],
+                    'car_total'      => $financiacion['total_unitario'] * $cantidadFinal,
                 ];
 
                 if ($existente) {
@@ -264,46 +359,52 @@ class CarritoController extends Controller{
         return response()->json([
             'message'  => 'Carrito sincronizado.',
             'data'     => CarritoResource::collection($carritos),
-            // Excepcion documentada al contrato: el frontend necesita saber
-            // que se omitio o ajusto para avisarle al usuario.
             'omitidos' => $omitidos,
         ]);
     }
 
-    /**
-     * POST /api/tienda/carrito/previsualizar  (público, sin auth)
-     *
-     * Resuelve el carrito que el invitado tiene en localStorage: recibe solo
-     * ids + cantidades y devuelve los datos completos (título, imagen, precio
-     * vigente) con la MISMA forma que el carrito persistido, sin guardar nada.
-     * Así el precio nunca viaja desde el navegador.
-     */
+    // POST /api/tienda/carrito/previsualizar (público, sin auth)
     public function previsualizar(SincronizarCarritoRequest $request): JsonResponse
     {
         $items = collect($request->validated()['items'])
             ->map(function (array $item) {
-                $producto = Producto::with(['publicacionWeb.imagenes'])->find($item['car_idpro']);
+                $producto = Producto::with(['publicacionWeb.imagenes', 'publicacionWeb.categoria', 'stock', 'tipoIva'])->find($item['car_idpro']);
 
-                if (!$producto) {
+                if (! $producto) {
                     return null;
                 }
 
-                $precioUnitario = $this->precioUnitario($producto, null);
                 $cantidad = min((float) $item['car_cantid'], $this->stockDisponible($producto, null));
 
                 if ($cantidad <= 0) {
                     return null;
                 }
 
-                // Instancia NO persistida: solo para pasarla por el Resource
-                // y devolver exactamente el mismo shape que el carrito real.
+                $precioUnitario = $this->precioUnitario($producto, null, $cantidad);
+
+                if ($precioUnitario === null) {
+                    return null;
+                }
+
+                $financiacion = $this->resolverFinanciacion(
+                    $producto,
+                    $item['car_modpag'] ?? 'contado',
+                    $item['car_numcuo'] ?? null,
+                    $precioUnitario,
+                    false
+                );
+
                 $carrito = new Carrito([
-                    'car_idpro'  => $producto->prd_id,
-                    'car_idvarp' => null,
-                    'car_cantid' => $cantidad,
-                    'car_precio' => $precioUnitario,
-                    'car_subtot' => $precioUnitario,
-                    'car_total'  => $precioUnitario * $cantidad,
+                    'car_idpro'      => $producto->prd_id,
+                    'car_idvarp'     => null,
+                    'car_cantid'     => $cantidad,
+                    'car_precio'     => $precioUnitario,
+                    'car_modpag'     => $financiacion['modalidad'],
+                    'car_numcuo'     => $financiacion['numero_cuotas'],
+                    'car_recargopct' => $financiacion['recargo_pct'],
+                    'car_montocuo'   => $financiacion['monto_cuota'],
+                    'car_subtot'     => $financiacion['total_unitario'],
+                    'car_total'      => $financiacion['total_unitario'] * $cantidad,
                 ]);
 
                 $carrito->setRelation('producto', $producto);
@@ -318,5 +419,4 @@ class CarritoController extends Controller{
             'data' => CarritoResource::collection($items),
         ]);
     }
-
 }

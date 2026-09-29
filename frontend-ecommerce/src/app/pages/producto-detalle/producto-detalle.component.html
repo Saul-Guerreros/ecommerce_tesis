@@ -93,6 +93,7 @@
               <!-- inventory details -->
               <div class="pd-inventory">
                 <span class="pd-stock" [class.is-out]="sinStock">{{ sinStock ? 'Out of stock' : 'In stock' }}</span>
+                <span class="pd-stock-low" *ngIf="mensajePocoStock">{{ mensajePocoStock }}</span>
 
                 <span class="pd-rating" *ngIf="producto.rating">
                   <span
@@ -115,15 +116,6 @@
                 </a>
               </div>
 
-              <!-- price -->
-              <div class="pd-price-row">
-                <span class="pd-price-old" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</span>
-                <span class="pd-price-new">{{ producto.precio_final | currency }}</span>
-                <span class="pd-price-badge" *ngIf="producto.descuento_pct">-{{ producto.descuento_pct }}%</span>
-              </div>
-              <div class="pd-subtotal" *ngIf="cantidad > 1 && !sinStock">
-                Subtotal ({{ cantidad }}): {{ subtotal | currency }}
-              </div>
 			  
 			  <div
   class="pd-flash"
@@ -147,18 +139,107 @@
   </span>
 </div>
 
-              <!-- actions: compra habilitada -->
-              <div class="pd-purchase" *ngIf="!sinStock">
-                <div class="pd-qty-title">Cantidad</div>
-                <div class="pd-action-row">
-                  <div class="pd-qty">
-                    <button type="button" class="pd-qty-btn" (click)="decrementarCantidad()" uk-icon="icon: minus; ratio: .6"></button>
-                    <input class="pd-qty-input" type="text" readonly [value]="cantidad" />
-                    <button type="button" class="pd-qty-btn" (click)="incrementarCantidad()" uk-icon="icon: plus; ratio: .6"></button>
-                  </div>
-                  <button class="pd-add-btn" (click)="agregarAlCarrito()">Add to cart</button>
+              <!-- Compra: cuotas + contado, con cantidades independientes -->
+              <div class="pd-compra" *ngIf="!sinStock">
+
+                <div class="pd-compra-aviso" *ngIf="!tieneOpcionDeCompra">
+                  Este producto no tiene un precio de venta configurado.
                 </div>
-                <button class="pd-buy-btn" (click)="comprarAhora()">Buy Now</button>
+
+                <div class="pd-compra-aviso" *ngIf="tieneOpcionDeCompra && stockInsuficienteParaMinimo">
+                  El stock disponible no alcanza para la compra mínima de {{ cantidadMinima }} unidades.
+                </div>
+
+                <ng-container *ngIf="tieneOpcionDeCompra">
+
+                  <!-- Comprá en Cuotas: solo si el producto tiene cuotas configuradas -->
+                  <section class="pd-compra-seccion" *ngIf="tieneCuotas">
+                    <h3 class="pd-compra-titulo">Comprá en Cuotas</h3>
+
+                    <div class="pd-compra-fila">
+                      <div class="pd-compra-campo pd-compra-campo--crece">
+                        <label class="pd-compra-label" for="pd-cuotas-select">Elige una opción</label>
+                        <select id="pd-cuotas-select"
+                                class="pd-compra-select"
+                                [disabled]="!puedeComprar"
+                                (change)="seleccionarCuota($any($event.target).value)">
+                          <option *ngFor="let c of cuotasDisponibles; trackBy: trackByCuota"
+                                  [value]="c.cantidad"
+                                  [selected]="c.cantidad === cuotaElegida?.cantidad">
+                                  {{ c.cantidad }}x {{ c.monto_cuota_total | currency:'PYG':'symbol':'1.0-0' }}
+                          </option>
+                        </select>
+                      </div>
+
+                      <div class="pd-compra-campo">
+                        <span class="pd-compra-label">Unidades</span>
+                        <app-selector-cantidad
+                          [(valor)]="cantidadCuotas"
+                          [minimo]="cantidadMinima"
+                          [maximo]="stockMaximo"
+                          [deshabilitado]="!puedeComprar"
+                          etiqueta="Unidades en cuotas"></app-selector-cantidad>
+                      </div>
+
+                      <button type="button"
+                          class="pd-compra-btn pd-compra-btn--credito"
+                          [disabled]="!puedeSolicitarCredito"
+                          (click)="botonAgregando = 'cuotas'; comprarEnCuotas()">
+                    <span uk-icon="icon: cart; ratio: .9"></span>
+                    {{ agregando && botonAgregando === 'cuotas' ? 'Agregando…' : 'Comprar en Cuotas' }}
+                  </button>
+
+                  </div>
+                    <p class="pd-compra-stockmax" *ngIf="alMaximoCuotas">{{ mensajeMaximo }}</p>
+                  </section>
+
+                  <!-- Precio al Contado: siempre visible -->
+                  <section class="pd-compra-seccion">
+                    <h3 class="pd-compra-titulo">Comprá al Contado</h3>
+
+                    <div class="pd-compra-fila">
+                      <div class="pd-compra-campo pd-compra-campo--crece">
+                        <span class="pd-compra-label">Precio al Contado</span>
+                        <div class="pd-compra-precio">
+                          <span>{{ precioUnitarioContado | currency:'PYG':'symbol':'1.0-0' }}</span>
+                          <ng-container *ngIf="descuentoVigenteContado">
+                            <del class="pd-compra-precio-old">{{ producto.precio_original | currency:'PYG':'symbol':'1.0-0' }}</del>
+                            <span class="pd-price-badge">-{{ producto.descuento_pct }}%</span>
+                          </ng-container>
+                        </div>
+                        <div class="pd-compra-total" *ngIf="cantidadContado > 1">
+                          Total ({{ cantidadContado }} unidades): {{ totalContado | currency:'PYG':'symbol':'1.0-0' }}
+                        </div>
+                      </div>
+
+                      <div class="pd-compra-campo">
+                        <span class="pd-compra-label">Unidades</span>
+                        <app-selector-cantidad
+                          [(valor)]="cantidadContado"
+                          [minimo]="cantidadMinima"
+                          [maximo]="stockMaximo"
+                          [deshabilitado]="!puedeComprar"
+                          etiqueta="Unidades al contado"></app-selector-cantidad>
+                      </div>
+
+                      <button type="button"
+                              class="pd-compra-btn"
+                              [disabled]="!puedeComprar"
+                              (click)="botonAgregando = 'contado'; comprarContado()">
+                        <span uk-icon="icon: cart; ratio: .9"></span>
+                        {{ agregando && botonAgregando === 'contado' ? 'Agregando…' : (tieneCuotas ? 'Comprar Contado' : 'Agregar al Carrito') }}
+                      </button>
+                    </div>
+
+                    <p class="pd-compra-stockmax" *ngIf="alMaximoContado">{{ mensajeMaximo }}</p>
+                  </section>
+
+                  <!-- Solo se muestra si el producto tiene precio mayorista -->
+                  <p class="pd-compra-nota" *ngIf="mensajeMayorista">
+                    <em>{{ mensajeMayorista }}</em>
+                  </p>
+
+                </ng-container>
               </div>
 
               <!-- Sin stock: banner claro en vez de un botón "disabled" casi invisible -->

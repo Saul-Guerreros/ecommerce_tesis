@@ -28,7 +28,40 @@ class CarritoResource extends JsonResource{
             'car_subtot'=> $this->car_subtot,
             'car_total'=> $this->car_total,
             'car_creado'=> $this->car_creado,
+            'car_modpag'     => $this->car_modpag,
+            'car_numcuo'     => $this->car_numcuo,
+            'car_recargopct' => $this->car_recargopct,
+            'car_montocuo'   => $this->car_montocuo,
 
+            
+            // ----- Inventario (el frontend lo usa para topear el [+]) -----
+            // La regla real sigue viviendo en el backend (CarritoController
+            // valida y responde 422); esto es solo para no dejar que el
+            // usuario llegue a pedir una cantidad imposible.
+            'stock_disponible'=> $this->whenLoaded('producto', function () {
+                if ($this->relationLoaded('variacion') && $this->variacion){
+                    return (float) $this->variacion->var_stock;
+                }
+
+                return $this->producto->stockDisponible();
+            }),
+
+            'controla_stock'=> $this->whenLoaded('producto', fn () => (bool) $this->producto->prd_afestk),
+
+            // ----- Minorista/mayorista (punto 7-8 de "Carrito Completo") -----
+            // Mismos nombres de campo que ProductoCuotaResource y PublicacionWebResource:
+            // le permite al frontend bloquear el '-' del selector de cantidad ANTES
+            // de golpear el backend, en vez de esperar el 422 de precioUnitarioOFallar().
+            'cantidad_minima'=> $this->whenLoaded('producto', fn () => (float) $this->producto->cantidadMinimaVenta()),
+            'solo_mayorista'=> $this->whenLoaded('producto', fn () => (bool) $this->producto->soloMayorista()),
+
+            // ----- IVA (punto 16) -----
+            // car_total YA incluye el IVA (viene de prd_pvtmin/prd_pvtmay,
+            // que PriceService calcula "con IVA" adentro). car_iva es el
+            // desglose informativo de esa misma cifra, no un monto a sumar.
+            'car_iva'=> $this->whenLoaded('producto', fn () => $this->producto->ivaIncluidoEn((float) $this->car_total)),
+
+            
             // ----- Producto (lo necesario para pintar la fila) -----
             'prd_descri'=> $this->whenLoaded('producto', fn () => $this->producto->prd_descri),
 
@@ -47,6 +80,7 @@ class CarritoResource extends JsonResource{
                     'pub_titulo'=> $publicacion->pub_titulo,
                     'pub_slug'=> $publicacion->pub_slug,
                     'imagen'=> $this->urlImagen($imagenPrincipal?->img_url),
+                    'categoria'=> $publicacion->categoria?->cat_nombre,
                 ];
             }),
 

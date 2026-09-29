@@ -164,8 +164,9 @@
               <div class="tm-product-card-media">
                 <div class="tm-ratio tm-ratio-4-3">
                    <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
-                    <div class="tm-product-card-labels" *ngIf="producto.descuento_pct">
-                      <span class="uk-label uk-label-danger">-{{ producto.descuento_pct }}%</span>
+                    <div class="tm-product-card-labels" *ngIf="producto.descuento_pct || mensajePocoStockVitrina(producto)">
+                      <span class="uk-label uk-label-danger" *ngIf="producto.descuento_pct">-{{ producto.descuento_pct }}%</span>
+                      <span class="uk-label uk-label-warning" *ngIf="mensajePocoStockVitrina(producto) as msj">{{ msj }}</span>
                     </div>
                     <figure class="tm-media-box-wrap">
                       <img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" />
@@ -180,21 +181,14 @@
                     <a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a>
                   </h3>
                 </div>
-                <div class="tm-product-card-shop">
-                  <div class="tm-product-card-prices">
-                    <del class="uk-text-meta" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</del>
-                    <div class="tm-product-card-price">{{ producto.precio_final | currency }}</div>
-                  </div>
+                <div class="tm-product-card-shop" [class.sin-cuotas]="!producto.cuotas?.length">
                   <div class="tm-product-card-add">
-                    <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine"
-                            type="button"
-                            [disabled]="enProceso(producto) || sinStockVitrina(producto)"
-                            (click)="agregarAlCarrito(producto)">
-                      <span class="tm-product-card-add-button-icon" uk-icon="cart"></span>
-                      <span class="tm-product-card-add-button-text">
-                        {{ sinStockVitrina(producto) ? 'sin stock' : 'add to cart' }}
-                      </span>
-                    </button>
+                    <app-cuotero
+                        [producto]="producto"
+                        [procesando]="enProceso(producto)"
+                        [sinStock]="sinStockVitrina(producto)"
+                        (agregar)="agregarAlCarrito(producto, $event)">
+                    </app-cuotero>
                   </div>
                 </div>
               </div>
@@ -332,8 +326,9 @@
                   <div class="tm-product-card-media">
                     <div class="tm-ratio tm-ratio-4-3">
                       <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
-                        <div class="tm-product-card-labels" *ngIf="producto.descuento_pct">
-                          <span class="uk-label uk-label-danger">-{{ producto.descuento_pct }}%</span>
+                        <div class="tm-product-card-labels" *ngIf="producto.descuento_pct || mensajePocoStockVitrina(producto)">
+                          <span class="uk-label uk-label-danger" *ngIf="producto.descuento_pct">-{{ producto.descuento_pct }}%</span>
+                          <span class="uk-label uk-label-warning" *ngIf="mensajePocoStockVitrina(producto) as msj">{{ msj }}</span>
                         </div>
                         <figure class="tm-media-box-wrap">
                           <img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" />
@@ -345,10 +340,6 @@
                     <div class="tm-product-card-info">
                       <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
                     <h3 class="tm-product-card-title"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h3>
-                      <div class="uk-margin-xsmall-top">
-                        <del class="uk-text-meta" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</del>
-                        <span class="uk-text-bolder">{{ producto.precio_final | currency }}</span>
-                      </div>
                       <div class="uk-margin-small-top" [attr.uk-countdown]="'date: ' + producto.oferta_fin" *ngIf="producto.oferta_fin">
                         <div class="uk-flex uk-flex-middle" style="gap:8px;">
                           <div class="uk-text-center"><div class="uk-text-bolder uk-text-small" uk-countdown-days=""></div><div class="uk-text-meta" style="font-size:9px;">Days</div></div>
@@ -361,16 +352,13 @@
                         </div>
                       </div>
                     </div>
-                    <div class="tm-product-card-add uk-margin-small-top">
-                      <button class="uk-button uk-button-primary uk-width-1-1 tm-product-card-add-button tm-shine"
-                              type="button"
-                              [disabled]="enProceso(producto) || sinStockVitrina(producto)"
-                              (click)="agregarAlCarrito(producto)">
-                        <span class="tm-product-card-add-button-icon" uk-icon="cart"></span>
-                        <span class="tm-product-card-add-button-text">
-                          {{ sinStockVitrina(producto) ? 'sin stock' : 'add to cart' }}
-                        </span>
-                      </button>
+                    <div class="tm-product-card-add uk-margin-small-top" [class.sin-cuotas]="!producto.cuotas?.length">
+                      <app-cuotero
+                        [producto]="producto"
+                        [procesando]="enProceso(producto)"
+                        [sinStock]="sinStockVitrina(producto)"
+                        (agregar)="agregarAlCarrito(producto, $event)">
+                      </app-cuotero>
                     </div>
                   </div>
                 </article>
@@ -508,7 +496,10 @@
                   <div class="tm-product-card-media">
                     <div class="tm-ratio tm-ratio-4-3">
                     <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
-                        <div class="tm-product-card-labels"><span class="uk-label uk-label-success">New</span></div>
+                        <div class="tm-product-card-labels">
+                          <span class="uk-label uk-label-success">New</span>
+                          <span class="uk-label uk-label-warning" *ngIf="mensajePocoStockVitrina(producto) as msj">{{ msj }}</span>
+                        </div>
                         <figure class="tm-media-box-wrap">
                           <img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" />
                         </figure>
@@ -520,18 +511,14 @@
                       <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
                        <h3 class="tm-product-card-title"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h3>
                     </div>
-                    <div class="tm-product-card-shop">
-                      <div class="tm-product-card-prices"><div class="tm-product-card-price">{{ producto.precio_final | currency }}</div></div>
+                    <div class="tm-product-card-shop" [class.sin-cuotas]="!producto.cuotas?.length">
                       <div class="tm-product-card-add">
-                        <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine"
-                                type="button"
-                                [disabled]="enProceso(producto) || sinStockVitrina(producto)"
-                                (click)="agregarAlCarrito(producto)">
-                          <span class="tm-product-card-add-button-icon" uk-icon="cart"></span>
-                          <span class="tm-product-card-add-button-text">
-                            {{ sinStockVitrina(producto) ? 'sin stock' : 'add to cart' }}
-                          </span>
-                        </button>
+                        <app-cuotero
+                          [producto]="producto"
+                          [procesando]="enProceso(producto)"
+                          [sinStock]="sinStockVitrina(producto)"
+                          (agregar)="agregarAlCarrito(producto, $event)">
+                        </app-cuotero>
                       </div>
                     </div>
                   </div>

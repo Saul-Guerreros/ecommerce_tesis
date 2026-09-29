@@ -51,16 +51,26 @@ class PriceService
     {
         $tasaIva = (float) ($producto->tipoIva->tiv_tasa ?? self::IVA_DEFECTO);
  
-        $margenMin = $this->margenEfectivo($producto, 'minorista');
-        $margenMaj = $this->margenEfectivo($producto, 'mayorista');
- 
-        $sinIvaMin = $costoPromedio * (1 + $margenMin / 100);
-        $sinIvaMaj = $costoPromedio * (1 + $margenMaj / 100);
- 
+        // Una modalidad deshabilitada NO tiene precio: devuelve null, no
+        // un numero que despues nadie deberia usar. Asi cualquier pantalla
+        // que lea prd_pvtmin/prd_pvtmay sabe que ese producto no se vende
+        // en esa modalidad, en vez de mostrar un precio que no corresponde.
         return [
-            'prd_pvtmin' => round($sinIvaMin * (1 + $tasaIva / 100), 2),
-            'prd_pvtmay' => round($sinIvaMaj * (1 + $tasaIva / 100), 2),
+            'prd_pvtmin' => $producto->prd_habmin
+                ? $this->precioFinal($costoPromedio, $this->margenEfectivo($producto, 'minorista'), $tasaIva)
+                : null,
+            'prd_pvtmay' => $producto->prd_habmaj
+                ? $this->precioFinal($costoPromedio, $this->margenEfectivo($producto, 'mayorista'), $tasaIva)
+                : null,
         ];
+    }
+ 
+    /** costo -> + margen -> + IVA. Unico lugar donde vive la formula. */
+    private function precioFinal(float $costoPromedio, float $margen, float $tasaIva): float
+    {
+        $sinIva = $costoPromedio * (1 + $margen / 100);
+ 
+        return round($sinIva * (1 + $tasaIva / 100), 2);
     }
  
     /**
@@ -75,14 +85,36 @@ class PriceService
      */
     public function aplicarPrecios(Producto $producto, ?float $costoPromedio): void
     {
+        // Esto va PRIMERO y corre siempre: una modalidad deshabilitada
+        // queda sin precio, haya costo o no. Si se dejara para despues del
+        // early return, un producto sin compras conservaria el precio
+        // viejo de una modalidad que ya no se vende.
+        if (! $producto->prd_habmin) {
+            $producto->prd_pvtmin = null;
+        }
+ 
+        if (! $producto->prd_habmaj) {
+            $producto->prd_pvtmay = null;
+        }
+ 
         if ($costoPromedio === null || $costoPromedio <= 0) {
+            // save() no dispara UPDATE si no cambio nada (Eloquent revisa
+            // los atributos sucios), asi que es seguro llamarlo siempre.
+            $producto->save();
+ 
             return;
         }
  
         $precios = $this->calcularPrecios($producto, $costoPromedio);
  
-        $producto->prd_pvtmin = $precios['prd_pvtmin'];
-        $producto->prd_pvtmay = $precios['prd_pvtmay'];
+        if ($producto->prd_habmin) {
+            $producto->prd_pvtmin = $precios['prd_pvtmin'];
+        }
+ 
+        if ($producto->prd_habmaj) {
+            $producto->prd_pvtmay = $precios['prd_pvtmay'];
+        }
+ 
         $producto->save();
     }
  
@@ -111,4 +143,3 @@ class PriceService
             });
     }
 }
- 

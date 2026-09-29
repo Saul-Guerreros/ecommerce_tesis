@@ -1,0 +1,377 @@
+/* Ancho del drawer, acorde a la referencia visual. */
+.tm-cart-bar {
+  width: 420px;
+  max-width: 100vw;
+  padding: 0;
+  background: #fff;
+  /* El panel en sí NUNCA hace scroll (ni vertical ni horizontal): el
+     único que se desplaza es .tm-cart__body, de abajo. Sin esto, si el
+     tema/navegador le da overflow:auto al offcanvas por defecto, aparece
+     una segunda barra (la del panel) además de la del listado. */
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.tm-cart {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: #333;
+}
+
+/* ---------- Cabecera ---------- */
+.tm-cart__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: #f3f3f3;
+  border-bottom: 1px solid #e3e3e3;
+}
+
+.tm-cart__title { font-size: 17px; font-weight: 600; }
+
+.tm-cart__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #1e87f0;
+  border-radius: 3px;
+  background: #fff;
+  color: #1e87f0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.tm-cart__close { margin-left: auto; color: #555; }
+
+/* ---------- Listado ---------- */
+.tm-cart__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  /* Nunca scroll horizontal: si algún contenido interno se pasara de
+     ancho, se corta en vez de generar una barra lateral. */
+  overflow-x: hidden;
+  /* Reserva el ancho de la barra de scroll SIEMPRE (haya o no contenido
+     para desplazar), para que la fila no "salte" de ancho ni quede
+     un pixel de sobra que dispare un scroll horizontal fantasma. */
+  scrollbar-gutter: stable;
+  box-sizing: border-box;
+  padding: 4px 20px;
+}
+
+/* Barra de scroll delgada y discreta en vez del estilo grueso del
+   sistema operativo (Firefox y navegadores basados en Chromium). */
+.tm-cart__body {
+  scrollbar-width: thin;
+  scrollbar-color: #d0d0d0 transparent;
+}
+.tm-cart__body::-webkit-scrollbar {
+  width: 6px;
+}
+.tm-cart__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tm-cart__body::-webkit-scrollbar-thumb {
+  background: #d0d0d0;
+  border-radius: 3px;
+}
+.tm-cart__body::-webkit-scrollbar-thumb:hover {
+  background: #b8b8b8;
+}
+
+.tm-cart__empty {
+  padding: 48px 0;
+  text-align: center;
+  color: #999;
+}
+
+/* ---------- Secciones: Al contado / A crédito ---------- */
+/* Agrupan las filas por modalidad (mismo criterio que la página completa
+   del carrito), cada una con su propio subtotal y su propio botón. */
+.tm-cart__seccion + .tm-cart__seccion {
+  /* Aire visible entre el pie de "Al contado" (botón incluido) y el
+     título de la sección siguiente, para que no queden pegados. */
+  margin-top: 55px;
+}
+
+.cc-titulo-pagina {
+  margin-bottom: 56px;
+}
+
+.tm-cart__seccion-titulo {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0 0 4px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #ececec;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: #333;
+}
+
+.tm-cart__seccion-cant {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: #999;
+}
+
+/* Pie propio de cada sección: mismo estilo visual que el pie general,
+   pero vive DENTRO del bloque de esa modalidad, no al final del drawer. */
+.tm-cart__seccion-pie {
+  padding-top: 14px;
+}
+
+.tm-cart-row {
+  display: flex;
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid #ececec;
+  /* Sin esto, en pantallas angostas la fila (foto + info + columna
+     derecha, todas con anchos mínimos propios) puede sumar más que el
+     ancho disponible y empujar un scroll horizontal. max-width:100%
+     obliga a .tm-cart-row__info -la única celda con min-width:0- a
+     ceder antes de que eso pase. */
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.tm-cart-row--busy { opacity: .55; pointer-events: none; }
+
+.tm-cart-row__img {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tm-cart-row__img img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.tm-cart-row__info { flex: 1 1 auto; min-width: 0; }
+
+.tm-cart-row__name {
+  display: block;
+  color: #1e87f0;
+  font-size: 13.5px;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.tm-cart-row__name:hover { text-decoration: underline; }
+
+.tm-cart-row__variacion {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: #999;
+}
+.tm-cart-row__variacion span { margin-right: 8px; }
+
+.tm-cart-row__precio {
+  margin-top: 6px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #222;
+}
+
+.tm-cart-row__acciones {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tm-cart-row__label { font-size: 12.5px; color: #666; }
+
+/* ---------- Control de cantidad ---------- */
+.tm-qty {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d7d7d7;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.tm-qty__btn {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: #1e87f0;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tm-qty__btn:hover:not(:disabled) { background: #f2f8ff; }
+.tm-qty__btn:disabled { color: #ccc; cursor: not-allowed; }
+
+.tm-qty__input {
+  width: 42px;
+  height: 30px;
+  border: 0;
+  border-left: 1px solid #ededed;
+  border-right: 1px solid #ededed;
+  text-align: center;
+  font-size: 13.5px;
+  color: #333;
+  -moz-appearance: textfield;
+}
+.tm-qty__input::-webkit-outer-spin-button,
+.tm-qty__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.tm-qty__input:focus { outline: none; }
+
+/* ---------- Botón Actualizar ---------- */
+.tm-cart-row__update {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #1e87f0;
+  border-radius: 3px;
+  background: #fff;
+  color: #1e87f0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  cursor: pointer;
+}
+.tm-cart-row__update:hover:not(:disabled) { background: #1e87f0; color: #fff; }
+.tm-cart-row__update:disabled { opacity: .6; cursor: default; }
+
+/* ---------- Columna derecha ---------- */
+.tm-cart-row__lado {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.tm-cart-row__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #1e87f0;
+  border-radius: 3px;
+  background: #fff;
+  color: #1e87f0;
+  cursor: pointer;
+}
+.tm-cart-row__delete:hover:not(:disabled) { background: #1e87f0; color: #fff; }
+.tm-cart-row__delete:disabled { opacity: .6; cursor: default; }
+
+.tm-cart-row__total {
+  margin-top: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #222;
+  white-space: nowrap;
+}
+
+/* ---------- Pie ---------- */
+.tm-cart__footer {
+  flex: 0 0 auto;
+  padding: 16px 20px 20px;
+  border-top: 1px solid #e3e3e3;
+  background: #f3f3f3;
+}
+
+.tm-cart__subtotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.tm-cart__subtotal span { font-size: 15px; font-weight: 600; color: #333; }
+.tm-cart__subtotal strong { font-size: 19px; font-weight: 700; color: #26cd4d; }
+
+/* El pie fijo (Ver carrito) mide su altura natural: ya no reparte dos
+   columnas -Finalizar compra ahora vive dentro de cada sección-. */
+.tm-cart__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  background: #1e87f0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color .1s ease-in-out;
+  /* El padding se descuenta del ancho fijado, en vez de sumarse a él:
+     así "width" es el ancho final real del botón, sin sorpresas. */
+  box-sizing: border-box;
+}
+.tm-cart__btn:hover { background: #0f7ae5; color: #fff; text-decoration: none; }
+
+.tm-cart__btn--full {
+  /* Antes 100%: ocupaba todo el ancho de .tm-cart__body y su texto en
+     mayúsculas no entraba, desbordando el botón hacia la derecha (y
+     con él, la barra lateral entera, generando el scroll horizontal).
+     Con un ancho acotado y centrado, el botón siempre entra completo. */
+  width: 88%;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+/* Botón "Solicitar crédito": mismo tamaño, color distinto de
+   "Finalizar compra al contado" para diferenciar la acción. */
+.tm-cart__btn--secundario {
+  background: #fff;
+  border: 1px solid #1e87f0;
+  color: #1e87f0;
+}
+.tm-cart__btn--secundario:hover { background: #eaf4ff; color: #1e87f0; }
+
+/* Modalidad de pago de la fila: distingue contado de crédito, porque el
+   mismo producto puede estar en el carrito en ambas modalidades. */
+.tm-cart-row__modalidad {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 7px;
+  border-radius: 3px;
+  background: #f0f0f0;
+  color: #666;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.tm-cart-row__modalidad--credito {
+  background: #e8f3fe;
+  color: #1e6fc4;
+  font-weight: 500;
+}
+
+.tm-cart-row__recargo {
+  font-weight: 400;
+  opacity: .8;
+}
+
+.tm-cart-row__modalidad-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tm-cart-row__modalidad-wrap > .tm-cart-row__modalidad {
+  margin-top: 0;
+}
