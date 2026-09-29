@@ -1,0 +1,69 @@
+.perfil-section {
+  background: #f7f8fa;
+}
+
+/* ---- Tarjeta de bienvenida ---- */
+.perfil-welcome-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  padding: 20px 24px;
+}
+
+.perfil-avatar-header {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #eef2f7;
+}
+
+.perfil-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f3f8;
+  color: #9aa4b2;
+}
+
+/* ---- Sidebar ---- */
+.perfil-sidebar {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  padding: 12px;
+}
+
+.perfil-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.perfil-menu li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 4px;
+  color: #6b7280;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.perfil-menu li:hover {
+  background: #f3f5f8;
+  color: #374151;
+}
+
+.perfil-menu li.activo {
+  background: #eaf1ff;
+  color: #1e5eff;
+  font-weight: 600;
+}
+
+.perfil-menu li span[uk-icon] {
+  flex: none;
+}

@@ -9,13 +9,15 @@ import { VitrinaHomeService } from '../../core/services/vitrina-home.service';
 import { URL_BACKEND } from '../../config/config';
 import { SliderVitrina } from '../../core/models/slider.model';
 import { SliderPublicoService } from '../../core/services/slider-publico.service';
+import { FlashCountdownComponent } from '../../shared/flash-countdown/flash-countdown.component';
+import { MonedaPyPipe } from '../../shared/pipes/moneda-py.pipe';
 
 declare const UIkit: any;
 
 @Component({
   selector: 'app-home',
   standalone: true,
-    imports: [CommonModule, CurrencyPipe, RouterModule],
+  imports: [CommonModule, MonedaPyPipe, CurrencyPipe, RouterModule, FlashCountdownComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })

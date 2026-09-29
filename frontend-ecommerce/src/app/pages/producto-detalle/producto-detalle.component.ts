@@ -10,13 +10,15 @@ import {
 } from '../../core/models/producto-detalle.model';
 import { ProductoVitrina } from '../../core/models/vitrina.model';
 import { ProductoDetalleService } from '../../core/services/producto-detalle.service';
+import { FlashCountdownComponent } from '../../shared/flash-countdown/flash-countdown.component';
+import { MonedaPyPipe } from '../../shared/pipes/moneda-py.pipe';
 
 type TabDetalle = 'descripcion' | 'especificaciones' | 'resenas';
 
 @Component({
   selector: 'app-producto-detalle',
   standalone: true,
-  imports: [CommonModule, CurrencyPipe, RouterModule],
+  imports: [CommonModule,MonedaPyPipe, CurrencyPipe, RouterModule, FlashCountdownComponent],
   templateUrl: './producto-detalle.component.html',
   styleUrl: './producto-detalle.component.css',
 })

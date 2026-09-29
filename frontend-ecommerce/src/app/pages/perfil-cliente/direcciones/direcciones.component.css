@@ -1,0 +1,76 @@
+.perfil-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  padding: 24px;
+}
+
+.perfil-card-titulo {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.perfil-input {
+  border-radius: 10px;
+  background: #fbfbfc;
+}
+
+.perfil-btn-primario {
+  background: #1e5eff;
+  color: #fff;
+  border-radius: 10px;
+  padding: 0 28px;
+  font-weight: 600;
+}
+
+.perfil-btn-primario:hover {
+  background: #164ed1;
+  color: #fff;
+}
+
+.perfil-btn-small {
+  padding: 0 16px;
+  height: 34px;
+  font-size: 13px;
+}
+
+.perfil-btn-secundario {
+  border-radius: 10px;
+}
+
+/* ---- tarjeta de dirección ---- */
+.direccion-box {
+  border: 1px solid #eef0f3;
+  border-radius: 12px;
+  padding: 16px 18px;
+  height: 100%;
+}
+
+.direccion-icono {
+  color: #1e5eff;
+}
+
+.direccion-badge {
+  background: #e7f7ee;
+  color: #1a9a5c;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+.direccion-datos {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.7;
+}
+
+.direccion-datos-label {
+  color: #9aa4b2;
+}
+
+.direccion-acciones {
+  margin-top: 12px;
+  text-align: right;
+}

@@ -21,7 +21,20 @@ export class EditCategorieComponent {
   guardando = false;
   cargando = true;
 
-  constructor(
+  opcionesIcono = [
+    { valor: 'desktop', etiqueta: 'Computadora de escritorio' },
+    { valor: 'tablet', etiqueta: 'Tablet / Notebook' },
+    { valor: 'server', etiqueta: 'Servidor / Componentes' },
+    { valor: 'world', etiqueta: 'Redes' },
+    { valor: 'print', etiqueta: 'Impresión' },
+    { valor: 'database', etiqueta: 'Almacenamiento' },
+    { valor: 'cog', etiqueta: 'Configuración / Repuestos' },
+    { valor: 'bag', etiqueta: 'Accesorios' },
+    { valor: 'gift', etiqueta: 'Promociones' },
+    { valor: 'grid', etiqueta: 'General' },
+  ];
+
+   constructor(
     private fb: FormBuilder,
     private categoriesService: CategoriesService,
     private toastr: ToastrService,
@@ -31,6 +44,14 @@ export class EditCategorieComponent {
     this.form = this.fb.group({
       cat_nombre: ['', [Validators.required, Validators.maxLength(45)]],
       cat_idpadr: [null],
+      cat_icono: [null],
+    });
+
+    // si el admin elige una categoría padre acá, deja de ser "raíz" -> sin ícono
+    this.form.get('cat_idpadr')?.valueChanges.subscribe((valor) => {
+      if (valor) {
+        this.form.get('cat_icono')?.setValue(null);
+      }
     });
   }
 
@@ -52,9 +73,10 @@ cargarCategoria(): void {
   this.categoriesService.getById(this.categoriaId).subscribe({
     next: (res) => {
       this.form.patchValue({
-        cat_nombre: res.cat_nombre,   // antes: res.data.cat_nombre
-        cat_idpadr: res.cat_idpadr,   // antes: res.data.cat_idpadr
-      });
+        cat_nombre: res.cat_nombre,
+        cat_idpadr: res.cat_idpadr,
+        cat_icono: res.cat_icono,
+      }, { emitEvent: false }); 
       this.cargando = false;
     },
     error: () => {

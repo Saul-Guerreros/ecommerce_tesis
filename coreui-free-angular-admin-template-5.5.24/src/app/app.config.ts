@@ -16,7 +16,10 @@ import { routes } from './app.routes';
 import { withInterceptorsFromDi } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { ToastrModule } from 'ngx-toastr';
+import { registerLocaleData } from '@angular/common';
+import localeEsPY from '@angular/common/locales/es-PY';
 
+registerLocaleData(localeEsPY, 'es-PY');
 
 export const appConfig: ApplicationConfig = {
   providers: [

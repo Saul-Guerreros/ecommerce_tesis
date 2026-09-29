@@ -35,9 +35,10 @@ class categorieController extends Controller
     // POST /api/categorias
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+       $validator = Validator::make($request->all(), [
             'cat_nombre' => 'required|string|max:45',
             'cat_idpadr' => 'nullable|integer|exists:categoria,cat_id',
+            'cat_icono'  => 'nullable|string|max:50', // NUEVO
         ]);
 
         if ($validator->fails()) {
@@ -52,8 +53,9 @@ class categorieController extends Controller
 
         $categoria = categorie::create([
             'cat_nombre' => $request->cat_nombre,
-            'cat_idpadr' => $request->cat_idpadr,
-            'cat_nivel'  => $nivel,
+             'cat_idpadr' => $request->cat_idpadr,
+             'cat_nivel'  => $nivel,
+             'cat_icono'  => $request->cat_icono, // NUEVO
         ]);
 
         return response()->json(new CategorieResource($categoria), 201);
@@ -71,6 +73,7 @@ class categorieController extends Controller
         $validator = Validator::make($request->all(), [
             'cat_nombre' => 'required|string|max:45',
             'cat_idpadr' => 'nullable|integer|exists:categoria,cat_id',
+             'cat_icono'  => 'nullable|string|max:50', // NUEVO
         ]);
 
         if ($validator->fails()) {
@@ -87,10 +90,11 @@ class categorieController extends Controller
             $nivel = $padre->cat_nivel + 1;
         }
 
-        $categoria->update([
-            'cat_nombre' => $request->cat_nombre,
-            'cat_idpadr' => $request->cat_idpadr,
-            'cat_nivel'  => $nivel,
+       $categoria->update([
+        'cat_nombre' => $request->cat_nombre,
+        'cat_idpadr' => $request->cat_idpadr,
+         'cat_nivel'  => $nivel,
+        'cat_icono'  => $request->cat_icono, // NUEVO
         ]);
 
         return response()->json(new CategorieResource($categoria), 200);

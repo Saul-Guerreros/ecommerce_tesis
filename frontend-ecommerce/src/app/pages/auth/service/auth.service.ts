@@ -91,12 +91,12 @@ export class AuthService {
   logout() {
     let URL = URL_SERVICIOS + "/auth/logout";
     this.http.post(URL, {}).subscribe({
-      next: () => this.clearSession(),
-      error: () => this.clearSession() // limpiamos igual aunque falle la peticion
+      next: () => this.sesionExpirada(),
+      error: () => this.sesionExpirada() // limpiamos igual aunque falle la peticion
     });
   }
 
-  private clearSession() {
+  sesionExpirada() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     this.user = null;
@@ -105,5 +105,12 @@ export class AuthService {
     setTimeout(() => {
       this.router.navigateByUrl("/login");
     }, 500);
+  }
+
+  // Refresca localStorage sin volver a golpear el backend (ej. tras editar
+  // el perfil, para que el saludo del header quede al día).
+  actualizarUsuarioLocal(cambios: Partial<any>): void {
+    this.user = { ...this.user, ...cambios };
+    localStorage.setItem('user', JSON.stringify(this.user));
   }
 }

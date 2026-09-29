@@ -29,6 +29,7 @@ form: FormGroup;
     this.form = this.fb.group({
       cat_nombre: ['', [Validators.required, Validators.maxLength(45)]],
       cat_idpadr: [null],
+      cat_icono: [null],
     });
   }
 
@@ -43,12 +44,29 @@ form: FormGroup;
   });
 }
 
+  opcionesIcono = [
+    { valor: 'desktop', etiqueta: 'Computadora de escritorio' },
+    { valor: 'tablet', etiqueta: 'Tablet / Notebook' },
+    { valor: 'server', etiqueta: 'Servidor / Componentes' },
+    { valor: 'world', etiqueta: 'Redes' },
+    { valor: 'print', etiqueta: 'Impresión' },
+    { valor: 'database', etiqueta: 'Almacenamiento' },
+    { valor: 'cog', etiqueta: 'Configuración / Repuestos' },
+    { valor: 'bag', etiqueta: 'Accesorios' },
+    { valor: 'gift', etiqueta: 'Promociones' },
+    { valor: 'grid', etiqueta: 'General' },
+  ];
+
   toggleSubcategoria(): void {
     this.esSubcategoria = !this.esSubcategoria;
     if (!this.esSubcategoria) {
       this.form.get('cat_idpadr')?.setValue(null);
+    } else {
+      // si pasa a ser subcategoría, no le corresponde ícono de menú
+      this.form.get('cat_icono')?.setValue(null);
     }
   }
+  
 
   guardar(): void {
     if (this.form.invalid) {

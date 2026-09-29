@@ -97,18 +97,19 @@ class AuthController extends Controller
             ]);
 
             if ($request->filled('celular')) {
-                $persona->contactos()->create([
-                    'con_tipo' => 'celular',
-                    'con_valor' => $request->celular,
-                    'con_estado' => 1,
-                ]);
-            }
+				$persona->contactos()->create([
+					'con_tipo' => 'CELULAR',
+					'con_valor' => $request->celular,
+					'con_estado' => 1,
+				]);
+			}
 
-            $persona->contactos()->create([
-                'con_tipo' => 'email',
-                'con_valor' => $request->email,
-                'con_estado' => 1,
-            ]);
+			$persona->contactos()->create([
+					'con_tipo' => 'EMAIL',
+					'con_valor' => $request->email,
+					'con_estado' => 1,
+			]);
+
 
             return Usuario::create([
                 'usu_perid' => $persona->per_id,

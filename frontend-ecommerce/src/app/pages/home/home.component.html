@@ -182,8 +182,8 @@
                 </div>
                 <div class="tm-product-card-shop">
                   <div class="tm-product-card-prices">
-                    <del class="uk-text-meta" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</del>
-                    <div class="tm-product-card-price">{{ producto.precio_final | currency }}</div>
+                    <del class="uk-text-meta" *ngIf="producto.descuento_pct">{{ producto.precio_original | monedaPy }}</del>
+                    <div class="tm-product-card-price">{{ producto.precio_final | monedaPy }}</div>
                   </div>
                   <div class="tm-product-card-add">
                     <button class="uk-button uk-button-primary tm-product-card-add-button tm-shine js-add-to-cart">
@@ -341,20 +341,12 @@
                       <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
                     <h3 class="tm-product-card-title"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h3>
                       <div class="uk-margin-xsmall-top">
-                        <del class="uk-text-meta" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</del>
-                        <span class="uk-text-bolder">{{ producto.precio_final | currency }}</span>
+                        <del class="uk-text-meta" *ngIf="producto.descuento_pct">{{ producto.precio_original | monedaPy }}</del>
+                        <span class="uk-text-bolder">{{ producto.precio_final | monedaPy }}</span>
                       </div>
-                      <div class="uk-margin-small-top" [attr.uk-countdown]="'date: ' + producto.oferta_fin" *ngIf="producto.oferta_fin">
-                        <div class="uk-flex uk-flex-middle" style="gap:8px;">
-                          <div class="uk-text-center"><div class="uk-text-bolder uk-text-small" uk-countdown-days=""></div><div class="uk-text-meta" style="font-size:9px;">Days</div></div>
-                          <div class="uk-text-muted uk-text-small">:</div>
-                          <div class="uk-text-center"><div class="uk-text-bolder uk-text-small" uk-countdown-hours=""></div><div class="uk-text-meta" style="font-size:9px;">Hrs</div></div>
-                          <div class="uk-text-muted uk-text-small">:</div>
-                          <div class="uk-text-center"><div class="uk-text-bolder uk-text-small" uk-countdown-minutes=""></div><div class="uk-text-meta" style="font-size:9px;">Min</div></div>
-                          <div class="uk-text-muted uk-text-small">:</div>
-                          <div class="uk-text-center"><div class="uk-text-bolder uk-text-small" uk-countdown-seconds=""></div><div class="uk-text-meta" style="font-size:9px;">Sec</div></div>
-                        </div>
-                      </div>
+                     <div class="uk-margin-small-top uk-text-danger" *ngIf="producto.oferta_fin">
+							<app-flash-countdown [fechaFin]="producto.oferta_fin"></app-flash-countdown>
+						</div>
                     </div>
                     <div class="tm-product-card-add uk-margin-small-top">
                       <button class="uk-button uk-button-primary uk-width-1-1 tm-product-card-add-button tm-shine js-add-to-cart">
@@ -511,7 +503,7 @@
                        <h3 class="tm-product-card-title"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h3>
                     </div>
                     <div class="tm-product-card-shop">
-                      <div class="tm-product-card-prices"><div class="tm-product-card-price">{{ producto.precio_final | currency }}</div></div>
+                      <div class="tm-product-card-prices"><div class="tm-product-card-price">{{ producto.precio_final | monedaPy }}</div></div>
                       <div class="tm-product-card-add"><button class="uk-button uk-button-primary tm-product-card-add-button tm-shine js-add-to-cart"><span class="tm-product-card-add-button-icon" uk-icon="cart"></span><span class="tm-product-card-add-button-text">add to cart</span></button></div>
                     </div>
                   </div>
@@ -546,8 +538,8 @@
                       <div class="uk-text-meta uk-text-xsmall">{{ producto.categoria }}</div>
                       <h4 class="uk-margin-remove uk-text-small"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h4>
                       <div>
-                        <del class="uk-text-meta uk-text-xsmall" *ngIf="producto.descuento_pct">{{ producto.precio_original | currency }}</del>
-                        <span class="uk-text-bolder">{{ producto.precio_final | currency }}</span>
+                        <del class="uk-text-meta uk-text-xsmall" *ngIf="producto.descuento_pct">{{ producto.precio_original | monedaPy }}</del>
+                        <span class="uk-text-bolder">{{ producto.precio_final | monedaPy }}</span>
                       </div>
                     </div>
                   </li>
@@ -565,7 +557,7 @@
                     <div>
                       <div class="uk-text-meta uk-text-xsmall">{{ producto.categoria }}</div>
                       <h4 class="uk-margin-remove uk-text-small"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h4>
-                      <div class="uk-text-bolder">{{ producto.precio_final | currency }}</div>
+                      <div class="uk-text-bolder">{{ producto.precio_final | monedaPy }}</div>
                     </div>
 					
                   </li>
@@ -582,7 +574,7 @@
                     <div>
                       <div class="uk-text-meta uk-text-xsmall">{{ producto.categoria }}</div>
                       <h4 class="uk-margin-remove uk-text-small"><a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a></h4>
-                      <div class="uk-text-bolder">{{ producto.precio_final | currency }}</div>
+                      <div class="uk-text-bolder">{{ producto.precio_final | monedaPy }}</div>
                     </div>
 					
                   </li>

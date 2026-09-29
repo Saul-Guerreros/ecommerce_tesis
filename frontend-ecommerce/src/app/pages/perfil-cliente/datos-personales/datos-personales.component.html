@@ -1,0 +1,91 @@
+<div class="perfil-card">
+  <div class="uk-grid-medium uk-flex-middle" uk-grid>
+    <div class="uk-width-1-1 uk-width-auto@s uk-text-center">
+      <label class="avatar-upload">
+        @if (avatarPreview) {
+          <img class="avatar-upload-img" [src]="avatarPreview" alt="Avatar" />
+        } @else {
+          <div class="avatar-upload-img avatar-upload-placeholder">
+            <span uk-icon="icon: user; ratio: 2"></span>
+          </div>
+        }
+        <span class="avatar-upload-icon" uk-icon="icon: camera; ratio: .8"></span>
+        <input type="file" accept="image/*" hidden (change)="seleccionarAvatar($event)" />
+      </label>
+    </div>
+
+    <div class="uk-width-expand">
+      <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+        <div>
+          <div class="info-chip">
+            <span class="info-chip-label">Cédula</span>
+            <span class="info-chip-valor">{{ perfil?.persona?.per_cedula }}</span>
+          </div>
+        </div>
+        <div>
+          <div class="info-chip">
+            <span class="info-chip-label">Tipo de cliente</span>
+            <span class="info-chip-valor">{{ perfil?.cliente?.tipo_cliente || '—' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="perfil-divider" />
+
+  <h4 class="perfil-card-titulo">Datos personales</h4>
+
+  <form (submit)="$event.preventDefault(); guardar()">
+    <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+      <div>
+        <div class="uk-inline uk-width-1-1">
+          <span class="uk-form-icon" uk-icon="icon: user"></span>
+          <input class="uk-input perfil-input" type="text" name="per_nombr1" [(ngModel)]="per_nombr1" placeholder="Primer nombre" required />
+        </div>
+      </div>
+      <div>
+        <div class="uk-inline uk-width-1-1">
+          <span class="uk-form-icon" uk-icon="icon: user"></span>
+          <input class="uk-input perfil-input" type="text" name="per_nombr2" [(ngModel)]="per_nombr2" placeholder="Segundo nombre" />
+        </div>
+      </div>
+      <div>
+        <div class="uk-inline uk-width-1-1">
+          <span class="uk-form-icon" uk-icon="icon: user"></span>
+          <input class="uk-input perfil-input" type="text" name="per_apell1" [(ngModel)]="per_apell1" placeholder="Primer apellido" required />
+        </div>
+      </div>
+      <div>
+        <div class="uk-inline uk-width-1-1">
+          <span class="uk-form-icon" uk-icon="icon: user"></span>
+          <input class="uk-input perfil-input" type="text" name="per_apell2" [(ngModel)]="per_apell2" placeholder="Segundo apellido" />
+        </div>
+      </div>
+      <div>
+        <div class="uk-inline uk-width-1-1">
+          <span class="uk-form-icon" uk-icon="icon: calendar"></span>
+          <input class="uk-input perfil-input" type="date" name="per_fechna" [(ngModel)]="per_fechna" />
+        </div>
+      </div>
+      <div>
+        <div class="uk-inline uk-width-1-1">
+          <span class="uk-form-icon" uk-icon="icon: phone"></span>
+          <input class="uk-input perfil-input" type="text" name="celular" [(ngModel)]="celular" placeholder="Celular (09xx xxx xxx)" />
+        </div>
+      </div>
+      <div>
+        <div class="uk-inline uk-width-1-1">
+          <span class="uk-form-icon" uk-icon="icon: file-text"></span>
+          <input class="uk-input perfil-input" type="text" name="cli_ruc" [(ngModel)]="cli_ruc" placeholder="RUC (opcional)" />
+        </div>
+      </div>
+    </div>
+
+    <div class="uk-margin-medium-top uk-text-right">
+      <button class="uk-button perfil-btn-primario" type="submit" [disabled]="guardando">
+        {{ guardando ? 'Guardando...' : 'Actualizar perfil' }}
+      </button>
+    </div>
+  </form>
+</div>

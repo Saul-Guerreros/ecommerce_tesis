@@ -1,0 +1,140 @@
+<div class="perfil-card">
+  <div class="uk-flex uk-flex-middle uk-flex-between">
+    <h4 class="perfil-card-titulo uk-margin-remove">Mis direcciones</h4>
+    @if (!mostrarFormulario) {
+      <button class="uk-button perfil-btn-primario perfil-btn-small" (click)="abrirNuevo()">
+        + Agregar dirección
+      </button>
+    }
+  </div>
+
+  @if (cargando) {
+    <div class="uk-text-center uk-margin">
+      <div uk-spinner></div>
+    </div>
+  }
+
+  @if (mostrarFormulario) {
+    <form class="uk-margin-medium-top" (submit)="$event.preventDefault(); guardar()">
+      <div class="uk-grid-small uk-child-width-1-3@s" uk-grid>
+        <div>
+          <label>
+            <div class="uk-form-label">Ciudad</div>
+            <select class="uk-select perfil-input" name="ciudad" [(ngModel)]="ciudadId" (ngModelChange)="onCiudadChange()" required>
+              <option [ngValue]="null" disabled>Seleccioná una ciudad</option>
+              @for (c of ciudades; track c.ciu_id) {
+                <option [ngValue]="c.ciu_id">{{ c.ciu_descri }} ({{ c.dep_descri }})</option>
+              }
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>
+            <div class="uk-form-label">Barrio</div>
+            <select class="uk-select perfil-input" name="barrio" [(ngModel)]="dir_barid" (ngModelChange)="onBarrioChange()" [disabled]="!ciudadId" required>
+              <option [ngValue]="null" disabled>Seleccioná un barrio</option>
+              @for (b of barriosFiltrados; track b.bar_id) {
+                <option [ngValue]="b.bar_id">{{ b.bar_descri }}</option>
+              }
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>
+            <div class="uk-form-label">Calle</div>
+            <select class="uk-select perfil-input" name="calle" [(ngModel)]="dir_calid" [disabled]="!dir_barid" required>
+              <option [ngValue]="null" disabled>Seleccioná una calle</option>
+              @for (c of callesFiltradas; track c.cal_id) {
+                <option [ngValue]="c.cal_id">{{ c.cal_descri }}</option>
+              }
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="uk-grid-small uk-child-width-1-2@s uk-margin-small-top" uk-grid>
+        <div>
+          <div class="uk-inline uk-width-1-1">
+            <span class="uk-form-icon" uk-icon="icon: home"></span>
+            <input class="uk-input perfil-input" type="text" name="dir_nrocasa" [(ngModel)]="dir_nrocasa" placeholder="Número de casa" />
+          </div>
+        </div>
+        <div>
+          <div class="uk-inline uk-width-1-1">
+            <span class="uk-form-icon" uk-icon="icon: info"></span>
+            <input class="uk-input perfil-input" type="text" name="dir_referencia" [(ngModel)]="dir_referencia" placeholder="Punto de referencia" />
+          </div>
+        </div>
+        <div>
+          <div class="uk-inline uk-width-1-1">
+            <span class="uk-form-icon" uk-icon="icon: phone"></span>
+            <input class="uk-input perfil-input" type="text" name="dir_celular" [(ngModel)]="dir_celular" placeholder="Celular de contacto" />
+          </div>
+        </div>
+        <div>
+          <div class="uk-inline uk-width-1-1">
+            <span class="uk-form-icon" uk-icon="icon: receiver"></span>
+            <input class="uk-input perfil-input" type="text" name="dir_telef" [(ngModel)]="dir_telef" placeholder="Teléfono (opcional)" />
+          </div>
+        </div>
+      </div>
+
+      <label class="uk-margin-small-top uk-display-block">
+        <input class="uk-checkbox" type="checkbox" name="dir_predet" [(ngModel)]="dir_predet" />
+        <span class="uk-margin-small-left">Usar como dirección predeterminada</span>
+      </label>
+
+      <div class="uk-margin-top uk-text-right">
+        <button class="uk-button uk-button-default perfil-btn-secundario" type="button" (click)="cerrarFormulario()">Cancelar</button>
+        <button class="uk-button perfil-btn-primario uk-margin-small-left" type="submit" [disabled]="guardando">
+          {{ guardando ? 'Guardando...' : 'Guardar dirección' }}
+        </button>
+      </div>
+    </form>
+  }
+
+  @if (!cargando && !mostrarFormulario) {
+    <div class="uk-grid-small uk-child-width-1-2@m uk-margin-medium-top" uk-grid>
+      @for (dir of direcciones; track dir.dir_id) {
+        <div>
+          <div class="direccion-box">
+            <div class="uk-flex uk-flex-middle uk-flex-between">
+              <div class="uk-flex uk-flex-middle">
+                <span class="direccion-icono" uk-icon="icon: location; ratio: 1"></span>
+                <strong class="uk-margin-small-left">{{ dir.barrio }}</strong>
+              </div>
+              @if (dir.dir_predet) {
+                <span class="direccion-badge">Predeterminada</span>
+              }
+            </div>
+
+            <div class="direccion-datos">
+              <div><span class="direccion-datos-label">Ciudad:</span> {{ dir.ciudad }}</div>
+              <div><span class="direccion-datos-label">Calle:</span> {{ dir.calle }}</div>
+              @if (dir.dir_nrocasa) {
+                <div><span class="direccion-datos-label">N° casa:</span> {{ dir.dir_nrocasa }}</div>
+              }
+              @if (dir.dir_referencia) {
+                <div><span class="direccion-datos-label">Referencia:</span> {{ dir.dir_referencia }}</div>
+              }
+              @if (dir.dir_celular) {
+                <div><span class="direccion-datos-label">Celular:</span> {{ dir.dir_celular }}</div>
+              }
+            </div>
+
+            <div class="direccion-acciones">
+              <button class="uk-icon-button" uk-icon="pencil" uk-tooltip="Editar" (click)="abrirEditar(dir)"></button>
+              @if (!dir.dir_predet) {
+                <button class="uk-icon-button" uk-icon="star" uk-tooltip="Marcar predeterminada" (click)="marcarPredeterminada(dir)"></button>
+              }
+              <button class="uk-icon-button uk-text-danger" uk-icon="trash" uk-tooltip="Eliminar" (click)="eliminar(dir)"></button>
+            </div>
+          </div>
+        </div>
+      }
+      @if (direcciones.length === 0) {
+        <div class="uk-text-muted uk-text-center">Todavía no cargaste ninguna dirección.</div>
+      }
+    </div>
+  }
+</div>

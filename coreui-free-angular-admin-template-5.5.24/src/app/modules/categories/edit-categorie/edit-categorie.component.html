@@ -15,6 +15,13 @@
           El nombre es obligatorio (máx. 45 caracteres)
         </div>
       </div>
+      <div class="mb-3" *ngIf="!form.get('cat_idpadr')?.value">
+        <label cLabel for="cat_icono">Ícono del menú (opcional)</label>
+        <select cSelect id="cat_icono" formControlName="cat_icono">
+          <option [ngValue]="null">-- Sin ícono (genérico) --</option>
+          <option *ngFor="let opcion of opcionesIcono" [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option>
+        </select>
+      </div>
 
       <div class="mb-3">
         <label cLabel for="cat_idpadr">Categoría padre</label>

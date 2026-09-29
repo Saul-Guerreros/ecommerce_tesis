@@ -1,0 +1,80 @@
+<main>
+  <section class="uk-section uk-section-small perfil-section">
+    <div class="uk-container">
+      <ul class="uk-breadcrumb">
+        <li><a routerLink="/">Home</a></li>
+        <li><span>Mi perfil</span></li>
+      </ul>
+
+      @if (cargando) {
+        <div class="uk-text-center uk-margin-large-top uk-margin-large-bottom">
+          <div uk-spinner="ratio: 1.5"></div>
+        </div>
+      }
+
+      @if (!cargando && perfil) {
+        <!-- Tarjeta de bienvenida -->
+        <div class="perfil-welcome-card uk-margin-medium-top">
+          <div class="uk-grid-small uk-flex-middle" uk-grid>
+            <div class="uk-width-auto">
+              @if (perfil.persona.avatar_url) {
+                <img class="perfil-avatar-header" [src]="perfil.persona.avatar_url" alt="Avatar" />
+              } @else {
+                <div class="perfil-avatar-header perfil-avatar-placeholder">
+                  <span uk-icon="icon: user; ratio: 1.4"></span>
+                </div>
+              }
+            </div>
+            <div class="uk-width-expand">
+              <h3 class="uk-margin-remove-bottom">¡Hola, {{ perfil.persona.nombre_completo }}!</h3>
+              <div class="uk-text-meta">{{ perfil.email }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar + contenido -->
+        <div class="uk-grid-medium uk-margin-medium-top" uk-grid>
+          <div class="uk-width-1-4@m">
+            <div class="perfil-sidebar">
+              <ul class="perfil-menu">
+                <li [class.activo]="tabActiva === 'datos'" (click)="tabActiva = 'datos'">
+                  <span uk-icon="icon: user; ratio: .9"></span>
+                  <span>Datos personales</span>
+                </li>
+                <li [class.activo]="tabActiva === 'direcciones'" (click)="tabActiva = 'direcciones'">
+                  <span uk-icon="icon: location; ratio: .9"></span>
+                  <span>Mis direcciones</span>
+                </li>
+                <li [class.activo]="tabActiva === 'password'" (click)="tabActiva = 'password'">
+                  <span uk-icon="icon: lock; ratio: .9"></span>
+                  <span>Seguridad</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="uk-width-expand@m">
+            @if (tabActiva === 'datos') {
+              <app-datos-personales
+                [perfil]="perfil"
+                (actualizado)="onPerfilActualizado($event)"
+              ></app-datos-personales>
+            }
+            @if (tabActiva === 'direcciones') {
+              <app-direcciones></app-direcciones>
+            }
+            @if (tabActiva === 'password') {
+              <app-cambiar-password></app-cambiar-password>
+            }
+          </div>
+        </div>
+      }
+
+      @if (!cargando && !perfil) {
+        <div class="uk-alert-danger uk-margin-medium-top" uk-alert>
+          <p>No se pudo cargar tu perfil. Intentá recargar la página.</p>
+        </div>
+      }
+    </div>
+  </section>
+</main>

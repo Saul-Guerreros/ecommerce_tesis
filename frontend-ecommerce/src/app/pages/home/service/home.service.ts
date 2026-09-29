@@ -19,7 +19,7 @@ export class HomeService {
   }
 
   menus(){
-    let URL = URL_SERVICIOS+"/ecommerce/menus";
+    let URL = URL_SERVICIOS+"/tienda/categorias/menu";
     return this.http.get(URL);
   }
 

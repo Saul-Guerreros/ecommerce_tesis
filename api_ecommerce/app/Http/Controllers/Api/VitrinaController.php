@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use App\Models\Product\EspecificacionProducto;
+use App\Models\Marca;
 
 /**
  * Vitrina de Home: resuelve qué productos aparecen en cada sección de la
@@ -202,7 +203,7 @@ class VitrinaController extends Controller
             return null;
         }
 
-        $precioBase = (float) ($pub->pub_prevta ?? $pub->producto->prd_precio);
+        $precioBase = (float) ($pub->pub_prevta ?? $pub->producto->prd_pvtmin);
 
         return $descuentos
             ->map(fn (Discount $descuento) => [
@@ -242,7 +243,7 @@ class VitrinaController extends Controller
     private function formatearProducto(PublicacionWeb $pub, ?array $mejorOferta = null): array
     {
         $producto = $pub->producto;
-        $precioOriginal = (float) ($pub->pub_prevta ?? $producto->prd_precio);
+        $precioOriginal = (float) ($pub->pub_prevta ?? $producto->prd_pvtmin);
         $precioFinal = $precioOriginal;
         $descuentoPct = null;
         $ofertaFin = null;
@@ -456,6 +457,186 @@ class VitrinaController extends Controller
         }
 
         return $puntos;
+    }
+
+        // ---------------------------------------------------------------
+    // Filtro avanzado / catálogo con búsqueda ("/productos-busqueda")
+    // ---------------------------------------------------------------
+
+    // GET /api/tienda/productos/filtros — público. Config para armar el
+    // sidebar de filtros: categorías raíz (+ subárbol) con conteo, marcas
+    // con conteo, y rango de precio actualmente publicado.
+    public function configFiltros(): JsonResponse
+    {
+        $publicadasPorCategoria = PublicacionWeb::publicadas()
+            ->whereNotNull('pub_catid')
+            ->pluck('pub_catid')
+            ->countBy();
+
+        $categorias = Categoria::whereNull('cat_idpadr')
+            ->orderBy('cat_nombre')
+            ->get()
+            ->map(function (Categoria $cat) use ($publicadasPorCategoria) {
+                $idsSubarbol = $this->idsCategoriaYDescendientes($cat->cat_id);
+
+                return [
+                    'cat_id' => $cat->cat_id,
+                    'cat_nombre' => $cat->cat_nombre,
+                    'productos_count' => collect($idsSubarbol)
+                        ->sum(fn ($id) => $publicadasPorCategoria->get($id, 0)),
+                ];
+            })
+            ->values();
+
+        $marcas = Marca::withCount(['productos as productos_count' => function ($q) {
+                $q->whereHas('publicacionWeb', fn ($qq) => $qq->publicadas());
+            }])
+            ->where('mar_estado', 1)
+            ->orderBy('mar_descri')
+            ->get(['mar_id', 'mar_descri'])
+            ->map(fn (Marca $m) => [
+                'mar_id' => $m->mar_id,
+                'mar_descri' => $m->mar_descri,
+                'productos_count' => $m->productos_count,
+            ]);
+
+        $rangoPrecio = PublicacionWeb::publicadas()
+            ->selectRaw('MIN(pub_prevta) as minimo, MAX(pub_prevta) as maximo')
+            ->first();
+
+        return response()->json([
+            'data' => [
+                'categorias' => $categorias,
+                'marcas' => $marcas,
+                'precio_min' => (float) ($rangoPrecio->minimo ?? 0),
+                'precio_max' => (float) ($rangoPrecio->maximo ?? 0),
+            ],
+        ]);
+    }
+
+    // GET /api/tienda/productos/buscar — público. Catálogo con filtros
+    // (categoría, marca, precio, oferta, orden) + búsqueda por texto.
+    public function buscar(Request $request): JsonResponse
+    {
+        $categoriasSeleccionadas = (array) $request->query('categorias', []);
+        $marcasSeleccionadas = (array) $request->query('marcas', []);
+        $precioMin = $request->query('precio_min');
+        $precioMax = $request->query('precio_max');
+        $soloOferta = $request->boolean('en_oferta');
+        $orden = $request->query('orden', 'nuevos');
+        $busqueda = $request->query('busqueda');
+        $pagina = max(1, (int) $request->query('page', 1));
+        $porPagina = min(48, max(1, (int) $request->query('por_pagina', 12)));
+
+        $idsCategorias = collect($categoriasSeleccionadas)
+            ->flatMap(fn ($id) => $this->idsCategoriaYDescendientes((int) $id))
+            ->unique()
+            ->values()
+            ->all();
+
+        $descuentos = $this->descuentosActivosPorProducto();
+
+        $query = PublicacionWeb::publicadas()
+            ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes']);
+
+        if (!empty($idsCategorias)) {
+            $query->whereIn('pub_catid', $idsCategorias);
+        }
+
+        if (!empty($marcasSeleccionadas)) {
+            $query->whereHas('producto', fn ($q) => $q->whereIn('prd_marid', $marcasSeleccionadas));
+        }
+
+        if ($precioMin !== null && $precioMin !== '') {
+            $query->where('pub_prevta', '>=', (float) $precioMin);
+        }
+
+        if ($precioMax !== null && $precioMax !== '') {
+            $query->where('pub_prevta', '<=', (float) $precioMax);
+        }
+
+        if ($busqueda) {
+            $query->where('pub_titulo', 'like', '%'.$busqueda.'%');
+        }
+
+        if ($soloOferta) {
+            $query->whereIn('pub_prdid', $descuentos->keys());
+        }
+
+        $productos = $query->orderByDesc('pub_creado')
+            ->get()
+            ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
+
+        $productos = match ($orden) {
+            'precio_asc' => $productos->sortBy('precio_final')->values(),
+            'precio_desc' => $productos->sortByDesc('precio_final')->values(),
+            default => $productos,
+        };
+
+        $total = $productos->count();
+        $paginaProductos = $productos->slice(($pagina - 1) * $porPagina, $porPagina)->values();
+
+        return response()->json([
+            'data' => $paginaProductos,
+            'meta' => [
+                'total' => $total,
+                'page' => $pagina,
+                'por_pagina' => $porPagina,
+                'ultima_pagina' => (int) (ceil($total / $porPagina) ?: 1),
+            ],
+        ]);
+    }
+
+    /** IDs de una categoría raíz + todas sus descendientes (árbol vía cat_idpadr). */
+    private function idsCategoriaYDescendientes(int $catId): array
+    {
+        $ids = [$catId];
+        $hijas = Categoria::where('cat_idpadr', $catId)->pluck('cat_id');
+
+        foreach ($hijas as $hijaId) {
+            $ids = array_merge($ids, $this->idsCategoriaYDescendientes((int) $hijaId));
+        }
+
+        return $ids;
+    }
+
+    // GET /api/tienda/categorias/menu — público. Árbol de categorías (raíz +
+    // hijas) para el menú "Categorías" del header. Solo devuelve categorías
+    // con al menos un producto publicado, para no linkear a una vacía.
+    public function menuCategorias(): JsonResponse
+    {
+        $publicadasPorCategoria = PublicacionWeb::publicadas()
+            ->whereNotNull('pub_catid')
+            ->pluck('pub_catid')
+            ->countBy();
+
+        $todasCategorias = Categoria::orderBy('cat_nombre')->get(['cat_id', 'cat_nombre', 'cat_idpadr', 'cat_icono']);
+        $hijasPorPadre = $todasCategorias->whereNotNull('cat_idpadr')->groupBy('cat_idpadr');
+
+        $tieneProductos = function (int $catId) use ($publicadasPorCategoria) {
+            return collect($this->idsCategoriaYDescendientes($catId))
+                ->sum(fn ($id) => $publicadasPorCategoria->get($id, 0)) > 0;
+        };
+
+        $menu = $todasCategorias->whereNull('cat_idpadr')
+            ->filter(fn (Categoria $cat) => $tieneProductos($cat->cat_id))
+            ->map(function (Categoria $cat) use ($hijasPorPadre, $tieneProductos) {
+                return [
+                    'cat_id' => $cat->cat_id,
+                    'cat_nombre' => $cat->cat_nombre,
+                    'cat_icono' => $cat->cat_icono,
+                    'hijas' => ($hijasPorPadre->get($cat->cat_id) ?? collect())
+                        ->filter(fn (Categoria $hija) => $tieneProductos($hija->cat_id))
+                        ->map(fn (Categoria $hija) => [
+                            'cat_id' => $hija->cat_id,
+                            'cat_nombre' => $hija->cat_nombre,
+                        ])
+                        ->values(),
+                ];
+            })
+            ->values();
+
+        return response()->json(['data' => $menu]);
     }
 
    // GET /api/tienda/producto/{slug} — público

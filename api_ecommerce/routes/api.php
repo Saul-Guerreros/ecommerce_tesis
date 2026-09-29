@@ -11,56 +11,37 @@ use App\Http\Controllers\Admin\Discount\DiscountController;
 use App\Http\Controllers\Api\PublicacionWebController;
 use App\Http\Controllers\Api\VitrinaController;
 use App\Http\Controllers\AuthController;
-
 use App\Http\Controllers\Api\UsuarioController;
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
 use App\Http\Controllers\Admin\Configuracion\EmpresaController;
-
 use App\Http\Controllers\Admin\Configuracion\DepartamentoController;
 use App\Http\Controllers\Admin\Configuracion\CiudadController;
 use App\Http\Controllers\Admin\Configuracion\BarrioController;
 use App\Http\Controllers\Admin\Configuracion\CalleController;
-
 use App\Http\Controllers\Admin\Configuracion\SucursalController;
-
 use App\Http\Controllers\Admin\Configuracion\DepositoController;
-
 use App\Http\Controllers\Admin\Cliente\ClienteController;
-
 use App\Http\Controllers\Admin\Compras\TipoIvaController;
 use App\Http\Controllers\Admin\Compras\TipoComprobanteController;
-
 use App\Http\Controllers\Admin\Configuracion\TimbradoController;
-
 use App\Http\Controllers\Admin\Compras\TipoProveedorController;
 use App\Http\Controllers\Admin\Compras\ProveedorController;
 use App\Http\Controllers\Admin\Compras\ContactoProveedorController;
-
 use App\Http\Controllers\Admin\product\MarcaController;
-
 use App\Http\Controllers\Admin\Compras\UnidadMedidaController;
-
 use App\Http\Controllers\Admin\product\ProductoController;
-
 use App\Http\Controllers\Admin\Compras\CompraController;
-
 use App\Http\Controllers\Admin\Compras\AjusteInventarioController;
-
 use App\Http\Controllers\Admin\Compras\MovimientoStockController;
 use App\Http\Controllers\Admin\Compras\StockController;
-
 use App\Http\Controllers\Admin\Auth\RolController;
-
 use App\Http\Controllers\Admin\product\PrecioController;
-
 use App\Http\Controllers\Admin\Compras\TipoAjusteController;
-
 use App\Http\Controllers\Admin\Compras\ProductoEquivalenciaController;
-
 use App\Http\Controllers\Admin\product\ConfiguracionPrecioController;
+use App\Http\Controllers\Api\PerfilClienteController;
+use App\Http\Controllers\Api\DireccionClienteController;
 
 /*
 |--------------------------------------------------------------------------
@@ -103,6 +84,10 @@ Route::group([
     Route::get('home', [VitrinaController::class, 'home']);
     Route::get('sliders', [VitrinaController::class, 'sliders']);
     Route::get('producto/{slug}', [VitrinaController::class, 'detalle']);
+     // NUEVO — filtro avanzado / catálogo con búsqueda:
+    Route::get('productos/filtros', [VitrinaController::class, 'configFiltros']);
+    Route::get('productos/buscar', [VitrinaController::class, 'buscar']);
+    Route::get('categorias/menu', [VitrinaController::class, 'menuCategorias']);
 });
 
 Route::group([
@@ -300,6 +285,25 @@ Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {
     Route::patch('/{usuario}/estado', [UsuarioController::class, 'cambiarEstado'])
         ->middleware('permiso:usuarios.gestionar');
         
+});
+
+// Rutas privadas del ecommerce (requieren sesión de Cliente).
+// Van en grupo aparte del "tienda" público de arriba (home/sliders/producto)
+// porque este sí necesita auth:api.
+Route::group([
+    'middleware' => ['auth:api'],
+    'prefix' => 'tienda/perfil',
+], function () {
+    Route::get('/', [PerfilClienteController::class, 'show']);
+    Route::post('/', [PerfilClienteController::class, 'update']);
+    Route::patch('/password', [PerfilClienteController::class, 'actualizarPassword']);
+
+    Route::get('/direcciones/catalogos', [DireccionClienteController::class, 'catalogos']);
+    Route::get('/direcciones', [DireccionClienteController::class, 'index']);
+    Route::post('/direcciones', [DireccionClienteController::class, 'store']);
+    Route::put('/direcciones/{id}', [DireccionClienteController::class, 'update']);
+    Route::delete('/direcciones/{id}', [DireccionClienteController::class, 'destroy']);
+    Route::patch('/direcciones/{id}/predeterminada', [DireccionClienteController::class, 'marcarPredeterminada']);
 });
 
 Route::get('publicaciones', [PublicacionWebController::class, 'index']);

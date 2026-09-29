@@ -20,6 +20,11 @@ class Persona extends Model
         'per_estciv',
         'per_fechna',
         'per_estado',
+        'per_avatar',
+    ];
+
+    protected $casts = [
+    'per_fechna' => 'date',
     ];
 
     // Una persona puede ser funcionario y cliente a la vez

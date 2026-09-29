@@ -9,17 +9,18 @@ class CategorieResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        return [
-            'cat_id'     => $this->cat_id,
-            'cat_idpadr' => $this->cat_idpadr,
-            'cat_nivel'  => $this->cat_nivel,
-            'cat_nombre' => $this->cat_nombre,
-            'padre'      => $this->whenLoaded('padre', function () {
-                return [
-                    'cat_id'     => $this->padre->cat_id,
-                    'cat_nombre' => $this->padre->cat_nombre,
-                ];
-            }),
-        ];
+    return [
+        'cat_id'     => $this->cat_id,
+        'cat_idpadr' => $this->cat_idpadr,
+        'cat_nivel'  => $this->cat_nivel,
+        'cat_nombre' => $this->cat_nombre,
+        'cat_icono'  => $this->cat_icono, // NUEVO
+        'padre'      => $this->whenLoaded('padre', function () {
+            return [
+                'cat_id'     => $this->padre->cat_id,
+                'cat_nombre' => $this->padre->cat_nombre,
+            ];
+        }),
+    ];
     }
 }

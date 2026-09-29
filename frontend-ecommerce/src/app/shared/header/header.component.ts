@@ -50,7 +50,7 @@ export class HeaderComponent {
       this.homeService.menus().subscribe({
         next: (resp:any) => {
           //console.log(resp);
-          this.categories_menus = resp.categories_menus;
+          this.categories_menus = resp.data;
         },
         error: (err) => {
           console.error('No se pudieron cargar las categorías del menú:', err.message);
@@ -102,12 +102,6 @@ export class HeaderComponent {
       this.toastr.info("Eliminación","Se elimino el producto "+CART.product.title + " del carrito de compra");
       this.cartService.removeCart(CART);
     })
-  }
-
-  getIconMenu(menu:any){
-    var miDiv:any = document.getElementById('icon-'+menu.id);
-    miDiv.innerHTML = menu.icon; 
-    return '';
   }
 
   changeCurrency(val:string){

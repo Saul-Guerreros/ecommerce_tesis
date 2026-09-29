@@ -18,6 +18,7 @@ class Categoria extends Model
         'cat_idpadr',
         'cat_nivel',
         'cat_nombre',
+        'cat_icono',
     ];
 
     public function padre(): BelongsTo
