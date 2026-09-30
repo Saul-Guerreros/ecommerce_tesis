@@ -20,7 +20,8 @@ class ProveedorController extends Controller
      * bloquea por relaciones que representen documentos/historial real.
      */
     private const DEPENDENCIAS = [
-        'compra_cab' => ['columna' => 'com_proid', 'etiqueta' => 'compra(s) registrada(s)'],
+        'compra_cab'         => ['columna' => 'com_proid', 'etiqueta' => 'compra(s) registrada(s)'],
+        'timbrado_proveedor' => ['columna' => 'tpv_proid', 'etiqueta' => 'timbrado(s) registrado(s)'],
     ];
 
     private function contarUsos(): array

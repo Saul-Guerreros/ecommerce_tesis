@@ -20,6 +20,7 @@
           <option value="">Entradas y salidas</option>
           <option value="E">Solo entradas</option>
           <option value="S">Solo salidas</option>
+          <option value="A">Solo ajustes (NC)</option>
         </select>
       </div>
       <div class="col-md-2">
@@ -49,9 +50,9 @@
           <td>{{ m.mst_fecha | date:'dd/MM/yyyy HH:mm' }}</td>
           <td>{{ m.prd_codinv }} — {{ m.prd_descri }}</td>
           <td>{{ m.dpo_nombre }}</td>
-          <td class="text-center">
-            <c-badge [color]="m.mst_tipo === 'E' ? 'success' : 'danger'">
-              {{ m.mst_tipo === 'E' ? 'Entrada' : 'Salida' }}
+         <td class="text-center">
+            <c-badge [color]="colorTipo(m.mst_tipo)">
+              {{ etiquetaTipo(m.mst_tipo) }}
             </c-badge>
           </td>
           <td class="text-end">{{ m.mst_cantid | number:'1.0-4' }}</td>

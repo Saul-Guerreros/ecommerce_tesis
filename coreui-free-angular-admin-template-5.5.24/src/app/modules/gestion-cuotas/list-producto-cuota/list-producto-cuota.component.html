@@ -1,0 +1,102 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Gestión de Cuotas</strong></c-card-header>
+
+  <c-card-body>
+    <div class="text-muted small mb-3">
+      Configure por producto en cuántas cuotas se puede financiar y qué porcentaje de recargo
+      se aplica. El precio financiado y el monto de cada cuota los calcula el sistema.
+    </div>
+
+    <div class="row g-2 mb-3 align-items-center">
+      <div class="col-md-6">
+        <input cFormControl placeholder="Buscar por nombre o código..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+
+      <div class="col-md-4">
+        <div class="form-check">
+          <input cFormCheckInput type="checkbox" id="soloConCuotas"
+                 [(ngModel)]="soloConCuotas" (ngModelChange)="cargar()" />
+          <label cFormCheckLabel for="soloConCuotas">Solo productos con cuotas configuradas</label>
+        </div>
+      </div>
+
+      <div class="col-md-2 text-md-end">
+        <button cButton size="sm" color="secondary" variant="outline"
+                type="button" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">
+      {{ productos.length }} resultado(s) encontrado(s)
+    </div>
+
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <div class="table-responsive" *ngIf="!cargando">
+      <table cTable striped hover class="align-middle">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Producto</th>
+            <th class="text-end text-nowrap">Precio contado</th>
+            <th class="text-center text-nowrap">Cuotas configuradas</th>
+            <th class="text-end">Acción</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let p of productos">
+            <td>{{ p.prd_codinv }}</td>
+            <td>
+              {{ p.prd_descri }}
+              <div class="text-muted small" *ngIf="p.solo_mayorista">
+                Solo mayorista · mínimo {{ p.cantidad_minima }} un.
+              </div>
+            </td>
+
+            <td class="text-end text-nowrap">
+              <ng-container *ngIf="p.precio_contado !== null; else sinPrecio">
+                {{ p.precio_contado | number:'1.0-2' }}
+              </ng-container>
+              <ng-template #sinPrecio>
+                <span class="badge bg-light text-muted text-uppercase">sin precio</span>
+              </ng-template>
+            </td>
+
+            <td class="text-center text-nowrap">
+              <span class="badge"
+                    [ngClass]="p.cuotas_activas > 0 ? 'bg-success' : (p.cuotas_total > 0 ? 'bg-warning' : 'bg-secondary')">
+                {{ p.cuotas_activas }} activa(s)
+              </span>
+              <div class="text-muted small" *ngIf="p.cuotas_total > p.cuotas_activas">
+                {{ p.cuotas_total - p.cuotas_activas }} inactiva(s)
+              </div>
+            </td>
+
+            <td class="text-end">
+              <button cButton size="sm" color="info" class="text-white"
+                      [disabled]="!puedeConfigurar(p)"
+                      (click)="abrirConfiguracion(p)">
+                Configurar cuotas
+              </button>
+              <div class="text-muted small" *ngIf="!puedeConfigurar(p)">
+                Configure primero el precio de venta
+              </div>
+            </td>
+          </tr>
+
+          <tr *ngIf="productos.length === 0">
+            <td colspan="5" class="text-center">No hay productos que coincidan con la búsqueda</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </c-card-body>
+</c-card>
+
+<app-form-cuotas
+  [visible]="formModalVisible"
+  [producto]="productoSeleccionado"
+  (visibleChange)="formModalVisible = $event"
+  (guardado)="cargar()"></app-form-cuotas>

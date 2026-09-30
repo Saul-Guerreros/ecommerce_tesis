@@ -124,7 +124,9 @@ export interface ProductoEquivalencia {
   peq_prdid: number;
   peq_umdid: number;
   peq_factor: number;
-  peq_estado?: number;
+  peq_estado?: number;      // 1 = activa · 0 = desactivada
+  etiqueta?: string;        // "Caja (x10)"
+  en_uso?: boolean;         // usada en compras: solo puede desactivarse
   umd_codigo?: string;
   umd_nombre?: string;
 }

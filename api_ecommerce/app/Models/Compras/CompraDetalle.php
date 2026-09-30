@@ -11,11 +11,13 @@ class CompraDetalle extends Model
     protected $primaryKey = 'cmd_id';
     public    $timestamps = false;
 
+    //Agregado hoy
     protected $fillable = [
-        'cmd_comid', 'cmd_prdid', 'cmd_umdid', 'cmd_factconv', 'cmd_tivid', 'cmd_nroprd', 'cmd_descri',
+        'cmd_comid', 'cmd_prdid', 'cmd_umdid', 'cmd_peqid', 'cmd_factconv', 'cmd_tivid', 'cmd_nroprd', 'cmd_descri',
         'cmd_costo', 'cmd_precun', 'cmd_despor', 'cmd_descto', 'cmd_tasa', 'cmd_gravada', 'cmd_iva',
         'cmd_canfac', 'cmd_canrec',
     ];
+
 
     protected $casts = [
         'cmd_id'       => 'integer',
@@ -33,6 +35,9 @@ class CompraDetalle extends Model
         'cmd_iva'      => 'decimal:2',
         'cmd_canfac'   => 'decimal:4',
         'cmd_canrec'   => 'decimal:4',
+
+        //Agregado hoy
+        'cmd_peqid'    => 'integer',
     ];
 
     public function compraCab()
@@ -53,5 +58,11 @@ class CompraDetalle extends Model
     public function tipoIva()
     {
         return $this->belongsTo(TipoIva::class, 'cmd_tivid', 'tiv_id');
+    }
+
+    // Agregado hoy
+    public function equivalencia()
+    {
+        return $this->belongsTo(ProductoEquivalencia::class, 'cmd_peqid', 'peq_id');
     }
 }

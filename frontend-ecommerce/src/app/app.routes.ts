@@ -9,15 +9,21 @@ import { suthGuard } from './pages/auth/service/suth.guard';
 import { ProductosBusquedaComponent } from './pages/productos-busqueda/productos-busqueda.component';
 
 
+import { authGuard } from './pages/auth/service/auth.guard';
+import { CarritoComponent } from './pages/carrito/carrito.component';
+
 export const routes: Routes = [
     {
         path: '',
         component: HomeComponent
     },
+
     {
+        //canActivate: [authGuard],
         path: 'login',
         component: LoginComponent
     },
+    
     {
         path: 'register',
         component: RegisterComponent
@@ -42,4 +48,15 @@ export const routes: Routes = [
         path: 'productos-busqueda',
         component: ProductosBusquedaComponent
     },
-];
+   ];
+   [
+    {
+    // Pública: el carrito funciona con invitados (localStorage) y con
+    // usuarios logueados (BD). El login solo se exige en /proceso-de-pago.
+    // El path debe coincidir con los routerLink ya presentes en
+    // header.component.html y footer.component.html.
+    path: 'carrito-de-compra',
+    component: CarritoComponent
+    }
+  ];
+

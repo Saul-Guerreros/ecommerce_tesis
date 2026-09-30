@@ -1,0 +1,134 @@
+/* Capa a pantalla completa. z-index por encima del offcanvas de UIkit
+   (1000) para que el panel nunca quede detrás del drawer. */
+.tm-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 1030;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, .35);
+  animation: tm-confirm-fondo .18s ease-out;
+}
+
+.tm-confirm__panel {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  padding: 44px 32px 36px;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .18);
+  text-align: center;
+  animation: tm-confirm-panel .22s cubic-bezier(.2, .8, .3, 1);
+}
+
+.tm-confirm__close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  border: 0;
+  background: transparent;
+  color: #bbb;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.tm-confirm__close:hover { color: #777; }
+
+/* ---------- Ícono de check ---------- */
+.tm-confirm__icon {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 18px;
+}
+
+.tm-confirm__circle,
+.tm-confirm__check {
+  fill: none;
+  stroke: #2522f2;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* El trazo se dibuja al entrar. stroke-dasharray/offset usan longitudes
+   aproximadas del path; no hace falta que sean exactas porque el valor
+   final es 0 (trazo completo). */
+.tm-confirm__circle {
+  stroke-dasharray: 214;
+  stroke-dashoffset: 214;
+  animation: tm-confirm-trazo .45s ease-out forwards;
+}
+
+.tm-confirm__check {
+  stroke-width: 5;
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: tm-confirm-trazo .3s .35s ease-out forwards;
+}
+
+/* ---------- Textos ---------- */
+.tm-confirm__title {
+  margin: 0 0 6px;
+  font-size: 30px;
+  font-weight: 700;
+  color: #4a4a4a;
+}
+
+.tm-confirm__text {
+  margin: 0 0 26px;
+  font-size: 16px;
+  color: #6b6b6b;
+}
+
+/* ---------- Botón ---------- */
+.tm-confirm__btn {
+  min-width: 180px;
+  height: 46px;
+  padding: 0 26px;
+  border: 0;
+  border-radius: 3px;
+  background: #22f291;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.tm-confirm__btn:hover { background: #2019dd; }
+
+/* ---------- Animaciones ---------- */
+@keyframes tm-confirm-fondo {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes tm-confirm-panel {
+  from { opacity: 0; transform: translateY(14px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes tm-confirm-trazo {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Respeta la preferencia del sistema de reducir movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  .tm-confirm,
+  .tm-confirm__panel,
+  .tm-confirm__circle,
+  .tm-confirm__check {
+    animation: none;
+  }
+  .tm-confirm__circle,
+  .tm-confirm__check { stroke-dashoffset: 0; }
+}
+
+@media (max-width: 480px) {
+  .tm-confirm__panel { padding: 36px 22px 30px; }
+  .tm-confirm__icon  { width: 78px; height: 78px; }
+  .tm-confirm__title { font-size: 26px; }
+}

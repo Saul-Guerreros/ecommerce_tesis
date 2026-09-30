@@ -1,0 +1,45 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg">
+  <c-modal-header>
+    <h5 cModalTitle>Cuotas de Crédito — Compra N° {{ compra?.com_id }} ({{ compra?.com_nrodoc }})</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <div class="text-center py-3" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable small striped *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>N°</th><th>Vencimiento</th><th class="text-end">Importe</th>
+          <th class="text-center">Estado</th><th>Fecha de pago</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let c of cuotas">
+          <td>{{ c.cuo_nrocuo }}</td>
+          <td>{{ c.cuo_venci }}</td>
+          <td class="text-end">{{ c.cuo_importe | number:'1.0-2' }}</td>
+          <td class="text-center">
+            <c-badge [color]="c.cuo_estado === 1 ? 'success' : 'warning'">
+              {{ c.cuo_estado === 1 ? 'Pagada' : 'Pendiente' }}
+            </c-badge>
+          </td>
+          <td>{{ c.cuo_fecpago ?? '-' }}</td>
+        </tr>
+        <tr *ngIf="cuotas.length === 0">
+          <td colspan="5" class="text-center">Esta compra no tiene cuotas registradas</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-end fw-bold mt-2" *ngIf="!cargando">
+      Saldo pendiente: {{ totalPendiente | number:'1.0-2' }}
+    </div>
+    <div class="text-muted small text-end" *ngIf="!cargando && totalPendiente > 0">
+      Para registrar un pago, hacelo desde Cuentas por Pagar.
+    </div>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" type="button" (click)="cerrar()">Cerrar</button>
+  </c-modal-footer>
+</c-modal>

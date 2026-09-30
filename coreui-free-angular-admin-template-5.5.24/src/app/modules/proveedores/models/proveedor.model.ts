@@ -44,3 +44,20 @@ export interface ProveedorConfig {
   tipos: TipoProveedorOption[];
   ciudades: CiudadOption[];
 }
+
+export interface TimbradoProveedor {
+  tpv_id?: number;
+  tpv_proid: number;
+  tpv_tcoid: number | null;
+  tpv_numero: string;
+
+  tpv_fechfn: string;      // YYYY-MM-DD
+  tpv_estado?: number;
+  tco_descri?: string;
+  compras_count?: number;  // si > 0 no se puede editar ni eliminar
+}
+
+export interface TipoComprobanteOption {
+  tco_id: number;
+  tco_descri: string;
+}

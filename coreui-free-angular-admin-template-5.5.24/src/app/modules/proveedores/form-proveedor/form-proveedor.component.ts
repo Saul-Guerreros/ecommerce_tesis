@@ -3,7 +3,10 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { ButtonModule, FormModule, ModalModule, SpinnerModule, TableModule, BadgeModule } from '@coreui/angular';
-import { Proveedor, TipoProveedorOption, CiudadOption, Contacto } from '../models/proveedor.model';
+import {
+  Proveedor, TipoProveedorOption, CiudadOption, Contacto,
+  TimbradoProveedor, TipoComprobanteOption,
+} from '../models/proveedor.model';
 import { ProveedoresService } from '../service/proveedores.service';
 
 /**
@@ -47,6 +50,16 @@ export class FormProveedorComponent implements OnInit, OnChanges {
   guardandoContacto = false;
   contactoAEliminar: Contacto | null = null;
 
+    // --- Gestion de timbrados (sub-recurso) ---        ← PEGAR AQUÍ
+  timbrados: TimbradoProveedor[] = [];
+  tiposComprobante: TipoComprobanteOption[] = [];
+  cargandoTimbrados = false;
+  timbradoForm: FormGroup;
+  editandoTimbradoId: number | null = null;
+  guardandoTimbrado = false;
+  timbradoAEliminar: TimbradoProveedor | null = null;
+  private readonly hoy = this.fechaLocal();
+
   constructor(
     private fb: FormBuilder,
     private service: ProveedoresService,
@@ -72,12 +85,24 @@ export class FormProveedorComponent implements OnInit, OnChanges {
       cpr_email:    ['', [Validators.email, Validators.maxLength(80)]],
       cpr_princi:   [0],
     });
+
+    this.timbradoForm = this.fb.group({
+      tpv_tcoid:  [null, [Validators.required]],
+      tpv_numero: ['', [Validators.required, Validators.pattern(/^\d{1,8}$/)]],
+    
+      tpv_fechfn: ['', [Validators.required]],
+    });
   }
 
   ngOnInit(): void {
     this.service.getConfig().subscribe({
       next: (res) => { this.tipos = res.tipos; this.ciudades = res.ciudades; },
       error: () => this.toastr.error('No se pudieron cargar tipos de proveedor y ciudades', 'Error'),
+    });
+
+    this.service.getConfigTimbrados().subscribe({
+      next: (res) => (this.tiposComprobante = res),
+      error: () => this.toastr.error('No se pudieron cargar los tipos de comprobante', 'Error'),
     });
   }
 
@@ -101,15 +126,21 @@ export class FormProveedorComponent implements OnInit, OnChanges {
       this.guardando = false;
       this.resetearFormContacto();
 
+      this.resetearFormTimbrado();
+      this.timbradoAEliminar = null;
+
       // En modo Ver el formulario se deshabilita entero: bloquea la edicion
       // por teclado/paste aunque el usuario intente forzar los campos.
       this.soloLectura ? this.form.disable() : this.form.enable();
 
       if (this.esEdicion) {
         this.cargarContactos();
+        this.cargarTimbrados();
       } else {
         this.contactos = [];
+        this.timbrados = [];
       }
+
     }
   }
 
@@ -253,6 +284,130 @@ export class FormProveedorComponent implements OnInit, OnChanges {
       error: (err) => {
         this.toastr.error(err?.error?.message ?? 'No se pudo eliminar el contacto', 'Error');
         this.contactoAEliminar = null;
+      },
+    });
+  }
+
+    // ==================== TIMBRADOS ====================
+
+  private fechaLocal(d = new Date()): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  fmt(fecha?: string | null): string {
+    if (!fecha) return '';
+    const [y, m, d] = fecha.substring(0, 10).split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  /** Estado visible: la vigencia se calcula contra hoy, tpv_estado es manual. */
+  situacionTimbrado(t: TimbradoProveedor): { texto: string; color: string } {
+    if (t.tpv_estado !== 1)      return { texto: 'Inactivo', color: 'secondary' };
+    
+    if (t.tpv_fechfn < this.hoy) return { texto: 'Vencido', color: 'warning' };
+    return { texto: 'Vigente', color: 'success' };
+  }
+
+  timbradoEnUso(t: TimbradoProveedor): boolean {
+    return (t.compras_count ?? 0) > 0;
+  }
+
+  campoTimbradoInvalido(campo: string): boolean {
+    const c = this.timbradoForm.get(campo);
+    return !!c && c.invalid && (c.touched || c.dirty);
+  }
+
+  errorBackendTimbrado(campo: string): string | null {
+    return this.timbradoForm.get(campo)?.errors?.['backend'] ?? null;
+  }
+
+  private cargarTimbrados(): void {
+    this.cargandoTimbrados = true;
+    this.service.getTimbrados(this.proveedor!.pro_id!).subscribe({
+      next: (res) => { this.timbrados = res; this.cargandoTimbrados = false; },
+      error: () => { this.toastr.error('No se pudieron cargar los timbrados', 'Error'); this.cargandoTimbrados = false; },
+    });
+  }
+
+  resetearFormTimbrado(): void {
+    // Si hay un solo tipo (lo normal: Factura) se preselecciona.
+    const tipoUnico = this.tiposComprobante.length === 1 ? this.tiposComprobante[0].tco_id : null;
+    this.timbradoForm.reset({ tpv_tcoid: tipoUnico, tpv_numero: '', tpv_fechfn: '' });
+    this.editandoTimbradoId = null;
+  }
+
+  editarTimbrado(t: TimbradoProveedor): void {
+    this.editandoTimbradoId = t.tpv_id!;
+    this.timbradoForm.patchValue({
+      tpv_tcoid: t.tpv_tcoid, tpv_numero: t.tpv_numero, tpv_fechfn: t.tpv_fechfn 
+    });
+  }
+
+  guardarTimbrado(): void {
+    if (this.timbradoForm.invalid) {
+      this.timbradoForm.markAllAsTouched();
+      return;
+    }
+
+    const v = this.timbradoForm.value;
+
+    this.guardandoTimbrado = true;
+    const datos: Partial<TimbradoProveedor> = { ...v, tpv_proid: this.proveedor!.pro_id! };
+
+    const peticion = this.editandoTimbradoId
+      ? this.service.updateTimbrado(this.editandoTimbradoId, datos)
+      : this.service.createTimbrado(datos);
+
+    peticion.subscribe({
+      next: (res) => {
+        this.toastr.success(res?.message ?? 'Timbrado guardado', 'Éxito');
+        this.guardandoTimbrado = false;
+        this.resetearFormTimbrado();
+        this.cargarTimbrados();
+      },
+      error: (err) => {
+        this.guardandoTimbrado = false;
+        if (err.status === 422 && err.error?.errors) {
+          Object.keys(err.error.errors).forEach((campo) => {
+            this.timbradoForm.get(campo)?.setErrors({ backend: err.error.errors[campo][0] });
+            this.timbradoForm.get(campo)?.markAsTouched();
+          });
+          this.toastr.error('Revise los datos del timbrado', 'Validación');
+          return;
+        }
+        this.toastr.error(err?.error?.message ?? 'No se pudo guardar el timbrado', 'Error');
+      },
+    });
+  }
+
+  cambiarEstadoTimbrado(t: TimbradoProveedor): void {
+    this.service.toggleEstadoTimbrado(t.tpv_id!).subscribe({
+      next: (res) => { this.toastr.success(res?.message ?? 'Estado actualizado', 'Éxito'); this.cargarTimbrados(); },
+      error: (err) => this.toastr.error(err?.error?.message ?? 'No se pudo cambiar el estado', 'Error'),
+    });
+  }
+
+  pedirEliminarTimbrado(t: TimbradoProveedor): void {
+    this.timbradoAEliminar = t;
+  }
+
+  cancelarEliminarTimbrado(): void {
+    this.timbradoAEliminar = null;
+  }
+
+  confirmarEliminarTimbrado(): void {
+    if (!this.timbradoAEliminar?.tpv_id) return;
+
+    this.service.deleteTimbrado(this.timbradoAEliminar.tpv_id).subscribe({
+      next: (res) => {
+        this.toastr.success(res?.message ?? 'Timbrado eliminado', 'Éxito');
+        this.timbradoAEliminar = null;
+        if (this.editandoTimbradoId) this.resetearFormTimbrado();
+        this.cargarTimbrados();
+      },
+      error: (err) => {
+        this.toastr.error(err?.error?.message ?? 'No se pudo eliminar el timbrado', 'Error');
+        this.timbradoAEliminar = null;
       },
     });
   }

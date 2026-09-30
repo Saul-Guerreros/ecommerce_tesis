@@ -95,7 +95,9 @@ class PublicacionWebController extends Controller
         return $publicacion;
     });
  
-    $publicacion->load(['categoria', 'imagenes', 'vitrinas']);
+    // 'producto' se carga para que PublicacionWebResource pueda devolver el
+    // bloque 'precios' (solo lectura) tambien en la respuesta del guardado.
+    $publicacion->load(['producto', 'categoria', 'imagenes', 'vitrinas']);
  
     return response()->json([
         'message' => $esNueva

@@ -2,12 +2,15 @@ export interface CompraDetalle {
   cmd_id?: number;
   prd_id: number | null;
   umd_id: number | null;   // unidad elegida para ESTA linea
+  
+  peq_id?: number | null;   // presentación usada (null = unidad de stock)
+
   tiv_id: number | null;
   descri: string;
 
   precun: number | null;   // precio por 1 umd_id (lo que dice la factura)
-  despor?: number;
-  descto?: number;
+  despor?: number;   // ayuda de carga (se recalcula desde descto)
+  descto?: number;   // descuento UNITARIO en Gs. — fuente de verdad
   tasa: number;             // tasa de IVA de esa linea (viene del producto)
   gravada?: number;
   iva?: number;
@@ -18,6 +21,8 @@ export interface CompraDetalle {
   // solo para mostrar en la grilla, no se envian
   prd_codinv?: string;
   umd_codigo?: string;     // solo lectura, para el listado
+
+  
 }
 
 export interface Compra {
@@ -26,14 +31,14 @@ export interface Compra {
   com_depid: number | null;
   com_sucid?: number | null;   // derivado del deposito elegido, solo lectura
   com_tcoid: number | null;
+  com_tpvid?: number | null;   // NUEVO: timbrado del proveedor elegido
 
   com_proruc?: string;
   com_proraz?: string;
-  com_timbra: string | null;
-  com_timbvn: string | null;
+  com_timbra?: string | null;  // snapshot (solo lectura, lo arma el backend)
+  com_timbvn?: string | null;  // snapshot (solo lectura, lo arma el backend)
   com_nrodoc: string;
   com_fchaem: string;
-  com_nrorem?: string | null;
 
   com_condic: number;      // 0 contado, 1 credito
   com_plzdia?: number | null;
@@ -66,12 +71,37 @@ export interface ProveedorOption {
   pro_ruc: string;
 }
 
+export interface SucursalOption {
+  suc_id: number;
+  suc_nombre: string;
+}
+
 export interface DepositoOption {
   dpo_id: number;
   dpo_nombre: string;
   dpo_sucid: number;
+  dpo_princi?: number;
   suc_nombre: string;
 }
+
+// TimbradoProveedorOption: eliminar tpv_fechin
+export interface TimbradoProveedorOption {
+  tpv_id: number;
+  tpv_proid: number;
+  tpv_tcoid: number;
+  tpv_numero: string;
+  tpv_fechfn: string;   // YYYY-MM-DD
+  tpv_estado: number;
+  tco_descri?: string;
+}
+
+export interface NuevoTimbradoProveedor {
+  tpv_proid: number;
+  tpv_tcoid: number;
+  tpv_numero: string;
+  tpv_fechfn: string;
+}
+
 
 export interface TipoComprobanteOption {
   tco_id: number;
@@ -87,8 +117,9 @@ export interface TipoIvaOption {
 
 export interface CompraConfig {
   proveedores: ProveedorOption[];
+  sucursales: SucursalOption[];
   depositos: DepositoOption[];
-  tipos_comprobante: TipoComprobanteOption[];
+  tipo_factura: TipoComprobanteOption | null;   // reemplaza tipos_comprobante
   tipos_iva: TipoIvaOption[];
 }
 
@@ -105,7 +136,9 @@ export interface ProductoBusqueda {
 
 export interface UnidadCompraOption {
   umd_id: number;
+  peq_id: number | null;    // null para la unidad base
   umd_codigo: string;
   umd_nombre: string;
-  factor: number;   // 1 para la unidad base; el de producto_equivalencia para las alternativas
+  factor: number;           // 1 para la base; el de producto_equivalencia para las alternativas
+  etiqueta: string;         // "Unidad" · "Caja (x10)"
 }

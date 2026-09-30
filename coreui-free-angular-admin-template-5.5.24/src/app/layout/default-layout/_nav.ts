@@ -25,6 +25,19 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-external-link' },
     attributes: { target: '_blank' }
   },
+   {
+
+  name: 'Publicación Web',
+  url: '/publicaciones',
+  iconComponent: { name: 'cilShareAll' },
+  },
+  {
+
+  name: 'Sliders',
+  url: '/sliders/list',
+  iconComponent: { name: 'cil-image' },
+  },
+
   {
     name: 'Publicaciones',
     url: '/publicaciones',
@@ -35,11 +48,7 @@ export const navItems: INavData[] = [
       { name: 'Atributos', url: '/atributos/list' }
     ]
   },
-  {
-    name: 'Sliders',
-    url: '/sliders/list',
-    iconComponent: { name: 'cil-image' }
-  },
+ 
   {
     name: 'Cupones',
     url: '/cupones/list',
@@ -65,7 +74,9 @@ export const navItems: INavData[] = [
     children: [
       { name: 'Proveedores', url: '/proveedores' },
       { name: 'Tipos de proveedor', url: '/tipos-proveedor' },
-      { name: 'Facturas de Compra', url: '/facturas-compra' }
+      { name: 'Facturas de Compra', url: '/facturas-compra' },
+      { name: 'Cuentas por Pagar', url: '/cuentas-por-pagar' },
+      { name: 'Libro de Compras', url: '/libro-compra' }
     ]
   },
   
@@ -98,7 +109,7 @@ export const navItems: INavData[] = [
   },
   
   {
-  name: 'Configuración de Precios',
+  name: 'Configuración del Margen',
   url: '/configuracion-precio',
   iconComponent: { name: 'cil-settings' }
   },
@@ -107,6 +118,18 @@ export const navItems: INavData[] = [
     name: 'Gestión de Precios',
     url: '/precios',
     iconComponent: { name: 'cil-dollar' }
+  },
+
+    {
+    name: 'Alerta de Stock en Tienda',
+    url: '/configuracion-tienda',
+    iconComponent: { name:  'cil-bell' }
+  },
+
+  {
+    name: 'Gestión de Cuotas',
+    url: '/gestion-cuotas',
+    iconComponent: { name: 'cil-calculator' }
   },
 
   {
@@ -122,18 +145,7 @@ export const navItems: INavData[] = [
     url: '/inventario/kardex',
     iconComponent: { name: 'cil-history' }
   },
-  {
-
-  name: 'Publicación Web',
-  url: '/publicaciones',
-  iconComponent: { name: 'cilShareAll' },
-  },
-  {
-
-  name: 'Sliders',
-  url: '/sliders/list',
-  iconComponent: { name: 'cil-image' },
-  },
+ 
   {
     name: 'Stock Actual',
     url: '/inventario/stock-actual',

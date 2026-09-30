@@ -52,10 +52,13 @@
           </td>
           <td class="text-end">
             <button cButton size="sm" color="secondary" class="me-2 text-white" (click)="abrirVer(c)">Ver</button>
-            <button cButton size="sm" color="danger" class="text-white"
-                    *ngIf="c.com_estfac === 1" (click)="pedirAnular(c)">
-              Anular
-            </button>
+            <button cButton size="sm" color="danger" class="me-2 text-white"
+                    *ngIf="c.com_estfac === 1" (click)="pedirAnular(c)">Anular</button>
+
+            <button cButton size="sm" color="warning" class="me-2 text-white"
+                    *ngIf="c.com_estfac === 1" (click)="abrirNotaCredito(c)">Nota Crédito</button>
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirHistorialNC(c)">Historial NC</button>
+        
           </td>
         </tr>
         <tr *ngIf="compras.length === 0"><td colspan="7" class="text-center">No hay compras registradas</td></tr>
@@ -73,6 +76,19 @@
   (anular)="pedirAnular($event)">
 </app-form-compra>
 
+<app-form-nota-credito
+  [visible]="ncModalVisible"
+  [compra]="compraParaNC"
+  (visibleChange)="ncModalVisible = $event"
+  (guardado)="cargar()">
+</app-form-nota-credito>
+
+<app-list-nota-credito
+  [visible]="historialNCVisible"
+  [compra]="compraParaHistorialNC"
+  (visibleChange)="historialNCVisible = $event">
+</app-list-nota-credito>
+
 <!-- Confirmacion de anulacion: mismo modal tanto si se dispara desde el
      listado como desde el footer del modal Ver (mismo metodo, un solo lugar). -->
 <c-modal [visible]="anularModalVisible" (visibleChange)="anularModalVisible = $event">
@@ -88,4 +104,5 @@
     <button cButton color="secondary" (click)="cancelarAnular()">Cancelar</button>
     <button cButton color="danger" class="text-white" (click)="confirmarAnular()">Anular</button>
   </c-modal-footer>
+
 </c-modal>

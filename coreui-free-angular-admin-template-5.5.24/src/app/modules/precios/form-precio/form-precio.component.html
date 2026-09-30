@@ -1,104 +1,162 @@
-<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+<!-- size="xl": el modal pasa de columna angosta a ancho de trabajo, que es
+     lo que permite poner la configuración a la izquierda y el cálculo a la
+     derecha en vez de uno debajo del otro. -->
+<c-modal size="xl" [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
   <c-modal-header>
     <h5 cModalTitle>Gestión de precio — {{ precio?.prd_descri }}</h5>
   </c-modal-header>
 
   <form [formGroup]="form" (ngSubmit)="guardar()">
     <c-modal-body>
-      <div class="mb-3">
-        <label cLabel>Costo promedio actual (Gs.)</label>
-        <input cFormControl [value]="precio?.costo_promedio ?? 'Sin compras todavía'" disabled />
+
+      <!-- Costo + modalidades en una sola fila -->
+      <div class="row g-3 align-items-start mb-3">
+        <div class="col-md-5">
+          <label cLabel class="small fw-semibold">Costo promedio actual (Gs.)</label>
+          <input cFormControl [value]="precio?.costo_promedio ?? 'Sin compras todavía'" disabled />
+        </div>
+
+        <div class="col-md-7">
+          <label cLabel class="small fw-semibold">Modalidades de venta</label>
+          <div class="d-flex flex-wrap gap-4">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch"
+                     id="habMinorista" formControlName="habMinorista" />
+              <label class="form-check-label" for="habMinorista">Vende al por menor (minorista)</label>
+            </div>
+
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch"
+                     id="habMayorista" formControlName="habMayorista" />
+              <label class="form-check-label" for="habMayorista">Vende al por mayor (mayorista)</label>
+            </div>
+          </div>
+          <div class="text-muted small mt-1">
+            El markup de cada modalidad se configura abajo, solo si está habilitada.
+          </div>
+          <div class="text-danger small mt-1" *ngIf="sinModalidad">
+            El producto debe venderse al menos en una modalidad: minorista o mayorista.
+          </div>
+        </div>
       </div>
 
-      <!-- Minorista -->
-      <fieldset class="mb-4 border rounded p-3">
-        <legend class="fs-6">Precio minorista</legend>
+      <!-- Minorista: configuración izquierda / cálculo derecha -->
+      <fieldset class="mb-3 border rounded p-3" *ngIf="form.value.habMinorista">
+        <legend class="fs-6 float-none w-auto px-2">Precio minorista</legend>
 
-        <div class="form-check">
-          <input cFormCheckInput type="radio" formControlName="origenMinorista" value="general" id="minGeneral">
-          <label cFormCheckLabel for="minGeneral">
-            Usar margen general ({{ precio?.minorista?.origen === 'general' ? precio?.minorista?.margen : '' }}%)
-          </label>
-        </div>
-        <div class="form-check mb-2">
-          <input cFormCheckInput type="radio" formControlName="origenMinorista" value="individual" id="minIndividual">
-          <label cFormCheckLabel for="minIndividual">Usar margen individual</label>
-        </div>
+        <div class="row g-3 align-items-center">
+          <div class="col-md-5">
+            <div class="form-check">
+              <input cFormCheckInput type="radio" formControlName="origenMinorista" value="general" id="minGeneral">
+              <label cFormCheckLabel for="minGeneral">
+                Usar margen general ({{ precio?.minorista?.origen === 'general' ? precio?.minorista?.margen : '' }}%)
+              </label>
+            </div>
+            <div class="form-check">
+              <input cFormCheckInput type="radio" formControlName="origenMinorista" value="individual" id="minIndividual">
+              <label cFormCheckLabel for="minIndividual">Usar margen individual</label>
+            </div>
 
-        <div *ngIf="form.value.origenMinorista === 'individual'">
-          <label cLabel for="valorMinorista">Markup minorista (%)</label>
-          <input cFormControl type="number" id="valorMinorista" formControlName="valorMinorista"
-                 min="0" max="1000" step="0.01" (blur)="redondear('valorMinorista')" />
-          <div class="text-danger small" *ngIf="campoInvalido('valorMinorista')">
-            {{ errorBackend('valorMinorista') || 'Debe estar entre 0 y 1000.' }}
+            <div class="mt-2" *ngIf="form.value.origenMinorista === 'individual'">
+              <label cLabel for="valorMinorista" class="small">Markup minorista (%)</label>
+              <input cFormControl type="number" id="valorMinorista" formControlName="valorMinorista"
+                     min="0" max="1000" step="0.01" (blur)="redondear('valorMinorista')" />
+              <div class="text-danger small" *ngIf="campoInvalido('valorMinorista')">
+                {{ errorBackend('valorMinorista') || 'Debe estar entre 0 y 1000.' }}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-7">
+            <div class="bg-light rounded p-3" *ngIf="calculoMinorista as c; else minSinCalculo">
+              <div class="row g-2 small">
+                <div class="col-6 text-muted">Ganancia: {{ c.ganancia | number:'1.0-2' }} Gs.</div>
+                <div class="col-6 text-muted">Sin IVA: {{ c.sinIva | number:'1.0-2' }} Gs.</div>
+                <div class="col-6 text-muted">IVA {{ precio?.tiv_tasa }}%: {{ c.iva | number:'1.0-2' }} Gs.</div>
+                <div class="col-6 fw-bold">Precio final: {{ c.final | number:'1.0-2' }} Gs.</div>
+              </div>
+            </div>
+            <ng-template #minSinCalculo>
+              <div class="bg-light rounded p-3 text-muted small">
+                Sin costo promedio todavía: no se puede calcular el precio.
+              </div>
+            </ng-template>
           </div>
         </div>
-
-        <ng-container *ngIf="calculoMinorista as c">
-          <div class="row g-2 mt-2 small text-muted">
-            <div class="col-6">Ganancia: {{ c.ganancia | number:'1.0-2' }} Gs.</div>
-            <div class="col-6">Sin IVA: {{ c.sinIva | number:'1.0-2' }} Gs.</div>
-            <div class="col-6">IVA {{ precio?.tiv_tasa }}%: {{ c.iva | number:'1.0-2' }} Gs.</div>
-            <div class="col-6 fw-bold">Precio final: {{ c.final | number:'1.0-2' }} Gs.</div>
-          </div>
-        </ng-container>
       </fieldset>
 
-      <!-- Mayorista -->
-      <fieldset class="mb-4 border rounded p-3">
-        <legend class="fs-6">Precio mayorista</legend>
+      <!-- Mayorista: mismo esquema + umbral al pie -->
+      <fieldset class="mb-2 border rounded p-3" *ngIf="form.value.habMayorista">
+        <legend class="fs-6 float-none w-auto px-2">Precio mayorista</legend>
 
-        <div class="form-check">
-          <input cFormCheckInput type="radio" formControlName="origenMayorista" value="general" id="majGeneral">
-          <label cFormCheckLabel for="majGeneral">
-            Usar margen general ({{ precio?.mayorista?.origen === 'general' ? precio?.mayorista?.margen : '' }}%)
-          </label>
-        </div>
-        <div class="form-check mb-2">
-          <input cFormCheckInput type="radio" formControlName="origenMayorista" value="individual" id="majIndividual">
-          <label cFormCheckLabel for="majIndividual">Usar margen individual</label>
-        </div>
+        <div class="row g-3 align-items-center">
+          <div class="col-md-5">
+            <div class="form-check">
+              <input cFormCheckInput type="radio" formControlName="origenMayorista" value="general" id="majGeneral">
+              <label cFormCheckLabel for="majGeneral">
+                Usar margen general ({{ precio?.mayorista?.origen === 'general' ? precio?.mayorista?.margen : '' }}%)
+              </label>
+            </div>
+            <div class="form-check">
+              <input cFormCheckInput type="radio" formControlName="origenMayorista" value="individual" id="majIndividual">
+              <label cFormCheckLabel for="majIndividual">Usar margen individual</label>
+            </div>
 
-        <div *ngIf="form.value.origenMayorista === 'individual'">
-          <label cLabel for="valorMayorista">Markup mayorista (%)</label>
-          <input cFormControl type="number" id="valorMayorista" formControlName="valorMayorista"
-                 min="0" max="1000" step="0.01" (blur)="redondear('valorMayorista')" />
-          <div class="text-danger small" *ngIf="campoInvalido('valorMayorista')">
-            {{ errorBackend('valorMayorista') || 'Debe estar entre 0 y 1000.' }}
+            <div class="mt-2" *ngIf="form.value.origenMayorista === 'individual'">
+              <label cLabel for="valorMayorista" class="small">Markup mayorista (%)</label>
+              <input cFormControl type="number" id="valorMayorista" formControlName="valorMayorista"
+                     min="0" max="1000" step="0.01" (blur)="redondear('valorMayorista')" />
+              <div class="text-danger small" *ngIf="campoInvalido('valorMayorista')">
+                {{ errorBackend('valorMayorista') || 'Debe estar entre 0 y 1000.' }}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-7">
+            <div class="bg-light rounded p-3" *ngIf="calculoMayorista as c; else majSinCalculo">
+              <div class="row g-2 small">
+                <div class="col-6 text-muted">Ganancia: {{ c.ganancia | number:'1.0-2' }} Gs.</div>
+                <div class="col-6 text-muted">Sin IVA: {{ c.sinIva | number:'1.0-2' }} Gs.</div>
+                <div class="col-6 text-muted">IVA {{ precio?.tiv_tasa }}%: {{ c.iva | number:'1.0-2' }} Gs.</div>
+                <div class="col-6 fw-bold">Precio final: {{ c.final | number:'1.0-2' }} Gs.</div>
+              </div>
+            </div>
+            <ng-template #majSinCalculo>
+              <div class="bg-light rounded p-3 text-muted small">
+                Sin costo promedio todavía: no se puede calcular el precio.
+              </div>
+            </ng-template>
           </div>
         </div>
 
-        <ng-container *ngIf="calculoMayorista as c">
-          <div class="row g-2 mt-2 small text-muted">
-            <div class="col-6">Ganancia: {{ c.ganancia | number:'1.0-2' }} Gs.</div>
-            <div class="col-6">Sin IVA: {{ c.sinIva | number:'1.0-2' }} Gs.</div>
-            <div class="col-6">IVA {{ precio?.tiv_tasa }}%: {{ c.iva | number:'1.0-2' }} Gs.</div>
-            <div class="col-6 fw-bold">Precio final: {{ c.final | number:'1.0-2' }} Gs.</div>
+        <hr class="my-3" />
+
+        <div class="row g-3 align-items-center">
+          <div class="col-md-5">
+            <div class="fw-semibold small">Cantidad mínima para acceder al precio mayorista</div>
           </div>
-        </ng-container>
-      </fieldset>
 
-      <!-- Umbral mayorista -->
-      <fieldset class="mb-2 border rounded p-3">
-        <legend class="fs-6">Cantidad mínima mayorista</legend>
+          <div class="col-md-7">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+              <div class="form-check mb-0">
+                <input cFormCheckInput type="radio" formControlName="origenUmbral" value="general" id="umbGeneral">
+                <label cFormCheckLabel for="umbGeneral">
+                  Umbral general ({{ precio?.umbral_mayorista?.origen === 'general' ? precio?.umbral_mayorista?.cantidad : '' }} un.)
+                </label>
+              </div>
+              <div class="form-check mb-0">
+                <input cFormCheckInput type="radio" formControlName="origenUmbral" value="individual" id="umbIndividual">
+                <label cFormCheckLabel for="umbIndividual">Umbral individual</label>
+              </div>
 
-        <div class="form-check">
-          <input cFormCheckInput type="radio" formControlName="origenUmbral" value="general" id="umbGeneral">
-          <label cFormCheckLabel for="umbGeneral">
-            Usar umbral general ({{ precio?.umbral_mayorista?.origen === 'general' ? precio?.umbral_mayorista?.cantidad : '' }} un.)
-          </label>
-        </div>
-        <div class="form-check mb-2">
-          <input cFormCheckInput type="radio" formControlName="origenUmbral" value="individual" id="umbIndividual">
-          <label cFormCheckLabel for="umbIndividual">Usar umbral individual</label>
-        </div>
-
-        <div *ngIf="form.value.origenUmbral === 'individual'">
-          <label cLabel for="valorUmbral">Cantidad mínima (unidades)</label>
-          <input cFormControl type="number" id="valorUmbral" formControlName="valorUmbral"
-                 min="1" step="1" (blur)="redondear('valorUmbral')" />
-          <div class="text-danger small" *ngIf="campoInvalido('valorUmbral')">
-            {{ errorBackend('valorUmbral') || 'Debe ser al menos 1 unidad.' }}
+              <div style="max-width: 160px;" *ngIf="form.value.origenUmbral === 'individual'">
+                <input cFormControl type="number" id="valorUmbral" formControlName="valorUmbral"
+                       min="1" step="1" placeholder="unidades" (blur)="redondear('valorUmbral')" />
+              </div>
+            </div>
+            <div class="text-danger small mt-1" *ngIf="campoInvalido('valorUmbral')">
+              {{ errorBackend('valorUmbral') || 'Debe ser al menos 1 unidad.' }}
+            </div>
           </div>
         </div>
       </fieldset>

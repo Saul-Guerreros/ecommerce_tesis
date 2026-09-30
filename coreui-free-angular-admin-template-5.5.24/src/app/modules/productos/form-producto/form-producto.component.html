@@ -271,11 +271,12 @@
             al confirmar la compra.
           </div>
           <app-equivalencia-producto
-            [productoId]="producto?.prd_id ?? null"
-            [unidadBaseId]="producto?.prd_umdid ?? null"
-            [unidades]="unidades"
-            [soloLectura]="soloLectura">
-          </app-equivalencia-producto>
+          [productoId]="producto?.prd_id ?? null"
+          [unidadBaseId]="producto?.prd_umdid ?? null"
+          [unidadBaseNombre]="producto?.umd_nombre ?? 'unidades'"
+          [unidades]="unidades"
+          [soloLectura]="soloLectura">
+        </app-equivalencia-producto>
         </fieldset>
     </c-modal-body>
 

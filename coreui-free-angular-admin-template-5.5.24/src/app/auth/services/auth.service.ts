@@ -139,4 +139,22 @@ export class AuthService {
       new_password
     });
   }
+
+  // ─────────────────── Verificación de sesión (guard) ───────────────────
+
+  /** Valida el token contra el backend y refresca el usuario en memoria/storage */
+  verificarSesion(): Observable<User> {
+    return this.http.post<any>(`${this.apiUrl}/auth/me`, {}).pipe(
+      tap((res) => {
+        const user: User = {
+          full_name: res.full_name,
+          email: res.email,
+          rol: res.rol,
+          permisos: res.permisos,
+        };
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        this.currentUser.set(user);
+      })
+    );
+  }
 }

@@ -1,0 +1,52 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg">
+  <c-modal-header>
+    <h5 cModalTitle>Cuotas — Factura N° {{ factura?.com_id }} ({{ factura?.com_nrodoc }}) — {{ factura?.com_proraz }}</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <div class="text-center py-3" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable small striped *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>N°</th><th>Vencimiento</th><th class="text-end">Importe</th>
+          <th class="text-center">Estado</th><th>Forma de pago</th><th>Fecha de pago</th>
+          <th class="text-end">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let c of cuotas">
+          <td>{{ c.cuo_nrocuo }}</td>
+          <td>{{ c.cuo_venci }}</td>
+          <td class="text-end">{{ c.cuo_importe | number:'1.0-2' }}</td>
+          <td class="text-center">
+            <c-badge [color]="c.cuo_estado === 1 ? 'success' : 'warning'">
+              {{ c.cuo_estado === 1 ? 'Pagada' : 'Pendiente' }}
+            </c-badge>
+          </td>
+          <td>{{ c.pago?.pgo_formapa ?? '-' }}</td>
+          <td>{{ c.cuo_fecpago ?? '-' }}</td>
+          <td class="text-end">
+            <button *ngIf="c.cuo_estado === 0" cButton size="sm" color="primary" (click)="abrirPago(c)">Pagar</button>
+            <button *ngIf="c.cuo_estado === 1 && c.pago" cButton size="sm" color="danger" variant="outline"
+                    [disabled]="anulandoId === c.pago.pgo_id" (click)="anular(c)">
+              {{ anulandoId === c.pago.pgo_id ? 'Anulando...' : 'Anular pago' }}
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="cuotas.length === 0"><td colspan="7" class="text-center">Sin cuotas registradas</td></tr>
+      </tbody>
+    </table>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" type="button" (click)="cerrar()">Cerrar</button>
+  </c-modal-footer>
+</c-modal>
+
+<app-form-pago
+  [visible]="pagoVisible"
+  [cuota]="cuotaAPagar"
+  (visibleChange)="pagoVisible = $event"
+  (guardado)="onPagoGuardado()">
+</app-form-pago>

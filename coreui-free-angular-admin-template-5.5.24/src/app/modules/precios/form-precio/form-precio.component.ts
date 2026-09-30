@@ -1,10 +1,30 @@
 import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators,
+  AbstractControl,
+  ValidationErrors,
+} from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
 import { Precio, ActualizarPrecioPayload, OrigenMargen } from '../models/precio.model';
 import { PreciosService } from '../service/precios.service';
+
+/**
+ * Tercera capa de la validación "al menos una modalidad" (las otras dos
+ * son el CHECK en PostgreSQL y withValidator() en PrecioRequest).
+ * Un producto sin ninguna modalidad activa no tiene precio de venta.
+ */
+function alMenosUnaModalidad(control: AbstractControl): ValidationErrors | null {
+  const grupo = control as FormGroup;
+  const minorista = grupo.get('habMinorista')?.value;
+  const mayorista = grupo.get('habMayorista')?.value;
+
+  return minorista || mayorista ? null : { sinModalidad: true };
+}
 
 @Component({
   selector: 'app-form-precio',
@@ -29,21 +49,30 @@ export class FormPrecioComponent implements OnChanges {
   ) {
     // max 1000: un markup de "100000%" es un error de tipeo, no un
     // negocio real (mismo criterio que ya tenías).
-    this.form = this.fb.group({
-      origenMinorista: ['general' as OrigenMargen],
-      valorMinorista: [null as number | null, [Validators.min(0), Validators.max(1000)]],
-      origenMayorista: ['general' as OrigenMargen],
-      valorMayorista: [null as number | null, [Validators.min(0), Validators.max(1000)]],
-      origenUmbral: ['general' as OrigenMargen],
-      valorUmbral: [null as number | null, [Validators.min(1)]],
-    });
+    this.form = this.fb.group(
+      {
+        habMinorista: [true],
+        origenMinorista: ['general' as OrigenMargen],
+        valorMinorista: [null as number | null, [Validators.min(0), Validators.max(1000)]],
+
+        habMayorista: [true],
+        origenMayorista: ['general' as OrigenMargen],
+        valorMayorista: [null as number | null, [Validators.min(0), Validators.max(1000)]],
+        origenUmbral: ['general' as OrigenMargen],
+        valorUmbral: [null as number | null, [Validators.min(1)]],
+      },
+      { validators: alMenosUnaModalidad }
+    );
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible && this.precio) {
       this.form.reset({
+        habMinorista: this.precio.minorista.habilitado,
         origenMinorista: this.precio.minorista.origen,
         valorMinorista: this.precio.minorista.origen === 'individual' ? this.precio.minorista.margen : null,
+
+        habMayorista: this.precio.mayorista.habilitado,
         origenMayorista: this.precio.mayorista.origen,
         valorMayorista: this.precio.mayorista.origen === 'individual' ? this.precio.mayorista.margen : null,
         origenUmbral: this.precio.umbral_mayorista.origen,
@@ -52,6 +81,11 @@ export class FormPrecioComponent implements OnChanges {
       });
       this.guardando = false;
     }
+  }
+
+  /** true cuando el usuario apagó las dos modalidades. */
+  get sinModalidad(): boolean {
+    return this.form.hasError('sinModalidad') && (this.form.touched || this.form.dirty);
   }
 
   private round2(n: number): number {
@@ -87,12 +121,14 @@ export class FormPrecioComponent implements OnChanges {
 
   get calculoMinorista() {
     const v = this.form.value;
+    if (!v.habMinorista) return null;
     const margen = v.origenMinorista === 'individual' ? v.valorMinorista : this.precio?.minorista.margen ?? null;
     return this.calcular(margen);
   }
 
   get calculoMayorista() {
     const v = this.form.value;
+    if (!v.habMayorista) return null;
     const margen = v.origenMayorista === 'individual' ? v.valorMayorista : this.precio?.mayorista.margen ?? null;
     return this.calcular(margen);
   }
@@ -114,10 +150,15 @@ export class FormPrecioComponent implements OnChanges {
 
     const v = this.form.value;
 
+    // La configuración de una modalidad apagada NO se envía: el backend
+    // la descartaría igual, pero mandarla sería declarar un markup para
+    // algo que no se vende.
     const payload: ActualizarPrecioPayload = {
-      prd_marmin: v.origenMinorista === 'individual' ? v.valorMinorista : null,
-      prd_marmaj: v.origenMayorista === 'individual' ? v.valorMayorista : null,
-      prd_canminmaj: v.origenUmbral === 'individual' ? v.valorUmbral : null,
+      prd_habmin: !!v.habMinorista,
+      prd_habmaj: !!v.habMayorista,
+      prd_marmin: v.habMinorista && v.origenMinorista === 'individual' ? v.valorMinorista : null,
+      prd_marmaj: v.habMayorista && v.origenMayorista === 'individual' ? v.valorMayorista : null,
+      prd_canminmaj: v.habMayorista && v.origenUmbral === 'individual' ? v.valorUmbral : null,
     };
 
     this.guardando = true;
@@ -136,6 +177,8 @@ export class FormPrecioComponent implements OnChanges {
             prd_marmin: 'valorMinorista',
             prd_marmaj: 'valorMayorista',
             prd_canminmaj: 'valorUmbral',
+            prd_habmin: 'habMinorista',
+            prd_habmaj: 'habMayorista',
           };
           Object.keys(err.error.errors).forEach((campoBackend) => {
             const campoForm = mapa[campoBackend] ?? campoBackend;

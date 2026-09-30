@@ -1,0 +1,25 @@
+<c-modal [visible]="visible"
+         (visibleChange)="visible = $event; visibleChange.emit($event)"
+         backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Eliminar opción de financiación</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <p class="mb-2">
+      ¿Confirma eliminar la opción de <strong>{{ cuota?.cfc_cantidad }} cuotas</strong>
+      con un recargo del <strong>{{ cuota?.cfc_recargo_pct | number:'1.0-2' }} %</strong>?
+    </p>
+
+    <p class="text-muted small mb-0">
+      Dejará de ofrecerse en la tienda. Los carritos que ya la hayan elegido conservan
+      el monto con el que se agregaron. Si solo quiere ocultarla temporalmente,
+      use "Desactivar" en lugar de eliminar.
+    </p>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" type="button" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" type="button" (click)="confirmar.emit()">Eliminar</button>
+  </c-modal-footer>
+</c-modal>

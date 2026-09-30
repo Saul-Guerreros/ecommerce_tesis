@@ -1,0 +1,239 @@
+<!-- ==================== OFFCANVAS: CARRITO ====================
+     bg-close/esc-close: el usuario decide cuándo cerrarlo (punto 4).
+     UIkit no tiene autocierre por tiempo, así que no hace falta
+     desactivar nada: alcanza con que ningún código llame a hide().    -->
+<div id="cart-offcanvas" uk-offcanvas="overlay: true; flip: true; bg-close: true; esc-close: true">
+  <aside class="uk-offcanvas-bar uk-padding-remove tm-cart-bar">
+    <div class="tm-cart">
+
+      <!-- ---------- Cabecera ---------- -->
+      <header class="tm-cart__header">
+        <span class="tm-cart__title">Mi carrito</span>
+        <span class="tm-cart__count">{{ unidades }}</span>
+        <button class="uk-offcanvas-close tm-cart__close" type="button" uk-close></button>
+      </header>
+
+      <!-- ---------- Listado ---------- -->
+      <!-- Se agrupa en dos bloques -Al contado / A crédito-, igual que la
+           página completa del carrito (punto pedido: cada modalidad con su
+           propio subtotal y su propio botón, sin mezclarse en una sola
+           suma). La fila <article class="tm-cart-row"> es la MISMA de
+           siempre: mismo template, mismos datos, mismas acciones; lo único
+           que cambia es en qué @for se pinta. -->
+      <div class="tm-cart__body">
+
+        @if (items.length === 0) {
+          <p class="tm-cart__empty">Tu carrito está vacío</p>
+        }
+
+        <!-- ===== Bloque: Al contado ===== -->
+        @if (itemsContado.length > 0) {
+          <section class="tm-cart__seccion">
+            <h3 class="tm-cart__seccion-titulo">
+              Al contado
+              <span class="tm-cart__seccion-cant">
+                · {{ unidadesContado }} unidad{{ unidadesContado === 1 ? '' : 'es' }}
+              </span>
+            </h3>
+
+            @for (item of itemsContado; track claveItem(item)) {
+              <article class="tm-cart-row" [class.tm-cart-row--busy]="enProceso(item)">
+
+                <a class="tm-cart-row__img" [routerLink]="enlaceItem(item)" (click)="cerrar()">
+                  <img [src]="resolverImagen(item.publicacion_web?.imagen)" [alt]="tituloItem(item)">
+                </a>
+
+                <div class="tm-cart-row__info">
+                  <a class="tm-cart-row__name" [routerLink]="enlaceItem(item)" (click)="cerrar()">
+                    {{ tituloItem(item) }}
+                  </a>
+
+                  @if (item.variacion) {
+                    <div class="tm-cart-row__variacion">
+                      @for (prop of item.variacion.propiedades; track prop.atb_nombre) {
+                        <span>{{ prop.atb_nombre }}: {{ prop.prp_nombre }}</span>
+                      }
+                    </div>
+                  }
+
+                  <div class="tm-cart-row__precio">Gs. {{ item.car_precio | number:'1.0-0' }}</div>
+
+                  <div class="tm-cart-row__modalidad">Contado</div>
+
+                  <div class="tm-cart-row__acciones">
+                    <span class="tm-cart-row__label">Cant.:</span>
+
+                    <div class="tm-qty">
+                      <button type="button" class="tm-qty__btn"
+                              aria-label="Disminuir cantidad"
+                              [disabled]="enProceso(item) || cantidadEnPantalla(item) <= 1"
+                              (click)="disminuir(item)">&minus;</button>
+
+                      <input class="tm-qty__input"
+                             type="number" min="1" step="1" inputmode="numeric"
+                             [disabled]="enProceso(item)"
+                             [ngModel]="cantidadEnPantalla(item)"
+                             (ngModelChange)="cambiarCantidad(item, $event)">
+
+                      <button type="button" class="tm-qty__btn"
+                              aria-label="Aumentar cantidad"
+                              [disabled]="enProceso(item) || !puedeAumentar(item)"
+                              (click)="aumentar(item)">+</button>
+                    </div>
+
+                    <!-- Punto 7: aparece solo si hay un cambio sin confirmar -->
+                    @if (hayCambioPendiente(item)) {
+                      <button type="button" class="tm-cart-row__update"
+                              [disabled]="enProceso(item)"
+                              (click)="actualizar(item)">
+                        @if (enProceso(item)) {
+                          <span uk-spinner="ratio: .5"></span> Guardando
+                        } @else {
+                          Actualizar
+                        }
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <div class="tm-cart-row__lado">
+                  <button type="button" class="tm-cart-row__delete"
+                          uk-tooltip="Quitar del carrito"
+                          [disabled]="enProceso(item)"
+                          (click)="eliminar(item)">
+                    <span uk-icon="icon: trash; ratio: .9"></span>
+                  </button>
+
+                  <!-- Punto 5: total del producto al costado -->
+                  <div class="tm-cart-row__total">Gs. {{ item.car_total | number:'1.0-0' }}</div>
+                </div>
+              </article>
+            }
+
+            <div class="tm-cart__seccion-pie">
+              <div class="tm-cart__subtotal">
+                <span>Subtotal contado:</span>
+                <strong>Gs. {{ subtotalContado | number:'1.0-0' }}</strong>
+              </div>
+              <a class="tm-cart__btn tm-cart__btn--full"
+                 routerLink="/proceso-de-pago" (click)="cerrar()">
+                Finalizar compra al contado
+              </a>
+            </div>
+          </section>
+        }
+
+        <!-- ===== Bloque: A crédito ===== -->
+        @if (itemsCredito.length > 0) {
+          <section class="tm-cart__seccion">
+            <h3 class="tm-cart__seccion-titulo">
+              A crédito
+              <span class="tm-cart__seccion-cant">
+                · {{ unidadesCredito }} unidad{{ unidadesCredito === 1 ? '' : 'es' }}
+              </span>
+            </h3>
+
+            @for (item of itemsCredito; track claveItem(item)) {
+              <article class="tm-cart-row" [class.tm-cart-row--busy]="enProceso(item)">
+
+                <a class="tm-cart-row__img" [routerLink]="enlaceItem(item)" (click)="cerrar()">
+                  <img [src]="resolverImagen(item.publicacion_web?.imagen)" [alt]="tituloItem(item)">
+                </a>
+
+                <div class="tm-cart-row__info">
+                  <a class="tm-cart-row__name" [routerLink]="enlaceItem(item)" (click)="cerrar()">
+                    {{ tituloItem(item) }}
+                  </a>
+
+                  @if (item.variacion) {
+                    <div class="tm-cart-row__variacion">
+                      @for (prop of item.variacion.propiedades; track prop.atb_nombre) {
+                        <span>{{ prop.atb_nombre }}: {{ prop.prp_nombre }}</span>
+                      }
+                    </div>
+                  }
+
+                  <div class="tm-cart-row__precio">Gs. {{ item.car_precio | number:'1.0-0' }}</div>
+
+                  <div class="tm-cart-row__modalidad-wrap">
+                    <span class="tm-cart-row__modalidad">Cuotas</span>
+                    <span class="tm-cart-row__modalidad tm-cart-row__modalidad--credito">
+                      {{ item.car_numcuo }}x Gs. {{ item.car_montocuo | number:'1.0-0' }}
+                    </span>
+                  </div>
+
+                  <div class="tm-cart-row__acciones">
+                    <span class="tm-cart-row__label">Cant.:</span>
+
+                    <div class="tm-qty">
+                      <button type="button" class="tm-qty__btn"
+                              aria-label="Disminuir cantidad"
+                              [disabled]="enProceso(item) || cantidadEnPantalla(item) <= 1"
+                              (click)="disminuir(item)">&minus;</button>
+
+                      <input class="tm-qty__input"
+                             type="number" min="1" step="1" inputmode="numeric"
+                             [disabled]="enProceso(item)"
+                             [ngModel]="cantidadEnPantalla(item)"
+                             (ngModelChange)="cambiarCantidad(item, $event)">
+
+                      <button type="button" class="tm-qty__btn"
+                              aria-label="Aumentar cantidad"
+                              [disabled]="enProceso(item) || !puedeAumentar(item)"
+                              (click)="aumentar(item)">+</button>
+                    </div>
+
+                    <!-- Punto 7: aparece solo si hay un cambio sin confirmar -->
+                    @if (hayCambioPendiente(item)) {
+                      <button type="button" class="tm-cart-row__update"
+                              [disabled]="enProceso(item)"
+                              (click)="actualizar(item)">
+                        @if (enProceso(item)) {
+                          <span uk-spinner="ratio: .5"></span> Guardando
+                        } @else {
+                          Actualizar
+                        }
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <div class="tm-cart-row__lado">
+                  <button type="button" class="tm-cart-row__delete"
+                          uk-tooltip="Quitar del carrito"
+                          [disabled]="enProceso(item)"
+                          (click)="eliminar(item)">
+                    <span uk-icon="icon: trash; ratio: .9"></span>
+                  </button>
+
+                  <!-- Punto 5: total del producto al costado -->
+                  <div class="tm-cart-row__total">Gs. {{ item.car_total | number:'1.0-0' }}</div>
+                </div>
+              </article>
+            }
+
+            <div class="tm-cart__seccion-pie">
+              <div class="tm-cart__subtotal">
+                <span>Cuota mensual:</span>
+                <strong>Gs. {{ cuotaMensualTotalCredito | number:'1.0-0' }}</strong>
+              </div>
+              <a class="tm-cart__btn tm-cart__btn--full tm-cart__btn--secundario"
+                 routerLink="/solicitar-credito" (click)="cerrar()">
+                Solicitar crédito
+              </a>
+            </div>
+          </section>
+        }
+
+      </div>
+
+      <!-- ---------- Pie fijo: solo navega al carrito completo ---------- -->
+      <footer class="tm-cart__footer">
+        <a class="tm-cart__btn tm-cart__btn--full" routerLink="/carrito-de-compra" (click)="cerrar()">
+          Ver carrito
+        </a>
+      </footer>
+
+    </div>
+  </aside>
+</div>

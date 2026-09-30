@@ -41,7 +41,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([authInterceptor]), withInterceptorsFromDi()),
     importProvidersFrom(
       ToastrModule.forRoot({
-        timeOut: 3000,
+        timeOut: 5000,
         positionClass: 'toast-top-right',
         preventDuplicates: true,
       })

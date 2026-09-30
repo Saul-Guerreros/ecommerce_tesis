@@ -1,0 +1,68 @@
+.tm-cuotero {
+  width: 100%;
+}
+
+.tm-cuotero-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.tm-cuotero-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tm-cuotero-select {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  font-size: 0.8125rem;
+  padding-left: 8px;
+  padding-right: 22px;
+}
+
+.tm-cuotero-precio {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tm-cuotero-button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 500px;
+}
+
+.tm-cuotero-note {
+  margin-top: 3px;
+}
+
+.tm-cuotero-row-simple {
+  justify-content: space-between;
+}
+
+.tm-cuotero-precio-simple {
+  flex: 1;
+  min-width: 0;
+}
+

@@ -14,26 +14,50 @@ class PublicacionWebResource extends JsonResource
             'pub_prdid'  => $this->pub_prdid,
             'pub_catid'  => $this->pub_catid,
             'pub_titulo' => $this->pub_titulo,
-            'pub_prevta' => $this->pub_prevta !== null ? (float) $this->pub_prevta : null,
             'pub_slug'   => $this->pub_slug,
             'pub_descwb' => $this->pub_descwb,
             'pub_meta_titulo'      => $this->pub_meta_titulo,
             'pub_meta_descripcion' => $this->pub_meta_descripcion,
+
             'pub_estado' => $this->pub_estado,
-           
+            // null = usa el umbral general de Configuración de la Tienda.
+            'pub_pocstk_umbral' => $this->pub_pocstk_umbral,
+
             'pub_creado' => $this->pub_creado,
+
             'pub_actualizado' => $this->pub_actualizado,
 
             'producto' => $this->whenLoaded('producto', fn () => [
                 'prd_id'     => $this->producto->prd_id,
                 'prd_codinv' => $this->producto->prd_codinv,
                 'prd_descri' => $this->producto->prd_descri,
-                // Precio minorista de Gestión de Precios: es lo que se sugiere
-                // como valor inicial de pub_prevta (ver StorePublicacionWebRequest /
-                // publicacion-web.component.ts). prd_prevta ya no existe en producto.
-                'prd_pvtmin' => $this->producto->prd_pvtmin !== null ? (float) $this->producto->prd_pvtmin : null,
-                'prd_pvtmay' => $this->producto->prd_pvtmay !== null ? (float) $this->producto->prd_pvtmay : null,
                 'prd_estado' => $this->producto->prd_estado,
+            ]),
+
+            /**
+             * Precios de venta, tal como los gestiona Gestión de Precios.
+             * Son SOLO LECTURA: publicacion_web no los guarda ni los puede
+             * editar. El formulario de Publicación Web los muestra para que
+             * el admin sepa a cuánto va a salir el producto en la tienda,
+             * pero el dueño del dato es `producto`.
+             *
+             * Requiere la relación 'producto' cargada.
+             */
+            'precios' => $this->whenLoaded('producto', fn () => [
+                'minorista' => [
+                    'habilitado' => (bool) $this->producto->prd_habmin,
+                    'precio'     => $this->producto->prd_pvtmin !== null ? (float) $this->producto->prd_pvtmin : null,
+                ],
+                'mayorista' => [
+                    'habilitado'      => (bool) $this->producto->prd_habmaj,
+                    'precio'          => $this->producto->prd_pvtmay !== null ? (float) $this->producto->prd_pvtmay : null,
+                    'cantidad_minima' => $this->producto->prd_habmaj ? $this->producto->umbralMayorista() : null,
+                ],
+                // Se vende solo al por mayor: en la tienda se publica con la
+                // leyenda "desde X unidades" y no se puede comprar suelto.
+                'solo_mayorista' => $this->producto->soloMayorista(),
+                // Precio que verá el cliente en la vitrina.
+                'precio_vitrina' => $this->producto->precioVitrina(),
             ]),
 
             'categoria' => $this->whenLoaded('categoria', fn () => [

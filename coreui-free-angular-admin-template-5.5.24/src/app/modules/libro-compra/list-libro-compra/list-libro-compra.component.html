@@ -1,0 +1,87 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Libro de Compras</strong></c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-2">
+        <label class="small text-muted">Desde</label>
+        <input type="date" cFormControl [(ngModel)]="desde" (ngModelChange)="cargar()" />
+      </div>
+      <div class="col-md-2">
+        <label class="small text-muted">Hasta</label>
+        <input type="date" cFormControl [(ngModel)]="hasta" (ngModelChange)="cargar()" />
+      </div>
+      <div class="col-md-3">
+        <label class="small text-muted">Proveedor</label>
+        <select cSelect [(ngModel)]="filtroProveedor" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos</option>
+          <option *ngFor="let p of proveedores" [ngValue]="p.pro_id">{{ p.pro_razon }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="small text-muted">Tipo</label>
+        <select cSelect [(ngModel)]="filtroTipo" (ngModelChange)="cargar()">
+          <option value="">Todos</option>
+          <option value="FC">Factura de Compra</option>
+          <option value="NC">Nota de Crédito</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="small text-muted">Estado</label>
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="0">Vigentes</option>
+          <option value="todas">Todas (incluye anuladas)</option>
+        </select>
+      </div>
+      <div class="col-md-1 d-flex align-items-end">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ registros.length }} resultado(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <div class="table-responsive" *ngIf="!cargando">
+      <table cTable striped hover>
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Tipo</th><th>Documento</th><th>Proveedor</th>
+            <th class="text-end">Gravado 5%</th><th class="text-end">Gravado 10%</th>
+            <th class="text-end">IVA 5%</th><th class="text-end">IVA 10%</th>
+            <th class="text-end">Total</th><th class="text-center">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of registros">
+            <td>{{ r.lcm_fecha }}</td>
+            <td><c-badge [color]="r.lcm_tipo === 'FC' ? 'primary' : 'danger'">{{ r.lcm_tipo }}</c-badge></td>
+            <td>{{ r.lcm_nrodoc }}</td>
+            <td>{{ r.lcm_proraz }}</td>
+            <td class="text-end">{{ r.lcm_grav5 | number:'1.0-2' }}</td>
+            <td class="text-end">{{ r.lcm_grav10 | number:'1.0-2' }}</td>
+            <td class="text-end">{{ r.lcm_iva5 | number:'1.0-2' }}</td>
+            <td class="text-end">{{ r.lcm_iva10 | number:'1.0-2' }}</td>
+            <td class="text-end">{{ r.lcm_total | number:'1.0-2' }}</td>
+            <td class="text-center">
+              <c-badge [color]="r.lcm_estado === 1 ? 'success' : 'secondary'">
+                {{ r.lcm_estado === 1 ? 'Vigente' : 'Anulado' }}
+              </c-badge>
+            </td>
+          </tr>
+          <tr *ngIf="registros.length === 0"><td colspan="10" class="text-center">Sin registros en el período</td></tr>
+        </tbody>
+        <tfoot *ngIf="totales">
+          <tr class="fw-bold">
+            <td colspan="4" class="text-end">TOTAL PERÍODO:</td>
+            <td class="text-end">{{ totales.grav5 | number:'1.0-2' }}</td>
+            <td class="text-end">{{ totales.grav10 | number:'1.0-2' }}</td>
+            <td class="text-end">{{ totales.iva5 | number:'1.0-2' }}</td>
+            <td class="text-end">{{ totales.iva10 | number:'1.0-2' }}</td>
+            <td class="text-end">{{ totales.total | number:'1.0-2' }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </c-card-body>
+</c-card>

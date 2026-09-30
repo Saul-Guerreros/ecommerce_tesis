@@ -1,7 +1,3 @@
-/**
- * Shape de cada producto tal como lo arma
- * VitrinaController::formatearProducto() en el backend.
- */
 export interface ProductoVitrina {
   pub_id: number;
   prd_id: number;
@@ -10,18 +6,41 @@ export interface ProductoVitrina {
   slug: string | null;
   categoria: string | null;
   marca: string | null;
-  imagen: string | null; // URL absoluta ya armada por el backend (asset('storage/...'))
+  imagen: string | null;
   precio_original: number;
   precio_final: number;
+
+  precio_mayorista?: number | null;
+  cantidad_minima_mayorista?: number | null;
+  solo_mayorista?: boolean;
+  cantidad_minima?: number;
+
   descuento_pct: number | null;
   oferta_fin: string | null;
   es_flash: boolean;
   rating: number | null;
-  // Datos reales de inventario (Producto::prd_stock/prd_afestk). Opcionales
-  // porque endpoints viejos que todavía no se actualizaron podrían no
-  // mandarlos; el frontend debe tratarlos como "desconocido" en ese caso.
+
   stock?: number | null;
   controla_stock?: boolean;
+  /** "Solo quedan X en existencia" (backend ya evalúa contra el umbral). */
+  poco_stock?: boolean;
+
+  /** Vacío = sin cuotas: la tarjeta muestra solo "Comprá al Contado". */
+  cuotas?: CuotaOpcion[];
+}
+
+/** Ya resuelta por el backend: el frontend no recalcula nada. */
+export interface CuotaOpcion {
+  cantidad: number;
+  recargo_pct: number;
+  monto_cuota: number;
+  total: number;
+}
+
+/** Lo que emite el cuotero al apretar un botón de carrito. */
+export interface SeleccionCompra {
+  modalidad: 'contado' | 'credito';
+  numero_cuotas?: number;
 }
 
 export interface VitrinaHomeResponse {

@@ -17,11 +17,15 @@ class PrecioResource extends JsonResource
             'costo_promedio' => $this->costo_promedio,   // null = todavía no tiene stock/compra
 
             'minorista' => [
+                // false = el producto NO se vende al por menor. En ese caso
+                // 'precio' siempre viene null (ver PriceService).
+                'habilitado' => (bool) $this->prd_habmin,
                 'margen' => $this->margen_min_efectivo,   // el que realmente se aplica
                 'origen' => $this->prd_marmin !== null ? 'individual' : 'general',
                 'precio' => $this->prd_pvtmin,            // null = todavía no se pudo calcular
             ],
             'mayorista' => [
+                'habilitado' => (bool) $this->prd_habmaj,
                 'margen' => $this->margen_maj_efectivo,
                 'origen' => $this->prd_marmaj !== null ? 'individual' : 'general',
                 'precio' => $this->prd_pvtmay,

@@ -1,0 +1,45 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Registrar pago — Cuota N° {{ cuota?.cuo_nrocuo }} ({{ cuota?.com_nrodoc }})</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="mb-3">
+        <strong>Importe a pagar:</strong> {{ cuota?.cuo_importe | number:'1.0-2' }}
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label cLabel for="pgo_fecha">Fecha de pago <span class="text-danger">*</span></label>
+          <input cFormControl type="date" id="pgo_fecha" formControlName="pgo_fecha" [max]="hoy" />
+          <div class="text-danger small" *ngIf="form.get('pgo_fecha')?.invalid && form.get('pgo_fecha')?.touched">
+            Obligatoria.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel for="pgo_formapa">Forma de pago <span class="text-danger">*</span></label>
+          <select cSelect id="pgo_formapa" formControlName="pgo_formapa">
+            <option *ngFor="let f of formasPago" [value]="f">{{ f }}</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label cLabel for="pgo_referencia">Referencia</label>
+          <input cFormControl id="pgo_referencia" formControlName="pgo_referencia" maxlength="60" placeholder="N° transferencia / cheque" />
+        </div>
+        <div class="col-12">
+          <label cLabel for="pgo_observ">Observación</label>
+          <textarea cFormControl id="pgo_observ" formControlName="pgo_observ" rows="2" maxlength="150"></textarea>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : 'Registrar pago' }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

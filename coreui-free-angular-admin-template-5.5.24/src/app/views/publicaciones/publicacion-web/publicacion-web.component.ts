@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject  } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
@@ -22,7 +22,10 @@ import { ProductVariationsService } from '../../productos/product-variations/ser
 import { PublicacionWebService } from '../../../core/services/publicacion-web.service';
 import { PreciosService } from '../../../modules/precios/service/precios.service';
 import { Precio } from '../../../modules/precios/models/precio.model';
+import { ConfiguracionTiendaService } from '../../../modules/configuracion-tienda/service/configuracion-tienda.service';
+import { ConfiguracionTienda } from '../../../modules/configuracion-tienda/models/configuracion-tienda.model';
 
+type OrigenUmbral = 'general' | 'individual';
 /**
  * Apartado "Publicación Web" de un producto: categoría, título y
  * descripción para la tienda, estado (borrador/publicado) e imágenes.
@@ -48,12 +51,20 @@ import { Precio } from '../../../modules/precios/models/precio.model';
   templateUrl: './publicacion-web.component.html',
 })
 export class PublicacionWebComponent implements OnInit {
+  private fb = inject(FormBuilder); // ← nuevo: se resuelve acá mismo
+
   productoId!: number;
   producto: Producto | null = null;
   publicacion: PublicacionWeb | null = null;
-  // Precio minorista/mayorista vigente del producto (Gestión de Precios).
-  // Solo se usa para sugerir pub_prevta al crear una publicación nueva.
+  // Precios vigentes del producto (Gestión de Precios). SOLO LECTURA: se
+  // muestran para que el admin sepa a cuánto va a salir el producto en la
+  // tienda, pero el dueño del dato es `producto`, no la ficha web.
+
   precio: Precio | null = null;
+  // Umbral general vigente en Configuración de la Tienda. Solo se usa para
+  // mostrarlo en la etiqueta "Usar umbral general (X un.)"; el override en
+  // sí vive en pub_pocstk_umbral.
+  configuracionTienda: ConfiguracionTienda | null = null;
   categorias: Categoria[] = [];
 
   cargando = false;
@@ -67,15 +78,18 @@ export class PublicacionWebComponent implements OnInit {
   form = this.fb.group({
     pub_catid: [null as number | null, [Validators.required]],
     pub_titulo: ['', [Validators.required, Validators.maxLength(150)]],
-    // Precio propio de la ficha web: puede diferir del precio de inventario
-    // del producto (permite ofertas o redondeo comercial sin tocar prd_precio).
-    pub_prevta: [null as number | null, [Validators.min(0)]],
     // Si se deja vacío, el backend lo autogenera desde pub_titulo.
     pub_slug: [''],
     pub_descwb: [''],
     pub_meta_titulo: ['', [Validators.maxLength(160)]],
     pub_meta_descripcion: ['', [Validators.maxLength(320)]],
-    pub_estado: [0, [Validators.required]], // nace como Borrador
+
+        pub_estado: [0, [Validators.required]], // nace como Borrador
+    // Control UI, NO se manda tal cual al backend (ver guardar()): decide
+    // si pub_pocstk_umbral viaja null (general) o con el valor individual.
+    origenUmbralStock: ['general' as OrigenUmbral],
+    valorUmbralStock: [null as number | null, [Validators.min(1), Validators.max(1000)]],
+
     // Secciones manuales del home: un checkbox + orden por sección.
     featured_activo: [false],
     featured_orden: [null as number | null, [Validators.min(1), Validators.max(4)]],
@@ -92,14 +106,15 @@ export class PublicacionWebComponent implements OnInit {
   readonly secciones = ['featured', 'trending', 'selling'] as const;
 
   constructor(
-    private fb: FormBuilder,
+   
     private route: ActivatedRoute,
     private productoService: ProductoService,
     private publicacionService: PublicacionWebService,
     private catalogoService: CatalogoService,
 	private variationsService: ProductVariationsService,
     private preciosService: PreciosService,
-  ) {}
+    private configuracionTiendaService: ConfiguracionTiendaService,
+) {}
 
   ngOnInit(): void {
     this.productoId = Number(this.route.snapshot.paramMap.get('id'));
@@ -159,6 +174,11 @@ copiarDelPadre(): void {
     return this.form.value.pub_estado === 1 ? 'Publicar producto' : 'Guardar como borrador';
   }
 
+    /** Para la etiqueta "Usar umbral general (X un.)". */
+  get umbralGeneralStock(): number | null {
+    return this.configuracionTienda?.ctn_pocstk_umbral ?? null;
+  }
+
   seccionActiva(seccion: 'featured' | 'trending' | 'selling'): boolean {
     return !!this.form.value[`${seccion}_activo` as const];
   }
@@ -181,24 +201,25 @@ copiarDelPadre(): void {
     // Gestión de Precios) y se combinan recién acá. El precio se pide con
     // catchError -> of(null): un producto sin compras/precio cargado
     // todavía no debe tumbar el resto de la pantalla.
-    forkJoin({
+       forkJoin({
       producto: this.productoService.obtener(this.productoId),
       publicacion: this.publicacionService.obtener(this.productoId),
       precio: this.preciosService.getOne(this.productoId).pipe(catchError(() => of(null))),
+      configuracionTienda: this.configuracionTiendaService.getConfig().pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ producto, publicacion, precio }) => {
+      next: ({ producto, publicacion, precio, configuracionTienda }) => {
         this.producto = producto.data;
         this.publicacion = publicacion.data;
         this.precio = precio;
+        this.configuracionTienda = configuracionTienda;
 
         if (this.publicacion) {
           // Ya existe: se respetan los valores guardados, no se pisan con
-          // los actuales del producto (pub_titulo/pub_prevta pudieron
-          // editarse a propósito para diferir del producto).
+          // los actuales del producto (pub_titulo pudo editarse a propósito
+          // para diferir del nombre de inventario).
           this.form.patchValue({
             pub_catid: this.publicacion.pub_catid,
             pub_titulo: this.publicacion.pub_titulo,
-            pub_prevta: this.publicacion.pub_prevta,
             pub_slug: this.publicacion.pub_slug ?? '',
             pub_descwb: this.publicacion.pub_descwb ?? '',
             pub_meta_titulo: this.publicacion.pub_meta_titulo ?? '',
@@ -210,15 +231,16 @@ copiarDelPadre(): void {
             trending_orden: this.publicacion.vitrina?.trending ?? null,
             selling_activo: this.publicacion.vitrina?.selling != null,
             selling_orden: this.publicacion.vitrina?.selling ?? null,
+            origenUmbralStock: this.publicacion.pub_pocstk_umbral != null ? 'individual' : 'general',
+            valorUmbralStock: this.publicacion.pub_pocstk_umbral ?? null,
           });
+
         } else if (this.producto) {
-          // Publicación nueva: se sugieren título (nombre del producto) y
-          // precio de venta (minorista de Gestión de Precios). El admin
-          // los puede editar antes de guardar, igual que cualquier otro
-          // campo del formulario.
+          // Publicación nueva: se sugiere el título con el nombre del
+          // producto. El precio ya no se sugiere porque ya no se guarda
+          // acá — sale directo de Gestión de Precios.
           this.form.patchValue({
             pub_titulo: this.producto.prd_descri,
-            pub_prevta: this.precio?.minorista?.precio ?? null,
           });
         }
 
@@ -278,8 +300,18 @@ copiarDelPadre(): void {
     this.error = null;
     this.mensaje = null;
 
-    const formData = this.publicacionService.construirFormData(this.form.value, this.archivosNuevos);
+    // origenUmbralStock/valorUmbralStock son controles solo de UI: no
+    // existen como columnas en publicacion_web. Se resuelven acá a un
+    // único valor (mismo patrón que prd_marmin/prd_marmaj en Precios).
+    const { origenUmbralStock, valorUmbralStock, ...valoresForm } = this.form.value;
+    const payload = {
+      ...valoresForm,
+      pub_pocstk_umbral: origenUmbralStock === 'individual' ? valorUmbralStock : null,
+    };
 
+    const formData = this.publicacionService.construirFormData(payload, this.archivosNuevos);
+
+    
     this.publicacionService.guardar(this.productoId, formData).subscribe({
       next: (res) => {
         this.guardando = false;

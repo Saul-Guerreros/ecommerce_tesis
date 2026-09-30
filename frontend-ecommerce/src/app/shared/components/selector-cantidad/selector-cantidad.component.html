@@ -1,0 +1,25 @@
+<div class="sc-qty" [class.is-disabled]="deshabilitado">
+  <button type="button"
+          class="sc-btn"
+          [disabled]="deshabilitado || enMinimo"
+          (click)="disminuir()"
+          aria-label="Disminuir unidades"
+          uk-icon="icon: minus; ratio: .6"></button>
+
+  <input class="sc-input"
+         type="number"
+         inputmode="numeric"
+         [attr.min]="minimo"
+         [attr.max]="maximo"
+         [value]="valor"
+         [disabled]="deshabilitado"
+         (change)="alConfirmar($event)"
+         [attr.aria-label]="etiqueta" />
+
+  <button type="button"
+          class="sc-btn"
+          [disabled]="deshabilitado || enMaximo"
+          (click)="aumentar()"
+          aria-label="Aumentar unidades"
+          uk-icon="icon: plus; ratio: .6"></button>
+</div>

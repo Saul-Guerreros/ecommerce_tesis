@@ -9,25 +9,24 @@ class TipoProveedorRequest extends FormRequest
 {
     public function authorize(): bool { return true; }
 
-    public function rules(): array
+        public function rules(): array
     {
-        $id = $this->route('tipo_proveedor');
-
         return [
-            'tpr_descri' => [
-                'required', 'string', 'max:45',
-                Rule::unique('tipo_proveedor', 'tpr_descri')->ignore($id, 'tpr_id'),
-            ],
-            'tpr_estado' => ['nullable', 'integer', 'in:0,1'],
+            'tpv_proid'  => ['required', 'integer', 'exists:proveedor,pro_id'],
+            'tpv_tcoid'  => ['required', 'integer', 'exists:tipo_comprobante,tco_id'],
+            'tpv_numero' => ['required', 'digits_between:1,8'],
+            'tpv_fechfn' => ['required', 'date_format:Y-m-d'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'tpr_descri.required' => 'La descripción es obligatoria.',
-            'tpr_descri.unique'   => 'Ya existe un tipo de proveedor con esa descripción.',
-            'tpr_descri.max'      => 'La descripción no puede superar los 45 caracteres.',
+            'tpv_tcoid.required'        => 'Debe seleccionar el tipo de comprobante.',
+            'tpv_numero.required'       => 'El número de timbrado es obligatorio.',
+            'tpv_numero.digits_between' => 'El timbrado debe tener hasta 8 dígitos numéricos.',
+            'tpv_fechfn.required'       => 'La fecha de vencimiento es obligatoria.',
+            'tpv_fechfn.date_format'    => 'La fecha de vencimiento no es válida.',
         ];
     }
 }

@@ -12,42 +12,75 @@
     <div class="text-muted small mb-2" *ngIf="!cargando">{{ precios.length }} producto(s) encontrado(s)</div>
     <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
 
-    <table cTable striped hover *ngIf="!cargando">
-      <thead>
-        <tr>
-          <th>Código</th><th>Producto</th>
-          <th class="text-end">Costo promedio</th>
-          <th class="text-end">Markup minorista</th>
-          <th class="text-end">Precio minorista</th>
-          <th class="text-end">Markup mayorista</th>
-          <th class="text-end">Precio mayorista</th>
-          <th class="text-end">Acción</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let p of precios">
-          <td>{{ p.prd_codinv }}</td>
-          <td>{{ p.prd_descri }}</td>
-          <td class="text-end">{{ p.costo_promedio !== null ? (p.costo_promedio | number:'1.0-2') : '—' }}</td>
-          <td class="text-end">
-            {{ p.minorista.margen }}%
-            <span class="badge bg-secondary ms-1" *ngIf="p.minorista.origen === 'general'">general</span>
-            <span class="badge bg-info ms-1" *ngIf="p.minorista.origen === 'individual'">individual</span>
-          </td>
-          <td class="text-end">{{ p.minorista.precio !== null ? (p.minorista.precio | number:'1.0-2') : '—' }}</td>
-          <td class="text-end">
-            {{ p.mayorista.margen }}%
-            <span class="badge bg-secondary ms-1" *ngIf="p.mayorista.origen === 'general'">general</span>
-            <span class="badge bg-info ms-1" *ngIf="p.mayorista.origen === 'individual'">individual</span>
-          </td>
-          <td class="text-end">{{ p.mayorista.precio !== null ? (p.mayorista.precio | number:'1.0-2') : '—' }}</td>
-          <td class="text-end">
-            <button cButton size="sm" color="info" class="text-white" (click)="abrirEditar(p)">Editar</button>
-          </td>
-        </tr>
-        <tr *ngIf="precios.length === 0"><td colspan="8" class="text-center">No hay productos activos</td></tr>
-      </tbody>
-    </table>
+    <!-- table-responsive: si la pantalla es angosta la tabla scrollea en
+         horizontal en vez de apretar las celdas y partir los badges. -->
+    <div class="table-responsive" *ngIf="!cargando">
+      <table cTable striped hover class="align-middle">
+        <thead>
+          <tr>
+            <th>Código</th><th>Producto</th>
+            <th class="text-end text-nowrap">Costo Promedio</th>
+            <th class="text-end text-nowrap">Margen Minorista</th>
+            <th class="text-end text-nowrap">Precio Minorista</th>
+            <th class="text-end text-nowrap">Margen Mayorista</th>
+            <th class="text-end text-nowrap">Precio Mayorista</th>
+            <th class="text-end">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of precios">
+            <td>{{ p.prd_codinv }}</td>
+            <td>{{ p.prd_descri }}</td>
+            <td class="text-end text-nowrap">{{ p.costo_promedio !== null ? (p.costo_promedio | number:'1.0-2') : '—' }}</td>
+
+            <!-- text-nowrap en la celda: es lo que evita que el badge caiga
+                 al renglón de abajo cuando la columna queda angosta.
+                 Si la modalidad está deshabilitada no se muestra margen ni
+                 precio: el producto no se vende así. -->
+            <td class="text-end text-nowrap">
+              <ng-container *ngIf="p.minorista.habilitado; else minNoVende">
+                <span class="me-1">{{ p.minorista.margen }}%</span>
+                <span class="badge text-uppercase"
+                      [ngClass]="p.minorista.origen === 'general' ? 'bg-secondary' : 'bg-info'">
+                  {{ p.minorista.origen }}
+                </span>
+              </ng-container>
+              <ng-template #minNoVende>
+                <span class="badge bg-light text-muted text-uppercase">no vende</span>
+              </ng-template>
+            </td>
+            <td class="text-end text-nowrap">
+              {{ p.minorista.habilitado && p.minorista.precio !== null ? (p.minorista.precio | number:'1.0-2') : '—' }}
+            </td>
+
+            <td class="text-end text-nowrap">
+              <ng-container *ngIf="p.mayorista.habilitado; else majNoVende">
+                <span class="me-1">{{ p.mayorista.margen }}%</span>
+                <span class="badge text-uppercase"
+                      [ngClass]="p.mayorista.origen === 'general' ? 'bg-secondary' : 'bg-info'">
+                  {{ p.mayorista.origen }}
+                </span>
+              </ng-container>
+              <ng-template #majNoVende>
+                <span class="badge bg-light text-muted text-uppercase">no vende</span>
+              </ng-template>
+            </td>
+            <td class="text-end text-nowrap">
+              <ng-container *ngIf="p.mayorista.habilitado && p.mayorista.precio !== null; else majSinPrecio">
+                {{ p.mayorista.precio | number:'1.0-2' }}
+                <div class="text-muted small">desde {{ p.umbral_mayorista.cantidad }} un.</div>
+              </ng-container>
+              <ng-template #majSinPrecio>—</ng-template>
+            </td>
+
+            <td class="text-end">
+              <button cButton size="sm" color="info" class="text-white" (click)="abrirEditar(p)">Editar</button>
+            </td>
+          </tr>
+          <tr *ngIf="precios.length === 0"><td colspan="8" class="text-center">No hay productos activos</td></tr>
+        </tbody>
+      </table>
+    </div>
   </c-card-body>
 </c-card>
 

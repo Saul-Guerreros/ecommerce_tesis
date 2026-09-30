@@ -1,0 +1,61 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Configuración de la Tienda</strong></c-card-header>
+
+  <c-card-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando">
+      <h6 class="mb-1">Avisos de stock</h6>
+      <p class="text-body-secondary small mb-4">
+        Mensajes que ve el cliente en el detalle del producto. Solo se muestran en productos que
+        controlan stock. Los cambios se ven en la tienda al recargar el producto.
+      </p>
+
+      <div class="row g-4">
+        <!-- Aviso: poco stock -->
+        <div class="col-lg-6">
+          <div class="form-check form-switch mb-3">
+            <input cFormCheckInput type="checkbox" role="switch" id="ctn_pocstk_activo"
+                   formControlName="ctn_pocstk_activo" />
+            <label cFormCheckLabel for="ctn_pocstk_activo">Avisar cuando queda poco stock</label>
+          </div>
+
+          <div [class.opacity-50]="!form.value.ctn_pocstk_activo">
+            <label cLabel for="ctn_pocstk_umbral">Avisar cuando queden esta cantidad de unidades o menos</label>
+            <input cFormControl type="number" id="ctn_pocstk_umbral" formControlName="ctn_pocstk_umbral"
+                   min="1" max="1000" step="1" />
+            <div class="text-danger small" *ngIf="campoInvalido('ctn_pocstk_umbral')">
+              {{ errorBackend('ctn_pocstk_umbral') || 'Obligatorio, número entero entre 1 y 1000.' }}
+            </div>
+
+            <div class="small text-body-secondary mt-2">
+              Así lo verá el cliente:
+              <span class="badge text-bg-warning ms-1">{{ ejemploPocoStock }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Aviso: máximo disponible -->
+                <!-- El aviso de "máximo disponible" ya NO es configurable: es
+             manejo de error, no una decisión de marketing. Siempre se
+             muestra, sin revelar el stock exacto (ver producto-detalle). 
+        <div class="col-lg-6">
+          <h6 class="text-body-secondary">Máximo disponible</h6>
+          <div class="small text-body-secondary">
+            Cuando el cliente pide más unidades de las que hay, la cantidad se ajusta sola y se le
+            avisa que no hay más stock — sin mostrarle el número real. Esto siempre está activo, no
+            es configurable: no es una táctica de venta, es una validación.
+          </div>
+        </div>
+        -->
+      </div>
+
+      <div class="mt-4">
+        <button cButton color="primary" type="submit" [disabled]="guardando">
+          <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+          {{ guardando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </c-card-body>
+</c-card>

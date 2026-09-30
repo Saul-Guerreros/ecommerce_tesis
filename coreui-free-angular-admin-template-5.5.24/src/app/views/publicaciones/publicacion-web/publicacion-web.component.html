@@ -169,17 +169,42 @@
           </div>
         </div>
 
+        <!-- Precios: SOLO LECTURA. El dueño del dato es el producto
+             (Gestión de Precios); acá solo se muestran para que el admin
+             sepa a cuánto va a salir en la tienda. Se actualizan solos
+             cuando cambia el costo promedio por una compra. -->
         <div class="col-md-6">
-          <label cLabel for="pub_prevta">Precio de venta (web)</label>
-          <input cFormControl type="number" step="0.01" min="0" id="pub_prevta" formControlName="pub_prevta" placeholder="Dejar vacío para no mostrar precio propio" />
-          <div class="form-text">
-            Precio mostrado en la tienda. Se sugiere con el precio minorista de
-            <a routerLink="/precios">Gestión de Precios</a>
-            ({{ precio?.minorista?.precio != null ? (precio?.minorista?.precio | currency) : 'sin calcular todavía' }}),
-            pero podés cambiarlo acá para ofertas o redondeo comercial sin tocarlo allá.
+          <label cLabel>Precios de venta</label>
+          <div class="border rounded p-2 bg-body-tertiary">
+            <div class="d-flex justify-content-between align-items-center"
+                 *ngIf="precio?.minorista?.habilitado; else sinMinorista">
+              <span class="small text-muted">Minorista</span>
+              <span class="fw-semibold">
+                {{ precio?.minorista?.precio != null ? (precio?.minorista?.precio | currency) : 'sin calcular' }}
+              </span>
+            </div>
+            <ng-template #sinMinorista>
+              <div class="small text-muted">No se vende al por menor</div>
+            </ng-template>
+
+            <div class="d-flex justify-content-between align-items-center mt-1"
+                 *ngIf="precio?.mayorista?.habilitado">
+              <span class="small text-muted">
+                Mayorista <span class="text-nowrap">(desde {{ precio?.umbral_mayorista?.cantidad }} un.)</span>
+              </span>
+              <span class="fw-semibold">
+                {{ precio?.mayorista?.precio != null ? (precio?.mayorista?.precio | currency) : 'sin calcular' }}
+              </span>
+            </div>
           </div>
-          <div class="text-danger small" *ngIf="form.get('pub_prevta')?.touched && form.get('pub_prevta')?.hasError('min')">
-            El precio no puede ser negativo.
+          <div class="form-text">
+            Se gestionan en <a routerLink="/precios">Gestión de Precios</a>.
+            La tienda muestra siempre el precio vigente, sin copiarlo acá.
+          </div>
+          <div class="alert alert-info py-2 px-3 mt-2 mb-0 small"
+               *ngIf="precio && !precio.minorista.habilitado && precio.mayorista.habilitado">
+            Producto <strong>solo mayorista</strong>: en la tienda se publica con la leyenda
+            "desde {{ precio.umbral_mayorista.cantidad }} unidades" y no se puede comprar suelto.
           </div>
         </div>
 
@@ -189,14 +214,41 @@
           <div class="form-text">Dejar vacío para que se genere automáticamente a partir del título.</div>
         </div>
 
-        <div class="col-12">
+                <div class="col-12">
           <label cLabel for="pub_descwb">Descripción para la web</label>
           <textarea cFormControl id="pub_descwb" rows="4" formControlName="pub_descwb" placeholder="Descripción de marketing / SEO, distinta de la descripción interna del producto"></textarea>
         </div>
 
         <div class="col-12">
           <hr />
-          <h6 class="text-muted">SEO (buscadores)</h6>
+          <h6 class="text-muted">Aviso de "poco stock" en la tienda</h6>
+          <p class="text-body-secondary small">
+            Umbral a partir del cual el cliente ve "Solo quedan X en existencia" para este producto,
+            tanto en el Home como en el Detalle. Se gestiona en general desde
+            <a routerLink="/configuracion-tienda">Configuración de la Tienda</a>.
+          </p>
+        </div>
+
+        <div class="col-12">
+          <div class="form-check">
+            <input cFormCheckInput type="radio" formControlName="origenUmbralStock" value="general" id="umbStkGeneral">
+            <label cFormCheckLabel for="umbStkGeneral">
+              Usar umbral general
+              <span *ngIf="umbralGeneralStock as g">({{ g }} un.)</span>
+            </label>
+          </div>
+          <div class="form-check">
+            <input cFormCheckInput type="radio" formControlName="origenUmbralStock" value="individual" id="umbStkIndividual">
+            <label cFormCheckLabel for="umbStkIndividual">Usar umbral individual para este producto</label>
+          </div>
+
+          <div class="mt-2" style="max-width: 220px;" *ngIf="form.value.origenUmbralStock === 'individual'">
+            <label cLabel for="valorUmbralStock" class="small">Avisar cuando queden (unidades)</label>
+            <input cFormControl type="number" id="valorUmbralStock" formControlName="valorUmbralStock" min="1" max="1000" step="1" />
+            <div class="text-danger small" *ngIf="form.get('valorUmbralStock')?.touched && form.get('valorUmbralStock')?.invalid">
+              Debe ser un número entero entre 1 y 1000.
+            </div>
+          </div>
         </div>
 
         <div class="col-md-6">

@@ -9,13 +9,33 @@ class ProductoResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // prd_stock fue eliminado de la tabla producto (migración
+        // adapt_producto_table_to_der): el inventario se deriva de la
+        // relación stock() -> Compras\Stock. Si la relación no viene
+        // precargada se devuelve null = "desconocido", nunca 0, para que el
+        // frontend no muestre "sin stock" cuando en realidad no se consultó.
+        $stockDisponible = $this->relationLoaded('stock')
+            ? (float) $this->stock->sum(
+                fn ($s) => (float) $s->sto_cantid - (float) $s->sto_reserv
+            )
+            : null;
+
         return [
             'prd_id'     => $this->prd_id,
             'prd_codinv' => $this->prd_codinv,
             'prd_descri' => $this->prd_descri,
-            'prd_precio' => (float) $this->prd_precio,
-            'prd_stock'  => $this->prd_stock,
-            'prd_stkmin' => $this->prd_stkmin,
+
+            // Precio de venta minorista vigente
+            // (prd_precio -> prd_prevta -> prd_pvtmin).
+            'prd_pvtmin' => $this->prd_pvtmin !== null ? (float) $this->prd_pvtmin : null,
+            'prd_pvtmay' => $this->prd_pvtmay !== null ? (float) $this->prd_pvtmay : null,
+            // Alias legacy: el storefront todavía lee `prd_precio`
+            // (producto.model.ts). Se mantiene apuntando a prd_pvtmin hasta
+            // migrar el frontend, después se elimina.
+            'prd_precio' => $this->prd_pvtmin !== null ? (float) $this->prd_pvtmin : null,
+
+            'prd_stock'  => $stockDisponible,
+            'prd_stkmin' => $this->prd_stkmin !== null ? (float) $this->prd_stkmin : null,
             'prd_estado' => $this->prd_estado,
             'prd_afestk' => (bool) $this->prd_afestk,
             'prd_creado' => $this->prd_creado,
@@ -64,22 +84,25 @@ class ProductoResource extends JsonResource
                 ];
             }),
 
-            // stock bajo el mínimo -> útil para alertas en el dashboard
-            'stock_bajo' => $this->prd_stock !== null && $this->prd_stock <= $this->prd_stkmin,
+            // Alerta de reposición para el dashboard. Solo tiene sentido si
+            // el producto afecta stock y si realmente se consultó el stock.
+            'stock_bajo' => $stockDisponible !== null
+                && (bool) $this->prd_afestk
+                && $stockDisponible <= (float) $this->prd_stkmin,
 
             'prd_padre_id' => $this->prd_padre_id,
 
             'padre' => $this->whenLoaded('padre', fn () => $this->padre ? [
-            'prd_id' => $this->padre->prd_id,
-            'prd_codinv' => $this->padre->prd_codinv,
-            'titulo' => $this->padre->publicacionWeb?->pub_titulo,
+                'prd_id'     => $this->padre->prd_id,
+                'prd_codinv' => $this->padre->prd_codinv,
+                'titulo'     => $this->padre->publicacionWeb?->pub_titulo,
             ] : null),
 
             'variantes' => $this->whenLoaded('variantes', fn () => $this->variantes->map(fn ($v) => [
-            'prd_id' => $v->prd_id,
-            'prd_codinv' => $v->prd_codinv,
-            'titulo' => $v->publicacionWeb?->pub_titulo,
-            'imagen' => $v->publicacionWeb?->imagenes->firstWhere('img_princi', 1)?->img_url,
+                'prd_id'     => $v->prd_id,
+                'prd_codinv' => $v->prd_codinv,
+                'titulo'     => $v->publicacionWeb?->pub_titulo,
+                'imagen'     => $v->publicacionWeb?->imagenes->firstWhere('img_princi', 1)?->img_url,
             ])),
         ];
     }

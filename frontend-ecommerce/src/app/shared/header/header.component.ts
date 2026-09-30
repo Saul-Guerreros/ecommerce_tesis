@@ -1,26 +1,35 @@
-import { Component, afterNextRender, afterRender } from '@angular/core';
-import { HomeService } from '../../pages/home/service/home.service';
 import { CommonModule } from '@angular/common';
+import { Component, DestroyRef, afterNextRender, afterRender, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { CookieService } from 'ngx-cookie-service';
-import { CartService } from '../../pages/home/service/cart.service';
-import { ToastrService } from 'ngx-toastr';
+import { CarritoService } from '../../core/services/carrito.service';
+import { AuthService } from '../../pages/auth/service/auth.service';
+import { HomeService } from '../../pages/home/service/home.service';
+import { CarritoOffcanvasComponent } from '../components/carrito-offcanvas/carrito-offcanvas.component';
+// --- import nuevo ---
+import { ConfirmacionCarritoComponent } from '../components/confirmacion-carrito/confirmacion-carrito.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [FormsModule,RouterModule,CommonModule],
-  templateUrl: './header.component.html',
-  styleUrl: './header.component.css'
+  imports: [
+    FormsModule,
+    RouterModule,
+    CommonModule,
+    CarritoOffcanvasComponent,
+    ConfirmacionCarritoComponent,
+  ],  templateUrl: './header.component.html',
+  styleUrl: './header.component.css',
 })
 export class HeaderComponent {
 
-  categories_menus:any = [];
-  currency:string = 'PEN';
+  categories_menus: any = [];
+  currency: string = 'PYG';
 
   // TODO: reemplazar por datos reales desde un servicio (ej. homeService.brands())
-  brands:any = [
+  brands: any = [
     { id: 1, name: 'Apple', logo: 'assets/images/brands/apple.svg' },
     { id: 2, name: 'Samsung', logo: 'assets/images/brands/samsung.svg' },
     { id: 3, name: 'Sony', logo: 'assets/images/brands/sony.svg' },
@@ -35,17 +44,40 @@ export class HeaderComponent {
     { id: 12, name: 'Canon', logo: 'assets/images/brands/canon.svg' },
   ];
 
-  user:any;
-  listCarts:any = [];
-  totalCarts:number = 0;
-  isLoading:boolean = false;
-  searchT:string = '';
+  isLoading: boolean = false;
+  searchT: string = '';
+
+  // ---------- Estado del carrito (patrón Observer) ----------
+  // El header ya no conoce las filas del carrito ni los totales: lo único
+  // que necesita es el número del badge. El detalle de los ítems, el
+  // subtotal y todas las acciones (cantidad, actualizar, eliminar) pasaron
+  // a CarritoOffcanvasComponent.
+  //
+  // Se cuentan UNIDADES y no filas: dos unidades de un producto más una de
+  // otro son 3, no 2.
+  totalUnidades: number = 0;
+
+  private destroyRef = inject(DestroyRef);
+
   constructor(
     public homeService: HomeService,
     public cookieService: CookieService,
-    public cartService: CartService,
-    private toastr: ToastrService,
+    public carritoService: CarritoService,
+    public authService: AuthService
   ) {
+    // Suscripción al derivado del estado central del carrito.
+    // Va en el constructor (contexto de inyección) y se da de baja sola
+    // con takeUntilDestroyed.
+    this.carritoService.cantidadUnidades$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (unidades) => (this.totalUnidades = unidades),
+        error: (err) => {
+          console.error('Error en el estado del carrito:', err);
+          this.totalUnidades = 0;
+        },
+      });
+
     afterNextRender(() => {
       this.homeService.menus().subscribe({
         next: (resp:any) => {
@@ -55,69 +87,54 @@ export class HeaderComponent {
         error: (err) => {
           console.error('No se pudieron cargar las categorías del menú:', err.message);
           this.categories_menus = [];
-        }
-      })
-      this.currency = this.cookieService.get("currency") ? this.cookieService.get("currency") : 'PEN';
-      this.user = this.cartService.authService.user;
-      
-      if(this.user){
-        this.cartService.listCart().subscribe((resp:any) => {
-          //console.log(resp);
-          resp.carts.data.forEach((cart:any) => {
-            if(cart.currency != this.currency){
-              this.cookieService.set("currency",cart.currency);
-              setTimeout(() => {
-                window.location.reload();
-              }, 25);
-            }
-            this.cartService.changeCart(cart)
-          });
-        })
-      }
-    })
+        },
+      });
+
+      this.currency = this.cookieService.get('currency') || 'PYG';
+
+      // Sin condicionar a isLoggedIn(): cargar() ya decide internamente si
+      // trae el carrito de la BD (usuario con sesión) o lo previsualiza
+      // desde localStorage (invitado). El resultado entra al Subject vía
+      // tap(), así que acá no hace falta asignar nada: la suscripción de
+      // arriba actualiza el badge sola.
+      this.carritoService.cargar().subscribe({
+        error: (err) => console.error('No se pudo cargar el carrito:', err),
+      });
+    });
+
     afterRender(() => {
       setTimeout(() => {
         this.isLoading = true;
       }, 50);
-    })
+    });
   }
 
-  ngOnInit(): void {
-    //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
-    //Add 'implements OnInit' to the class.
-    this.cartService.currentDataCart$.subscribe((resp:any) => {
-      // console.log(resp);
-      this.listCarts = resp;
-      this.totalCarts = this.listCarts.reduce((sum:number, item:any) => sum + item.total, 0);
-    })
+  /** El usuario se lee de AuthService, no a través del carrito. */
+  get user(): any {
+    return this.authService.user;
   }
-  logout(){
-    this.cartService.authService.logout();
+
+  logout() {
+    this.authService.logout();
     setTimeout(() => {
-      window.location.reload()
+      window.location.reload();
     }, 50);
   }
-  deleteCart(CART:any) {
-    this.cartService.deleteCart(CART.id).subscribe((resp:any) => {
-      this.toastr.info("Eliminación","Se elimino el producto "+CART.product.title + " del carrito de compra");
-      this.cartService.removeCart(CART);
-    })
-  }
 
-  changeCurrency(val:string){
-    if(this.user){
-      this.cartService.deleteCartsAll().subscribe((resp:any) => {
-        this.cookieService.set("currency",val);
-        window.location.reload();
-        //console.log(resp);
-      })
-    }else{
-      this.cookieService.set("currency",val);
-      setTimeout(() => {
-        window.location.reload();
-      }, 25);
-    }
-  }
+  // changeCurrency(val:string){
+  //   if(this.user){
+  //     this.cartService.deleteCartsAll().subscribe((resp:any) => {
+  //       this.cookieService.set("currency",val);
+  //       window.location.reload();
+  //       //console.log(resp);
+  //     })
+  //   }else{
+  //     this.cookieService.set("currency",val);
+  //     setTimeout(() => {
+  //       window.location.reload();
+  //     }, 25);
+  //   }
+  // }
 
   searchProduct(){
     window.location.href = "/productos-busqueda?search="+this.searchT;
