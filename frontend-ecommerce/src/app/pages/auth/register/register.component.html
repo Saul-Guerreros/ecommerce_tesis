@@ -1,12 +1,12 @@
-  <main>
+<main>
         <section class="uk-section uk-section-small">
           <div class="uk-container uk-container-xsmall">
             <div class="uk-text-center">
               <ul class="uk-breadcrumb uk-flex-center uk-margin-remove">
                 <li><a routerLink="">Home</a></li>
-                <li><span>Sign Up</span></li>
+                <li><span>Registrarse</span></li>
               </ul>
-              <h1 class="uk-margin-small-top uk-margin-remove-bottom">Create Account</h1>
+              <h1 class="uk-margin-small-top uk-margin-remove-bottom">Crear Cuenta</h1>
             </div>
             <div class="uk-margin-medium-top">
               <div class="uk-card uk-card-default uk-card-small tm-ignore-container">
@@ -15,7 +15,7 @@
                     <div class="uk-grid-medium uk-child-width-1-1" uk-grid="">
 
                       <div class="uk-grid-small uk-child-width-1-2@s" uk-grid="">
-                        <div><label><div class="uk-form-label">Primer nombre</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                        <div><label><div class="uk-form-label">Primer Nombre *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
                                 class="uk-input"
                                 id="nombre1"
                                 type="text"
@@ -25,7 +25,7 @@
                                 autocomplete="given-name"
                                 required=""
                               /></div></label></div>
-                        <div><label><div class="uk-form-label">Segundo nombre</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                        <div><label><div class="uk-form-label">Segundo Nombre <span class="uk-text-meta">(opcional)</span></div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
                                 class="uk-input"
                                 id="nombre2"
                                 type="text"
@@ -36,7 +36,7 @@
                       </div>
 
                       <div class="uk-grid-small uk-child-width-1-2@s" uk-grid="">
-                        <div><label><div class="uk-form-label">Primer apellido</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                        <div><label><div class="uk-form-label">Primer Apellido *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
                                 class="uk-input"
                                 id="apellido1"
                                 type="text"
@@ -46,7 +46,7 @@
                                 autocomplete="family-name"
                                 required=""
                               /></div></label></div>
-                        <div><label><div class="uk-form-label">Segundo apellido</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
+                        <div><label><div class="uk-form-label">Segundo Apellido <span class="uk-text-meta">(opcional)</span></div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
                                 class="uk-input"
                                 id="apellido2"
                                 type="text"
@@ -56,45 +56,27 @@
                               /></div></label></div>
                       </div>
 
-                      <div class="uk-grid-small uk-child-width-1-2@s" uk-grid="">
-                        <div><label><div class="uk-form-label">Cédula</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: file-text"></span><input
-                                class="uk-input"
-                                id="cedula"
-                                type="text"
-                                name="cedula"
-                                [(ngModel)]="cedula"
-                                placeholder="0000000"
-                                required=""
-                              /></div></label></div>
-                        <div><label><div class="uk-form-label">Celular</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: phone"></span><input
-                                class="uk-input"
-                                id="celular"
-                                type="tel"
-                                name="celular"
-                                [(ngModel)]="celular"
-                                placeholder="0981 000 000"
-                                autocomplete="tel"
-                              /></div></label></div>
-                      </div>
-
-                      <div><label><div class="uk-form-label">Fecha de nacimiento</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: calendar"></span><input
+                      <div><label><div class="uk-form-label">Celular *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: phone"></span><input
                               class="uk-input"
-                              id="fecha_nacimiento"
-                              type="date"
-                              name="fecha_nacimiento"
-                              [(ngModel)]="fecha_nacimiento"
+                              id="celular"
+                              type="tel"
+                              name="celular"
+                              [(ngModel)]="celular"
+                              placeholder="0981 000 000"
+                              autocomplete="tel"
+                              required=""
                             /></div></label></div>
 
-                      <div><label><div class="uk-form-label">Email</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: mail"></span><input
+                      <div><label><div class="uk-form-label">Correo Electrónico *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: mail"></span><input
                               class="uk-input"
                               id="email"
                               type="email"
                               name="email"
                               [(ngModel)]="email"
-                              placeholder="shofy@mail.com"
+                              placeholder="correo@ejemplo.com"
                               autocomplete="email"
                               required=""
-                            /></div></label></div><div><label><div class="uk-form-label">Password</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
+                            /></div></label></div><div><label><div class="uk-form-label">Contraseña *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
                               class="uk-input"
                               id="tp_password" 
                               type="password"
@@ -103,7 +85,7 @@
                              placeholder="Mín. 8 caracteres"
                               autocomplete="new-password"
                               required=""
-                            /></div></label></div><div><label><div class="uk-form-label">Confirm Password</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
+                            /></div></label></div><div><label><div class="uk-form-label">Confirmar Contraseña *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
                               class="uk-input"
                               type="password"
                               name="password_confirmation"
@@ -111,14 +93,14 @@
                               placeholder="••••••••"
                               autocomplete="new-password"
                               required=""
-                            /></div></label></div><div><label><input class="uk-checkbox" type="checkbox" name="terms" required="" />
-                          <span class="uk-margin-small-left">I agree to the 
-                            <a href="#">Terms &amp; Conditions</a>
-                             and 
-                            <a href="#">Privacy Policy</a></span></label></div><div>
-                              <button class="uk-button uk-button-primary uk-width-1-1" type="button" (click)="register()">Create Account</button>
-                            </div><div class="uk-text-center uk-text-meta">Already have an account? 
-                        <a routerLink="/login">Sign in</a></div></div>
+                            /></div></label></div><div><label><input class="uk-checkbox" type="checkbox" name="terminos" [(ngModel)]="terminos" required="" />
+                          <span class="uk-margin-small-left">Acepto los 
+                            <a href="#">Términos y Condiciones</a>
+                             y la 
+                            <a href="#">Política de Privacidad</a> *</span></label></div><div>
+                              <button class="uk-button uk-button-primary uk-width-1-1" type="button" (click)="register()">Registrarse</button>
+                            </div><div class="uk-text-center uk-text-meta">¿Ya tenés cuenta? 
+                        <a routerLink="/login">Iniciar sesión</a></div></div>
                   </div>
                 </div>
               </div>

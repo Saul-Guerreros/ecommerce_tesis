@@ -57,9 +57,7 @@ class AuthController extends Controller
             'nombre2' => 'nullable|string|max:45',
             'apellido1' => 'required|string|max:50',
             'apellido2' => 'nullable|string|max:50',
-            'cedula' => 'required|string|max:50|unique:persona,per_cedula',
-            'fecha_nacimiento' => 'nullable|date',
-            'celular' => 'nullable|string|max:20',
+            'celular' => 'required|string|max:20',
             'email' => 'required|email|unique:usuario,usu_login',
             'password' => 'required|min:8',
         ]);
@@ -85,8 +83,6 @@ class AuthController extends Controller
                 'per_nombr2' => $request->nombre2,
                 'per_apell1' => $request->apellido1,
                 'per_apell2' => $request->apellido2,
-                'per_cedula' => $request->cedula,
-                'per_fechna' => $request->fecha_nacimiento,
                 'per_estado' => 1,
             ]);
 

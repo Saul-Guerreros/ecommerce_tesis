@@ -16,6 +16,7 @@ export class LoginComponent {
 
   email: string = '';
   password: string = '';
+  remember: boolean = false;
   code_user: string = '';
 
   /**
@@ -147,6 +148,15 @@ export class LoginComponent {
         this.router.navigateByUrl(this.redirect);
       },
     });
+  }
+
+  /**
+   * TODO: Login con Google (OAuth) - pendiente de implementar junto con
+   * el flujo correspondiente en AuthController (backend). Por ahora
+   * solo deja la estructura visual del botón.
+   */
+  loginConGoogle() {
+    this.toastr.info("Disponible próximamente", "Inicio de sesión con Google");
   }
 
   showSuccess() {

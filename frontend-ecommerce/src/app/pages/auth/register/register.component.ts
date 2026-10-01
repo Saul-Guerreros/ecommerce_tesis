@@ -18,12 +18,11 @@ export class RegisterComponent {
   nombre2:string = '';
   apellido1:string = '';
   apellido2:string = '';
-  cedula:string = '';
-  fecha_nacimiento:string = '';
   celular:string = '';
   email:string = '';
   password:string = '';
   password_confirmation:string = '';
+  terminos:boolean = false;
 
   constructor(
     private authService: AuthService,
@@ -33,12 +32,16 @@ export class RegisterComponent {
   }
 
   register(){
-    if (!this.nombre1 || !this.apellido1 || !this.cedula || !this.email || !this.password) {
-      this.toastr.error("validacion","Necesitas ingresar nombre, apellido, cédula, email y contraseña");
+    if (!this.nombre1 || !this.apellido1 || !this.celular || !this.email || !this.password) {
+      this.toastr.error("validacion","Necesitas ingresar nombre, apellido, celular, email y contraseña");
       return;
     }
     if (this.password !== this.password_confirmation) {
       this.toastr.error("validacion","Las contraseñas no coinciden");
+      return;
+    }
+    if (!this.terminos) {
+      this.toastr.error("validacion","Debes aceptar los Términos y Condiciones y la Política de Privacidad");
       return;
     }
     let data = {
@@ -46,9 +49,7 @@ export class RegisterComponent {
       nombre2: this.nombre2 || null,
       apellido1: this.apellido1,
       apellido2: this.apellido2 || null,
-      cedula: this.cedula,
-      fecha_nacimiento: this.fecha_nacimiento || null,
-      celular: this.celular || null,
+      celular: this.celular,
       email: this.email,
       password: this.password,
     }
