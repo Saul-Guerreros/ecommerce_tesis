@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use App\Services\Auth\GoogleAuthService;
 
 class Usuario extends Authenticatable implements JWTSubject
 {
@@ -22,6 +23,7 @@ class Usuario extends Authenticatable implements JWTSubject
         'usu_estado',
         'usu_perid',
         'usu_rolid',
+        'usu_gooid',
     ];
 
     protected $hidden = [

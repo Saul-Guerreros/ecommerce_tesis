@@ -47,6 +47,14 @@ export class AuthService {
     );
   }
 
+  loginGoogle(credential: string) {
+    let URL = URL_SERVICIOS + "/auth/login_google";
+    return this.http.post(URL, { credential }).pipe(
+      map((resp: any) => this.saveLocalStorage(resp)),
+      catchError((err: any) => of(err))
+    );
+  }
+
   saveLocalStorage(resp: any) {
     if (resp && resp.access_token) {
       localStorage.setItem("token", resp.access_token);

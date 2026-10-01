@@ -1,9 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, ElementRef, NgZone, ViewChild, afterNextRender } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
 import { AuthService } from '../service/auth.service';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CarritoService } from '../../../core/services/carrito.service';
+import { GoogleIdentityService } from '../../../core/services/google-identity.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-login',
@@ -28,13 +30,21 @@ export class LoginComponent {
   /** Bloquea el botón mientras dura login + sincronización del carrito. */
   procesando = false;
 
-  constructor(
+  /** Contenedor donde Google dibuja su botón oficial. */
+  @ViewChild('googleBtn') googleBtn?: ElementRef<HTMLDivElement>;
+
+   constructor(
     private toastr: ToastrService,
     private authService: AuthService,
     private carritoService: CarritoService,
+    private googleIdentity: GoogleIdentityService,
+    private zone: NgZone,
     public router: Router,
     public activedRoute: ActivatedRoute,
-  ) {}
+  ) {
+    // Se ejecuta solo en el navegador, después del primer render (compatible con SSR)
+    afterNextRender(() => this.renderizarBotonGoogle());
+  }
 
   ngOnInit(): void {
     if (this.authService.token && this.authService.user) {
@@ -82,40 +92,64 @@ export class LoginComponent {
     this.procesando = true;
 
     this.authService.login(this.email, this.password).subscribe({
-      next: (resp: any) => {
-
-        if (resp && resp.status === 423) {
-          this.procesando = false;
-          this.toastr.error(
-            "Cuenta bloqueada",
-            resp.error?.error || "Tu cuenta fue bloqueada por demasiados intentos fallidos. Contacta al soporte."
-          );
-          return;
-        }
-
-        if (resp.error && resp.error.error == 'Unauthorized') {
-          this.procesando = false;
-          this.toastr.error(
-            "Validacion",
-            'Las credenciales son incorrectas. Si tu cuenta es nueva, revisa tu correo para verificarla.'
-          );
-          return;
-        }
-
-        if (resp == true) {
-          this.toastr.success("Exito", 'Bienvenido a la tienda');
-          this.sincronizarCarrito();
-          return;
-        }
-
-        this.procesando = false;
-      },
-      error: (err) => {
-        this.procesando = false;
-        console.error('Error en el login:', err);
-        this.toastr.error("Error", 'No se pudo iniciar sesión. Intentá nuevamente.');
-      },
+      next: (resp: any) => this.procesarRespuestaLogin(
+        resp,
+        'Las credenciales son incorrectas. Si tu cuenta es nueva, revisa tu correo para verificarla.'
+      ),
+      error: (err) => this.manejarErrorLogin(err),
     });
+  }
+
+  /** Pide a Google que dibuje su botón dentro de #googleBtn. */
+  private renderizarBotonGoogle(): void {
+    if (!this.googleBtn) return;
+
+    this.googleIdentity
+      .renderizarBoton(this.googleBtn.nativeElement, environment.GOOGLE_CLIENT_ID, (credential) =>
+        // El callback de Google se ejecuta fuera de Angular: se reingresa a la zona
+        // para que funcionen la navegación y los toasts.
+        this.zone.run(() => this.loginConGoogle(credential))
+      )
+      .catch((err) => console.error(err));
+  }
+
+  private loginConGoogle(credential: string): void {
+    if (this.procesando) return;
+    this.procesando = true;
+
+    this.authService.loginGoogle(credential).subscribe({
+      next: (resp: any) => this.procesarRespuestaLogin(resp, 'Esta cuenta de Google no tiene acceso a la tienda.'),
+      error: (err) => this.manejarErrorLogin(err),
+    });
+  }
+
+  /** Respuesta común para el login con email/contraseña y con Google. */
+  private procesarRespuestaLogin(resp: any, mensajeNoAutorizado: string): void {
+    if (resp === true) {
+      this.toastr.success("Exito", 'Bienvenido a la tienda');
+      this.sincronizarCarrito();
+      return;
+    }
+
+    this.procesando = false;
+
+    if (resp?.status === 423) {
+      this.toastr.error("Cuenta bloqueada", resp.error?.error || "Tu cuenta fue bloqueada. Contacta al soporte.");
+      return;
+    }
+
+    if (resp?.status === 401) {
+      this.toastr.error("Validacion", mensajeNoAutorizado);
+      return;
+    }
+
+    this.toastr.error("Error", 'No se pudo iniciar sesión. Intentá nuevamente.');
+  }
+
+  private manejarErrorLogin(err: any): void {
+    this.procesando = false;
+    console.error('Error en el login:', err);
+    this.toastr.error("Error", 'No se pudo iniciar sesión. Intentá nuevamente.');
   }
 
   /**

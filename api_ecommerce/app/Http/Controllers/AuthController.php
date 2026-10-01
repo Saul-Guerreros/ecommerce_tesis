@@ -39,7 +39,7 @@ class AuthController extends Controller
     public function __construct()
     {
         $this->middleware('auth:api', ['except' => [
-            'register', 'login', 'login_ecommerce',
+            'register', 'login', 'login_ecommerce', 'login_google',
             'verified_auth', 'verified_email', 'verified_code', 'new_password',
         ]]);
     }
@@ -226,6 +226,47 @@ class AuthController extends Controller
     public function login_ecommerce(Request $request)
     {
         return $this->intentarLogin($request, ['Cliente'], exigirActivo: true);
+    }
+
+    
+    /**
+     * Login/registro del ecommerce con cuenta de Google.
+     * Recibe el ID token (credential) que entrega Google Identity Services.
+     */
+    public function login_google(Request $request, GoogleAuthService $google)
+    {
+        $validator = Validator::make($request->all(), [
+            'credential' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $payload = $google->verificarToken($request->credential);
+
+        if (! $payload) {
+            $this->registrarIntento(null, 'google', false, 'token de Google invalido', $request);
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $usuario = $google->obtenerOCrearCliente($payload);
+
+        if ($usuario->usu_estado === Usuario::ESTADO_BLOQUEADO) {
+            $this->registrarIntento($usuario->usu_id, $usuario->usu_login, false, 'cuenta bloqueada (google)', $request);
+            return response()->json(['error' => 'Cuenta bloqueada. Contacte al administrador.'], 423);
+        }
+
+        if ($usuario->rol?->rol_descri !== 'Cliente') {
+            $this->registrarIntento($usuario->usu_id, $usuario->usu_login, false, 'rol no autorizado (google)', $request);
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $this->registrarIntento($usuario->usu_id, $usuario->usu_login, true, 'login con Google', $request);
+
+        $token = auth('api')->login($usuario);
+
+        return $this->respondWithToken($token, $usuario, $request);
     }
 
     private function intentarLogin(Request $request, array $rolesPermitidos, bool $exigirActivo)

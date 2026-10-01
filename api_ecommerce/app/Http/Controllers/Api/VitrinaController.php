@@ -155,7 +155,7 @@ class VitrinaController extends Controller
             ->orderByDesc('prd_id')
             ->paginate($perPage);
 
-                return ProductoResource::collection($productos)->response();
+            return ProductoResource::collection($productos)->response();
     }
 
     // ---------------------------------------------------------------
