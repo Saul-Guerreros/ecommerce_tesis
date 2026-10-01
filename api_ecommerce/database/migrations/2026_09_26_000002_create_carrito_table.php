@@ -21,8 +21,6 @@ return new class extends Migration
             $table->string('car_codcup', 250)->nullable();         // codigo_cupon
             $table->string('car_coddes', 50)->nullable();          // codigo_descuento
 
-            $table->unsignedBigInteger('car_idvarp')->nullable();  // id_variacion_producto
-
             $table->double('car_cantid')->default(1); // cantidad
             $table->double('car_precio');              // precio_unitario
             $table->double('car_subtot');               // subtotal
@@ -35,7 +33,6 @@ return new class extends Migration
             // Relaciones (FK)
             $table->foreign('car_idusu')->references('usu_id')->on('usuario');
             $table->foreign('car_idpro')->references('prd_id')->on('producto');
-            $table->foreign('car_idvarp')->references('var_proid')->on('variacion_producto');        
         
         });
     }
@@ -45,7 +42,6 @@ return new class extends Migration
         Schema::table('carrito', function (Blueprint $table) {
             $table->dropForeign(['car_idusu']);
             $table->dropForeign(['car_idpro']);
-            $table->dropForeign(['car_idvarp']);
         });
 
         Schema::dropIfExists('carrito');

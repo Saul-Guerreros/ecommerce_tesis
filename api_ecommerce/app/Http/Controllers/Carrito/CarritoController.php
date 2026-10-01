@@ -8,7 +8,6 @@ use App\Http\Requests\Carrito\SincronizarCarritoRequest;
 use App\Http\Resources\Carrito\CarritoResource;
 use App\Models\Carrito\Carrito;
 use App\Models\Carrito\ConfiguracionCuota;
-use App\Models\product\VariacionProducto;
 use App\Models\Producto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +19,6 @@ class CarritoController extends Controller{
         'producto.publicacionWeb.categoria', // para mostrar la categoría junto al nombre
         'producto.stock',
         'producto.tipoIva', // punto 16: CarritoResource usa esto para desglosar el IVA incluido.
-        'variacion.propiedades.atributo',
     ];
 
     // GET /api/tienda/carrito
@@ -46,7 +44,6 @@ class CarritoController extends Controller{
         // producto al contado y en 6 cuotas son dos filas distintas.
         $duplicado = Carrito::where('car_idusu', $usuario->usu_id)
             ->where('car_idpro', $datos['car_idpro'])
-            ->where('car_idvarp', $datos['car_idvarp'] ?? null)
             ->where('car_modpag', $datos['car_modpag'] ?? 'contado')
             ->where('car_numcuo', $datos['car_numcuo'] ?? null)
             ->exists();
@@ -58,11 +55,8 @@ class CarritoController extends Controller{
         }
 
         $producto = Producto::findOrFail($datos['car_idpro']);
-        $variacion = isset($datos['car_idvarp'])
-            ? VariacionProducto::findOrFail($datos['car_idvarp'])
-            : null;
 
-        $disponible = $this->stockDisponible($producto, $variacion);
+        $disponible = $this->stockDisponible($producto);
 
         if ($datos['car_cantid'] > $disponible){
             throw ValidationException::withMessages([
@@ -71,7 +65,7 @@ class CarritoController extends Controller{
         }
 
         // El precio NUNCA viene del request.
-        $precioUnitario = $this->precioUnitarioOFallar($producto, $variacion, (float) $datos['car_cantid']);
+        $precioUnitario = $this->precioUnitarioOFallar($producto, (float) $datos['car_cantid']);
 
         // El recargo y el monto de la cuota TAMPOCO: se recalculan acá.
         $financiacion = $this->resolverFinanciacion(
@@ -85,7 +79,6 @@ class CarritoController extends Controller{
         $carrito = Carrito::create([
             'car_idusu'      => $usuario->usu_id,
             'car_idpro'      => $producto->prd_id,
-            'car_idvarp'     => $variacion?->var_proid,
             'car_modpag'     => $financiacion['modalidad'],
             'car_numcuo'     => $financiacion['numero_cuotas'],
             'car_recargopct' => $financiacion['recargo_pct'],
@@ -110,9 +103,8 @@ class CarritoController extends Controller{
 
         $datos = $request->validated();
         $producto = $carrito->producto;
-        $variacion = $carrito->variacion;
 
-        $disponible = $this->stockDisponible($producto, $variacion);
+        $disponible = $this->stockDisponible($producto);
 
         if ($datos['car_cantid'] > $disponible){
             throw ValidationException::withMessages([
@@ -120,7 +112,7 @@ class CarritoController extends Controller{
             ]);
         }
 
-        $precioUnitario = $this->precioUnitarioOFallar($producto, $variacion, (float) $datos['car_cantid']);
+        $precioUnitario = $this->precioUnitarioOFallar($producto, (float) $datos['car_cantid']);
 
         // Modo NO estricto: si la opción de cuotas fue dada de baja entre
         // medio, no se rompe el carrito, se cae a contado.
@@ -178,11 +170,7 @@ class CarritoController extends Controller{
         }
     }
 
-    private function stockDisponible(Producto $producto, ?VariacionProducto $variacion): float{
-        if ($variacion){
-            return (float) $variacion->var_stock;
-        }
-
+    private function stockDisponible(Producto $producto): float{
         $producto->loadMissing('stock');
 
         return $producto->stockDisponible();
@@ -239,20 +227,12 @@ class CarritoController extends Controller{
         ];
     }
 
-    private function precioUnitario(Producto $producto, ?VariacionProducto $variacion, float $cantidad): ?float{
-        $precioBase = $producto->precioPara($cantidad);
-
-        if ($precioBase === null){
-            return null;
-        }
-
-        $adicional= (float)($variacion?->var_preadi ?? 0);
-
-        return $precioBase + $adicional;
+    private function precioUnitario(Producto $producto, float $cantidad): ?float{
+        return $producto->precioPara($cantidad);
     }
 
-    private function precioUnitarioOFallar(Producto $producto, ?VariacionProducto $variacion, float $cantidad): float{
-        $precio = $this->precioUnitario($producto, $variacion, $cantidad);
+    private function precioUnitarioOFallar(Producto $producto, float $cantidad): float{
+        $precio = $this->precioUnitario($producto, $cantidad);
 
         if ($precio !== null){
             return $precio;
@@ -281,7 +261,7 @@ class CarritoController extends Controller{
                     continue;
                 }
 
-                $disponible = $this->stockDisponible($producto, null);
+                $disponible = $this->stockDisponible($producto);
 
                 if ($disponible <= 0) {
                     $omitidos[] = [
@@ -296,7 +276,6 @@ class CarritoController extends Controller{
 
                 $existente = Carrito::where('car_idusu', $usuario->usu_id)
                     ->where('car_idpro', $producto->prd_id)
-                    ->whereNull('car_idvarp')
                     ->where('car_modpag', $modalidad)
                     ->where('car_numcuo', $numeroCuotas)
                     ->first();
@@ -313,7 +292,7 @@ class CarritoController extends Controller{
                     ];
                 }
 
-                $precioUnitario = $this->precioUnitario($producto, null, $cantidadFinal);
+                $precioUnitario = $this->precioUnitario($producto, $cantidadFinal);
 
                 if ($precioUnitario === null) {
                     $omitidos[] = [
@@ -344,9 +323,8 @@ class CarritoController extends Controller{
                 }
 
                 Carrito::create($valores + [
-                    'car_idusu'  => $usuario->usu_id,
-                    'car_idpro'  => $producto->prd_id,
-                    'car_idvarp' => null,
+                    'car_idusu' => $usuario->usu_id,
+                    'car_idpro' => $producto->prd_id,
                 ]);
             }
         });
@@ -374,13 +352,13 @@ class CarritoController extends Controller{
                     return null;
                 }
 
-                $cantidad = min((float) $item['car_cantid'], $this->stockDisponible($producto, null));
+                $cantidad = min((float) $item['car_cantid'], $this->stockDisponible($producto));
 
                 if ($cantidad <= 0) {
                     return null;
                 }
 
-                $precioUnitario = $this->precioUnitario($producto, null, $cantidad);
+                $precioUnitario = $this->precioUnitario($producto, $cantidad);
 
                 if ($precioUnitario === null) {
                     return null;
@@ -396,7 +374,6 @@ class CarritoController extends Controller{
 
                 $carrito = new Carrito([
                     'car_idpro'      => $producto->prd_id,
-                    'car_idvarp'     => null,
                     'car_cantid'     => $cantidad,
                     'car_precio'     => $precioUnitario,
                     'car_modpag'     => $financiacion['modalidad'],
@@ -408,7 +385,6 @@ class CarritoController extends Controller{
                 ]);
 
                 $carrito->setRelation('producto', $producto);
-                $carrito->setRelation('variacion', null);
 
                 return $carrito;
             })

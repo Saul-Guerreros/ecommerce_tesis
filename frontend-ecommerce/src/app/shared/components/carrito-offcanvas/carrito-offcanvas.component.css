@@ -227,11 +227,16 @@
   text-align: center;
   font-size: 13.5px;
   color: #333;
-  -moz-appearance: textfield;
+ -moz-appearance: textfield; /* Firefox */
+  appearance: textfield;      /* Estándar */
 }
+
 .tm-qty__input::-webkit-outer-spin-button,
-.tm-qty__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.tm-qty__input:focus { outline: none; }
+.tm-qty__input::-webkit-inner-spin-button {
+  -webkit-appearance: none; /* Chrome, Safari, Edge */
+  appearance: none;         /* Estándar */
+  margin: 0;                /* Quita el espacio que dejan las flechas */
+}
 
 /* ---------- Botón Actualizar ---------- */
 .tm-cart-row__update {

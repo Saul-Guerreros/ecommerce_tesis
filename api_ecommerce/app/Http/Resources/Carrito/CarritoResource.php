@@ -8,14 +8,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class CarritoResource extends JsonResource{
     /**
      * Requiere que el controlador haga eager loading de:
-     * 'producto.publicacionWeb.imagenes', 'variacion.propiedades.atributo'
+     * 'producto.publicacionWeb.imagenes'
      * (evita N+1 al recorrer el listado del carrito).
      */
     public function toArray(Request $request): array{
         return[
             'car_id'=> $this->car_id,
             'car_idpro'=> $this->car_idpro,
-            'car_idvarp'=> $this->car_idvarp,
 
             'car_tipdes'=> $this->car_tipdes,
             'car_descue'=> $this->car_descue,
@@ -39,10 +38,6 @@ class CarritoResource extends JsonResource{
             // valida y responde 422); esto es solo para no dejar que el
             // usuario llegue a pedir una cantidad imposible.
             'stock_disponible'=> $this->whenLoaded('producto', function () {
-                if ($this->relationLoaded('variacion') && $this->variacion){
-                    return (float) $this->variacion->var_stock;
-                }
-
                 return $this->producto->stockDisponible();
             }),
 
@@ -84,21 +79,6 @@ class CarritoResource extends JsonResource{
                 ];
             }),
 
-            // ----- Variación seleccionada (ej: Color: Rojo, Talla: M) -----
-            'variacion'=> $this->whenLoaded('variacion', function () {
-                if (! $this->variacion) {
-                    return null;
-                }
-
-                return[
-                    'var_proid'=> $this->variacion->var_proid,
-                    'var_preadi'=> $this->variacion->var_preadi,
-                    'propiedades'=> $this->variacion->propiedades->map(fn ($propiedad)=>[
-                        'atb_nombre'=> $propiedad->atributo->atb_nombre,
-                        'prp_nombre'=> $propiedad->prp_nombre,
-                    ]),
-                ];
-            }),
         ];
     }
 

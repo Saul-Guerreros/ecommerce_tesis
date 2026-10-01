@@ -48,8 +48,7 @@ export const routes: Routes = [
         path: 'productos-busqueda',
         component: ProductosBusquedaComponent
     },
-   ];
-   [
+    
     {
     // Pública: el carrito funciona con invitados (localStorage) y con
     // usuarios logueados (BD). El login solo se exige en /proceso-de-pago.

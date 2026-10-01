@@ -4,7 +4,6 @@ namespace App\Models\Carrito;
 
 use App\Models\Usuario;
 use App\Models\Producto;
-use App\Models\product\VariacionProducto;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -65,10 +64,6 @@ class Carrito extends Model{
 
     public function producto(): BelongsTo{
         return $this->belongsTo(Producto::class, 'car_idpro', 'prd_id');
-    }
-
-    public function variacion(): BelongsTo{
-        return $this->belongsTo(VariacionProducto::class, 'car_idvarp', 'var_proid');
     }
 
 }
