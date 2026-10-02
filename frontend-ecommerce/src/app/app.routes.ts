@@ -47,8 +47,8 @@ export const routes: Routes = [
         // Catálogo con filtros avanzados; el buscador del header ya apunta acá.
         path: 'productos-busqueda',
         component: ProductosBusquedaComponent
-    },
-	{
+    }, 
+    {
     // Pública: el carrito funciona con invitados (localStorage) y con
     // usuarios logueados (BD). El login solo se exige en /proceso-de-pago.
     // El path debe coincidir con los routerLink ya presentes en

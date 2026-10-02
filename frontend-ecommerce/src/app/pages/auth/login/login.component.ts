@@ -18,6 +18,7 @@ export class LoginComponent {
 
   email: string = '';
   password: string = '';
+  remember: boolean = false;
   code_user: string = '';
 
   /**
@@ -181,9 +182,5 @@ export class LoginComponent {
         this.router.navigateByUrl(this.redirect);
       },
     });
-  }
-
-  showSuccess() {
-    this.toastr.success('hellon word', 'Toastr fun');
   }
 }

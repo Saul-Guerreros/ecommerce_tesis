@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('carrito', function (Blueprint $table) {
-            $table->string('car_modpag', 10)->default('contado')->after('car_idvarp');
+            $table->string('car_modpag', 10)->default('contado')->after('car_idpro');
             $table->unsignedSmallInteger('car_numcuo')->nullable()->after('car_modpag');   // número de cuotas elegido
             $table->decimal('car_recargopct', 5, 2)->nullable()->after('car_numcuo');       // snapshot del % aplicado
             $table->decimal('car_montocuo', 14, 2)->nullable()->after('car_recargopct');    // snapshot del monto de cada cuota

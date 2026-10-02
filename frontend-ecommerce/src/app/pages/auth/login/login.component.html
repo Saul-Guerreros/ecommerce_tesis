@@ -4,24 +4,24 @@
             <div class="uk-text-center">
               <ul class="uk-breadcrumb uk-flex-center uk-margin-remove">
                 <li><a routerLink="">Home</a></li>
-                <li><span>Sign In</span></li>
+                <li><span>Iniciar Sesión</span></li>
               </ul>
-              <h1 class="uk-margin-small-top uk-margin-remove-bottom">Sign In</h1>
+              <h1 class="uk-margin-small-top uk-margin-remove-bottom">Iniciar Sesión</h1>
             </div>
             <div class="uk-margin-medium-top">
               <div class="uk-card uk-card-default uk-card-small tm-ignore-container">
                 <div class="uk-card-body">
                   
-                    <div class="uk-grid-medium uk-child-width-1-1" uk-grid=""><div><label><div class="uk-form-label">Email</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: mail"></span><input
+                    <div class="uk-grid-medium uk-child-width-1-1" uk-grid=""><div><label><div class="uk-form-label">Correo Electrónico *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: mail"></span><input
                               class="uk-input"
                               id="email"
                               type="email"
                               name="email"
                               [(ngModel)]="email"
-                              placeholder="you@example.com"
+                              placeholder="correo@ejemplo.com"
                               autocomplete="email"
                               required=""
-                            /></div></label></div><div><label><div class="uk-form-label">Password</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
+                            /></div></label></div><div><label><div class="uk-form-label">Contraseña *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
                               class="uk-input"
                               id="tp_password"
                               type="password"
@@ -30,20 +30,18 @@
                               placeholder="••••••••"
                               autocomplete="current-password"
                               required=""
-                            /></div></label></div><div class="uk-grid-small uk-flex-middle uk-flex-between" uk-grid=""><div class="uk-width-auto"><label><input class="uk-checkbox" type="checkbox" name="remember" />
-                            <span class="uk-margin-small-left">Remember me</span>
+                            /></div></label></div><div class="uk-grid-small uk-flex-middle uk-flex-between" uk-grid=""><div class="uk-width-auto"><label><input class="uk-checkbox" type="checkbox" name="remember" [(ngModel)]="remember" />
+                            <span class="uk-margin-small-left">Recordarme</span>
                               </label></div><div class="uk-width-auto">
-                                <a class="uk-link-muted" routerLink="/cambiar-credenciales">Forgot password?</a>
+                                <a class="uk-link-muted" routerLink="/cambiar-credenciales">¿Olvidaste tu contraseña?</a>
                               </div></div><div>
-                               
-								<a href="#" class="uk-button uk-button-primary uk-width-1-1"  onclick="return false;" (click)="login()">Sign In</a>
+								<a href="#" class="uk-button uk-button-primary uk-width-1-1"  onclick="return false;" (click)="login()">Iniciar Sesión</a>
                     <div class="uk-text-center uk-text-meta uk-margin-small-top">o continúa con</div>
                         <div class="uk-flex uk-flex-center uk-margin-small-top">
                             <div #googleBtn></div>
                               </div>
-                              </div><div class="uk-text-center uk-text-meta">Don't have an account? 
-                        <a routerLink="/register">Sign up</a></div></div>
-                  
+                              </div><div class="uk-text-center uk-text-meta">¿No tenés cuenta?  
+                        <a routerLink="/register">Registrate</a></div></div>   
                 </div>
               </div>
             </div>

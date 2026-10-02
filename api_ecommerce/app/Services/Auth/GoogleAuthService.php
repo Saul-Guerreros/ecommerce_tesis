@@ -27,7 +27,12 @@ class GoogleAuthService
                 'audience' => config('services.google.client_id'),
             ]);
         } catch (\Throwable $e) {
+            \Log::error('Google verify error: ' . $e->getMessage());
             return null;
+        }
+
+        if (! $payload) {
+            \Log::warning('Google verify: token rechazado. client_id usado: ' . config('services.google.client_id'));
         }
 
         // Solo se aceptan correos verificados por Google
