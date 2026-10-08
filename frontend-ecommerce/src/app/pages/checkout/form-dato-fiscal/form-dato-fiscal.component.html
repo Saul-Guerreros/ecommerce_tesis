@@ -1,0 +1,88 @@
+<div class="uk-modal" [class.uk-open]="visible" [style.display]="visible ? 'block' : 'none'">
+  <div class="uk-modal-dialog uk-modal-body">
+    <button class="uk-modal-close-default" type="button" uk-close (click)="cerrar()"></button>
+    <h3 class="uk-modal-title">{{ esEdicion ? 'Editar datos actuales' : 'Agregar nuevo RUC' }}</h3>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()">
+
+      <div class="uk-margin">
+        <label class="uk-form-label">Nombre del RUC (alias)</label>
+        <input class="uk-input" type="text" formControlName="dfi_alias" placeholder="Ej: Mi RUC" maxlength="50"
+               [class.uk-form-danger]="campoInvalido('dfi_alias')">
+        <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('dfi_alias')">
+          {{ mensajeAlias }}
+        </div>
+      </div>
+
+      <div class="uk-grid-small uk-child-width-1-2@s uk-margin" uk-grid>
+        <div>
+          <label class="uk-form-label">Número <span class="uk-text-danger">*</span></label>
+          <input class="uk-input" type="text" formControlName="dfi_numero" maxlength="20"
+                 inputmode="numeric" placeholder="Ej: 5690649-7"
+                 [class.uk-form-danger]="campoInvalido('dfi_numero')"
+                 (input)="soloNumero($event)"
+                 (blur)="verificarRucPropio()">
+          <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('dfi_numero')">
+            {{ mensajeNumero() }}
+          </div>
+          <div class="uk-text-meta uk-text-small" *ngIf="verificandoRuc">
+            Verificando...
+          </div>
+          <div class="uk-text-small uk-margin-small-top" *ngIf="rucPropio && !verificandoRuc" style="color: #32d296;">
+            <span uk-icon="icon: check; ratio: 0.8"></span>
+            Es tu RUC — completamos tu teléfono y correo.
+            <button *ngIf="rucPropio.ofrecer_guardar_ruc" type="button"
+                    class="uk-button uk-button-link uk-text-small"
+                    [disabled]="guardandoRucPerfil"
+                    (click)="guardarRucEnPerfil()">
+              {{ guardandoRucPerfil ? 'Guardando...' : 'Guardar en mi perfil para la próxima' }}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="uk-form-label">Razón social <span class="uk-text-danger">*</span></label>
+          <input class="uk-input" type="text" formControlName="dfi_razon" maxlength="150"
+                 [class.uk-form-danger]="campoInvalido('dfi_razon')">
+          <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('dfi_razon')">
+            {{ errorBackend('dfi_razon') ?? 'La razón social es obligatoria.' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="uk-grid-small uk-child-width-1-2@s uk-margin" uk-grid>
+        <div>
+          <label class="uk-form-label">Teléfono <span class="uk-text-danger">*</span></label>
+          <input class="uk-input" type="text" formControlName="dfi_telefono" maxlength="20"
+                 inputmode="tel" placeholder="Ej: 0981 123456"
+                 [class.uk-form-danger]="campoInvalido('dfi_telefono')"
+                 (input)="soloTelefono($event)">
+          <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('dfi_telefono')">
+            {{ mensajeTelefono() }}
+          </div>
+        </div>
+
+        <div>
+          <label class="uk-form-label">Correo <span class="uk-text-danger">*</span></label>
+          <input class="uk-input" type="email" formControlName="dfi_correo" maxlength="100"
+                 [class.uk-form-danger]="campoInvalido('dfi_correo')">
+          <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('dfi_correo')">
+            {{ errorBackend('dfi_correo') ?? 'Ingresá un correo válido.' }}
+          </div>
+        </div>
+      </div>
+
+      <label class="uk-margin uk-display-block">
+        <input class="uk-checkbox" type="checkbox" formControlName="dfi_principal">
+        <span class="uk-margin-small-left">Guardar este RUC como predeterminado</span>
+      </label>
+
+      <div class="uk-text-right uk-margin-top">
+        <button type="button" class="uk-button uk-button-default" (click)="cerrar()">Cancelar</button>
+        <button type="submit" class="uk-button uk-button-primary uk-margin-small-left" [disabled]="guardando">
+          {{ guardando ? 'Guardando...' : (esEdicion ? 'Guardar cambios' : 'Guardar y continuar') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

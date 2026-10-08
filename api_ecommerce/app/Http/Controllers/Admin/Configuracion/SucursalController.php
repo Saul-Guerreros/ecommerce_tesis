@@ -118,11 +118,12 @@ class SucursalController extends Controller
     }
 
     // POST /api/admin/sucursales
-    public function store(SucursalRequest $request): JsonResponse
+        public function store(SucursalRequest $request): JsonResponse
     {
         $datos = $request->validated();
         $datos['suc_estado'] = $datos['suc_estado'] ?? 1;
         $datos['suc_princi'] = $datos['suc_princi'] ?? 0;
+        $datos['suc_retiro'] = $datos['suc_retiro'] ?? false;   // <-- nuevo
 
         $sucursal = Sucursal::create($datos);
         $sucursal->load(['empresa', 'ciudad']);

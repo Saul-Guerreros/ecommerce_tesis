@@ -212,7 +212,7 @@ export const routes: Routes = [
         data: { title: 'Configuración de Precios' },
       },
 
-      {
+            {
         path: 'cuentas-por-pagar',
         loadChildren: () => import('./modules/cuentas-por-pagar/cuentas-por-pagar.module').then(m => m.CuentasPorPagarModule),
         data: { title: 'Cuentas por Pagar' },
@@ -223,16 +223,54 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/libro-compra/libro-compra.module').then(m => m.LibroCompraModule),
         data: { title: 'Libro de Compras' },
       },
-      
-	  {
 
+      {
+        path: 'configuracion-tienda',
+        loadChildren: () =>
+          import('./modules/configuracion-tienda/configuracion-tienda.module').then(
+            (m) => m.ConfiguracionTiendaModule
+          ),
+        data: { title: 'Configuración de la Tienda' },
+      },
 
+      {
+        path: 'configuracion-pago',
+        loadChildren: () =>
+          import('./modules/configuracion-pago/configuracion-pago.module').then(
+            (m) => m.ConfiguracionPagoModule
+          ),
+        data: { title: 'Datos de Pago' },
+      },
 
+      {
+        path: 'configuracion-envio',
+        loadChildren: () =>
+          import('./modules/configuracion-envio/configuracion-envio.module').then(
+            (m) => m.ConfiguracionEnvioModule
+          ),
+        data: { title: 'Configuración de Envío' },
+      },
 
+      {
+        path: 'tarifas-envio',
+        loadChildren: () =>
+          import('./modules/tarifas-envio/tarifas-envio.module').then(
+            (m) => m.TarifasEnvioModule
+          ),
+        data: { title: 'Tarifas de Envío' },
+      },
+    
+  
 
+	 
+   
+   
+   
+   
+    {
       //Fuera del FrontEnd
-		path: 'discounts',
-		loadChildren: () => import('./views/discounts/routes').then((m) => m.routes),
+      path: 'discounts',
+      loadChildren: () => import('./views/discounts/routes').then((m) => m.routes),
 	   },
       {
         path: 'theme',

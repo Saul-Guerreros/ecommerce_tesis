@@ -41,6 +41,9 @@ export class FormSucursalComponent implements OnInit, OnChanges {
       suc_cel:       ['', [Validators.maxLength(20)]],
       suc_email:     ['', [Validators.email, Validators.maxLength(60)]],
       suc_estado:    [1],
+      suc_retiro:    [false],                              // <-- nuevo
+      suc_horario:   ['', [Validators.maxLength(150)]],     // <-- nuevo
+
     });
   }
 
@@ -60,7 +63,7 @@ export class FormSucursalComponent implements OnInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible) {
-      this.form.reset({
+        this.form.reset({
         suc_empid:     this.sucursal?.suc_empid ?? (this.empresas.length === 1 ? this.empresas[0].emp_id : null),
         suc_ciuid:     this.sucursal?.suc_ciuid ?? null,
         suc_nombre:    this.sucursal?.suc_nombre ?? '',
@@ -71,6 +74,8 @@ export class FormSucursalComponent implements OnInit, OnChanges {
         suc_cel:       this.sucursal?.suc_cel ?? '',
         suc_email:     this.sucursal?.suc_email ?? '',
         suc_estado:    this.sucursal?.suc_estado ?? 1,
+        suc_retiro:    this.sucursal?.suc_retiro ?? false,      // <-- nuevo
+        suc_horario:   this.sucursal?.suc_horario ?? '',        // <-- nuevo
       });
       this.guardando = false;
     }
@@ -93,13 +98,14 @@ export class FormSucursalComponent implements OnInit, OnChanges {
 
     this.guardando = true;
 
-    const datos: Partial<Sucursal> = {
+        const datos: Partial<Sucursal> = {
       ...this.form.value,
       suc_establ:    this.form.value.suc_establ || null,
       suc_direccion: this.form.value.suc_direccion || null,
       suc_telef:     this.form.value.suc_telef || null,
       suc_cel:       this.form.value.suc_cel || null,
       suc_email:     this.form.value.suc_email || null,
+      suc_horario:   this.form.value.suc_horario || null,   // <-- nuevo
     };
 
     const peticion = this.esEdicion

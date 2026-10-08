@@ -36,8 +36,7 @@ class PerfilClienteController extends Controller
             'persona.contactos',
             'persona.cliente.tipoCliente',
             'persona.tipoDocumento',
-            'persona.direcciones.barrio.ciudad',
-            'persona.direcciones.calle',
+            'persona.direcciones.ciudad.departamento',   // <-- antes: direcciones.barrio.ciudad + direcciones.calle
         ]);
 
         return response()->json([

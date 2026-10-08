@@ -11,8 +11,11 @@ class ConfiguracionTienda extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'ctn_pocstk_activo',
-        'ctn_pocstk_umbral',
+    'ctn_pocstk_activo',
+    'ctn_pocstk_umbral',
+    'ctn_pago_banco', 'ctn_pago_banco_titular', 'ctn_pago_banco_cuenta',
+    'ctn_pago_tigo_titular', 'ctn_pago_tigo_numero', 'ctn_pago_tigo_referencia',
+    'ctn_pago_efectivo_mensaje',
     ];
 
     protected $casts = [
@@ -22,28 +25,14 @@ class ConfiguracionTienda extends Model
         'ctn_creado'        => 'datetime',
     ];
 
-    /** Valores con los que se crea la fila si todavía no existe. */
     public const VALORES_INICIALES = [
-        'ctn_pocstk_activo' => true,
-        'ctn_pocstk_umbral' => 5,
+    'ctn_pocstk_activo' => true,
+    'ctn_pocstk_umbral' => 5,
+    'ctn_pago_efectivo_mensaje' => 'Pago en efectivo al momento de la entrega. Confirmar pedido por WhatsApp.',
     ];
 
-    /** Instancia memoizada durante el request (ver actual()). */
     private static ?self $memo = null;
 
-    /**
-     * Devuelve la única fila de configuración.
-     *
-     * A diferencia de ConfiguracionPrecio::actual(), acá NO se lanza
-     * excepción si la fila no existe: se crea con los valores iniciales.
-     * Esta configuración solo decide qué avisos se muestran, y el Detalle
-     * del Producto (público) no debería caerse con un 500 porque el
-     * seeder no corrió. Para precios sí se justifica fallar fuerte,
-     * porque un valor inventado cobraría mal.
-     *
-     * Se memoiza igual que ConfiguracionPrecio: se consulta una vez por
-     * request y update() modifica esa misma instancia.
-     */
     public static function actual(): self
     {
         return static::$memo ??= static::query()->first()

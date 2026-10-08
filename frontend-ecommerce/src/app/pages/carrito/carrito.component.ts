@@ -3,11 +3,13 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 import { ToastrService } from 'ngx-toastr';
 import { CarritoItem, ModalidadPago } from '../../core/models/carrito.model';
 import { CarritoService } from '../../core/services/carrito.service';
 import { AuthService } from '../auth/service/auth.service';
 import { URL_BACKEND } from '../../config/config';
+import { AuthModalComponent } from '../../shared/components/auth-modal/auth-modal.component';
 
 @Component({
   selector: 'app-carrito',
@@ -17,6 +19,34 @@ import { URL_BACKEND } from '../../config/config';
   styleUrl: './carrito.component.css',
 })
 export class CarritoComponent implements OnInit {
+
+  /**
+   * Signal global de sesion (AuthService.sesion). Se usa en el HTML para
+   * ocultar "Iniciar Sesion" / "Comprar como Invitado" / "Credito sin
+   * Registrarse" en AMBAS tarjetas apenas hay sesion activa, sin importar
+   * desde cual de las dos se inicio sesion (la sesion no es por tarjeta).
+   */
+  get sesionActiva(): boolean {
+    return this.authService.sesion();
+  }
+
+  /**
+   * Pulso visual de 2.5s sobre "Finalizar Compra" y "Solicitar Credito"
+   * apenas se cierra el modal con un login/registro exitoso.
+   */
+  destacarResumen = false;
+
+  /**
+   * Aviso de validacion (texto rojo) bajo los botones "Iniciar Sesion" /
+   * "Comprar como Invitado" de cada tarjeta. Se prende cuando el usuario
+   * intenta "Finalizar Compra" / "Solicitar Credito" sin sesion: NO abre
+   * el modal por su cuenta (eso es trabajo exclusivo del boton "Iniciar
+   * Sesion"), solo señala que hace falta resolver el acceso primero.
+   * Vive dentro del mismo *ngIf="!sesionActiva" que esos dos botones, asi
+   * que desaparece solo en cuanto hay sesion.
+   */
+  avisoAccesoContado = false;
+  avisoAccesoCredito = false;
 
   // ---------- Estado del carrito, YA separado por modalidad ----------
   // El backend nunca mezcla contado y crédito en una misma fila (car_modpag
@@ -74,7 +104,8 @@ export class CarritoComponent implements OnInit {
     private carritoService: CarritoService,
     private authService: AuthService,
     private router: Router,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private dialog: MatDialog,
   ) {}
 
   ngOnInit(): void {
@@ -254,6 +285,69 @@ export class CarritoComponent implements OnInit {
     });
   }
 
+  // ---------- Botones bajo cada tarjeta ----------
+
+  /**
+   * "Vaciar Carrito Contado/Credito": borra solo esa seccion, la otra
+   * modalidad queda intacta (a diferencia de vaciar(), que borra todo).
+   */
+  vaciarModalidad(modalidad: ModalidadPago): void {
+    const lista = modalidad === 'contado' ? this.itemsContado : this.itemsCredito;
+    if (lista.length === 0) {
+      return;
+    }
+
+    this.carritoService.vaciarModalidad(modalidad).subscribe({
+      next: (resp) => this.toastr.info(resp.message),
+      error: (err) => this.toastr.error(this.mensajeError(err), 'No se pudo vaciar'),
+    });
+  }
+
+  /**
+   * Abre el login/registro en un modal (Angular Material Dialog) sobre el
+   * carrito: no se navega a otra pagina y los productos no se tocan.
+   * Al cerrarse con 'login' (autenticacion exitosa), dispara el pulso
+   * sobre "Finalizar Compra" / "Solicitar Credito".
+   */
+  abrirModalLogin(): void {
+    // El usuario ya está resolviendo el acceso: el aviso de validación
+    // deja de tener sentido mientras el modal está abierto.
+    this.avisoAccesoContado = false;
+    this.avisoAccesoCredito = false;
+
+    const ref = this.dialog.open(AuthModalComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      autoFocus: false,
+      panelClass: 'auth-modal-panel',
+    });
+
+    ref.afterClosed().subscribe((resultado) => {
+      if (resultado === 'login') {
+        this.destacarResumen = true;
+        setTimeout(() => (this.destacarResumen = false), 2500);
+      }
+    });
+  }
+
+  /**
+   * Solo diseño por ahora: el modulo de checkout de invitado va aparte.
+   * Cuando se implemente, ese flujo (datos de invitado -> resumen) debe
+   * terminar igual en finalizarCompra() -- no es un camino paralelo que
+   * se salta el botón "Finalizar Compra", solo evita exigir sesión antes
+   * de llegar ahí. Por eso ya limpia el aviso, igual que abrirModalLogin().
+   */
+  comprarComoInvitado(): void {
+    this.avisoAccesoContado = false;
+    this.toastr.info('Esta funcionalidad se habilitará en una próxima etapa.', 'Próximamente');
+  }
+
+  /** Solo diseño por ahora: mismo caso que comprarComoInvitado(), para Crédito. */
+  creditoSinRegistrarse(): void {
+    this.avisoAccesoCredito = false;
+    this.toastr.info('Esta funcionalidad se habilitará en una próxima etapa.', 'Próximamente');
+  }
+
   // ---------- Código de descuento (punto 17: solo estructura visual) ----------
 
   aplicarDescuento(_modalidad: ModalidadPago): void {
@@ -264,25 +358,32 @@ export class CarritoComponent implements OnInit {
   }
 
   // ---------- Botones "Finalizar Compra" / "Solicitar Crédito" (14 y 15) ----------
-  // Ninguno de los dos implementa el flujo posterior todavía: solo exigen
-  // sesión (igual que el carrito viejo) y navegan a la ruta que va a alojar
-  // esa funcionalidad en una etapa futura.
+  // Ninguno de los dos implementa el flujo posterior todavía: solo navegan
+  // a la ruta que va a alojar esa funcionalidad en una etapa futura.
+  //
+  // Siguen exigiendo sesión, pero YA NO abren el modal por su cuenta: eso
+  // le pisaba el rol al botón "Iniciar Sesión" (quedaba sin usar, porque
+  // el modal ya se habría abierto solo) y además, el día de mañana
+  // "Comprar como Invitado" también necesita desembocar acá sin que esto
+  // le exija sesión de entrada. Entonces el único trabajo de este método,
+  // si no hay sesión, es prender el aviso de validación bajo los botones
+  // de la tarjeta -- quien decide CÓMO resolver el acceso es el usuario,
+  // tocando "Iniciar Sesión" o "Comprar como Invitado".
 
   finalizarCompra(): void {
-    this.irA('/proceso-de-pago');
+    if (!this.sesionActiva) {
+      this.avisoAccesoContado = true;
+      return;
+    }
+    this.router.navigate(['/proceso-de-pago']);
   }
 
   solicitarCredito(): void {
-    this.irA('/solicitar-credito');
-  }
-
-  private irA(ruta: string): void {
-    if (!this.authService.isLoggedIn()) {
-      this.toastr.info('Iniciá sesión para continuar.', 'Sesión requerida');
-      this.router.navigate(['/login'], { queryParams: { redirect: ruta } });
+    if (!this.sesionActiva) {
+      this.avisoAccesoCredito = true;
       return;
     }
-    this.router.navigate([ruta]);
+    this.router.navigate(['/solicitar-credito']);
   }
 
   // ---------- Helpers de vista ----------

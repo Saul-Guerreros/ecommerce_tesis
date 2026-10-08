@@ -1,0 +1,31 @@
+.auth-modal {
+  position: relative;
+  padding: 36px 32px 28px;
+  min-width: 320px;
+}
+
+.auth-modal__titulo {
+  margin: 0 0 22px;
+  text-align: center;
+  font-size: 1.5rem;
+}
+
+.auth-modal .uk-input {
+  min-height: 42px;
+}
+
+.auth-modal__cerrar {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: #999;
+}
+
+.auth-modal__cerrar:hover {
+  color: #333;
+}

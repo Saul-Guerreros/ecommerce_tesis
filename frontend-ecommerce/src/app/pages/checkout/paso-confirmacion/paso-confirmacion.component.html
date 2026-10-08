@@ -1,0 +1,230 @@
+<div *ngIf="cargando" class="uk-text-center uk-margin-large">
+  <div uk-spinner="ratio: 1.5"></div>
+</div>
+
+<!-- ============ VISTA: RESUMEN Y CONFIRMACIÓN ============ -->
+<div *ngIf="!cargando">
+
+  <div class="ck-encabezado uk-text-center uk-margin-medium-bottom">
+    <h3 class="uk-margin-remove-bottom">Confirmá tu pedido</h3>
+    <p class="uk-text-meta uk-margin-remove-top">Revisá los datos antes de finalizar tu compra.</p>
+  </div>
+
+  <div class="ck-layout">
+
+    <div class="ck-col-principal">
+
+      <!-- 1. PRODUCTOS -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <h4 class="uk-card-title">Productos</h4>
+
+        <div class="ck-conf-row ck-conf-header uk-visible@s">
+          <div class="ck-conf-img-col"></div>
+          <div class="ck-conf-col-nombre">Descripción</div>
+          <div class="ck-conf-col-cant">Cant.</div>
+          <div class="ck-conf-col-precio">Precio</div>
+          <div class="ck-conf-col-total">Total</div>
+        </div>
+
+        <ul class="uk-list uk-list-divider uk-margin-remove-top">
+          <li *ngFor="let item of items">
+            <div class="ck-conf-row">
+
+              <div class="ck-conf-img-col">
+                <img class="ck-conf-img" [src]="resolverImagen(item.publicacion_web?.imagen)" [alt]="titulo(item)">
+              </div>
+
+              <div class="ck-conf-col-nombre">
+                <div class="uk-text-bold">{{ titulo(item) }}</div>
+
+                <div *ngIf="item.variacion" class="uk-text-xsmall uk-text-meta uk-margin-xsmall-top">
+                  <div *ngFor="let prop of item.variacion.propiedades">
+                    {{ prop.atb_nombre }}: {{ prop.prp_nombre }}
+                  </div>
+                </div>
+
+                <div *ngIf="item.car_modpag === 'credito'" class="uk-text-xsmall uk-text-meta uk-margin-xsmall-top">
+                  {{ item.car_numcuo }} cuotas de {{ item.car_montocuo | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                </div>
+
+                <!-- Solo en mobile: cantidad/precio/total apilados -->
+                <div class="uk-hidden@s uk-text-small uk-margin-xsmall-top">
+                  {{ item.car_cantid }} x {{ item.car_precio | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                  =
+                  <strong>{{ item.car_total | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+                </div>
+              </div>
+
+              <div class="ck-conf-col-cant uk-visible@s">{{ item.car_cantid }}</div>
+
+              <div class="ck-conf-col-precio uk-visible@s">
+                {{ item.car_precio | currency:'PYG':'symbol-narrow':'1.0-0' }}
+              </div>
+
+              <div class="ck-conf-col-total uk-visible@s uk-text-bold">
+                {{ item.car_total | currency:'PYG':'symbol-narrow':'1.0-0' }}
+              </div>
+
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 2. ENTREGA -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <div class="uk-flex uk-flex-between uk-flex-middle">
+          <h4 class="uk-card-title uk-margin-remove">Entrega</h4>
+          <a class="ck-editar" routerLink="/proceso-de-pago/entrega">Editar</a>
+        </div>
+
+        <ng-container *ngIf="!esRetiro">
+          <p class="uk-margin-small-top uk-margin-remove-bottom">
+            <span uk-icon="icon: location; ratio: 0.9"></span>
+            Enviar a mi dirección
+          </p>
+          <p class="uk-margin-remove uk-text-bold">{{ entrega.rec_nombre }} {{ entrega.rec_apelli }}</p>
+          <p class="uk-margin-remove">{{ entrega.barrio }} - {{ entrega.calle }}</p>
+          <p class="uk-margin-remove">{{ entrega.ciudad }}, {{ entrega.departamento }}</p>
+          <p class="uk-margin-remove" *ngIf="entrega.referencia">Referencia: {{ entrega.referencia }}</p>
+          <p class="uk-margin-remove">{{ entrega.rec_telef }}</p>
+          <p class="uk-margin-remove">C.I.: {{ entrega.rec_nrodoc }}</p>
+        </ng-container>
+
+        <ng-container *ngIf="esRetiro">
+          <p class="uk-margin-small-top uk-margin-remove-bottom">
+            <span uk-icon="icon: home; ratio: 0.9"></span>
+            Retirás en sucursal
+          </p>
+          <p class="uk-margin-remove uk-text-bold">{{ entrega.suc_nombre }}</p>
+          <p class="uk-margin-remove">{{ entrega.suc_direccion }}</p>
+          <p class="uk-margin-remove" *ngIf="entrega.suc_horario">{{ entrega.suc_horario }}</p>
+          <p class="uk-margin-remove uk-margin-small-top">Retira: {{ entrega.rec_nombre }} {{ entrega.rec_apelli }}</p>
+          <p class="uk-margin-remove">C.I.: {{ entrega.rec_nrodoc }}</p>
+        </ng-container>
+      </div>
+
+      <!-- 3. DATOS DE FACTURACIÓN -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <div class="uk-flex uk-flex-between uk-flex-middle">
+          <h4 class="uk-card-title uk-margin-remove">Datos de facturación</h4>
+          <a class="ck-editar" routerLink="/proceso-de-pago/facturacion">Editar</a>
+        </div>
+
+        <p class="uk-margin-small-top uk-margin-remove-bottom">
+          Tipo de documento: <strong>{{ facturacion.tipo_documento === 'CI' ? 'C.I.' : 'RUC' }}</strong>
+        </p>
+        <p class="uk-margin-remove">N.º: {{ facturacion.pfa_nrodoc }}</p>
+        <p class="uk-margin-remove">Nombre / Razón social: {{ facturacion.pfa_raznom }}</p>
+        <p class="uk-margin-remove uk-text-meta uk-margin-small-top">
+          Comprobante vía {{ facturacion.pfa_recibe === 'CORREO' ? 'correo electrónico' : 'WhatsApp' }}
+        </p>
+      </div>
+
+      <!-- 4. MÉTODO DE PAGO -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <div class="uk-flex uk-flex-between uk-flex-middle">
+          <h4 class="uk-card-title uk-margin-remove">Método de pago</h4>
+          <a class="ck-editar" routerLink="/proceso-de-pago/facturacion">Editar</a>
+        </div>
+
+        <!-- Un solo método -->
+        <ng-container *ngIf="!esPagoDividido">
+          <p class="uk-margin-small-top uk-margin-remove-bottom uk-text-bold">
+            <span uk-icon="icon: credit-card; ratio: 0.9"></span>
+            {{ metodoLabel }}
+          </p>
+
+          <p *ngIf="pago.tiene_comprobante" class="uk-text-meta uk-margin-remove">
+            <span uk-icon="icon: check; ratio: 0.9" class="uk-text-success"></span>
+            Comprobante de pago enviado.
+          </p>
+        </ng-container>
+
+        <!-- Pago dividido -->
+        <ng-container *ngIf="esPagoDividido">
+          <p class="uk-margin-small-top uk-margin-remove-bottom uk-text-bold">
+            <span uk-icon="icon: git-branch; ratio: 0.9"></span>
+            Pago dividido en {{ pago.pagos.length }} pagos
+          </p>
+
+          <table class="uk-table uk-table-divider uk-table-small uk-margin-small-top uk-margin-remove-bottom">
+            <thead>
+              <tr>
+                <th>Pago</th>
+                <th>Método</th>
+                <th class="uk-text-right">Monto</th>
+                <th>Comprobante</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of pago.pagos">
+                <td>Pago {{ item.orden }}</td>
+                <td>{{ nombreMetodo(item.mpa_codigo) }}</td>
+                <td class="uk-text-right">{{ item.monto | currency:'PYG':'symbol-narrow':'1.0-0' }}</td>
+                <td>
+                  <span *ngIf="item.tiene_comprobante" class="uk-text-success">
+                    <span uk-icon="icon: check; ratio: 0.8"></span> Enviado
+                  </span>
+                  <span *ngIf="!item.tiene_comprobante" class="uk-text-meta">
+                    Contra entrega
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="uk-flex uk-flex-between uk-margin-small-top">
+            <span class="uk-text-bold">Total asignado</span>
+            <span class="uk-text-bold">
+              {{ pago.total_asignado | currency:'PYG':'symbol-narrow':'1.0-0' }}
+            </span>
+          </div>
+        </ng-container>
+      </div>
+
+    </div>
+
+    <div class="ck-col-lateral">
+      <div class="uk-card uk-card-default uk-card-body ck-resumen uk-margin">
+        <h4 class="uk-card-title">Resumen de compra</h4>
+
+        <div class="uk-flex uk-flex-between">
+          <span>Subtotal</span>
+          <strong>{{ resumen.subtotal | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Impuestos</span>
+          <strong>{{ resumen.impuestos | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Envío</span>
+          <strong *ngIf="esRetiro" class="uk-text-success">Retiro en sucursal</strong>
+          <strong *ngIf="!esRetiro && resumen.costo_envio > 0">{{ resumen.costo_envio | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+          <strong *ngIf="!esRetiro && resumen.costo_envio === 0" class="uk-text-success">Sin cargo</strong>
+        </div>
+
+        <hr>
+
+        <div class="uk-flex uk-flex-between">
+          <span class="uk-text-large">Total</span>
+          <span class="uk-text-large uk-text-bold">{{ resumen.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+
+        <div class="uk-margin-small-top uk-text-meta">
+          Método: {{ metodoLabel }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ck-barra-botones uk-margin-medium-top">
+    <button type="button" class="uk-button ck-btn-volver" [disabled]="confirmando" (click)="volver()">Volver</button>
+    <button type="button" class="uk-button uk-button-primary ck-btn-continuar"
+            [disabled]="confirmando" (click)="confirmar()">
+      <span *ngIf="!confirmando">Confirmar Pedido</span>
+      <span *ngIf="confirmando"><span uk-spinner="ratio: 0.6"></span> Confirmando...</span>
+    </button>
+  </div>
+</div>

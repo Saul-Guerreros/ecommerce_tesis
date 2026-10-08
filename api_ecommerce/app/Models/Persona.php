@@ -68,4 +68,9 @@ class Persona extends Model
     {
         return trim("{$this->per_nombr1} {$this->per_nombr2} {$this->per_apell1} {$this->per_apell2}");
     }
+
+    public function datosFiscales()
+    {
+        return $this->hasMany(DatoFiscal::class, 'dfi_perid', 'per_id');
+    }
 }

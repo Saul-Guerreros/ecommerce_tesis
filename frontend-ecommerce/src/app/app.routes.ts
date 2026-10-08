@@ -7,23 +7,29 @@ import { ProductoDetalleComponent } from './pages/producto-detalle/producto-deta
 import { PerfilClienteComponent } from './pages/perfil-cliente/perfil-cliente.component';
 import { suthGuard } from './pages/auth/service/suth.guard';
 import { ProductosBusquedaComponent } from './pages/productos-busqueda/productos-busqueda.component';
-
-
 import { authGuard } from './pages/auth/service/auth.guard';
 import { CarritoComponent } from './pages/carrito/carrito.component';
+
+import { PasoConfirmacionComponent } from './pages/checkout/paso-confirmacion/paso-confirmacion.component';
+
+import { PasoFacturacionComponent } from './pages/checkout/paso-facturacion/paso-facturacion.component';
+
+// --- nuevo ---
+import { CheckoutComponent } from './pages/checkout/checkout.component';
+import { PedidoConfirmadoComponent } from './pages/pedido-confirmado/pedido-confirmado.component';
+import { PasoEntregaComponent } from './pages/checkout/paso-entrega/paso-entrega.component';
+
+
 
 export const routes: Routes = [
     {
         path: '',
         component: HomeComponent
     },
-
     {
-        //canActivate: [authGuard],
         path: 'login',
         component: LoginComponent
     },
-    
     {
         path: 'register',
         component: RegisterComponent
@@ -33,29 +39,41 @@ export const routes: Routes = [
         component: ForgotPasswordComponent
     },
     {
-        // Detalle público de producto (VitrinaController::detalle vía slug).
         path: 'producto/:slug',
         component: ProductoDetalleComponent
     },
     {
-        // Área privada del cliente: datos personales, avatar, direcciones y contraseña.
         path: 'perfil-del-cliente',
         component: PerfilClienteComponent,
         canActivate: [suthGuard]
     },
     {
-        // Catálogo con filtros avanzados; el buscador del header ya apunta acá.
         path: 'productos-busqueda',
         component: ProductosBusquedaComponent
     },
-    
     {
-    // Pública: el carrito funciona con invitados (localStorage) y con
-    // usuarios logueados (BD). El login solo se exige en /proceso-de-pago.
-    // El path debe coincidir con los routerLink ya presentes en
-    // header.component.html y footer.component.html.
     path: 'carrito-de-compra',
     component: CarritoComponent
-    }
-  ];
+    },
 
+    // --- nuevo: Checkout por pasos. Exige sesión. ---
+    {
+        path: 'proceso-de-pago',
+        component: CheckoutComponent,
+        canActivate: [suthGuard],
+        canActivateChild: [suthGuard],
+        children: [
+        { path: '', pathMatch: 'full', redirectTo: 'entrega' },
+        { path: 'entrega', component: PasoEntregaComponent },
+        { path: 'facturacion', component: PasoFacturacionComponent },
+        { path: 'confirmacion', component: PasoConfirmacionComponent },  // <-- movido acá
+],
+    },
+
+    {
+        path: 'pedido-confirmado/:numero',
+        component: PedidoConfirmadoComponent,
+        canActivate: [suthGuard],
+    },
+
+  ];

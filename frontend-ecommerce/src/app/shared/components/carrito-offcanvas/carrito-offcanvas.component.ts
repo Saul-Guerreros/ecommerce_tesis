@@ -2,13 +2,14 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 
 import { URL_BACKEND } from '../../../config/config';
 import { CarritoItem } from '../../../core/models/carrito.model';
 import { CarritoService } from '../../../core/services/carrito.service';
 import { CarritoUiService } from '../../../core/services/carrito-ui.service';
+import { AuthService } from '../../../pages/auth/service/auth.service';
 
 @Component({
   selector: 'app-carrito-offcanvas',
@@ -43,7 +44,9 @@ export class CarritoOffcanvasComponent {
   constructor(
     private carritoService: CarritoService,
     private carritoUi: CarritoUiService,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private authService: AuthService,
+    private router: Router,
   ) {
     this.carritoService.carrito$
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -257,6 +260,45 @@ export class CarritoOffcanvasComponent {
   /** Puntos 13 y 14: al navegar, el drawer se cierra. */
   cerrar(): void {
     this.carritoUi.cerrar();
+  }
+
+  // ---------------------------------------------------------------
+  // "Finalizar compra al contado" / "Solicitar crédito" del offcanvas
+  // ---------------------------------------------------------------
+  // El offcanvas es un acceso rápido (desde Home o el detalle de un
+  // producto): NO tiene -ni debe tener- sus propios botones "Iniciar
+  // Sesión" / "Comprar como Invitado" ni su propio modal. Esa decisión
+  // vive en un solo lugar (la página completa del carrito), para no
+  // terminar con dos flujos de login distintos que se puedan desincronizar.
+  //
+  // Por eso, acá la lógica es simple:
+  //  - Con sesión activa: navega directo a la ruta final, como siempre.
+  //  - Sin sesión: NO abre nada acá -- cierra el drawer y redirige a la
+  //    página completa del carrito, que es la que sabe pedir acceso
+  //    (modal de login o, a futuro, invitado) antes de dejar continuar.
+
+  irAFinalizarCompra(): void {
+    this.cerrar();
+
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/proceso-de-pago']);
+      return;
+    }
+
+    this.toastr.info('Iniciá sesión o comprá como invitado para finalizar la compra.', 'Carrito');
+    this.router.navigate(['/carrito-de-compra']);
+  }
+
+  irASolicitarCredito(): void {
+    this.cerrar();
+
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/solicitar-credito']);
+      return;
+    }
+
+    this.toastr.info('Iniciá sesión o continuá con crédito sin registrarte para solicitar el crédito.', 'Carrito');
+    this.router.navigate(['/carrito-de-compra']);
   }
 
   // ---------------------------------------------------------------

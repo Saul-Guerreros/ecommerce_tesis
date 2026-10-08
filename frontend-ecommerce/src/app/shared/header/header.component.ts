@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, afterNextRender, afterRender, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { CookieService } from 'ngx-cookie-service';
 import { CarritoService } from '../../core/services/carrito.service';
 import { AuthService } from '../../pages/auth/service/auth.service';
@@ -63,7 +63,8 @@ export class HeaderComponent {
     public homeService: HomeService,
     public cookieService: CookieService,
     public carritoService: CarritoService,
-    public authService: AuthService
+    public authService: AuthService,
+    private router: Router,
   ) {
     // Suscripción al derivado del estado central del carrito.
     // Va en el constructor (contexto de inyección) y se da de baja sola
@@ -114,11 +115,25 @@ export class HeaderComponent {
     return this.authService.user;
   }
 
+  /**
+   * AuthService.logout() ya hace todo: POST /auth/logout, limpia token +
+   * localStorage + el signal `sesion`, y redirige a /login — todo eso
+   * ADENTRO del callback de la petición HTTP (es asincrónico).
+   *
+   * Antes esto se completaba con un window.location.reload() a los 50ms,
+   * sin esperar esa respuesta: como el POST casi siempre tarda más que
+   * eso, la pagina se recargaba ANTES de que se borrara el localStorage,
+   * así que volvía a arrancar con el token todavía guardado -- por eso
+   * "no cerraba nada". No hace falta reload de ningún tipo: en cuanto
+   * sesionExpirada() limpia authService.user, el *ngIf="user" del header
+   * reacciona solo (Angular corre detección de cambios después de la
+   * respuesta HTTP).
+   */
   logout() {
-    this.authService.logout();
-    setTimeout(() => {
-      window.location.reload();
-    }, 50);
+    // Se queda en la misma página en la que estaba, ya en modo invitado
+    // (si esa página es privada, el guard correspondiente la intercepta
+    // solo y manda a /login -- ver el comentario en AuthService.logout()).
+    this.authService.logout(this.router.url);
   }
 
   // changeCurrency(val:string){

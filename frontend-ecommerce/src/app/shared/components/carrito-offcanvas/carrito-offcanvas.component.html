@@ -116,7 +116,7 @@
                 <strong>Gs. {{ subtotalContado | number:'1.0-0' }}</strong>
               </div>
               <a class="tm-cart__btn tm-cart__btn--full"
-                 routerLink="/proceso-de-pago" (click)="cerrar()">
+                 href="#" onclick="return false;" (click)="irAFinalizarCompra()">
                 Finalizar compra al contado
               </a>
             </div>
@@ -218,7 +218,7 @@
                 <strong>Gs. {{ cuotaMensualTotalCredito | number:'1.0-0' }}</strong>
               </div>
               <a class="tm-cart__btn tm-cart__btn--full tm-cart__btn--secundario"
-                 routerLink="/solicitar-credito" (click)="cerrar()">
+                 href="#" onclick="return false;" (click)="irASolicitarCredito()">
                 Solicitar crédito
               </a>
             </div>

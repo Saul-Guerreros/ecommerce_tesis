@@ -1,0 +1,142 @@
+<div class="uk-card uk-card-default uk-card-body uk-margin" [formGroup]="form">
+
+  <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+    <h4 class="uk-card-title uk-margin-remove">Pago dividido</h4>
+    <div class="pd-total">
+      Total a pagar
+      <strong>{{ total | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+    </div>
+  </div>
+
+  <p class="uk-text-meta uk-margin-small-top">
+    Repartí el total entre los métodos que quieras usar. Podés usar el mismo método más de una vez.
+  </p>
+
+  <div formArrayName="pagos">
+
+    <div *ngFor="let grupoPago of pagos.controls; let i = index" class="pd-bloque"
+         [formGroupName]="i" (focusin)="activar(i)" (click)="activar(i)">
+
+      <div class="uk-flex uk-flex-between uk-flex-middle">
+        <h5 class="uk-margin-remove uk-text-bold">Pago {{ i + 1 }}</h5>
+
+        <button *ngIf="i >= 2" type="button" class="uk-icon-link uk-text-danger"
+                uk-icon="icon: close; ratio: 0.9" title="Quitar este pago"
+                (click)="quitarPago(i); $event.stopPropagation()"></button>
+      </div>
+
+      <div class="uk-grid-small uk-child-width-1-2@s uk-margin-small-top" uk-grid>
+
+        <!-- Método -->
+        <div>
+          <label class="uk-form-label">Método <span class="uk-text-danger">*</span></label>
+          <select class="uk-select" formControlName="mpa_codigo" (change)="onMetodo(i)">
+            <option [ngValue]="null" disabled>Seleccioná un método</option>
+            <option *ngFor="let metodo of metodos" [ngValue]="metodo.mpa_codigo">
+              {{ metodo.mpa_descri }}
+            </option>
+          </select>
+
+          <p class="uk-text-meta uk-margin-remove-top uk-text-xsmall" *ngIf="bloqueado(i)">
+            <span uk-icon="icon: lock; ratio: 0.7"></span>
+            Este pago ya está configurado. Para cambiar el método, borrá el monto.
+          </p>
+
+          <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="metodoInvalido(i)">
+            Elegí el método del Pago {{ i + 1 }}.
+          </p>
+        </div>
+
+        <!-- Monto -->
+        <div>
+          <label class="uk-form-label">Monto <span class="uk-text-danger">*</span></label>
+          <input class="uk-input" type="text" inputmode="numeric" pattern="[0-9]*"
+                 maxlength="12" autocomplete="off"
+                 [placeholder]="montoDeshabilitado(i) ? 'Elegí primero un método' : 'Ingrese un monto'"
+                 formControlName="monto"
+                 (input)="onMonto(i, $event)">
+
+          <p class="uk-text-meta uk-margin-remove-top uk-text-xsmall" *ngIf="montoDeshabilitado(i)">
+            Elegí el método de este pago para poder ingresar el monto.
+          </p>
+
+          <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="montoInvalido(i)">
+            Ingresá un monto mayor que 0.
+          </p>
+
+          <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="montoExcedeTotal(i)">
+            El monto no puede superar el total del pedido.
+          </p>
+        </div>
+      </div>
+
+      <!-- Comprobante -->
+      <div class="uk-margin-small-top" *ngIf="metodoDe(i)">
+
+        <ng-container *ngIf="requiereComprobante(i); else sinComprobante">
+          <label class="uk-form-label">Adjuntar comprobante <span class="uk-text-danger">*</span></label>
+
+          <div class="ck-upload">
+            <button type="button" class="uk-button uk-button-default" (click)="inputArchivo.click()">
+              <span uk-icon="icon: upload"></span> Seleccionar archivo
+            </button>
+            <span class="ck-upload-nombre" [class.ck-upload-nombre--vacio]="!tieneComprobante(i)">
+              {{ nombreArchivo(i) }}
+            </span>
+            <input #inputArchivo type="file" hidden accept=".jpg,.jpeg,.png,.pdf"
+                   (change)="onArchivo(i, $event)">
+          </div>
+
+          <p class="uk-text-meta uk-margin-small-top">JPG, PNG o PDF. Máximo 5 MB.</p>
+
+          <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="erroresArchivo[i]">
+            {{ erroresArchivo[i] }}
+          </p>
+
+          <p class="uk-text-danger uk-text-small uk-margin-remove-top"
+             *ngIf="comprobanteInvalido(i) && !erroresArchivo[i]">
+            Adjuntá el comprobante del Pago {{ i + 1 }}.
+          </p>
+        </ng-container>
+
+        <ng-template #sinComprobante>
+          <p class="uk-text-meta uk-margin-remove">El pago en efectivo es contra entrega.</p>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resumen del reparto -->
+  <div class="pd-resumen uk-margin-top">
+    <div class="uk-flex uk-flex-between">
+      <span>Total asignado</span>
+      <strong>{{ totalAsignado | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+    </div>
+
+    <div class="uk-flex uk-flex-between uk-margin-small-top">
+      <span>Pendiente</span>
+      <strong [class.uk-text-danger]="pendiente !== 0" [class.uk-text-success]="pendiente === 0">
+        {{ pendiente | currency:'PYG':'symbol-narrow':'1.0-0' }}
+      </strong>
+    </div>
+
+    <p class="uk-text-danger uk-text-small uk-margin-small-top uk-margin-remove-bottom" *ngIf="excedido">
+      El total asignado supera el total del pedido. Ajustá los montos.
+    </p>
+
+    <p class="uk-text-danger uk-text-small uk-margin-small-top uk-margin-remove-bottom"
+       *ngIf="intentoContinuar && pendiente > 0">
+      Asigná el total del pedido para continuar.
+    </p>
+  </div>
+
+  <button type="button" class="uk-button uk-button-default uk-width-1-1 uk-margin-top"
+          [disabled]="!puedeAgregar" (click)="agregarPago()">
+    <span uk-icon="icon: plus; ratio: 0.8"></span> Agregar otro método
+  </button>
+
+  <p class="uk-text-meta uk-text-xsmall uk-margin-small-top uk-margin-remove-bottom"
+     *ngIf="!puedeAgregar && pendiente > 0">
+    Completá los pagos actuales para poder agregar otro método.
+  </p>
+</div>

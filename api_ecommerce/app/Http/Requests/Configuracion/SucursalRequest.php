@@ -25,8 +25,6 @@ class SucursalRequest extends FormRequest
                 'required',
                 'string',
                 'max:50',
-                // UNIQUE compuesto (suc_empid, suc_nombre): el nombre solo debe
-                // ser unico dentro de la misma empresa.
                 Rule::unique('sucursal', 'suc_nombre')
                     ->where(fn ($q) => $q->where('suc_empid', $this->input('suc_empid')))
                     ->ignore($id, 'suc_id'),
@@ -35,8 +33,6 @@ class SucursalRequest extends FormRequest
             'suc_establ' => [
                 'nullable',
                 'regex:/^[0-9]{3}$/',
-                // UNIQUE compuesto (suc_empid, suc_establ): dos sucursales de
-                // la misma empresa no pueden compartir codigo.
                 Rule::unique('sucursal', 'suc_establ')
                     ->where(fn ($q) => $q->where('suc_empid', $this->input('suc_empid')))
                     ->ignore($id, 'suc_id'),
@@ -46,38 +42,40 @@ class SucursalRequest extends FormRequest
             'suc_cel'       => ['nullable', 'string', 'max:20'],
             'suc_email'     => ['nullable', 'email', 'max:60'],
             'suc_estado'    => ['nullable', 'integer', 'in:0,1'],
+            'suc_retiro'    => ['nullable', 'boolean'],              // <-- nuevo
+            'suc_horario'   => ['nullable', 'string', 'max:150'],    // <-- nuevo
         ];
     }
 
-    /**
-     * Regla de negocio que depende del conjunto de datos (no de un solo
-     * campo): si se marca esta sucursal como principal, no puede haber ya
-     * otra sucursal activa marcada como principal en la misma empresa.
-     * El UNIQUE parcial de la migracion es la ultima linea de defensa;
-     * esto solo mejora el mensaje que ve el usuario en vez de un 500.
-     */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
             $marcaComoPrincipal = (int) $this->input('suc_princi', 0) === 1;
 
-            if (!$marcaComoPrincipal) {
-                return;
+            if ($marcaComoPrincipal) {
+                $id = $this->route('sucursal');
+
+                $yaExiste = DB::table('sucursal')
+                    ->where('suc_empid', $this->input('suc_empid'))
+                    ->where('suc_princi', 1)
+                    ->where('suc_estado', 1)
+                    ->when($id, fn ($q) => $q->where('suc_id', '!=', $id))
+                    ->exists();
+
+                if ($yaExiste) {
+                    $validator->errors()->add(
+                        'suc_princi',
+                        'Esta empresa ya tiene una sucursal principal activa. Desmarquela antes de asignar otra.'
+                    );
+                }
             }
 
-            $id = $this->route('sucursal');
-
-            $yaExiste = DB::table('sucursal')
-                ->where('suc_empid', $this->input('suc_empid'))
-                ->where('suc_princi', 1)
-                ->where('suc_estado', 1)
-                ->when($id, fn ($q) => $q->where('suc_id', '!=', $id))
-                ->exists();
-
-            if ($yaExiste) {
+            // Una sucursal habilitada para retiro necesita dirección: es el
+            // dato que el cliente ve en el Checkout - Paso 1.
+            if ($this->boolean('suc_retiro') && blank($this->input('suc_direccion'))) {
                 $validator->errors()->add(
-                    'suc_princi',
-                    'Esta empresa ya tiene una sucursal principal activa. Desmarquela antes de asignar otra.'
+                    'suc_direccion',
+                    'Una sucursal habilitada para retiro necesita dirección.'
                 );
             }
         });

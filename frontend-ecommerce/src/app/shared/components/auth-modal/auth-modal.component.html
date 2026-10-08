@@ -1,0 +1,115 @@
+<div class="auth-modal">
+
+  <button type="button" class="auth-modal__cerrar" (click)="cerrar()" aria-label="Cerrar">&times;</button>
+
+  <!-- ============ VISTA: LOGIN ============ -->
+  <div *ngIf="vista === 'login'">
+    <h3 class="auth-modal__titulo">Iniciar Sesión</h3>
+
+    <div class="uk-margin-small-bottom">
+      <label class="uk-form-label">Correo Electrónico *</label>
+      <input class="uk-input" type="email" name="email"
+             [(ngModel)]="email" placeholder="correo@ejemplo.com"
+             autocomplete="email" />
+    </div>
+
+    <div class="uk-margin-small-bottom">
+      <label class="uk-form-label">Contraseña *</label>
+      <input class="uk-input" type="password" name="password"
+             [(ngModel)]="password" placeholder="••••••••"
+             autocomplete="current-password" (keyup.enter)="iniciarSesion()" />
+    </div>
+
+    <div class="uk-grid-small uk-flex-middle uk-flex-between uk-margin-small-bottom" uk-grid>
+      <label class="uk-width-auto">
+        <input class="uk-checkbox" type="checkbox" name="remember" [(ngModel)]="remember" />
+        <span class="uk-margin-small-left">Recordarme</span>
+      </label>
+      <a class="uk-link-muted uk-text-small" routerLink="/cambiar-credenciales" (click)="cerrar()">
+        ¿Olvidaste tu contraseña?
+      </a>
+    </div>
+
+    <button class="uk-button uk-button-primary uk-width-1-1"
+            type="button" [disabled]="procesando" (click)="iniciarSesion()">
+      {{ procesando ? 'Ingresando...' : 'Iniciar Sesión' }}
+    </button>
+
+    <div class="uk-text-center uk-text-meta uk-margin-small-top">
+      ¿No tenés cuenta?
+      <a href="#" onclick="return false;" (click)="irARegistro()">Registrate</a>
+    </div>
+  </div>
+
+  <!-- ============ VISTA: REGISTRO ============ -->
+  <div *ngIf="vista === 'register'">
+    <h3 class="auth-modal__titulo">Crear Cuenta</h3>
+
+    <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+      <div>
+        <label class="uk-form-label">Primer Nombre *</label>
+        <input class="uk-input" type="text" name="nombre1"
+               [(ngModel)]="nombre1" placeholder="Juan" autocomplete="given-name" />
+      </div>
+      <div>
+        <label class="uk-form-label">Segundo Nombre <span class="uk-text-meta">(opcional)</span></label>
+        <input class="uk-input" type="text" name="nombre2" [(ngModel)]="nombre2" />
+      </div>
+    </div>
+
+    <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
+      <div>
+        <label class="uk-form-label">Primer Apellido *</label>
+        <input class="uk-input" type="text" name="apellido1"
+               [(ngModel)]="apellido1" placeholder="Pérez" autocomplete="family-name" />
+      </div>
+      <div>
+        <label class="uk-form-label">Segundo Apellido <span class="uk-text-meta">(opcional)</span></label>
+        <input class="uk-input" type="text" name="apellido2" [(ngModel)]="apellido2" />
+      </div>
+    </div>
+
+    <div class="uk-margin-small-top">
+      <label class="uk-form-label">Celular *</label>
+      <input class="uk-input" type="tel" name="celular"
+             [(ngModel)]="celular" placeholder="0981 000 000" autocomplete="tel" />
+    </div>
+
+    <div class="uk-margin-small-top">
+      <label class="uk-form-label">Correo Electrónico *</label>
+      <input class="uk-input" type="email" name="emailRegistro"
+             [(ngModel)]="emailRegistro" placeholder="correo@ejemplo.com" autocomplete="email" />
+    </div>
+
+    <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
+      <div>
+        <label class="uk-form-label">Contraseña *</label>
+        <input class="uk-input" type="password" name="passwordRegistro"
+               [(ngModel)]="passwordRegistro" placeholder="Mín. 8 caracteres" autocomplete="new-password" />
+      </div>
+      <div>
+        <label class="uk-form-label">Confirmar Contraseña *</label>
+        <input class="uk-input" type="password" name="passwordConfirmacion"
+               [(ngModel)]="passwordConfirmacion" placeholder="••••••••" autocomplete="new-password" />
+      </div>
+    </div>
+
+    <label class="uk-margin-small-top uk-display-block">
+      <input class="uk-checkbox" type="checkbox" name="terminos" [(ngModel)]="terminos" />
+      <span class="uk-margin-small-left uk-text-small">
+        Acepto los <a href="#">Términos y Condiciones</a> y la <a href="#">Política de Privacidad</a> *
+      </span>
+    </label>
+
+    <button class="uk-button uk-button-primary uk-width-1-1 uk-margin-small-top"
+            type="button" [disabled]="procesando" (click)="registrar()">
+      {{ procesando ? 'Creando cuenta...' : 'Registrarse' }}
+    </button>
+
+    <div class="uk-text-center uk-text-meta uk-margin-small-top">
+      ¿Ya tenés cuenta?
+      <a href="#" onclick="return false;" (click)="irALogin()">Iniciar sesión</a>
+    </div>
+  </div>
+
+</div>

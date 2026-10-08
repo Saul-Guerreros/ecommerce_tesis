@@ -128,6 +128,36 @@
 
             </div>
           </div>
+
+          <!-- Botones bajo la tarjeta "Compras al Contado" -->
+          <div class="uk-grid-small cc-botones-tarjeta uk-margin-small-top" uk-grid>
+            <div class="uk-width-auto">
+              <button class="uk-button uk-button-text uk-text-danger" type="button"
+                      (click)="vaciarModalidad('contado')">
+                Vaciar Carrito Contado
+              </button>
+            </div>
+            <div class="uk-width-auto">
+              <a class="uk-button uk-button-default" routerLink="/">Continuar Comprando</a>
+            </div>
+            <div class="uk-width-auto" *ngIf="!sesionActiva">
+              <button class="uk-button uk-button-default" type="button" (click)="abrirModalLogin()">
+                Iniciar Sesión
+              </button>
+            </div>
+            <div class="uk-width-auto" *ngIf="!sesionActiva">
+              <button class="uk-button uk-button-default" type="button" (click)="comprarComoInvitado()">
+                Comprar como Invitado
+              </button>
+            </div>
+          </div>
+
+          <!-- Aviso de validación: solo aparece tras intentar "Finalizar
+               Compra" sin sesión; señala los dos botones de arriba, no
+               abre nada por su cuenta. -->
+          <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="avisoAccesoContado && !sesionActiva">
+            Iniciá sesión o comprá como invitado para finalizar la compra.
+          </p>
         </div>
 
         <!-- Resumen de compra al contado (punto 12) -->
@@ -142,7 +172,7 @@
                 <div>{{ subtotalContado | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
               </div>
               <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
-                <div class="uk-width-expand uk-text-muted">IVA incluido</div>
+                <div class="uk-width-expand uk-text-muted">Impuestos</div>
                 <div>{{ impuestosContado | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
               </div>
               <hr class="uk-margin-small">
@@ -170,6 +200,7 @@
             </div>
             <div class="uk-card-footer">
               <a class="uk-button uk-button-primary uk-width-1-1"
+                 [class.cc-destacar]="destacarResumen"
                  href="#" onclick="return false;"
                  (click)="finalizarCompra()">
                 Finalizar Compra
@@ -296,6 +327,36 @@
 
             </div>
           </div>
+
+          <!-- Botones bajo la tarjeta "Compras a Crédito" -->
+          <div class="uk-grid-small cc-botones-tarjeta uk-margin-small-top" uk-grid>
+            <div class="uk-width-auto">
+              <button class="uk-button uk-button-text uk-text-danger" type="button"
+                      (click)="vaciarModalidad('credito')">
+                Vaciar Carrito Crédito
+              </button>
+            </div>
+            <div class="uk-width-auto">
+              <a class="uk-button uk-button-default" routerLink="/">Continuar Comprando</a>
+            </div>
+            <div class="uk-width-auto" *ngIf="!sesionActiva">
+              <button class="uk-button uk-button-default" type="button" (click)="abrirModalLogin()">
+                Iniciar Sesión
+              </button>
+            </div>
+            <div class="uk-width-auto" *ngIf="!sesionActiva">
+              <button class="uk-button uk-button-default" type="button" (click)="creditoSinRegistrarse()">
+                Crédito sin Registrarse
+              </button>
+            </div>
+          </div>
+
+          <!-- Aviso de validación: solo aparece tras intentar "Solicitar
+               Crédito" sin sesión; señala los dos botones de arriba, no
+               abre nada por su cuenta. -->
+          <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="avisoAccesoCredito && !sesionActiva">
+            Iniciá sesión o continuá con crédito sin registrarte para solicitar el crédito.
+          </p>
         </div>
 
         <!-- Resumen de compra a crédito (punto 13) -->
@@ -310,7 +371,7 @@
                 <div>{{ subtotalCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
               </div>
               <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
-                <div class="uk-width-expand uk-text-muted">IVA incluido</div>
+                <div class="uk-width-expand uk-text-muted">Impuestos</div>
                 <div>{{ impuestosCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
               </div>
               <hr class="uk-margin-small">
@@ -338,6 +399,7 @@
             </div>
             <div class="uk-card-footer">
               <a class="uk-button uk-button-secondary uk-width-1-1"
+                 [class.cc-destacar]="destacarResumen"
                  href="#" onclick="return false;"
                  (click)="solicitarCredito()">
                 Solicitar Crédito
