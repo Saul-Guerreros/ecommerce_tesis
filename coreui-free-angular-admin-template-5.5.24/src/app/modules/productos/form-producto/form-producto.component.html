@@ -182,21 +182,70 @@
                 <label cLabel class="small">Se diferencia por <span class="text-danger">*</span></label>
                 <select cSelect formControlName="atb_id" (change)="onAtributoFilaChange(i)">
                   <option [ngValue]="null">Elegir atributo</option>
-                  <option *ngFor="let a of atributosSeleccionables" [ngValue]="a.atb_id">{{ a.atb_nombre }}</option>
+                  <option *ngFor="let a of atributosVariante" [ngValue]="a.atb_id">
+                    {{ a.atb_nombre }} ({{ ETIQUETA_TIPO[a.atb_tipo] }}{{ a.atb_unidad ? ', ' + a.atb_unidad : '' }})
+                  </option>
                 </select>
                 <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'atb_id')">
                   {{ filaErrorBackend(i, 'atb_id') || 'Obligatorio.' }}
                 </div>
               </div>
-              <div class="col-md-4">
+
+              <!-- Valor: el control cambia según el tipo del atributo elegido -->
+              <div class="col-md-4" [ngSwitch]="tipoDeFila(i)">
                 <label cLabel class="small">Valor <span class="text-danger">*</span></label>
-                <select cSelect formControlName="prp_id">
-                  <option [ngValue]="null">{{ fila.value.atb_id ? 'Elegir' : 'Elegí primero el atributo' }}</option>
-                  <option *ngFor="let p of propiedadesDeFila(i)" [ngValue]="p.prp_id">{{ p.prp_nombre }}</option>
+
+                <!-- 1 Texto -->
+                <ng-container *ngSwitchCase="TIPO.TEXTO">
+                  <input cFormControl formControlName="valor_texto" maxlength="150" placeholder="Ej: Edición Gamer"
+                         (input)="onValorFilaChange(i)" />
+                  <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'valor_texto')">
+                    {{ filaErrorBackend(i, 'valor_texto') || 'Obligatorio.' }}
+                  </div>
+                </ng-container>
+
+                <!-- 2 Número (con su unidad: GB, pulgadas...) -->
+                <ng-container *ngSwitchCase="TIPO.NUMERO">
+                  <div class="input-group">
+                    <input cFormControl type="number" formControlName="valor_numero" min="0" step="0.01" placeholder="Ej: 16"
+                           (input)="onValorFilaChange(i)" />
+                    <span class="input-group-text" *ngIf="atributoDeFila(i)?.atb_unidad">{{ atributoDeFila(i)?.atb_unidad }}</span>
+                  </div>
+                  <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'valor_numero')">
+                    {{ filaErrorBackend(i, 'valor_numero') || 'Obligatorio, no negativo.' }}
+                  </div>
+                </ng-container>
+
+                <!-- 3 Seleccionable: una opción -->
+                <ng-container *ngSwitchCase="TIPO.SELECCIONABLE">
+                  <select cSelect formControlName="prp_id" (change)="onValorFilaChange(i)">
+                    <option [ngValue]="null">Elegir</option>
+                    <option *ngFor="let p of propiedadesDeFila(i)" [ngValue]="p.prp_id">{{ p.prp_nombre }}</option>
+                  </select>
+                  <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'prp_id')">
+                    {{ filaErrorBackend(i, 'prp_id') || 'Obligatorio.' }}
+                  </div>
+                </ng-container>
+
+                <!-- 4 Selección múltiple: varias opciones -->
+                <ng-container *ngSwitchCase="TIPO.MULTIPLE">
+                  <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto;">
+                    <div class="form-check" *ngFor="let p of propiedadesDeFila(i)">
+                      <input class="form-check-input" type="checkbox" [id]="'prp-' + i + '-' + p.prp_id"
+                             [checked]="estaMarcada(i, p.prp_id!)"
+                             (change)="togglePropiedad(i, p.prp_id!, $any($event.target).checked)" />
+                      <label class="form-check-label small" [for]="'prp-' + i + '-' + p.prp_id">{{ p.prp_nombre }}</label>
+                    </div>
+                    <div class="text-muted small" *ngIf="!propiedadesDeFila(i).length">Este atributo no tiene opciones cargadas.</div>
+                  </div>
+                  <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'propiedad_ids')">
+                    {{ filaErrorBackend(i, 'propiedad_ids') || 'Elegí al menos una opción.' }}
+                  </div>
+                </ng-container>
+
+                <select cSelect *ngSwitchDefault disabled>
+                  <option>Elegí primero el atributo</option>
                 </select>
-                <div class="text-danger small" *ngIf="filaCampoInvalido(i, 'prp_id')">
-                  {{ filaErrorBackend(i, 'prp_id') || 'Obligatorio.' }}
-                </div>
               </div>
               <div class="col-md-3">
                 <label cLabel class="small">Stock mínimo</label>
@@ -270,13 +319,15 @@
             puede facturarse en otras presentaciones (ej. Caja). El sistema convierte automáticamente
             al confirmar la compra.
           </div>
-          <app-equivalencia-producto
-          [productoId]="producto?.prd_id ?? null"
-          [unidadBaseId]="producto?.prd_umdid ?? null"
-          [unidadBaseNombre]="producto?.umd_nombre ?? 'unidades'"
-          [unidades]="unidades"
-          [soloLectura]="soloLectura">
-        </app-equivalencia-producto>
+         <app-equivalencia-producto
+			[productoId]="producto?.prd_id ?? null"
+			[unidadBaseId]="producto?.prd_umdid ?? null"
+			[unidadBaseNombre]="producto?.umd_nombre ?? 'unidades'"
+			[unidades]="unidades"
+			[soloLectura]="soloLectura"
+			[esVariante]="esVariante"
+			[cantidadVariantes]="producto?.variantes?.length ?? 0">
+		</app-equivalencia-producto>
         </fieldset>
     </c-modal-body>
 

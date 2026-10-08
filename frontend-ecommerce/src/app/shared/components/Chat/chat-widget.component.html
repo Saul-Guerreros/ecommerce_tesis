@@ -1,0 +1,103 @@
+<button type="button" class="chat-boton" (click)="alternar()"
+        [attr.aria-label]="abierto() ? 'Cerrar asistente' : 'Abrir asistente virtual'"
+        [attr.aria-expanded]="abierto()">
+  @if (abierto()) {
+    <span uk-icon="icon: close; ratio: 1.3"></span>
+  } @else {
+    <span uk-icon="icon: commenting; ratio: 1.3"></span>
+  }
+</button>
+
+@if (abierto()) {
+  <section class="chat-panel" role="dialog" aria-label="Asistente virtual de Z Informática">
+    <header class="chat-cabecera">
+      <div class="chat-cabecera__titulo">
+        <strong>Asistente Z Informática</strong>
+        <small>Respuestas generadas con IA</small>
+      </div>
+      <button type="button" class="chat-icono" (click)="chat.nuevaConversacion()"
+              title="Nueva conversación" aria-label="Nueva conversación">
+        <span uk-icon="icon: refresh"></span>
+      </button>
+      <button type="button" class="chat-icono" (click)="alternar()" aria-label="Cerrar">
+        <span uk-icon="icon: close"></span>
+      </button>
+    </header>
+
+    <div class="chat-mensajes" #lista aria-live="polite">
+      @if (chat.mensajes().length === 0) {
+        <div class="chat-bienvenida">
+          <p>¡Hola! Soy el asistente virtual de Z Informática. Te ayudo a encontrar productos,
+             comparar opciones y resolver dudas sobre la tienda.</p>
+          <div class="chat-sugerencias">
+            @for (sugerencia of sugerencias; track sugerencia) {
+              <button type="button" (click)="enviar(sugerencia)">{{ sugerencia }}</button>
+            }
+          </div>
+        </div>
+      }
+
+      @for (mensaje of chat.mensajes(); track mensaje; let i = $index) {
+        <div class="chat-mensaje"
+             [class.chat-mensaje--usuario]="mensaje.rol === 'usuario'"
+             [class.chat-mensaje--error]="mensaje.error">
+          @if (mensaje.rol === 'usuario') {
+            <p>{{ mensaje.texto }}</p>
+          } @else {
+            <div [innerHTML]="mensaje.texto | textoChat"></div>
+          }
+        </div>
+
+        @if (mensaje.productos?.length) {
+          <div class="chat-productos">
+            @for (producto of mensaje.productos; track producto.pub_id) {
+              <a class="chat-producto" [routerLink]="['/producto', producto.slug]" (click)="alAbrirProducto()">
+                @if (imagen(producto); as src) {
+                  <img [src]="src" [alt]="producto.titulo" loading="lazy" />
+                }
+                <span class="chat-producto__titulo">{{ producto.titulo }}</span>
+                <span class="chat-producto__precio">{{ producto.precio_final | monedaPy }}</span>
+                @if (producto.descuento_pct) {
+                  <span class="chat-producto__antes">
+                    <s>{{ producto.precio_original | monedaPy }}</s> -{{ producto.descuento_pct }}%
+                  </span>
+                }
+                @if (!tieneStock(producto)) {
+                  <span class="chat-producto__sin-stock">Sin stock</span>
+                }
+              </a>
+            }
+          </div>
+        }
+
+        @for (accion of mensaje.acciones ?? []; track accion.pub_id) {
+          <button type="button" class="chat-accion"
+                  [disabled]="agregados.has(clave(i, accion)) || procesando === clave(i, accion)"
+                  (click)="agregarAlCarrito(accion, clave(i, accion))">
+            @if (agregados.has(clave(i, accion))) {
+              ✓ Agregado al carrito
+            } @else if (procesando === clave(i, accion)) {
+              Agregando…
+            } @else {
+              <span uk-icon="icon: cart"></span> Agregar al carrito: {{ accion.cantidad }} × {{ accion.titulo }}
+            }
+          </button>
+        }
+      }
+
+      @if (chat.enviando()) {
+        <div class="chat-mensaje chat-escribiendo" aria-label="El asistente está escribiendo">
+          <span></span><span></span><span></span>
+        </div>
+      }
+    </div>
+
+    <form class="chat-entrada" (ngSubmit)="enviar()">
+      <input #entrada type="text" name="texto" [(ngModel)]="texto" maxlength="500"
+             placeholder="Escribí tu consulta…" autocomplete="off" />
+      <button type="submit" [disabled]="!texto.trim() || chat.enviando()" aria-label="Enviar">
+        <span uk-icon="icon: forward"></span>
+      </button>
+    </form>
+  </section>
+}

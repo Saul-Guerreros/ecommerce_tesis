@@ -1,0 +1,125 @@
+/* Degradado de "IA": azul -> violeta -> rosa */
+:host {
+  --ia-azul: #4f8cff;
+  --ia-violeta: #9b5cff;
+  --ia-rosa: #ff4fa3;
+  --ia-degradado: linear-gradient(90deg, var(--ia-azul), var(--ia-violeta), var(--ia-rosa));
+}
+
+.cargando-ia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  animation: aparecer 0.25s ease-out;
+}
+
+/* ---- Pantalla completa: difumina la página de fondo ---- */
+.cargando-ia--pantalla {
+  position: fixed;
+  inset: 0;
+  z-index: 2000; /* por encima del header sticky y de los desplegables de UIkit */
+  padding: 24px;
+  background: rgba(20, 20, 28, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* Navegadores sin backdrop-filter: fondo más opaco para que el texto se lea. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .cargando-ia--pantalla {
+    background: rgba(20, 20, 28, 0.85);
+  }
+}
+
+.cargando-ia--pantalla .cargando-ia__detalle {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ---- En línea: dentro del área de resultados ---- */
+.cargando-ia--en-linea {
+  padding: 48px 16px;
+}
+
+.cargando-ia--en-linea .cargando-ia__detalle {
+  color: #777;
+}
+
+/* ---- Contenido ---- */
+.cargando-ia__contenido {
+  max-width: 460px;
+}
+
+.cargando-ia__anillo {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  /* Anillo con degradado cónico; la máscara deja solo el borde. */
+  background: conic-gradient(from 0deg, var(--ia-azul), var(--ia-violeta), var(--ia-rosa), transparent 85%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  animation: girar 1s linear infinite;
+}
+
+/* Chispa centrada sobre el anillo (va aparte porque la máscara del
+   anillo ocultaría todo lo que esté dentro de él). */
+.cargando-ia__contenido {
+  position: relative;
+}
+
+.cargando-ia__contenido::before {
+  content: '✦';
+  position: absolute;
+  top: 19px; /* centro del anillo de 64px */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 26px;
+  line-height: 1;
+  background: var(--ia-degradado);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: latir 1.6s ease-in-out infinite;
+}
+
+.cargando-ia__titulo {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  background: var(--ia-degradado);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.cargando-ia__detalle {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  min-height: 2.7em; /* evita saltos cuando cambia el texto */
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes latir {
+  0%, 100% { opacity: 0.55; transform: translateX(-50%) scale(0.9); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+}
+
+@keyframes aparecer {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Accesibilidad: sin animaciones para quien las desactivó en su sistema. */
+@media (prefers-reduced-motion: reduce) {
+  .cargando-ia,
+  .cargando-ia__anillo,
+  .cargando-ia__contenido::before {
+    animation: none;
+  }
+}

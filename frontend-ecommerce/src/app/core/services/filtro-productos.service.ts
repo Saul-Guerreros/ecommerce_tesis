@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { URL_SERVICIOS } from '../../config/config';
-import { ConfigFiltros, MetaBusqueda } from '../models/filtro-productos.model';
+import { ConfigFiltros, MetaBusqueda, SugerenciasResponse } from '../models/filtro-productos.model';
 import { ProductoVitrina } from '../models/vitrina.model';
 
 export interface FiltrosBusqueda {
@@ -10,7 +10,7 @@ export interface FiltrosBusqueda {
   precio_min?: number | null;
   precio_max?: number | null;
   en_oferta?: boolean;
-  orden?: 'nuevos' | 'precio_asc' | 'precio_desc';
+  orden?: 'relevancia' | 'nuevos' | 'precio_asc' | 'precio_desc';
   busqueda?: string;
   page?: number;
   por_pagina?: number;
@@ -40,5 +40,20 @@ export class FiltroProductosService {
     params = params.set('por_pagina', filtros.por_pagina ?? 12);
 
     return this.http.get<{ data: ProductoVitrina[]; meta: MetaBusqueda }>(`${this.URL}/buscar`, { params });
+  }
+
+  /** Resultados instantáneos mientras el cliente escribe en el buscador del header. */
+  sugerencias(consulta: string, limite = 6) {
+    const params = new HttpParams().set('q', consulta).set('limite', limite);
+    return this.http.get<SugerenciasResponse>(`${this.URL}/sugerencias`, { params });
+  }
+
+  /**
+   * ¿La búsqueda va a usar IA? Responde en milisegundos (no llama al LLM).
+   * Permite mostrar el aviso de carga mientras corre la búsqueda real.
+   */
+  analizarBusqueda(consulta: string) {
+    const params = new HttpParams().set('q', consulta);
+    return this.http.get<{ usara_ia: boolean }>(`${this.URL}/analizar-busqueda`, { params });
   }
 }

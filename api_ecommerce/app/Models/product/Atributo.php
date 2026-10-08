@@ -21,6 +21,7 @@ class Atributo extends Model
     protected $fillable = [
         'atb_nombre',
         'atb_tipo',
+        'atb_unidad',
         'atb_estado',
     ];
 

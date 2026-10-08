@@ -10,6 +10,7 @@ import { HomeService } from '../../pages/home/service/home.service';
 import { CarritoOffcanvasComponent } from '../components/carrito-offcanvas/carrito-offcanvas.component';
 // --- import nuevo ---
 import { ConfirmacionCarritoComponent } from '../components/confirmacion-carrito/confirmacion-carrito.component';
+import { BuscadorSugerenciasComponent } from '../components/buscador-sugerencias/buscador-sugerencias.component';
 
 @Component({
   selector: 'app-header',
@@ -20,6 +21,7 @@ import { ConfirmacionCarritoComponent } from '../components/confirmacion-carrito
     CommonModule,
     CarritoOffcanvasComponent,
     ConfirmacionCarritoComponent,
+    BuscadorSugerenciasComponent,
   ],  templateUrl: './header.component.html',
   styleUrl: './header.component.css',
 })
@@ -45,7 +47,6 @@ export class HeaderComponent {
   ];
 
   isLoading: boolean = false;
-  searchT: string = '';
 
   // ---------- Estado del carrito (patrón Observer) ----------
   // El header ya no conoce las filas del carrito ni los totales: lo único
@@ -136,7 +137,6 @@ export class HeaderComponent {
   //   }
   // }
 
-  searchProduct(){
-    window.location.href = "/productos-busqueda?search="+this.searchT;
-  }
+  // La búsqueda del header ahora vive en BuscadorSugerenciasComponent
+  // (resultados mientras se escribe + navegación sin recargar la página).
 }

@@ -36,72 +36,111 @@
       <c-spinner color="primary"></c-spinner>
     </div>
 
-    <div class="alert alert-danger" *ngIf="error">{{ error }}</div>
-
     <table cTable hover responsive *ngIf="!cargando && productos.length">
-      <thead>
-        <tr>
-          <th style="width: 60px">Img</th>
-          <th>Título</th>
-          <th>Producto (SKU)</th>
-          <th>Categoría</th>
-          <th class="text-end">Precio web</th>
-          <th class="text-center">Estado</th>
-          <th class="text-center">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let p of productos">
-          <td>
-            <img
-              *ngIf="imagenPrincipal(p) as img"
-              [src]="img"
-              alt="{{ p.publicacion_web?.pub_titulo ?? p.prd_codinv }}"
-              width="40"
-              height="40"
-              style="object-fit: cover; border-radius: 4px;"
-            />
-            <span *ngIf="!imagenPrincipal(p)" class="text-muted">—</span>
-          </td>
-          <td>{{ p.publicacion_web?.pub_titulo ?? '—' }}</td>
-          <td>{{ p.prd_codinv }}</td>
-          <td>{{ p.publicacion_web?.categoria ?? '—' }}</td>
-          <td class="text-end">{{ (p.publicacion_web?.pub_prevta ?? p.prd_prevta) | currency }}</td>
-          <td class="text-center">
-            <c-badge [color]="badgeEstado(p).color">{{ badgeEstado(p).texto }}</c-badge>
-          </td>
-          <td class="text-center">
-            <a
-              cButton
-              size="sm"
-              color="primary"
-              [routerLink]="['/publicaciones', p.prd_id]"
-              [title]="p.publicacion_web ? 'Editar publicación' : 'Publicar producto'"
-            >
-              {{ p.publicacion_web ? 'Editar' : 'Publicar' }}
-            </a>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <thead>
+    <tr>
+      <th style="width: 40px"></th>
+      <th style="width: 60px">Img</th>
+      <th>Título</th>
+      <th>Producto (SKU)</th>
+      <th>Categoría</th>
+      <th class="text-end">Precio web</th>
+      <th class="text-center">Estado</th>
+      <th class="text-center">Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    <ng-container *ngFor="let p of productos">
+      <!-- Fila padre / producto suelto -->
+      <tr>
+        <td class="text-center">
+          <button cButton size="sm" color="link" class="p-0 text-decoration-none text-dark fs-3 lh-1"
+                  *ngIf="p.variantes_count"
+                  (click)="toggleExpandir(p)"
+                  [title]="filasExpandidas.has(p.prd_id!) ? 'Ocultar variantes' : 'Ver variantes'">
+            {{ filasExpandidas.has(p.prd_id!) ? '▾' : '▸' }}
+          </button>
+        </td>
+        <ng-container *ngTemplateOutlet="celdas; context: { $implicit: p, esVariante: !!p.prd_padre_id }"></ng-container>
+      </tr>
+
+      <!-- Spinner mientras cargan las variantes -->
+      <tr *ngIf="filasExpandidas.has(p.prd_id!) && cargandoVariantes.has(p.prd_id!)">
+        <td [attr.colspan]="8" class="text-center py-2"><c-spinner size="sm" color="primary"></c-spinner></td>
+      </tr>
+
+      <!-- Filas de variantes -->
+      <tr *ngFor="let v of (filasExpandidas.has(p.prd_id!) ? variantesPorFila.get(p.prd_id!) : [])" class="table-light">
+        <td></td>
+        <ng-container *ngTemplateOutlet="celdas; context: { $implicit: v, esVariante: true }"></ng-container>
+      </tr>
+    </ng-container>
+  </tbody>
+</table>
+
+<!-- Celdas compartidas entre padre y variante -->
+<ng-template #celdas let-p let-esVariante="esVariante">
+  <td>
+    <img *ngIf="imagenPrincipal(p) as img" [src]="img"
+         [alt]="p.publicacion_web?.pub_titulo || p.prd_descri"
+         width="40" height="40" style="object-fit: cover; border-radius: 4px;" />
+    <span *ngIf="!imagenPrincipal(p)" class="text-muted">—</span>
+  </td>
+  <td>
+    <span *ngIf="esVariante">↳ </span>{{ p.publicacion_web?.pub_titulo || p.prd_descri }}
+    <c-badge color="secondary" class="ms-1" *ngIf="p.variantes_count">{{ p.variantes_count }} variante(s)</c-badge>
+    <c-badge color="info" class="text-white ms-1" *ngIf="esVariante">Variante</c-badge>
+  </td>
+  <td>{{ p.prd_codinv }}</td>
+  <td>{{ p.publicacion_web?.categoria ?? '—' }}</td>
+  <td class="text-end">{{ (p.publicacion_web?.pub_prevta ?? p.prd_prevta) | currency }}</td>
+  <td class="text-center">
+    <c-badge [color]="badgeEstado(p).color">{{ badgeEstado(p).texto }}</c-badge>
+  </td>
+  <td class="text-center">
+    <a cButton size="sm" color="primary" [routerLink]="['/publicaciones', p.prd_id]">
+      {{ p.publicacion_web ? 'Editar' : 'Configurar' }}
+    </a>
+  </td>
+</ng-template>
 
     <div class="text-center text-muted py-4" *ngIf="!cargando && !productos.length">
       No se encontraron productos con los filtros seleccionados.
     </div>
 
     <!-- Paginación -->
-    <nav *ngIf="totalPaginas > 1">
-      <ul cPagination class="justify-content-end">
-        <li cPageItem [disabled]="page === 1">
-          <a cPageLink role="button" (click)="cambiarPagina(page - 1)">Anterior</a>
-        </li>
-        <li cPageItem *ngFor="let n of [].constructor(totalPaginas); let i = index" [active]="page === i + 1">
-          <a cPageLink role="button" (click)="cambiarPagina(i + 1)">{{ i + 1 }}</a>
-        </li>
-        <li cPageItem [disabled]="page === totalPaginas">
-          <a cPageLink role="button" (click)="cambiarPagina(page + 1)">Siguiente</a>
-        </li>
-      </ul>
-    </nav>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3" *ngIf="!cargando && total > 0">
+  <div class="d-flex align-items-center gap-2">
+    <span class="small text-muted">Por página</span>
+    <select class="form-select form-select-sm" style="width: auto" [(ngModel)]="perPage" (ngModelChange)="cambiarPorPagina()">
+      <option [ngValue]="10">10</option>
+      <option [ngValue]="25">25</option>
+      <option [ngValue]="50">50</option>
+    </select>
+    <span class="small text-muted">· {{ total }} producto(s)</span>
+  </div>
+
+  <nav *ngIf="totalPaginas > 1" aria-label="Paginación de publicaciones">
+    <ul class="pagination paginador-bn mb-0">
+      <li class="page-item" [class.disabled]="page === 1">
+        <a class="page-link" role="button" (click)="cambiarPagina(1)" title="Primera">«</a>
+      </li>
+      <li class="page-item" [class.disabled]="page === 1">
+        <a class="page-link" role="button" (click)="cambiarPagina(page - 1)">Anterior</a>
+      </li>
+
+      <li class="page-item" *ngFor="let p of paginasVisibles" [class.active]="p === page">
+        <a class="page-link" role="button" (click)="cambiarPagina(p)">{{ p }}</a>
+      </li>
+
+      <li class="page-item" [class.disabled]="page === totalPaginas">
+        <a class="page-link" role="button" (click)="cambiarPagina(page + 1)">Siguiente</a>
+      </li>
+      <li class="page-item" [class.disabled]="page === totalPaginas">
+        <a class="page-link" role="button" (click)="cambiarPagina(totalPaginas)" title="Última">»</a>
+      </li>
+    </ul>
+  </nav>
+</div>
   </c-card-body>
 </c-card>

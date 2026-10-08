@@ -173,6 +173,20 @@ export const routes: Routes = [
           ),
         data: { title: 'Gestión de Cuotas' },
       },
+	  
+	  {
+        path: 'plantillas-ficha',
+        loadChildren: () =>
+          import('./modules/plantillas-ficha/plantillas-ficha.module').then(
+            (m) => m.PlantillasFichaModule
+          ),
+        data: { title: 'Plantillas de Ficha Técnica' },
+      },
+      {
+        path: 'chatbot/informacion',
+        loadChildren: () => import('./modules/faq-tienda/faq-tienda.module').then(m => m.FaqTiendaModule),
+        data: { title: 'Información del asistente' },
+      },
 
       {
         path: 'inventario/ajustes',

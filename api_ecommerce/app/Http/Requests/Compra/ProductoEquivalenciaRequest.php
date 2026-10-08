@@ -48,8 +48,57 @@ class ProductoEquivalenciaRequest extends FormRequest
                     'peq_umdid',
                     'Esa es la unidad de stock del producto: no necesita equivalencia (su factor es 1 implícito).'
                 );
+                return;
             }
+
+            if ($validator->errors()->has('peq_factor')) {
+                return;
+            }
+
+            $this->validarDuplicadoEnFamilia($validator);
         });
+    }
+
+    /**
+     * Herencia (variantes): una misma presentación no puede existir a la
+     * vez en el modelo base y en una de sus variantes, porque en Compras
+     * aparecería dos veces en el selector.
+     */
+    private function validarDuplicadoEnFamilia(Validator $validator): void
+    {
+        $prdId   = (int) $this->peq_prdid;
+        $padreId = DB::table('producto')->where('prd_id', $prdId)->value('prd_padre_id');
+        $id      = $this->route('producto_equivalencia');
+
+        $mismaPresentacion = fn () => DB::table('producto_equivalencia')
+            ->where('peq_umdid', $this->peq_umdid)
+            ->where('peq_factor', round((float) $this->peq_factor, 4))
+            ->when($id, fn ($q) => $q->where('peq_id', '!=', $id));
+
+        // Variante: ¿ya la hereda del modelo base?
+        if ($padreId) {
+            if ($mismaPresentacion()->where('peq_prdid', $padreId)->exists()) {
+                $validator->errors()->add('peq_factor', 'Esta presentación ya la hereda del modelo base.');
+            }
+            return;
+        }
+
+        // Modelo base: ¿alguna variante ya la tiene como propia?
+        $variantes = DB::table('producto_equivalencia')
+            ->join('producto', 'prd_id', '=', 'peq_prdid')
+            ->where('prd_padre_id', $prdId)
+            ->where('peq_estado', 1)   // una desactivada no aparece en Compras
+            ->where('peq_umdid', $this->peq_umdid)
+            ->where('peq_factor', round((float) $this->peq_factor, 4))
+            ->pluck('prd_descri');
+
+        if ($variantes->isNotEmpty()) {
+            $validator->errors()->add(
+                'peq_factor',
+                'Ya la tiene como propia: ' . $variantes->implode(', ')
+                . '. Desactívela o elimínela ahí antes de definirla para todo el modelo.'
+            );
+        }
     }
 
     public function messages(): array

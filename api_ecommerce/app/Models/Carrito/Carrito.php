@@ -28,7 +28,6 @@ class Carrito extends Model{
         'car_tipcam',
         'car_codcup',
         'car_coddes',
-        'car_idvarp',
         'car_cantid',
         'car_precio',
         'car_subtot',
@@ -42,7 +41,6 @@ class Carrito extends Model{
     protected $casts= [
         'car_idusu'=> 'integer',
         'car_idpro'=> 'integer',
-        'car_idvarp'=> 'integer',
         'car_tipdes'=> 'integer',
         'car_tipcam'=> 'integer',
         'car_descue'=> 'decimal:2',

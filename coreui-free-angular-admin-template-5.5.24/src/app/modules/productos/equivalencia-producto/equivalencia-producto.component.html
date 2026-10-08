@@ -1,5 +1,14 @@
 <!-- src/app/modules/productos/equivalencia-producto/equivalencia-producto.component.html -->
 <div>
+  <!-- Contexto de herencia -->
+  <div class="alert alert-light border small py-2 mb-2" *ngIf="esVariante">
+    Las presentaciones marcadas <span class="badge bg-info text-white">Modelo base</span> se heredan del producto
+    base y se administran desde allí. Aquí solo agregue las que sean <strong>exclusivas de esta variante</strong>.
+  </div>
+  <div class="alert alert-light border small py-2 mb-2" *ngIf="!esVariante && cantidadVariantes > 0">
+    Estas presentaciones se aplican también a sus <strong>{{ cantidadVariantes }} variante(s)</strong>.
+  </div>
+
   <table class="table table-sm table-striped align-middle mb-2">
     <thead>
       <tr>
@@ -11,7 +20,10 @@
     </thead>
     <tbody>
       <tr *ngFor="let eq of equivalencias" [class.text-muted]="eq.peq_estado === 0">
-        <td>{{ eq.etiqueta }}</td>
+        <td>
+          {{ eq.etiqueta }}
+          <span class="badge bg-info text-white ms-1" *ngIf="eq.heredada">Modelo base</span>
+        </td>
 
         <td class="text-end">
           <ng-container *ngIf="editandoId !== eq.peq_id; else edicion">
@@ -34,6 +46,10 @@
         </td>
 
         <td *ngIf="!soloLectura" class="text-end text-nowrap">
+          <!-- Heredada: solo lectura desde la variante -->
+          <span class="small text-muted fst-italic" *ngIf="eq.heredada">Se gestiona en el modelo base</span>
+
+          <ng-container *ngIf="!eq.heredada">
           <!-- Confirmación de eliminación -->
           <ng-container *ngIf="confirmandoEliminarId === eq.peq_id; else sinConfirmar">
             <span class="small me-1">¿Eliminar?</span>
@@ -69,6 +85,7 @@
                       (click)="pedirEliminar(eq)">Eliminar</button>
             </ng-template>
           </ng-template>
+          </ng-container>
         </td>
       </tr>
 

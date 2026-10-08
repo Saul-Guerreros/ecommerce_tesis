@@ -1,0 +1,90 @@
+<h6 class="text-muted mb-1">Ficha técnica</h6>
+
+<p class="text-body-secondary small" *ngIf="!categoriaId">
+  Elegí una subcategoría arriba para completar la ficha técnica.
+</p>
+
+<div class="text-center py-3" *ngIf="cargando">
+  <c-spinner size="sm" color="primary"></c-spinner>
+</div>
+
+<div class="alert alert-warning py-2 small" *ngIf="errorCarga">{{ errorCarga }}</div>
+
+<p class="text-body-secondary small" *ngIf="listo && campos.length === 0">
+  Esta subcategoría todavía no tiene ficha técnica.
+  Definila en <a routerLink="/plantillas-ficha">Plantillas de Ficha Técnica</a>.
+</p>
+
+<ng-container *ngIf="listo && campos.length > 0">
+  <p class="text-body-secondary small" *ngIf="!esVariante">
+    Estos datos aparecen en la ficha del producto y los usa el buscador de la tienda.
+    Los marcados con <span class="text-danger">*</span> son obligatorios para publicar.
+  </p>
+
+  <div class="alert alert-info py-2 small" *ngIf="esVariante">
+    Esta variante <strong>hereda</strong> la ficha técnica de su producto base; acá solo se edita
+    lo que la diferencia.
+    <ng-container *ngIf="productoBaseId && hayHeredados">
+      Para cambiar un dato heredado, editalo en el
+      <a [routerLink]="['/publicaciones', productoBaseId]">producto base</a>: se actualiza en todas sus variantes.
+    </ng-container>
+  </div>
+
+  <div class="row g-3">
+    <div *ngFor="let c of campos" [ngClass]="c.atb_tipo === 4 && c.editable ? 'col-12' : 'col-md-6 col-lg-4'">
+
+      <label cLabel [for]="'ficha_' + c.atb_id" class="d-flex align-items-center gap-2">
+        <span>{{ c.atb_nombre }} <span class="text-danger" *ngIf="c.obligatorio && c.editable">*</span></span>
+        <c-badge *ngIf="esVariante && c.origen === 'propio'" color="primary">Propio de esta variante</c-badge>
+      </label>
+
+      <!-- Heredado: solo lectura -->
+      <ng-container *ngIf="!c.editable">
+        <input cFormControl type="text" [id]="'ficha_' + c.atb_id" [value]="valorLegible(c)"
+               [class.is-invalid]="error(c)" disabled />
+        <div class="small text-muted">Heredado del producto base</div>
+      </ng-container>
+
+      <!-- Editable -->
+      <ng-container *ngIf="c.editable" [ngSwitch]="c.atb_tipo">
+
+        <!-- 1: Texto -->
+        <input *ngSwitchCase="1" cFormControl type="text" maxlength="150"
+               [id]="'ficha_' + c.atb_id" [class.is-invalid]="error(c)"
+               [(ngModel)]="c.valor_texto" [ngModelOptions]="{ standalone: true }" />
+
+        <!-- 2: Número (con unidad) -->
+        <div *ngSwitchCase="2" class="input-group">
+          <input cFormControl type="number" min="0" step="any"
+                 [id]="'ficha_' + c.atb_id" [class.is-invalid]="error(c)"
+                 [(ngModel)]="c.valor_numero" [ngModelOptions]="{ standalone: true }" />
+          <span class="input-group-text" *ngIf="c.atb_unidad">{{ c.atb_unidad }}</span>
+        </div>
+
+        <!-- 3: Seleccionable -->
+        <select *ngSwitchCase="3" cSelect [id]="'ficha_' + c.atb_id" [class.is-invalid]="error(c)"
+                [ngModel]="seleccionUnica(c)" (ngModelChange)="cambiarSeleccionUnica(c, $event)"
+                [ngModelOptions]="{ standalone: true }">
+          <option [ngValue]="null">Sin especificar</option>
+          <option *ngFor="let p of c.propiedades" [ngValue]="p.prp_id">{{ p.prp_nombre }}</option>
+        </select>
+
+        <!-- 4: Selección múltiple -->
+        <div *ngSwitchCase="4" class="border rounded p-2" [class.border-danger]="error(c)"
+             style="max-height: 160px; overflow-y: auto">
+          <div class="form-check form-check-inline" *ngFor="let p of c.propiedades">
+            <input class="form-check-input" type="checkbox" [id]="'ficha_' + c.atb_id + '_' + p.prp_id"
+                   [checked]="estaMarcada(c, p.prp_id)"
+                   (change)="alternarOpcion(c, p.prp_id, $any($event.target).checked)" />
+            <label class="form-check-label" [for]="'ficha_' + c.atb_id + '_' + p.prp_id">{{ p.prp_nombre }}</label>
+          </div>
+        </div>
+      </ng-container>
+
+      <div class="small text-muted" *ngIf="c.editable && c.atb_tipo >= 3 && c.propiedades.length === 0">
+        Sin opciones: cargalas en Atributos.
+      </div>
+      <div class="text-danger small" *ngIf="error(c)">{{ error(c) }}</div>
+    </div>
+  </div>
+</ng-container>

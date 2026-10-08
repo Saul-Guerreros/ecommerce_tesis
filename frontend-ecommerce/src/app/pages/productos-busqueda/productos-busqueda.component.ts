@@ -4,17 +4,18 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Subject, Subscription, debounceTime } from 'rxjs';
 import { URL_BACKEND } from '../../config/config';
-import { ConfigFiltros } from '../../core/models/filtro-productos.model';
+import { ConfigFiltros, MetaBusqueda } from '../../core/models/filtro-productos.model';
 import { ProductoVitrina } from '../../core/models/vitrina.model';
 import { FiltroProductosService } from '../../core/services/filtro-productos.service';
 import { MonedaPyPipe } from '../../shared/pipes/moneda-py.pipe';
+import { CargandoIaComponent } from '../../shared/components/cargando-ia/cargando-ia.component';
 
-type Orden = 'nuevos' | 'precio_asc' | 'precio_desc';
+type Orden = 'relevancia' | 'nuevos' | 'precio_asc' | 'precio_desc';
 
 @Component({
   selector: 'app-productos-busqueda',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, MonedaPyPipe],
+  imports: [CommonModule, FormsModule, RouterModule, MonedaPyPipe, CargandoIaComponent],
   templateUrl: './productos-busqueda.component.html',
   styleUrl: './productos-busqueda.component.css',
 })
@@ -30,8 +31,12 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
   precioMin: number | null = null;
   precioMax: number | null = null;
   soloOferta = false;
-  orden: Orden = 'nuevos';
+  orden: Orden = 'relevancia';
   busqueda = '';
+  /** "Mostrando resultados para notebook" cuando el buscador corrigió la consulta. */
+  consultaCorregida: string | null = null;
+  /** Lo que entendió la IA ("Notebooks con 16 GB de RAM o más..."). */
+  interpretacion: MetaBusqueda['interpretacion'] = null;
 
   paginaActual = 1;
   porPagina = 12;
@@ -45,6 +50,12 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
 
   private busquedaChange$ = new Subject<void>();
   private subs = new Subscription();
+    /** Aviso "Procesando búsqueda con IA" (ver CargandoIaComponent). */
+  procesandoIA = false;
+  modoAvisoIA: 'pantalla' | 'en-linea' = 'pantalla';
+  /** Peticiones en curso: una búsqueda nueva cancela la anterior. */
+  private busquedaSub?: Subscription;
+  private analisisSub?: Subscription;
 
   constructor(
     private route: ActivatedRoute,
@@ -52,27 +63,37 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // El buscador del header manda ?search=... por query string.
-    this.busqueda = this.route.snapshot.queryParamMap.get('search') ?? '';
-
-    const categoriaParam = this.route.snapshot.queryParamMap.get('categoria');
-    if (categoriaParam) {
-      this.categoriasSeleccionadas = [Number(categoriaParam)];
-    }
-
     this.subs.add(
       this.busquedaChange$.pipe(debounceTime(400)).subscribe(() => {
         this.paginaActual = 1;
-        this.buscarProductos();
+        // Viene del buscador del header: aviso a pantalla completa.
+        this.buscarProductos('url');
+      }),
+    );
+
+    // El buscador del header navega con ?search=... SIN recargar la página.
+    // Si el cliente ya está en esta página y busca otra cosa, Angular
+    // reutiliza el componente: por eso se escucha el query string en vez
+    // de leerlo una sola vez (snapshot).
+    this.subs.add(
+      this.route.queryParamMap.subscribe((params) => {
+        this.busqueda = params.get('search') ?? '';
+
+        const categoriaParam = params.get('categoria');
+        this.categoriasSeleccionadas = categoriaParam ? [Number(categoriaParam)] : [];
+
+        this.paginaActual = 1;
+        this.buscarProductos('url');
       }),
     );
 
     this.cargarConfigFiltros();
-    this.buscarProductos();
   }
 
-  ngOnDestroy(): void {
+    ngOnDestroy(): void {
     this.subs.unsubscribe();
+    this.busquedaSub?.unsubscribe();
+    this.analisisSub?.unsubscribe();
   }
 
   private cargarConfigFiltros(): void {
@@ -86,9 +107,34 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
     });
   }
 
-  buscarProductos(): void {
+    /**
+   * @param origen 'url' = llegó desde el header (aviso a pantalla completa);
+   *               'pagina' = filtros o buscador de esta página (aviso en línea,
+   *               para no tapar el campo mientras el cliente escribe).
+   */
+  buscarProductos(origen: 'url' | 'pagina' = 'pagina'): void {
+    this.busquedaSub?.unsubscribe();
+    this.analisisSub?.unsubscribe();
     this.cargandoProductos = true;
-    this.filtroService
+    this.procesandoIA = false;
+
+    // Se pregunta primero (y en paralelo) si la búsqueda usará IA: si es así,
+    // se muestra el aviso mientras la búsqueda real sigue en curso.
+    // Solo en la página 1: al paginar, la interpretación ya está en caché.
+    const texto = this.busqueda.trim();
+    if (texto && this.paginaActual === 1) {
+      this.analisisSub = this.filtroService.analizarBusqueda(texto).subscribe({
+        next: (r) => {
+          if (r.usara_ia && this.cargandoProductos) {
+            this.modoAvisoIA = origen === 'url' ? 'pantalla' : 'en-linea';
+            this.procesandoIA = true;
+          }
+        },
+        error: () => {}, // sin aviso: la búsqueda sigue igual
+      });
+    }
+
+    this.busquedaSub = this.filtroService
       .buscar({
         categorias: this.categoriasSeleccionadas,
         marcas: this.marcasSeleccionadas,
@@ -104,13 +150,19 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
         next: (resp) => {
           this.productos = resp.data;
           this.totalResultados = resp.meta.total;
+          this.consultaCorregida = resp.meta.consulta_corregida ?? null;
+          this.interpretacion = resp.meta.interpretacion ?? null;
           this.ultimaPagina = resp.meta.ultima_pagina;
           this.paginas = Array.from({ length: this.ultimaPagina }, (_, i) => i + 1);
           this.cargandoProductos = false;
+          this.procesandoIA = false;
         },
         error: () => {
           this.productos = [];
+          this.consultaCorregida = null;
+          this.interpretacion = null;
           this.cargandoProductos = false;
+          this.procesandoIA = false;
         },
       });
   }
@@ -143,7 +195,7 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
     this.precioMax = null;
     this.soloOferta = false;
     this.busqueda = '';
-    this.orden = 'nuevos';
+    this.orden = 'relevancia';
     this.onFiltroChange();
   }
 

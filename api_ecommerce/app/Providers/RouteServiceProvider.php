@@ -34,6 +34,19 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
         });
+        
+        // ChatBot: cada mensaje dispara varias llamadas a Gemini (costo real).
+        RateLimiter::for('chat', function (Request $request) {
+            $quien = auth('api')->id() ?: $request->ip();
+            $responder = fn () => response()->json([
+                'message' => 'Enviaste muchos mensajes seguidos. Esperá un momento e intentá de nuevo.',
+            ], 429);
+
+            return [
+                Limit::perMinute(15)->by("chat:min:{$quien}")->response($responder),
+                Limit::perDay(200)->by("chat:dia:{$request->ip()}")->response($responder),
+            ];
+        });
     }
 
     /**

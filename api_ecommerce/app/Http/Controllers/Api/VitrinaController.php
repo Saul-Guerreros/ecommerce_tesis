@@ -19,7 +19,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use App\Models\Marca;
 use App\Http\Resources\product\ProductoResource;
-
+use App\Services\Catalogo\FichaTecnicaService;
+use App\Services\Catalogo\BusquedaService;
+use App\Services\Catalogo\ResultadoBusqueda;
+use App\Services\Catalogo\BuscadorTiendaService;
 
 /**
  * Vitrina de Home: resuelve qué productos aparecen en cada sección de la
@@ -258,6 +261,21 @@ class VitrinaController extends Controller
             ->sortBy('precio_final')
             ->first();
     }
+	
+	 /**
+     * Precio que ve el cliente: el de Gestión de Precios con la mejor oferta
+     * vigente aplicada. Misma regla que formatearProducto(), sin armar toda
+     * la tarjeta (cuotas, imágenes...), para poder usarse en cálculos masivos.
+     */
+    private function precioFinal(PublicacionWeb $pub, Collection $descuentosPorProducto): ?float
+    {
+        $oferta = $this->mejorOfertaPara($pub, $descuentosPorProducto);
+
+        return $oferta
+            ? (float) $oferta['precio_final']
+            : $pub->producto?->precioVitrina();
+    }
+
 
     /**
      * Atajo: formatea la publicación aplicándole su mejor descuento activo
@@ -709,33 +727,41 @@ class VitrinaController extends Controller
                 'productos_count' => $m->productos_count,
             ]);
 
-        $rangoPrecio = PublicacionWeb::publicadas()
-            ->selectRaw('MIN(pub_prevta) as minimo, MAX(pub_prevta) as maximo')
-            ->first();
+         // Rango del filtro de precio, con el mismo precio que ve el cliente.
+        $descuentos = $this->descuentosActivosPorProducto();
+
+        $precios = PublicacionWeb::publicadas()
+            ->with('producto')
+            ->get()
+            ->map(fn (PublicacionWeb $pub) => $this->precioFinal($pub, $descuentos))
+            ->filter(fn ($precio) => $precio !== null && $precio > 0);
+
 
         return response()->json([
             'data' => [
                 'categorias' => $categorias,
                 'marcas' => $marcas,
-                'precio_min' => (float) ($rangoPrecio->minimo ?? 0),
-                'precio_max' => (float) ($rangoPrecio->maximo ?? 0),
+                'precio_min' => (float) floor($precios->min() ?? 0),
+                'precio_max' => (float) ceil($precios->max() ?? 0),
             ],
         ]);
     }
 
-    // GET /api/tienda/productos/buscar — público. Catálogo con filtros
+     // GET /api/tienda/productos/buscar — público. Catálogo con filtros
     // (categoría, marca, precio, oferta, orden) + búsqueda por texto.
-    public function buscar(Request $request): JsonResponse
+    public function buscar(Request $request, BuscadorTiendaService $buscador): JsonResponse
     {
         $categoriasSeleccionadas = (array) $request->query('categorias', []);
         $marcasSeleccionadas = (array) $request->query('marcas', []);
         $precioMin = $request->query('precio_min');
         $precioMax = $request->query('precio_max');
         $soloOferta = $request->boolean('en_oferta');
-        $orden = $request->query('orden', 'nuevos');
-        $busqueda = $request->query('busqueda');
+        $busqueda = trim((string) $request->query('busqueda', ''));
         $pagina = max(1, (int) $request->query('page', 1));
         $porPagina = min(48, max(1, (int) $request->query('por_pagina', 12)));
+
+        // Con texto, lo natural es ordenar por relevancia; sin texto, por novedad.
+        $orden = $request->query('orden', $busqueda !== '' ? 'relevancia' : 'nuevos');
 
         $idsCategorias = collect($categoriasSeleccionadas)
             ->flatMap(fn ($id) => $this->idsCategoriaYDescendientes((int) $id))
@@ -748,24 +774,29 @@ class VitrinaController extends Controller
         $query = PublicacionWeb::publicadas()
             ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes']);
 
+        $resultado = null;
+        if ($busqueda !== '') {
+            // BM25 + trigramas y, si no alcanza, la interpretación del LLM.
+            $resultado = $buscador->buscar($busqueda, $request->ip());
+            $query->whereIn('pub_id', $resultado->ids);
+
+            // "notebook de menos de 4 millones": el precio que la IA detectó
+            // se usa solo si el cliente no movió el filtro de precio a mano.
+            if (($precioMin === null || $precioMin === '') && $resultado->precioMin()) {
+                $precioMin = $resultado->precioMin();
+            }
+            if (($precioMax === null || $precioMax === '') && $resultado->precioMax()) {
+                $precioMax = $resultado->precioMax();
+            }
+        }
+
+
         if (!empty($idsCategorias)) {
             $query->whereIn('pub_catid', $idsCategorias);
         }
 
         if (!empty($marcasSeleccionadas)) {
             $query->whereHas('producto', fn ($q) => $q->whereIn('prd_marid', $marcasSeleccionadas));
-        }
-
-        if ($precioMin !== null && $precioMin !== '') {
-            $query->where('pub_prevta', '>=', (float) $precioMin);
-        }
-
-        if ($precioMax !== null && $precioMax !== '') {
-            $query->where('pub_prevta', '<=', (float) $precioMax);
-        }
-
-        if ($busqueda) {
-            $query->where('pub_titulo', 'like', '%'.$busqueda.'%');
         }
 
         if ($soloOferta) {
@@ -775,10 +806,25 @@ class VitrinaController extends Controller
         $productos = $query->orderByDesc('pub_creado')
             ->get()
             ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
+		
+		// Filtro de precio sobre el precio final (con oferta), el mismo que
+        // muestra la tarjeta. Va después de formatear porque la oferta se
+        // calcula en PHP, no en SQL.
+        if ($precioMin !== null && $precioMin !== '') {
+            $productos = $productos->filter(fn (array $p) => $p['precio_final'] >= (float) $precioMin);
+        }
+
+        if ($precioMax !== null && $precioMax !== '') {
+            $productos = $productos->filter(fn (array $p) => $p['precio_final'] <= (float) $precioMax);
+        }
+
+        $productos = $productos->values();
+
 
         $productos = match ($orden) {
             'precio_asc' => $productos->sortBy('precio_final')->values(),
             'precio_desc' => $productos->sortByDesc('precio_final')->values(),
+            'relevancia' => $this->ordenarPorRelevancia($productos, $resultado),
             default => $productos,
         };
 
@@ -792,7 +838,91 @@ class VitrinaController extends Controller
                 'page' => $pagina,
                 'por_pagina' => $porPagina,
                 'ultima_pagina' => (int) (ceil($total / $porPagina) ?: 1),
+                // "Mostrando resultados para notebook" cuando se corrigió la consulta.
+                'consulta_corregida' => $resultado?->consultaCorregida,
+                'modo' => $resultado?->modo,
+				// Lo que entendió la IA, para mostrarlo al cliente.
+                'interpretacion' => $resultado?->interpretacion ? [
+                    'explicacion' => $resultado->interpretacion->explicacion,
+                    'filtros_relajados' => $resultado->filtrosRelajados,
+                ] : null,
+
             ],
+        ]);
+    }
+	
+	
+    /**
+     * GET /api/tienda/productos/sugerencias?q=noteb — público.
+     * Resultados instantáneos del buscador del header (mientras se escribe).
+     * Devuelve los primeros productos y el total, para el enlace
+     * "Ver todos los resultados (N)".
+     */
+    public function sugerencias(Request $request, BusquedaService $motor): JsonResponse
+    {
+        $consulta = trim((string) $request->query('q', ''));
+        $limite = min(8, max(1, (int) $request->query('limite', 6)));
+
+        if (mb_strlen($consulta) < 2) {
+            return response()->json(['data' => [], 'meta' => ['total' => 0, 'consulta_corregida' => null]]);
+        }
+
+        $resultado = $motor->buscar($consulta);
+        $idsVisibles = array_slice($resultado->ids, 0, $limite);
+        $descuentos = $this->descuentosActivosPorProducto();
+
+        $productos = PublicacionWeb::publicadas()
+            ->whereIn('pub_id', $idsVisibles)
+            ->with(['producto.marca', 'producto.stock', 'categoria', 'imagenes'])
+            ->get()
+            ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
+
+        $productos = $this->ordenarPorRelevancia($productos, $resultado)
+            ->map(fn (array $p) => [
+                'pub_id' => $p['pub_id'],
+                'titulo' => $p['titulo'],
+                'slug' => $p['slug'],
+                'categoria' => $p['categoria'],
+                'imagen' => $p['imagen'],
+                'precio_original' => $p['precio_original'],
+                'precio_final' => $p['precio_final'],
+                'descuento_pct' => $p['descuento_pct'],
+            ]);
+
+        return response()->json([
+            'data' => $productos,
+            'meta' => [
+                'total' => $resultado->total(),
+                'consulta_corregida' => $resultado->consultaCorregida,
+            ],
+        ]);
+    }
+
+    /** Ordena productos ya formateados según la posición que les dio el motor. */
+    private function ordenarPorRelevancia($productos, ?ResultadoBusqueda $resultado)
+    {
+        if (! $resultado) {
+            return $productos->values();
+        }
+
+        $posiciones = $resultado->posiciones();
+
+        return $productos
+            ->sortBy(fn (array $p) => $posiciones[$p['pub_id']] ?? PHP_INT_MAX)
+            ->values();
+    }
+
+    /**
+     * GET /api/tienda/productos/analizar-busqueda?q=laptop — público.
+     * Responde en milisegundos si la búsqueda va a usar IA, para que la
+     * tienda muestre el aviso de carga mientras corre la búsqueda real.
+     */
+    public function analizarBusqueda(Request $request, BuscadorTiendaService $buscador): JsonResponse
+    {
+        $consulta = trim((string) $request->query('q', ''));
+
+        return response()->json([
+            'usara_ia' => $consulta !== '' && $buscador->usaraIA($consulta),
         ]);
     }
 
@@ -862,15 +992,8 @@ class VitrinaController extends Controller
         // mostraba siempre el precio de lista aunque la campaña estuviera activa.
         $descuentos = $this->descuentosActivosPorProducto();
 
-        $especificaciones = EspecificacionProducto::with(['atributo', 'propiedad'])
-            ->where('esp_pubid', $pub->pub_id)
-            ->get()
-            ->map(fn ($e) => [
-                'atributo' => $e->atributo?->atb_nombre,
-                'valor' => $e->esp_valibr
-                    ?? $e->esp_valnum
-                    ?? $e->propiedad?->prp_nombre,
-            ]);
+           $especificaciones = app(FichaTecnicaService::class)->fichaParaMostrar($pub);
+
 
         // "Otros colores": el propio modelo base + todos sus hijos, salvo este mismo producto
         $grupoId = $producto->prd_padre_id ?? $producto->prd_id;
@@ -923,4 +1046,5 @@ class VitrinaController extends Controller
             ],
         ]);
     }
+
 }

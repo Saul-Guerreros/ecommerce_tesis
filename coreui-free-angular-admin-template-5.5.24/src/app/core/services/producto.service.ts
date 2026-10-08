@@ -9,13 +9,10 @@ export interface ProductoFiltros {
   categoria?: number | null;
   marca?: number | null;
   estado?: number | null;
-  // Filtro de estado de PUBLICACIÓN (distinto de "estado" que es inventario).
-  // Usado por la sección "Publicación Web": 'sin_publicar' | 'borrador' | 'publicado'.
   estado_publicacion?: string | null;
-  // El listado de /admin/productos viene colapsado por defecto (solo
-  // modelos base). Publicación Web necesita ver también las variantes,
-  // cada una publica por separado -- por eso este flag.
   incluir_variantes?: boolean;
+  // Lista solo las variantes de este producto (filas hijas al expandir).
+  padre?: number | null;
   page?: number;
   per_page?: number;
 }
@@ -28,7 +25,7 @@ export class ProductoService {
 
   constructor(private http: HttpClient) {}
 
-  listar(filtros: ProductoFiltros = {}): Observable<ProductoListResponse> {
+    listar(filtros: ProductoFiltros = {}): Observable<ProductoListResponse> {
     let params = new HttpParams();
 
     Object.entries(filtros).forEach(([key, value]) => {

@@ -1,0 +1,21 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>Quitar atributo de la plantilla</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <p>
+      ¿Quitar <strong>{{ item?.atb_nombre }}</strong> de la ficha técnica de
+      <strong>{{ categoria?.cat_nombre }}</strong>?
+    </p>
+    <p class="text-muted small mb-0">
+      Los productos que ya tengan este dato cargado lo conservan; solo deja de pedirse
+      en las nuevas publicaciones.
+    </p>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="confirmar.emit()">Quitar atributo</button>
+  </c-modal-footer>
+</c-modal>

@@ -21,6 +21,10 @@ class ProductoEquivalenciaResource extends JsonResource
             'umd_nombre' => $this->whenLoaded('unidadMedida', fn () => $this->unidadMedida->umd_nombre),
             'etiqueta'   => $this->whenLoaded('unidadMedida',
                 fn () => "{$this->unidadMedida->umd_codigo} (x{$this->factor_formateado})"),
+            // true = pertenece al modelo base y se ve desde una variante:
+            // se usa en compras, pero se administra desde el padre.
+            'heredada'   => $request->filled('producto')
+                && (int) $this->peq_prdid !== (int) $request->input('producto'),
             'en_uso'     => $this->whenCounted('detallesCompra', fn () => $this->detalles_compra_count > 0),
         ];
     }

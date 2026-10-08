@@ -1,0 +1,82 @@
+<div class="buscador">
+  <form class="uk-search uk-search-navbar uk-width-1-1" role="search" (submit)="$event.preventDefault(); verTodos()">
+    <input
+      class="uk-search-input"
+      type="search"
+      name="consulta"
+      placeholder="Buscar productos…"
+      autocomplete="off"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-controls="buscador-resultados"
+      [attr.aria-expanded]="mostrarPanel"
+      [attr.aria-activedescendant]="activo >= 0 ? 'sugerencia-' + activo : null"
+      [(ngModel)]="consulta"
+      (ngModelChange)="onTipeo()"
+      (focus)="abierto = true"
+      (keydown)="onTecla($event)"
+    />
+  </form>
+
+  @if (mostrarPanel) {
+    <div class="buscador-panel" id="buscador-resultados">
+      @if (cargando && resultados.length === 0) {
+        <div class="buscador-estado"><div uk-spinner="ratio: 0.6"></div></div>
+      } @else {
+        @if (consultaCorregida) {
+          <div class="buscador-correccion">
+            Mostrando resultados para <strong>{{ consultaCorregida }}</strong>
+          </div>
+        }
+
+        @if (resultados.length > 0) {
+          <ul class="buscador-lista" role="listbox">
+            @for (p of resultados; track p.pub_id; let i = $index) {
+              <li
+                class="buscador-item"
+                role="option"
+                [id]="'sugerencia-' + i"
+                [class.activo]="i === activo"
+                [attr.aria-selected]="i === activo"
+                (mouseenter)="activo = i"
+                (mousedown)="$event.preventDefault()"
+                (click)="abrirProducto(p)"
+              >
+                <div class="buscador-imagen">
+                  @if (imagen(p)) {
+                    <img [src]="imagen(p)" [alt]="p.titulo" loading="lazy" />
+                  }
+                </div>
+                <div class="buscador-texto">
+                  <div class="buscador-titulo">{{ p.titulo }}</div>
+                  @if (p.categoria) {
+                    <div class="buscador-categoria">{{ p.categoria }}</div>
+                  }
+                </div>
+                <div class="buscador-precio">
+                  @if (p.descuento_pct) {
+                    <del>{{ p.precio_original | monedaPy }}</del>
+                  }
+                  <span>{{ p.precio_final | monedaPy }}</span>
+                </div>
+              </li>
+            }
+          </ul>
+
+          <button type="button" class="buscador-ver-todos" (mousedown)="$event.preventDefault()" (click)="verTodos()">
+            Ver todos los resultados ({{ total }})
+          </button>
+        } @else {
+          <div class="buscador-estado">
+            No encontramos coincidencias exactas para "{{ consulta.trim() }}".
+          </div>
+          <!-- Enter lleva a la búsqueda completa, donde actúa la IA
+               (sinónimos, intención de uso, precio en lenguaje natural). -->
+          <button type="button" class="buscador-ver-todos" (mousedown)="$event.preventDefault()" (click)="verTodos()">
+            Buscar "{{ consulta.trim() }}" con búsqueda inteligente
+          </button>
+        }
+      }
+    </div>
+  }
+</div>

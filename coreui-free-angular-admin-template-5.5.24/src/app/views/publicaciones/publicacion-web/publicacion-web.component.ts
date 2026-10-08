@@ -1,15 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject  } from '@angular/core';
+import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import {
-  BadgeModule,
-  ButtonModule,
-  CardModule,
-  FormModule,
-  GridModule,
-  SpinnerModule,
-} from '@coreui/angular';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import {BadgeModule,ButtonModule,CardModule,FormModule,GridModule,SpinnerModule,} from '@coreui/angular';
 import { IconModule } from '@coreui/icons-angular';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -18,12 +11,13 @@ import { Categoria, Producto } from '../../../core/models/producto.model';
 import { PublicacionWeb } from '../../../core/models/publicacion-web.model';
 import { CatalogoService } from '../../../core/services/catalogo.service';
 import { ProductoService } from '../../../core/services/producto.service';
-import { ProductVariationsService } from '../../productos/product-variations/services/product-variations.service';
 import { PublicacionWebService } from '../../../core/services/publicacion-web.service';
 import { PreciosService } from '../../../modules/precios/service/precios.service';
 import { Precio } from '../../../modules/precios/models/precio.model';
 import { ConfiguracionTiendaService } from '../../../modules/configuracion-tienda/service/configuracion-tienda.service';
 import { ConfiguracionTienda } from '../../../modules/configuracion-tienda/models/configuracion-tienda.model';
+import { FichaTecnicaFormComponent } from '../../../modules/ficha-tecnica/ficha-tecnica-form/ficha-tecnica-form.component';
+import { ToastrService } from 'ngx-toastr';
 
 type OrigenUmbral = 'general' | 'individual';
 /**
@@ -47,6 +41,7 @@ type OrigenUmbral = 'general' | 'individual';
     GridModule,
     SpinnerModule,
     IconModule,
+    FichaTecnicaFormComponent,
   ],
   templateUrl: './publicacion-web.component.html',
 })
@@ -66,6 +61,12 @@ export class PublicacionWebComponent implements OnInit {
   // sí vive en pub_pocstk_umbral.
   configuracionTienda: ConfiguracionTienda | null = null;
   categorias: Categoria[] = [];
+
+  @ViewChild(FichaTecnicaFormComponent) fichaTecnica?: FichaTecnicaFormComponent;
+  /** Errores 422 de la ficha ("ficha.{atb_id}"), se muestran junto a cada campo. */
+  erroresFicha: Record<string, string> = {};
+  /** Errores 422 de los campos de la publicación (ej. pub_catid). */
+  erroresBackend: Record<string, string> = {};
 
   cargando = false;
   guardando = false;
@@ -106,20 +107,39 @@ export class PublicacionWebComponent implements OnInit {
   readonly secciones = ['featured', 'trending', 'selling'] as const;
 
   constructor(
-   
     private route: ActivatedRoute,
+    private router: Router,
+    private toastr: ToastrService,
     private productoService: ProductoService,
     private publicacionService: PublicacionWebService,
     private catalogoService: CatalogoService,
-	private variationsService: ProductVariationsService,
     private preciosService: PreciosService,
     private configuracionTiendaService: ConfiguracionTiendaService,
-) {}
+  ) {}
 
   ngOnInit(): void {
     this.productoId = Number(this.route.snapshot.paramMap.get('id'));
     this.catalogoService.categorias().subscribe((data) => (this.categorias = data));
     this.cargarDatos();
+  }
+
+  /**
+   * Solo subcategorías, agrupadas por su categoría principal: la ficha
+   * técnica (y el buscador) dependen de la plantilla de la subcategoría.
+   */
+  get gruposCategorias(): { padre: string; hijas: Categoria[] }[] {
+    const raices = this.categorias.filter((c) => !c.cat_idpadr);
+
+    return raices
+      .map((raiz) => ({
+        padre: raiz.cat_nombre,
+        hijas: this.categorias.filter((c) => c.cat_idpadr === raiz.cat_id),
+      }))
+      .filter((grupo) => grupo.hijas.length > 0);
+  }
+
+  get esVariante(): boolean {
+    return !!this.producto?.prd_padre_id;
   }
 
   get esNueva(): boolean {
@@ -195,7 +215,6 @@ copiarDelPadre(): void {
 
   cargarDatos(): void {
     this.cargando = true;
-    this.error = null;
 
     // Los 3 vienen de módulos distintos (Producto, Publicación Web y
     // Gestión de Precios) y se combinan recién acá. El precio se pide con
@@ -247,11 +266,13 @@ copiarDelPadre(): void {
         this.cargando = false;
       },
       error: () => {
-        this.error = 'No se pudo cargar el producto o la publicación web.';
+        this.toastr.error('No se pudo cargar el producto o la publicación web', 'Error');
         this.cargando = false;
       },
     });
   }
+
+  
 
   onArchivosSeleccionados(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -276,12 +297,13 @@ copiarDelPadre(): void {
 
   quitarImagenExistente(imagenId: number): void {
     this.publicacionService.eliminarImagen(this.productoId, imagenId).subscribe({
-      next: () => {
+      next: (res) => {
         if (this.publicacion?.imagenes) {
           this.publicacion.imagenes = this.publicacion.imagenes.filter((i) => i.img_id !== imagenId);
         }
+        this.toastr.success(res?.message ?? 'Imagen eliminada', 'Éxito');
       },
-      error: () => (this.error = 'No se pudo eliminar la imagen.'),
+      error: () => this.toastr.error('No se pudo eliminar la imagen', 'Error'),
     });
   }
 
@@ -292,46 +314,68 @@ copiarDelPadre(): void {
   guardar(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      this.toastr.error('Revise los datos ingresados', 'Validación');
       return;
     }
 
-	const eraNueva = this.esNueva; // capturarlo ANTES de cargarDatos(), que lo cambia a false
     this.guardando = true;
-    this.error = null;
-    this.mensaje = null;
 
-    // origenUmbralStock/valorUmbralStock son controles solo de UI: no
-    // existen como columnas en publicacion_web. Se resuelven acá a un
-    // único valor (mismo patrón que prd_marmin/prd_marmaj en Precios).
     const { origenUmbralStock, valorUmbralStock, ...valoresForm } = this.form.value;
-    const payload = {
+    const payload: Record<string, any> = {
       ...valoresForm,
       pub_pocstk_umbral: origenUmbralStock === 'individual' ? valorUmbralStock : null,
     };
 
+    const ficha = this.fichaTecnica;
+    if (ficha?.listo) {
+      const faltantes = ficha.faltantes();
+      if (valoresForm.pub_estado === 1 && faltantes.length) {
+        ficha.marcarFaltantes();
+        this.guardando = false;
+        this.toastr.error(`Para publicar, completá la ficha técnica: ${faltantes.join(', ')}.`, 'Validación');
+        return;
+      }
+      payload['ficha'] = JSON.stringify(ficha.valores());
+    }
+    this.erroresFicha = {};
+    this.erroresBackend = {};
+
     const formData = this.publicacionService.construirFormData(payload, this.archivosNuevos);
 
-    
     this.publicacionService.guardar(this.productoId, formData).subscribe({
       next: (res) => {
         this.guardando = false;
-        this.mensaje = res.message ?? 'Guardado correctamente.';
-        this.archivosNuevos = [];
-        this.previews = [];
-        this.cargarDatos();
-		
-		// Primera vez que se publica ESTA variante y tiene un modelo padre:
-      // copiamos sus especificaciones automáticamente (RAM, procesador, etc.)
-		if (eraNueva && this.producto?.prd_padre_id) {
-			this.variationsService
-          .duplicarEspecificaciones(this.producto.prd_padre_id, this.productoId)
-          .subscribe();
-		}
+        this.toastr.success(res.message ?? 'Publicación guardada correctamente', 'Éxito');
+        this.router.navigate(['/publicaciones']);
       },
-      error: (err) => {
-        this.guardando = false;
-        this.error = err?.error?.message ?? 'No se pudo guardar la publicación.';
-      },
+      error: (err) => this.handleError(err),
     });
+  }
+
+  private handleError(err: any): void {
+    this.guardando = false;
+
+    if (err?.status === 422 && err.error?.errors) {
+      const errores: Record<string, string[]> = err.error.errors;
+      const generales: string[] = [];
+
+      Object.entries(errores).forEach(([campo, mensajes]) => {
+        if (campo.startsWith('ficha.')) {
+          this.erroresFicha[campo] = mensajes[0];
+        } else if (campo === 'pub_catid') {
+          this.erroresBackend[campo] = mensajes[0];
+        } else {
+          generales.push(mensajes[0]);
+        }
+      });
+
+      this.toastr.error(
+        generales.length ? generales.join(' ') : 'Revise los datos marcados en el formulario',
+        'Validación'
+      );
+      return;
+    }
+
+    this.toastr.error(err?.error?.message ?? 'No se pudo guardar la publicación', 'Error');
   }
 }

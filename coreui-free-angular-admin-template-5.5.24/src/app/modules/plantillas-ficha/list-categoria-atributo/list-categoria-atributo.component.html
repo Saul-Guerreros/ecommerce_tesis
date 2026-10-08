@@ -1,0 +1,138 @@
+<div class="row g-3">
+
+  <!-- ============ SUBCATEGORÍAS ============ -->
+  <div class="col-lg-4">
+    <c-card class="h-100">
+      <c-card-header><strong>Subcategorías</strong></c-card-header>
+
+      <c-card-body>
+        <input cFormControl class="mb-3" placeholder="Buscar subcategoría..."
+               [(ngModel)]="filtroSubcategoria" />
+
+        <div class="text-center py-4" *ngIf="cargandoSubcategorias">
+          <c-spinner color="primary"></c-spinner>
+        </div>
+
+        <ul cListGroup *ngIf="!cargandoSubcategorias">
+          <li cListGroupItem *ngFor="let s of subcategoriasFiltradas"
+              class="d-flex justify-content-between align-items-center"
+              role="button" tabindex="0"
+              [active]="seleccionada?.cat_id === s.cat_id"
+              (click)="seleccionar(s)" (keydown.enter)="seleccionar(s)">
+            <div>
+              <div class="fw-semibold">{{ s.cat_nombre }}</div>
+              <div class="small" [class.text-muted]="seleccionada?.cat_id !== s.cat_id">
+                {{ s.padre_nombre }}
+              </div>
+            </div>
+            <c-badge [color]="s.total_atributos > 0 ? 'success' : 'secondary'" shape="rounded-pill">
+              {{ s.total_atributos }}
+            </c-badge>
+          </li>
+
+          <li cListGroupItem class="text-muted text-center" *ngIf="subcategoriasFiltradas.length === 0">
+            {{ subcategorias.length === 0
+                ? 'No hay subcategorías. Créalas primero en Categorías.'
+                : 'Ninguna subcategoría coincide con la búsqueda.' }}
+          </li>
+        </ul>
+      </c-card-body>
+    </c-card>
+  </div>
+
+  <!-- ============ PLANTILLA ============ -->
+  <div class="col-lg-8">
+    <c-card class="h-100">
+      <c-card-header class="d-flex justify-content-between align-items-center">
+        <strong>
+          {{ seleccionada ? 'Ficha técnica de ' + seleccionada.cat_nombre : 'Plantilla de ficha técnica' }}
+        </strong>
+        <button cButton color="primary" *ngIf="seleccionada" (click)="abrirNuevo()">
+          + Agregar atributo
+        </button>
+      </c-card-header>
+
+      <c-card-body>
+        <div class="text-muted text-center py-5" *ngIf="!seleccionada">
+          Elegí una subcategoría para ver o armar su ficha técnica.
+        </div>
+
+        <ng-container *ngIf="seleccionada">
+          <div class="text-muted small mb-3">
+            Estos campos aparecerán al publicar un producto de esta subcategoría.
+            Los obligatorios deberán completarse antes de publicarlo.
+          </div>
+
+          <div class="text-center py-4" *ngIf="cargandoPlantilla">
+            <c-spinner color="primary"></c-spinner>
+          </div>
+
+          <div class="table-responsive" *ngIf="!cargandoPlantilla">
+            <table cTable striped hover class="align-middle">
+              <thead>
+                <tr>
+                  <th class="text-center" style="width: 80px">Orden</th>
+                  <th>Atributo</th>
+                  <th>Tipo de dato</th>
+                  <th class="text-center">Obligatorio</th>
+                  <th class="text-end">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of plantilla">
+                  <td class="text-center">{{ item.cta_orden }}</td>
+                  <td>
+                    {{ item.atb_nombre }}
+                    <span class="text-muted" *ngIf="item.atb_unidad">({{ item.atb_unidad }})</span>
+                    <div class="small text-warning" *ngIf="item.sin_opciones">
+                      Sin opciones cargadas: agregá propiedades en Atributos.
+                    </div>
+                  </td>
+                  <td>{{ item.atb_tipo_descri }}</td>
+                  <td class="text-center">
+                    <c-badge [color]="item.cta_obliga === 1 ? 'danger' : 'secondary'">
+                      {{ item.cta_obliga === 1 ? 'Sí' : 'No' }}
+                    </c-badge>
+                  </td>
+                  <td class="text-end text-nowrap">
+                    <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirEditar(item)">
+                      Editar
+                    </button>
+                    <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(item)">
+                      Quitar
+                    </button>
+                  </td>
+                </tr>
+
+                <tr *ngIf="plantilla.length === 0">
+                  <td colspan="5" class="text-center text-muted py-4">
+                    Esta subcategoría todavía no tiene ficha técnica.
+                    Agregá los datos que el cliente usa para comparar productos (ej. procesador, RAM).
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
+      </c-card-body>
+    </c-card>
+  </div>
+</div>
+
+<app-form-categoria-atributo
+  [visible]="formModalVisible"
+  [item]="itemSeleccionado"
+  [categoria]="seleccionada"
+  [atributos]="atributos"
+  [atributosUsados]="atributosUsados"
+  (visibleChange)="formModalVisible = $event"
+  (guardado)="refrescar()">
+</app-form-categoria-atributo>
+
+<app-delete-categoria-atributo
+  [visible]="deleteModalVisible"
+  [item]="itemSeleccionado"
+  [categoria]="seleccionada"
+  (visibleChange)="deleteModalVisible = $event"
+  (confirmar)="confirmarEliminar()">
+</app-delete-categoria-atributo>

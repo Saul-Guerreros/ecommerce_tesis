@@ -2,56 +2,115 @@
 
 namespace App\Http\Requests\product;
 
+use App\Models\Producto;
+use App\Models\Product\Atributo;
+use App\Services\Catalogo\FichaTecnicaService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-class PrecioRequest extends FormRequest
+/**
+ * Valida el alta/edición de Producto (ProductoController@store / @update),
+ * incluida el alta en lote de variantes (prd_padre_id) desde el mismo form.
+ *
+ * Las claves de error de variantes salen como "variantes.N.campo", que es
+ * el formato que form-producto.component.ts mapea a cada fila.
+ */
+class ProductoRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Los tres campos son opcionales: null = "usar el valor general de
-     * la tienda" (ver ConfiguracionPrecio). Importante: el frontend debe
-     * enviar SIEMPRE las tres claves (con valor null cuando el usuario
-     * elige "usar general"), no omitirlas — Laravel solo pisa el dato
-     * si la clave está presente en el payload.
-     *
-     * prd_pvtmin/prd_pvtmay NUNCA se aceptan acá — los recalcula
-     * PriceService a partir del costo promedio, igual que
-     * CompraService::recalcularPrecioVenta().
-     */
+    /** ID del producto en edición (null al crear). Ruta: productos/{producto} */
+    private function productoId(): ?int
+    {
+        $id = $this->route('producto') ?? $this->route('id');
+        return $id ? (int) $id : null;
+    }
+
     public function rules(): array
     {
-        return [
-            // Modalidades de venta habilitadas para el producto. El markup
-            // no se habilita/deshabilita: es la MODALIDAD la que se activa,
-            // y el markup es su configuracion.
-            'prd_habmin'    => ['required', 'boolean'],
-            'prd_habmaj'    => ['required', 'boolean'],
+        $id = $this->productoId();
 
-            'prd_marmin'    => ['nullable', 'numeric', 'min:0'],
-            'prd_marmaj'    => ['nullable', 'numeric', 'min:0'],
-            'prd_canminmaj' => ['nullable', 'numeric', 'min:1'],
+        return [
+            'prd_marid'  => ['required', 'integer', Rule::exists('marca', 'mar_id')],
+            'prd_tivid'  => ['required', 'integer', Rule::exists('tipo_iva', 'tiv_id')],
+            'prd_umdid'  => ['required', 'integer', Rule::exists('unidad_medida', 'umd_id')],
+            'prd_codinv' => ['required', 'string', 'max:45',
+                Rule::unique('producto', 'prd_codinv')->ignore($id, 'prd_id')],
+            'prd_descri' => ['required', 'string', 'max:150'],
+            'prd_stkmin' => ['required', 'numeric', 'min:0', 'decimal:0,4'],
+            'prd_afestk' => ['nullable', 'boolean'],
+            'prd_estado' => ['nullable', 'boolean'],
+
+            // Solo se acepta un padre que no sea, a su vez, variante.
+            'prd_padre_id' => ['nullable', 'integer',
+                Rule::exists('producto', 'prd_id')->where(fn ($q) => $q->whereNull('prd_padre_id'))],
+
+            // Equivalencia inicial (solo se usa al crear).
+            'tiene_equiv_compra' => ['nullable', 'boolean'],
+            'peq_umdid'  => ['nullable', 'required_if:tiene_equiv_compra,true,1', 'integer',
+                Rule::exists('unidad_medida', 'umd_id')],
+            'peq_factor' => ['nullable', 'required_if:tiene_equiv_compra,true,1', 'numeric', 'gt:0'],
+
+            // Alta en lote de variantes.
+            'variantes'              => ['nullable', 'array'],
+            'variantes.*.prd_descri' => ['required', 'string', 'max:150'],
+            'variantes.*.prd_codinv' => ['required', 'string', 'max:45', 'distinct',
+                Rule::unique('producto', 'prd_codinv'), 'different:prd_codinv'],
+            'variantes.*.prd_stkmin' => ['required', 'numeric', 'min:0', 'decimal:0,4'],
+            // Cualquier tipo de atributo activo. El valor llega en el campo
+            // que corresponde a su tipo:
+            //   1 Texto -> valor_texto | 2 Número -> valor_numero
+            //   3 Seleccionable -> prp_id | 4 Múltiple -> propiedad_ids
+            'variantes.*.atb_id'          => ['required', 'integer',
+                Rule::exists('atributo', 'atb_id')->where('atb_estado', 1)->whereNull('atb_eliminado')],
+            'variantes.*.valor_texto'     => ['nullable', 'string', 'max:150'],
+            'variantes.*.valor_numero'    => ['nullable', 'numeric', 'min:0'],
+            'variantes.*.prp_id'          => ['nullable', 'integer'],
+            'variantes.*.propiedad_ids'   => ['nullable', 'array'],
+            'variantes.*.propiedad_ids.*' => ['integer'],
         ];
     }
 
-    /**
-     * Segunda capa de la validacion "al menos una modalidad" (la primera
-     * es el CHECK ck_prd_modalidad_venta en PostgreSQL, la tercera es el
-     * validador del formulario en Angular). Un producto sin ninguna
-     * modalidad activa no tiene precio de venta.
-     */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            if (! $this->boolean('prd_habmin') && ! $this->boolean('prd_habmaj')) {
-                $validator->errors()->add(
-                    'prd_habmin',
-                    'El producto debe venderse al menos en una modalidad: minorista o mayorista.'
-                );
+            $variantes = $this->input('variantes', []);
+            if (empty($variantes) || ! is_array($variantes)) {
+                return;
+            }
+
+            // Una variante no puede tener variantes propias.
+            $id = $this->productoId();
+            if ($id && Producto::whereKey($id)->whereNotNull('prd_padre_id')->exists()) {
+                $validator->errors()->add('variantes', 'Este producto ya es una variante: no puede tener variantes propias.');
+                return;
+            }
+
+            // Valor del diferenciador: mismas reglas que la Ficha Técnica
+            // (obligatorio, rango numérico, propiedades del atributo, etc.).
+            $ficha = app(FichaTecnicaService::class);
+            $atributos = Atributo::with('propiedades')
+                ->whereIn('atb_id', collect($variantes)->pluck('atb_id')->filter()->unique())
+                ->get()
+                ->keyBy('atb_id');
+
+            // Campo del form donde se muestra el error, según el tipo.
+            $campoPorTipo = [1 => 'valor_texto', 2 => 'valor_numero', 3 => 'prp_id', 4 => 'propiedad_ids'];
+
+            foreach ($variantes as $i => $fila) {
+                $atributo = $atributos->get((int) ($fila['atb_id'] ?? 0));
+                if (! $atributo || $validator->errors()->has("variantes.$i.*")) {
+                    continue; // ya tiene error de formato o el atributo no existe
+                }
+
+                if ($error = $ficha->validarDiferenciador($atributo, $ficha->valorDesdeFila($fila))) {
+                    $campo = $campoPorTipo[(int) $atributo->atb_tipo] ?? 'atb_id';
+                    $validator->errors()->add("variantes.$i.$campo", $error);
+                }
             }
         });
     }
@@ -59,14 +118,15 @@ class PrecioRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'prd_marmin.numeric'    => 'El margen minorista debe ser un número.',
-            'prd_marmin.min'        => 'El margen minorista no puede ser negativo.',
-            'prd_marmaj.numeric'    => 'El margen mayorista debe ser un número.',
-            'prd_marmaj.min'        => 'El margen mayorista no puede ser negativo.',
-            'prd_canminmaj.numeric' => 'La cantidad mínima mayorista debe ser un número.',
-            'prd_canminmaj.min'     => 'La cantidad mínima mayorista debe ser al menos 1 unidad.',
-            'prd_habmin.required'   => 'Debe indicar si el producto se vende al por menor.',
-            'prd_habmaj.required'   => 'Debe indicar si el producto se vende al por mayor.',
+            'prd_codinv.unique'             => 'Ya existe un producto con ese código de inventario.',
+            'prd_stkmin.decimal'            => 'El stock mínimo admite hasta 4 decimales.',
+            'variantes.*.prd_stkmin.decimal' => 'El stock mínimo admite hasta 4 decimales.',
+            'variantes.*.prd_codinv.unique' => 'Ese código ya está en uso por otro producto.',
+            'variantes.*.prd_codinv.distinct' => 'Código repetido dentro del lote de variantes.',
+            'variantes.*.prd_codinv.different' => 'La variante no puede usar el mismo código que el producto base.',
+            'variantes.*.atb_id.exists'     => 'El atributo no existe o está inactivo.',
+            'variantes.*.valor_numero.numeric' => 'Debe ser un número.',
+            'variantes.*.valor_numero.min'  => 'No puede ser negativo.',
         ];
     }
 }

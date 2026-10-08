@@ -21,20 +21,20 @@
       </div>
     </div>
 
-    <div class="alert alert-danger" *ngIf="error">{{ error }}</div>
-    <div class="alert alert-success" *ngIf="mensaje">{{ mensaje }}</div>
-
     <form [formGroup]="form" (ngSubmit)="guardar()">
       <div class="row g-3">
         <div class="col-md-6">
-          <label cLabel for="pub_catid">Categoría</label>
+          <label cLabel for="pub_catid">Subcategoría</label>
           <select cSelect id="pub_catid" formControlName="pub_catid">
             <option [ngValue]="null" disabled>Selecciona...</option>
-            <option *ngFor="let c of categorias" [ngValue]="c.cat_id">{{ c.cat_nombre }}</option>
+            <optgroup *ngFor="let g of gruposCategorias" [label]="g.padre">
+              <option *ngFor="let c of g.hijas" [ngValue]="c.cat_id">{{ c.cat_nombre }}</option>
+            </optgroup>
           </select>
           <div class="text-danger small" *ngIf="form.get('pub_catid')?.touched && form.get('pub_catid')?.invalid">
-            Selecciona una categoría.
+            Selecciona una subcategoría.
           </div>
+          <div class="text-danger small" *ngIf="erroresBackend['pub_catid']">{{ erroresBackend['pub_catid'] }}</div>
         </div>
 
         <div class="col-md-6">
@@ -217,6 +217,17 @@
                 <div class="col-12">
           <label cLabel for="pub_descwb">Descripción para la web</label>
           <textarea cFormControl id="pub_descwb" rows="4" formControlName="pub_descwb" placeholder="Descripción de marketing / SEO, distinta de la descripción interna del producto"></textarea>
+        </div>
+
+        <div class="col-12">
+          <hr />
+          <app-ficha-tecnica-form
+            [productoId]="productoId"
+            [categoriaId]="form.value.pub_catid ?? null"
+            [esVariante]="esVariante"
+            [productoBaseId]="producto?.prd_padre_id ?? null"
+            [errores]="erroresFicha">
+          </app-ficha-tecnica-form>
         </div>
 
         <div class="col-12">

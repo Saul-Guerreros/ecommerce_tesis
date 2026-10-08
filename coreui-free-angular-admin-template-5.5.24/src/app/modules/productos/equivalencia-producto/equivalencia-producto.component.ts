@@ -10,6 +10,7 @@ import { ProductoEquivalencia, UnidadMedidaOption } from '../models/producto.mod
 import { EquivalenciasService } from '../service/equivalencias.service';
 
 const MSG_DUPLICADA = 'Ya existe una unidad alternativa con la misma equivalencia.';
+const MSG_HEREDADA = 'Esta presentación ya la hereda del modelo base.';
 const FACTOR_MAX = 999999.9999;
 
 @Component({
@@ -24,6 +25,9 @@ export class EquivalenciaProductoComponent implements OnChanges {
   @Input() unidadBaseNombre = 'unidades';
   @Input() unidades: UnidadMedidaOption[] = []; // catálogo completo, ya lo carga form-producto
   @Input() soloLectura = false;
+  // Herencia: una variante usa las presentaciones del modelo base + las suyas.
+  @Input() esVariante = false;
+  @Input() cantidadVariantes = 0; // solo informativo, para el modelo base
 
   equivalencias: ProductoEquivalencia[] = [];
   cargando = false;
@@ -60,6 +64,10 @@ export class EquivalenciaProductoComponent implements OnChanges {
   // Todo el catálogo MENOS la unidad de stock: una misma unidad puede repetirse con distinto factor.
   get unidadesDisponibles(): UnidadMedidaOption[] {
     return this.unidades.filter((u) => u.umd_id !== this.unidadBaseId);
+  }
+
+  get hayHeredadas(): boolean {
+    return this.equivalencias.some((e) => e.heredada);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -99,9 +107,10 @@ export class EquivalenciaProductoComponent implements OnChanges {
     const duplicada = this.buscarDuplicada(umd, factor);
     if (duplicada) {
       const control = this.form.get('peq_factor')!;
-      control.setErrors({ backend: MSG_DUPLICADA });
+      control.setErrors({ backend: duplicada.heredada ? MSG_HEREDADA : MSG_DUPLICADA });
       control.markAsTouched();
-      this.duplicadaInactiva = duplicada.peq_estado === 0 ? duplicada : null;
+      // Solo se ofrece reactivar las PROPIAS: una heredada se gestiona en el modelo base.
+      this.duplicadaInactiva = duplicada.peq_estado === 0 && !duplicada.heredada ? duplicada : null;
       return;
     }
 

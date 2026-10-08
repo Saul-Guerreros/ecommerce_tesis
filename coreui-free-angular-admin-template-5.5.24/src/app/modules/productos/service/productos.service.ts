@@ -2,8 +2,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Producto, ProductoConfig, ProductoSelect } from '../models/producto.model';
+import { Producto, ProductoConfig, ProductoSelect, Paginado } from '../models/producto.model';
 import { environment } from '../../../../environments/environment';
+
 
 @Injectable({ providedIn: 'root' })
 export class ProductosService {
@@ -11,13 +12,17 @@ export class ProductosService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(filtros: { search?: string; marca?: number | null; estado?: string } = {}): Observable<Producto[]> {
-    let params = new HttpParams();
-    if (filtros.search) params = params.set('search', filtros.search);
-    if (filtros.marca)  params = params.set('marca', String(filtros.marca));
-    if (filtros.estado !== undefined && filtros.estado !== '') params = params.set('estado', filtros.estado);
+  getAll(filtros: { search?: string; marca?: number | null; estado?: string } = {},page = 1,perPage = 10): Observable<Paginado<Producto>> {
+  let params = new HttpParams()
+    .set('page', String(page))
+    .set('per_page', String(perPage));
 
-    return this.http.get<{ data: Producto[] }>(this.apiUrl, { params }).pipe(map((res) => res.data));
+  if (filtros.search) params = params.set('search', filtros.search);
+  if (filtros.marca)  params = params.set('marca', String(filtros.marca));
+  if (filtros.estado !== undefined && filtros.estado !== '') params = params.set('estado', filtros.estado);
+
+  // Ya no se hace map(res => res.data): se necesita también "meta".
+  return this.http.get<Paginado<Producto>>(this.apiUrl, { params });
   }
 
   // GET /productos/{id} — trae el producto con su modelo base (padre) y

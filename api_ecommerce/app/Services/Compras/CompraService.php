@@ -139,8 +139,9 @@ class CompraService
             $factor = 1.0;
             $peqId  = null;
         } else {
-            $equivalencia = \App\Models\Compras\ProductoEquivalencia::where('peq_id', $equivalenciaId)
-                ->where('peq_prdid', $productoId)
+            // Propia de la variante o heredada de su modelo base.
+            $equivalencia = \App\Models\Compras\ProductoEquivalencia::disponiblesPara($productoId)
+                ->where('peq_id', $equivalenciaId)
                 ->where('peq_umdid', $unidadId)
                 ->where('peq_estado', 1)
                 ->first();

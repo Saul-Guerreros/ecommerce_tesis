@@ -4,7 +4,6 @@ use App\Http\Controllers\Admin\AtributoController;
 use App\Http\Controllers\Admin\product\categorieController;
 use App\Http\Controllers\Admin\SliderController;
 use App\Http\Controllers\Api\CategoriaController;
-use App\Http\Controllers\Admin\Product\VariacionProductoController;
 use App\Http\Controllers\Admin\Product\EspecificacionProductoController;
 use App\Http\Controllers\Admin\Cupone\CuponeController;
 use App\Http\Controllers\Admin\Discount\DiscountController;
@@ -42,7 +41,8 @@ use App\Http\Controllers\Admin\Compras\ProductoEquivalenciaController;
 use App\Http\Controllers\Admin\product\ConfiguracionPrecioController;
 use App\Http\Controllers\Api\PerfilClienteController;
 use App\Http\Controllers\Api\DireccionClienteController;
-
+use App\Http\Controllers\Admin\Catalogo\CategoriaAtributoController;
+use App\Http\Controllers\Admin\Catalogo\FichaTecnicaController;
 use App\Http\Controllers\Admin\Configuracion\ConfiguracionTiendaController;
 
 use App\Http\Controllers\Admin\Compras\NotaCreditoController;
@@ -60,6 +60,8 @@ use App\Http\Controllers\Admin\Compras\PagoCompraController;
 use App\Http\Controllers\Carrito\CarritoController;
 
 use App\Http\Controllers\Admin\Configuracion\ConfiguracionCuotaController;
+use App\Http\Controllers\Chat\ChatController;
+use App\Http\Controllers\Admin\Chat\FaqTiendaController;
 
 
 /*
@@ -112,9 +114,15 @@ Route::group([
     Route::get('productos/filtros', [VitrinaController::class, 'configFiltros']);
     Route::get('productos/buscar', [VitrinaController::class, 'buscar']);
     Route::get('categorias/menu', [VitrinaController::class, 'menuCategorias']);
+	Route::get('productos/sugerencias', [VitrinaController::class, 'sugerencias'])->middleware('throttle:60,1');
 
+    Route::get('productos/analizar-busqueda', [VitrinaController::class, 'analizarBusqueda'])->middleware('throttle:60,1');
     // Carrito de invitado: resuelve precios e imágenes sin persistir nada.
     Route::post('carrito/previsualizar', [CarritoController::class, 'previsualizar']);
+
+    // MÓDULO 6 - ChatBot (público: invitado o cliente con JWT).
+    Route::post('chat/mensajes', [ChatController::class, 'enviar'])->middleware('throttle:chat');
+    Route::get('chat/{token}', [ChatController::class, 'historial'])->whereUuid('token')->middleware('throttle:60,1');
 });
 
 // Rutas privadas de tienda (requieren sesión de cliente autenticado).
@@ -130,7 +138,7 @@ Route::group([
 });
 
 Route::group([
-    'middleware'=> ['auth:api'],   // <- solo agregar esta línea
+    'middleware'=> ['auth:api', 'permiso:dashboard.ver'],   // <- solo agregar esta línea
     'prefix'=> 'admin'
 ], function ($router) {
     Route::get('sliders-productos', [SliderController::class, 'productos']);
@@ -145,12 +153,6 @@ Route::group([
 
     Route::post('propiedades', [AtributoController::class, 'storePropiedad']);
     Route::delete('propiedades/{id}', [AtributoController::class, 'destroyPropiedad']);
-
-    Route::get('variaciones/config', [VariacionProductoController::class, 'config']);
-    Route::get('variaciones', [VariacionProductoController::class, 'index']);
-    Route::post('variaciones', [VariacionProductoController::class, 'store']);
-    Route::put('variaciones/{id}', [VariacionProductoController::class, 'update']);
-    Route::delete('variaciones/{id}', [VariacionProductoController::class, 'destroy']);
 
     Route::get('especificaciones', [EspecificacionProductoController::class, 'index']);
     Route::post('especificaciones', [EspecificacionProductoController::class, 'store']);
@@ -272,6 +274,8 @@ Route::group([
     Route::get('productos/{producto}/publicacion', [PublicacionWebController::class, 'show']);
     Route::post('productos/{producto}/publicacion', [PublicacionWebController::class, 'guardar']);
     Route::delete('productos/{producto}/publicacion/imagenes/{imagen}', [PublicacionWebController::class, 'eliminarImagen']);
+    Route::get('productos/{producto}/ficha-tecnica', [FichaTecnicaController::class, 'show']);
+
 
     // --- Compras (modulo transaccional: sin apiResource, sin toggleEstado) ---
     Route::get('compras/config', [CompraController::class, 'config']);
@@ -339,7 +343,17 @@ Route::group([
     Route::post('pagos-compra', [PagoCompraController::class, 'store']);
     Route::patch('pagos-compra/{id}/anular', [PagoCompraController::class, 'anular']);
     
-    
+    // --- Plantillas de Ficha Técnica ---
+    Route::get('categoria-atributos/categorias', [CategoriaAtributoController::class, 'categorias']);
+    Route::get('categoria-atributos/config', [CategoriaAtributoController::class, 'config']);
+    Route::apiResource('categoria-atributos', CategoriaAtributoController::class)->except(['show']);
+
+	 // --- MÓDULO 6 - ChatBot: información de la tienda ---
+    Route::middleware('permiso:chatbot.gestionar')->group(function () {
+    Route::get('faq-tienda/config', [FaqTiendaController::class, 'config']);
+    Route::patch('faq-tienda/{id}/estado', [FaqTiendaController::class, 'toggleEstado']);
+    Route::apiResource('faq-tienda', FaqTiendaController::class)->except(['show'])->parameters(['faq-tienda' => 'id']);
+    });
 });
 
 Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {

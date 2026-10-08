@@ -34,4 +34,19 @@ return [
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
     ],
+	
+	'gemini' => [
+        'key'          => env('GEMINI_API_KEY'),
+        'model'        => env('GEMINI_MODEL', 'gemini-2.5-flash-lite'),
+        // Modelos a probar si el principal falla, separados por coma.
+        'respaldo'     => env('GEMINI_MODELOS_RESPALDO', 'gemini-2.5-flash,gemini-3.1-flash-lite-preview'),
+        'thinking'     => env('GEMINI_THINKING', 'minimal'),
+        // Segundos máximos por modelo y para todos los intentos juntos.
+        'timeout'      => (int) env('GEMINI_TIMEOUT', 6),
+        'tiempo_total' => (int) env('GEMINI_TIEMPO_TOTAL', 20),
+        // El chat envía peticiones más pesadas que el buscador (historial + herramientas).
+        'chat_timeout' => (int) env('GEMINI_CHAT_TIMEOUT', 15),
+        'chat_tiempo_total' => (int) env('GEMINI_CHAT_TIEMPO_TOTAL', 25),
+    ],
+
 ];

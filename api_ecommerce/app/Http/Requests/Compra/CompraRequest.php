@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Compra;
 
+use App\Models\Compras\ProductoEquivalencia;
 use App\Models\Compras\TimbradoProveedor;
 use App\Models\Compras\TipoComprobante;
 use Illuminate\Foundation\Http\FormRequest;
@@ -231,9 +232,9 @@ class CompraRequest extends FormRequest
                 continue;
             }
 
-            $existe = DB::table('producto_equivalencia')
+            // Propia del producto o heredada de su modelo base (variantes).
+            $existe = ProductoEquivalencia::disponiblesPara((int) $linea['prd_id'])
                 ->where('peq_id', $peqId)
-                ->where('peq_prdid', $linea['prd_id'])
                 ->where('peq_umdid', $umdLinea)
                 ->where('peq_estado', 1)
                 ->exists();

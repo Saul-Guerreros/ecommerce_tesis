@@ -89,6 +89,10 @@ export class ListAtributoComponent implements OnInit {
     }
   }
 
+  esNumero(tipo: number | string): boolean {
+    return Number(tipo) === 2;
+  }
+
   esSeleccionable(tipo: number): boolean {
     return Number(tipo) === 3 || Number(tipo) === 4;
   }
@@ -97,11 +101,13 @@ export class ListAtributoComponent implements OnInit {
   showCreate = false;
   createNombre = '';
   createTipo = 1;
+  createUnidad = '';
   createError = '';
 
   openCreate(): void {
     this.createNombre = '';
     this.createTipo = 1;
+    this.createUnidad = '';
     this.createError = '';
     this.showCreate = true;
   }
@@ -111,7 +117,12 @@ export class ListAtributoComponent implements OnInit {
       this.createError = 'Todos los campos son necesarios';
       return;
     }
-    const data = { atb_nombre: this.createNombre, atb_tipo: this.createTipo, atb_estado: 1 };
+    const data = {
+      atb_nombre: this.createNombre,
+      atb_tipo: this.createTipo,
+      atb_unidad: this.esNumero(this.createTipo) ? this.createUnidad.trim() || null : null,
+      atb_estado: 1,
+    };
     this.atributoService.create(data).subscribe((resp: any) => {
       if (resp.message === 403) {
         this.createError = 'El nombre del atributo ya existe';
@@ -127,12 +138,14 @@ export class ListAtributoComponent implements OnInit {
   editAtributo: any = null;
   editNombre = '';
   editTipo = 1;
+  editUnidad = '';
   editError = '';
 
   openEdit(atributo: any): void {
     this.editAtributo = atributo;
     this.editNombre = atributo.atb_nombre;
     this.editTipo = atributo.atb_tipo;
+    this.editUnidad = atributo.atb_unidad ?? '';
     this.editError = '';
     this.showEdit = true;
   }
@@ -145,6 +158,7 @@ export class ListAtributoComponent implements OnInit {
     const data = {
       atb_nombre: this.editNombre,
       atb_tipo: this.editTipo,
+      atb_unidad: this.esNumero(this.editTipo) ? this.editUnidad.trim() || null : null,
       atb_estado: this.editAtributo.atb_estado ?? 1,
     };
     this.atributoService.update(this.editAtributo.atb_id, data).subscribe((resp: any) => {
@@ -161,16 +175,22 @@ export class ListAtributoComponent implements OnInit {
   // ---- Eliminar ----
   showDelete = false;
   deleteAtributo: any = null;
+  deleteError = '';
 
   openDelete(atributo: any): void {
     this.deleteAtributo = atributo;
+    this.deleteError = '';
     this.showDelete = true;
   }
 
   confirmarDelete(): void {
-    this.atributoService.delete(this.deleteAtributo.atb_id).subscribe(() => {
-      this.atributos = this.atributos.filter((a) => a.atb_id !== this.deleteAtributo.atb_id);
-      this.showDelete = false;
+    this.atributoService.delete(this.deleteAtributo.atb_id).subscribe({
+      next: () => {
+        this.atributos = this.atributos.filter((a) => a.atb_id !== this.deleteAtributo.atb_id);
+        this.showDelete = false;
+      },
+      // 409: el atributo está en una Plantilla de Ficha Técnica.
+      error: (err) => (this.deleteError = err?.error?.message ?? 'No se pudo eliminar el atributo'),
     });
   }
 

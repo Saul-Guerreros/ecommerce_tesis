@@ -1,3 +1,5 @@
+import { Atributo } from '../../../views/atributos/atributo.model';
+
 export interface Producto {
   prd_id?: number;
   prd_marid: number | null;
@@ -105,6 +107,8 @@ export interface ProductoConfig {
   marcas: MarcaOption[];
   tipos_iva: TipoIvaOption[];
   unidades: UnidadMedidaOption[];
+  // Todos los tipos de atributo, para el "Se diferencia por" de variantes.
+  atributos_variante: Atributo[];
 }
 
 // Version liviana de Producto para el buscador de compras/ventas.
@@ -129,4 +133,20 @@ export interface ProductoEquivalencia {
   en_uso?: boolean;         // usada en compras: solo puede desactivarse
   umd_codigo?: string;
   umd_nombre?: string;
+  heredada?: boolean; 
+}
+
+// Respuesta paginada estándar de Laravel (ResourceCollection + paginate)
+export interface PaginacionMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
+
+export interface Paginado<T> {
+  data: T[];
+  meta: PaginacionMeta;
 }

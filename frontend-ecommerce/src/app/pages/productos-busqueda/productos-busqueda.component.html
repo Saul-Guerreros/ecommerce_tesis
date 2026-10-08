@@ -91,6 +91,7 @@
             </div>
             <div class="uk-margin-small-bottom uk-margin-small-left">
               <select class="uk-select" [(ngModel)]="orden" (ngModelChange)="onFiltroChange()">
+                <option value="relevancia">Más relevantes</option>
                 <option value="nuevos">Más nuevos</option>
                 <option value="precio_asc">Precio: menor a mayor</option>
                 <option value="precio_desc">Precio: mayor a menor</option>
@@ -99,13 +100,33 @@
           </div>
 
           @if (!cargandoProductos) {
-            <div class="uk-text-meta uk-margin-small-bottom">{{ totalResultados }} resultado(s)</div>
+            @if (interpretacion?.explicacion) {
+              <div class="uk-alert-primary uk-margin-small-bottom" uk-alert>
+                <span uk-icon="icon: search; ratio: 0.8"></span>
+                Interpretamos tu búsqueda: <strong>{{ interpretacion?.explicacion }}</strong>
+                @if (interpretacion?.filtros_relajados) {
+                  <div class="uk-text-small uk-margin-xsmall-top">
+                    No encontramos productos con todas las características pedidas; te mostramos los más cercanos.
+                  </div>
+                }
+              </div>
+            }
+            <div class="uk-text-meta uk-margin-small-bottom">
+              {{ totalResultados }} resultado(s)
+              @if (consultaCorregida) {
+                · Mostrando resultados para <strong>{{ consultaCorregida }}</strong>
+              }
+            </div>
           }
 
           @if (cargandoProductos) {
-            <div class="uk-text-center uk-margin-large-top uk-margin-large-bottom">
-              <div uk-spinner="ratio: 1.5"></div>
-            </div>
+            @if (procesandoIA && modoAvisoIA === 'en-linea') {
+              <app-cargando-ia [visible]="true" modo="en-linea"></app-cargando-ia>
+            } @else {
+              <div class="uk-text-center uk-margin-large-top uk-margin-large-bottom">
+                <div uk-spinner="ratio: 1.5"></div>
+              </div>
+            }
           }
 
           @if (!cargandoProductos) {
@@ -175,3 +196,6 @@
     </div>
   </section>
 </main>
+<!-- Aviso a pantalla completa cuando se llega desde el buscador del header
+     y la búsqueda necesita IA (difumina el fondo). -->
+<app-cargando-ia [visible]="procesandoIA && modoAvisoIA === 'pantalla'" modo="pantalla"></app-cargando-ia>

@@ -60,6 +60,7 @@ export interface Producto {
   stock_bajo?: boolean;
   stock_actual?: number | null;
   precio_sugerido?: number | null;
+    variantes_count?: number;
 }
 
 export interface PaginacionMeta {

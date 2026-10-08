@@ -22,4 +22,31 @@ export interface MetaBusqueda {
   page: number;
   por_pagina: number;
   ultima_pagina: number;
+  /** Consulta corregida por el buscador ("notbook" -> "notebook"); null si no hubo corrección. */
+  consulta_corregida?: string | null;
+  /** todos | parcial | aproximado | sin_resultados | ia (ver ResultadoBusqueda en el backend). */
+  modo?: string | null;
+  /** Lo que entendió la IA cuando la búsqueda necesitó interpretación. */
+  interpretacion?: {
+    explicacion: string;
+    /** true si se quitaron los filtros técnicos porque no había resultados con ellos. */
+    filtros_relajados: boolean;
+  } | null;
+}
+
+/** Producto resumido para los resultados instantáneos del buscador del header. */
+export interface SugerenciaProducto {
+  pub_id: number;
+  titulo: string;
+  slug: string | null;
+  categoria: string | null;
+  imagen: string | null;
+  precio_original: number;
+  precio_final: number;
+  descuento_pct: number | null;
+}
+
+export interface SugerenciasResponse {
+  data: SugerenciaProducto[];
+  meta: { total: number; consulta_corregida: string | null };
 }

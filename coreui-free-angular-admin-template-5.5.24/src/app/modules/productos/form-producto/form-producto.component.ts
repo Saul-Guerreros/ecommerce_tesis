@@ -6,7 +6,6 @@ import { ToastrService } from 'ngx-toastr';
 import { ButtonModule, BadgeModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
 import { Producto, MarcaOption, TipoIvaOption, UnidadMedidaOption } from '../models/producto.model';
 import { ProductosService } from '../service/productos.service';
-import { AtributoService } from '../../../views/atributos/services/atributo.service';
 import { Atributo, Propiedad } from '../../../views/atributos/atributo.model';
 
 import { EquivalenciaProductoComponent } from '../equivalencia-producto/equivalencia-producto.component';
@@ -32,12 +31,14 @@ export class FormProductoComponent implements OnInit, OnChanges {
   tiposIva: TipoIvaOption[] = [];
   unidades: UnidadMedidaOption[] = [];
 
-  // Solo atributos "Seleccionable" (atb_tipo=3): son los que tienen un
-  // conjunto fijo de Propiedades para elegir -- no tiene sentido ofrecer
-  // acá un atributo de tipo Texto/Número/Selección múltiple (esos se
-  // escriben libres, no eligen de una lista; ver el aparte que le debo a
-  // Marcos sobre cómo se usa cada tipo).
-  atributosSeleccionables: Atributo[] = [];
+  // Atributos para "Se diferencia por": TODOS los tipos. Con la Ficha
+  // Técnica, la variante se puede diferenciar por un número (RAM 16 GB),
+  // un texto, una opción o varias. Vienen de GET /admin/productos/config.
+  atributosVariante: Atributo[] = [];
+
+  // Tipos de atributo (mismos códigos que FichaTecnicaService).
+  readonly TIPO = { TEXTO: 1, NUMERO: 2, SELECCIONABLE: 3, MULTIPLE: 4 } as const;
+  readonly ETIQUETA_TIPO: Record<number, string> = { 1: 'texto', 2: 'número', 3: 'opción', 4: 'varias opciones' };
 
   // Sección "Variantes" (Opción 3: alta en lote). Es un toggle de UI, no
   // un control del form -- solo decide si se muestra la tabla de filas a
@@ -48,7 +49,6 @@ export class FormProductoComponent implements OnInit, OnChanges {
   constructor(
     private fb: FormBuilder,
     private service: ProductosService,
-    private atributoService: AtributoService,
     private toastr: ToastrService
   ) {
     // El costo, margen y precio de venta ya NO se muestran en este
@@ -115,20 +115,11 @@ export class FormProductoComponent implements OnInit, OnChanges {
         this.marcas   = res.marcas;
         this.tiposIva = res.tipos_iva;
         this.unidades = res.unidades;
+        this.atributosVariante = res.atributos_variante ?? [];
       },
       error: () => this.toastr.error('No se pudieron cargar marcas, IVA y unidades', 'Error'),
     });
 
-    // page=1 sin search trae los primeros 25 (paginado fijo del backend,
-    // ver AtributoController::index) -- suficiente para el uso normal de
-    // un selector; si algún día hay más de 25 atributos "Seleccionable"
-    // conviene sumarle un buscador acá, igual que tiene el listado propio.
-    this.atributoService.list(1, '').subscribe({
-      next: (res) => {
-        this.atributosSeleccionables = (res.atributos ?? []).filter((a: Atributo) => a.atb_tipo === 3);
-      },
-      error: () => {},
-    });
   }
 
   get esEdicion(): boolean {
@@ -163,7 +154,12 @@ export class FormProductoComponent implements OnInit, OnChanges {
       // mismo lote). Siempre obligatorios -- si es una variante, por
       // definición se diferencia por algo.
       atb_id: [null as number | null, [Validators.required]],
-      prp_id: [null as number | null, [Validators.required]],
+      // Valor según el tipo del atributo elegido. Solo uno de estos se
+      // usa por fila; sus validadores se activan en onAtributoFilaChange().
+      valor_texto:   [null as string | null],
+      valor_numero:  [null as number | null],
+      prp_id:        [null as number | null],
+      propiedad_ids: [[] as number[]],
       // Mientras el admin no toque código/nombre a mano en ESTA fila,
       // se le siguen actualizando solos al cambiar "valor".
       autoDescri: [true],
@@ -174,15 +170,93 @@ export class FormProductoComponent implements OnInit, OnChanges {
   // Propiedades del atributo elegido EN ESA FILA -- cada fila filtra las
   // suyas propias, no hay un atributo único para todo el lote.
   propiedadesDeFila(i: number): Propiedad[] {
-    const atbId = this.variantesArray().at(i).value.atb_id;
-    return this.atributosSeleccionables.find((a) => a.atb_id === atbId)?.propiedades ?? [];
+    return this.atributoDeFila(i)?.propiedades ?? [];
   }
 
-  // Al cambiar el atributo de una fila, su propiedad elegida hasta ahora
-  // casi seguro ya no pertenece al nuevo atributo -- se limpia para no
-  // dejar una combinación inválida sin que el admin lo note.
+  atributoDeFila(i: number): Atributo | undefined {
+    const atbId = this.variantesArray().at(i).value.atb_id;
+    return this.atributosVariante.find((a) => a.atb_id === atbId);
+  }
+
+  tipoDeFila(i: number): number | null {
+    return this.atributoDeFila(i)?.atb_tipo ?? null;
+  }
+
+  // Al cambiar el atributo: se limpian los valores anteriores y solo el
+  // control que corresponde al nuevo tipo queda obligatorio.
   onAtributoFilaChange(i: number): void {
-    this.variantesArray().at(i).get('prp_id')!.setValue(null);
+    const fila = this.variantesArray().at(i);
+    const tipo = this.tipoDeFila(i);
+    const controlPorTipo: Record<number, string> = {
+      [this.TIPO.TEXTO]: 'valor_texto',
+      [this.TIPO.NUMERO]: 'valor_numero',
+      [this.TIPO.SELECCIONABLE]: 'prp_id',
+      [this.TIPO.MULTIPLE]: 'propiedad_ids',
+    };
+
+    for (const nombre of Object.values(controlPorTipo)) {
+      const c = fila.get(nombre)!;
+      c.setValue(nombre === 'propiedad_ids' ? [] : null, { emitEvent: false });
+      c.clearValidators();
+      if (tipo !== null && controlPorTipo[tipo] === nombre) {
+        c.setValidators(
+          nombre === 'valor_numero' ? [Validators.required, Validators.min(0)]
+          : nombre === 'valor_texto' ? [Validators.required, Validators.maxLength(150)]
+          : [Validators.required]
+        );
+      }
+      c.updateValueAndValidity({ emitEvent: false });
+    }
+  }
+
+  // Selección múltiple (tipo 4) con checkboxes.
+  estaMarcada(i: number, prpId: number): boolean {
+    return (this.variantesArray().at(i).value.propiedad_ids ?? []).includes(prpId);
+  }
+
+  togglePropiedad(i: number, prpId: number, marcada: boolean): void {
+    const c = this.variantesArray().at(i).get('propiedad_ids')!;
+    const actuales: number[] = c.value ?? [];
+    c.setValue(marcada ? [...actuales, prpId] : actuales.filter((id) => id !== prpId));
+    c.markAsTouched();
+    this.onValorFilaChange(i);
+  }
+
+  // Al elegir/escribir el valor, se completa solo "Diferencia" (ej:
+  // "16 GB", "Rojo", "USB, Bluetooth") y con eso se sugieren código y
+  // nombre. El admin puede seguir editándolo a mano.
+  onValorFilaChange(i: number): void {
+    const fila = this.variantesArray().at(i);
+    const atributo = this.atributoDeFila(i);
+    if (!atributo) {
+      return;
+    }
+
+    const v = fila.value;
+    const nombreDe = (id: number) => atributo.propiedades?.find((p) => p.prp_id === id)?.prp_nombre ?? '';
+    let texto = '';
+
+    switch (atributo.atb_tipo) {
+      case this.TIPO.TEXTO:
+        texto = (v.valor_texto ?? '').trim();
+        break;
+      case this.TIPO.NUMERO:
+        texto = v.valor_numero !== null && v.valor_numero !== ''
+          ? `${Number(v.valor_numero)}${atributo.atb_unidad ? ' ' + atributo.atb_unidad : ''}`
+          : '';
+        break;
+      case this.TIPO.SELECCIONABLE:
+        texto = v.prp_id ? nombreDe(v.prp_id) : '';
+        break;
+      case this.TIPO.MULTIPLE:
+        texto = (v.propiedad_ids ?? []).map(nombreDe).filter(Boolean).join(', ');
+        break;
+    }
+
+    if (texto) {
+      fila.get('valor')!.setValue(texto, { emitEvent: false });
+      this.actualizarSugerencia(i);
+    }
   }
 
   agregarVariante(): void {
@@ -306,7 +380,11 @@ export class FormProductoComponent implements OnInit, OnChanges {
         prd_codinv: v.prd_codinv,
         prd_stkmin: v.prd_stkmin,
         atb_id: v.atb_id,
-        prp_id: v.prp_id,
+        // Solo viaja el valor del tipo elegido (los demás quedan vacíos).
+        valor_texto:   v.valor_texto,
+        valor_numero:  v.valor_numero,
+        prp_id:        v.prp_id,
+        propiedad_ids: v.propiedad_ids ?? [],
       }));
     }
 

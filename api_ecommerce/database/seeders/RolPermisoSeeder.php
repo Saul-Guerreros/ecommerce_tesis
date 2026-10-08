@@ -34,6 +34,7 @@ class RolPermisoSeeder extends Seeder
             'marcas.ver', 'marcas.gestionar',
             'sliders.ver', 'sliders.gestionar',
             'atributos.ver', 'atributos.gestionar',
+            'chatbot.gestionar',
 
             'clientes.ver',
             'reportes.ver',
@@ -50,6 +51,7 @@ class RolPermisoSeeder extends Seeder
         $permisosVetadosParaVendedor = [
             'usuarios.ver', 'usuarios.gestionar',
             'roles.gestionar',
+            'chatbot.gestionar',
         ];
 
         $administrador = Rol::where('rol_descri', 'Administrador')->first();

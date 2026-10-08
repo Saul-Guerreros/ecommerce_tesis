@@ -21,6 +21,7 @@
         <tr>
           <th>Nombre</th>
           <th>Tipo</th>
+          <th>Unidad</th>
           <th>Estado</th>
           <th># Propiedades</th>
           <th class="text-end">Acciones</th>
@@ -30,6 +31,7 @@
         <tr *ngFor="let atributo of atributos">
           <td class="fw-semibold">{{ atributo.atb_nombre }}</td>
           <td>{{ nombreTipo(atributo.atb_tipo) }}</td>
+          <td>{{ atributo.atb_unidad || '—' }}</td>
           <td>
             <c-badge color="success" *ngIf="atributo.atb_estado == 1">Activo</c-badge>
             <c-badge color="danger" *ngIf="atributo.atb_estado == 2">Inactivo</c-badge>
@@ -54,7 +56,7 @@
           </td>
         </tr>
         <tr *ngIf="!atributos.length">
-          <td colspan="5" class="text-center text-muted py-4">No hay atributos registrados</td>
+          <td colspan="6" class="text-center text-muted py-4">No hay atributos registrados</td>
         </tr>
       </tbody>
     </table>
@@ -96,6 +98,11 @@
       </select>
       <small class="text-muted">Los tipos "Seleccionable" habilitan la gestión de propiedades.</small>
     </div>
+    <div class="mb-3" *ngIf="esNumero(createTipo)">
+      <label class="form-label">Unidad de medida</label>
+      <input type="text" class="form-control" maxlength="15" [(ngModel)]="createUnidad" placeholder="Ej: GB, pulgadas, GHz" />
+      <small class="text-muted">Se muestra junto al número en la ficha del producto (ej: 16 GB).</small>
+    </div>
   </c-modal-body>
   <c-modal-footer>
     <button cButton color="secondary" (click)="showCreate = false">Cerrar</button>
@@ -126,6 +133,10 @@
         <option [value]="4">Seleccionable Múltiple</option>
       </select>
     </div>
+    <div class="mb-3" *ngIf="esNumero(editTipo)">
+      <label class="form-label">Unidad de medida</label>
+      <input type="text" class="form-control" maxlength="15" [(ngModel)]="editUnidad" placeholder="Ej: GB, pulgadas, GHz" />
+    </div>
   </c-modal-body>
   <c-modal-footer>
     <button cButton color="secondary" (click)="showEdit = false">Cerrar</button>
@@ -142,6 +153,7 @@
     <h5 cModalTitle>Eliminar Atributo</h5>
   </c-modal-header>
   <c-modal-body>
+    <div class="alert alert-warning" *ngIf="deleteError">{{ deleteError }}</div>
     ¿Estás seguro de eliminar el atributo <strong>{{ deleteAtributo?.atb_nombre }}</strong>?
   </c-modal-body>
   <c-modal-footer>

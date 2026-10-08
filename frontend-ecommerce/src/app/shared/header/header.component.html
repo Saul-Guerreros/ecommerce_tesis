@@ -163,9 +163,8 @@
           <div class="uk-container">
             <div class="uk-grid-small uk-flex-middle" uk-grid>
               <div class="uk-width-expand">
-                <form class="uk-search uk-search-navbar uk-width-1-1" (submit)="$event.preventDefault(); searchProduct()">
-                  <input class="uk-search-input" type="search" [(ngModel)]="searchT" name="searchT" (keyup.enter)="searchProduct()" placeholder="Buscar productos…">
-                </form>
+                <!-- Buscador con resultados instantáneos (BM25 + trigramas) -->
+                <app-buscador-sugerencias></app-buscador-sugerencias>
               </div>
               <div class="uk-width-auto">
                 <a class="uk-navbar-dropdown-close" href="#" uk-close></a>

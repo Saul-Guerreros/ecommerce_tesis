@@ -1,0 +1,15 @@
+@if (visible) {
+  <div
+    class="cargando-ia"
+    [class.cargando-ia--pantalla]="modo === 'pantalla'"
+    [class.cargando-ia--en-linea]="modo === 'en-linea'"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="cargando-ia__contenido">
+      <div class="cargando-ia__anillo" aria-hidden="true"></div>
+      <p class="cargando-ia__titulo">Procesando búsqueda con Inteligencia Artificial…</p>
+      <p class="cargando-ia__detalle">{{ detalle }}</p>
+    </div>
+  </div>
+}

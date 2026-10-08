@@ -1,0 +1,196 @@
+:host {
+  --chat-acento: #06a7f8;
+  --chat-acento-oscuro: #0074d9;
+  --chat-fondo: #ffffff;
+  --chat-burbuja: #f5f7fa;
+  --chat-borde: #e5e5e5;
+  --chat-texto: #222;
+  --chat-error: #c0392b;
+}
+
+/* Debajo del offcanvas del carrito (UIkit usa z-index 1000). */
+.chat-boton {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 980;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  background: var(--chat-acento);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+.chat-boton:hover { background: var(--chat-acento-oscuro); transform: scale(1.05); }
+
+.chat-panel {
+  position: fixed;
+  right: 20px;
+  bottom: 88px;
+  z-index: 980;
+  display: flex;
+  flex-direction: column;
+  width: 370px;
+  height: min(560px, calc(100vh - 110px));
+  background: var(--chat-fondo);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  color: var(--chat-texto);
+}
+
+.chat-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--chat-acento);
+  color: #fff;
+}
+.chat-cabecera__titulo { flex: 1; display: flex; flex-direction: column; line-height: 1.25; }
+.chat-cabecera__titulo small { opacity: 0.85; font-size: 0.75rem; }
+.chat-icono { border: none; background: transparent; color: #fff; cursor: pointer; padding: 4px; }
+
+.chat-mensajes {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-mensaje {
+  align-self: flex-start;
+  max-width: 85%;
+  padding: 9px 12px;
+  border-radius: 12px 12px 12px 4px;
+  background: var(--chat-burbuja);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.chat-mensaje :is(p, ul) { margin: 0 0 6px; }
+.chat-mensaje :is(p, ul):last-child { margin-bottom: 0; }
+.chat-mensaje ul { padding-left: 18px; }
+.chat-mensaje--usuario {
+  align-self: flex-end;
+  background: var(--chat-acento);
+  color: #fff;
+  border-radius: 12px 12px 4px 12px;
+}
+.chat-mensaje--error { background: #fdecea; color: var(--chat-error); }
+
+.chat-bienvenida p { margin: 0 0 10px; font-size: 0.9rem; }
+.chat-sugerencias { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-sugerencias button {
+  border: 1px solid var(--chat-acento);
+  background: #fff;
+  color: var(--chat-acento-oscuro);
+  border-radius: 16px;
+  padding: 5px 11px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.chat-sugerencias button:hover { background: #fff6eb; }
+
+/* Tarjetas en carrusel horizontal: no estiran el chat hacia abajo. */
+.chat-productos {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scroll-snap-type: x mandatory;
+}
+.chat-producto {
+  flex: 0 0 140px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--chat-borde);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.78rem;
+}
+.chat-producto:hover { border-color: var(--chat-acento); text-decoration: none; }
+.chat-producto img { width: 100%; height: 90px; object-fit: contain; }
+.chat-producto__titulo {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.chat-producto__precio { font-weight: 700; color: var(--chat-acento-oscuro); }
+.chat-producto__antes { color: #888; font-size: 0.72rem; }
+.chat-producto__sin-stock { color: var(--chat-error); font-weight: 600; }
+
+.chat-accion {
+  align-self: flex-start;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--chat-acento);
+  color: #fff;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-align: left;
+}
+.chat-accion:disabled { background: #6c9a6c; cursor: default; }
+
+.chat-escribiendo { display: flex; gap: 4px; padding: 12px 14px; }
+.chat-escribiendo span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #999;
+  animation: chat-punto 1.2s infinite ease-in-out;
+}
+.chat-escribiendo span:nth-child(2) { animation-delay: 0.15s; }
+.chat-escribiendo span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes chat-punto {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-4px); }
+}
+
+.chat-entrada {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  border-top: 1px solid var(--chat-borde);
+}
+.chat-entrada input {
+  flex: 1;
+  border: 1px solid var(--chat-borde);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  outline: none;
+}
+.chat-entrada input:focus { border-color: var(--chat-acento); }
+.chat-entrada button {
+  width: 40px;
+  border: none;
+  border-radius: 50%;
+  background: var(--chat-acento);
+  color: #fff;
+  cursor: pointer;
+}
+.chat-entrada button:disabled { opacity: 0.5; cursor: default; }
+
+/* Celular: el panel ocupa toda la pantalla. */
+@media (max-width: 639px) {
+  .chat-panel { inset: 0; width: 100%; height: 100%; border-radius: 0; }
+  .chat-boton { bottom: 16px; right: 16px; }
+  .chat-panel ~ .chat-boton, :host:has(.chat-panel) .chat-boton { display: none; }
+}
+
+/* En un flex en columna, los hijos se encogen por defecto. El carrusel
+   (overflow-x: auto) puede quedar con altura 0: ningún hijo se encoge. */
+.chat-mensajes > * { flex-shrink: 0; }

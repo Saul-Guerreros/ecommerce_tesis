@@ -1,0 +1,60 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>
+      {{ esEdicion ? 'Editar atributo' : 'Agregar atributo' }}
+      <span class="text-muted fw-normal" *ngIf="categoria">· {{ categoria.cat_nombre }}</span>
+    </h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-12">
+          <label cLabel for="cta_atbid">Atributo <span class="text-danger">*</span></label>
+          <select cSelect id="cta_atbid" formControlName="cta_atbid">
+            <option [ngValue]="null">Seleccione un atributo</option>
+            <option *ngFor="let a of atributosDisponibles" [ngValue]="a.atb_id">
+              {{ a.atb_nombre }}{{ a.atb_unidad ? ' en ' + a.atb_unidad : '' }} ({{ descripcionTipo(a.atb_tipo) }})
+            </option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('cta_atbid')">
+            {{ errorCampo('cta_atbid') }}
+          </div>
+          <div class="text-muted small" *ngIf="atributosDisponibles.length === 0">
+            Todos los atributos activos ya están en esta plantilla. Creá uno nuevo en Atributos.
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="cta_orden">Orden en la ficha</label>
+          <input cFormControl type="number" id="cta_orden" formControlName="cta_orden"
+                 min="1" max="99" placeholder="Al final" />
+          <div class="text-danger small" *ngIf="campoInvalido('cta_orden')">
+            {{ errorCampo('cta_orden') }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="cta_obliga">¿Obligatorio? <span class="text-danger">*</span></label>
+          <select cSelect id="cta_obliga" formControlName="cta_obliga">
+            <option [ngValue]="0">No</option>
+            <option [ngValue]="1">Sí</option>
+          </select>
+          <div class="text-muted small">Si es obligatorio, no se podrá publicar el producto sin este dato.</div>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">
+        Cancelar
+      </button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Guardar cambios' : 'Agregar atributo') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

@@ -45,7 +45,9 @@ export const navItems: INavData[] = [
     children: [
       { name: 'Lista de publicaciones', url: '/publicaciones' },
       { name: 'Categorías', url: '/categories' },
-      { name: 'Atributos', url: '/atributos/list' }
+      { name: 'Atributos', url: '/atributos/list' },
+	  { name: 'Plantillas de Ficha Técnica', url: '/plantillas-ficha' }
+
     ]
   },
  
@@ -58,6 +60,13 @@ export const navItems: INavData[] = [
     name: 'Campaña de Descuento',
     url: '/discounts/list',
     iconComponent: { name: 'cil-badge' }
+  },
+  {
+    name: 'Asistente Virtual',
+    iconComponent: { name: 'cil-comment-square' },
+    children: [
+      { name: 'Información de la tienda', url: '/chatbot/informacion' }
+    ]
   },
 
   // ==========================================

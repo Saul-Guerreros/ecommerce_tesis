@@ -19,13 +19,16 @@ class ProductoEquivalenciaController extends Controller
     ];
 
     // GET /api/admin/producto-equivalencias?producto=<prd_id>  (obligatorio)
+    // Devuelve las propias + las heredadas del modelo base (flag "heredada").
     public function index(Request $request): JsonResponse
     {
         $request->validate(['producto' => ['required', 'integer', 'exists:producto,prd_id']]);
 
         $equivalencias = ProductoEquivalencia::with('unidadMedida')
             ->withCount('detallesCompra')
-            ->where('peq_prdid', $request->producto)
+            ->disponiblesPara((int) $request->producto)
+            // Primero las heredadas del modelo base, después las propias.
+            ->orderByRaw('CASE WHEN peq_prdid = ? THEN 1 ELSE 0 END', [(int) $request->producto])
             ->orderBy('peq_umdid')
             ->orderBy('peq_factor')
             ->get();

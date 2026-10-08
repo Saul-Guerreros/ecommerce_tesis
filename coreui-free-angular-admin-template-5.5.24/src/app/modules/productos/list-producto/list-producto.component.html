@@ -11,13 +11,13 @@
                [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
       </div>
       <div class="col-md-3">
-        <select cSelect [(ngModel)]="filtroMarca" (ngModelChange)="cargar()">
+        <select cSelect [(ngModel)]="filtroMarca" (ngModelChange)="filtrar()">
           <option [ngValue]="null">Todas las marcas</option>
           <option *ngFor="let m of marcas" [ngValue]="m.mar_id">{{ m.mar_descri }}</option>
         </select>
       </div>
       <div class="col-md-3">
-        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="filtrar()">
           <option value="">Todos los estados</option>
           <option value="1">Activo</option>
           <option value="0">Inactivo</option>
@@ -28,7 +28,7 @@
       </div>
     </div>
 
-    <div class="text-muted small mb-2" *ngIf="!cargando">{{ productos.length }} producto(s) encontrado(s)</div>
+    <div class="text-muted small mb-2" *ngIf="!cargando"> Mostrando {{ desde }}–{{ hasta }} de {{ total }} producto(s)</div>
     <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
 
     <table cTable striped hover *ngIf="!cargando">
@@ -109,6 +109,30 @@
         <tr *ngIf="productos.length === 0"><td [attr.colspan]="8" class="text-center">No hay productos registrados</td></tr>
       </tbody>
     </table>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3" *ngIf="!cargando && total > 0">
+  <div class="d-flex align-items-center gap-2">
+    <span class="small text-muted">Por página</span>
+    <select cSelect sizing="sm" style="width: auto" [(ngModel)]="perPage" (ngModelChange)="cambiarPorPagina()">
+      <option [ngValue]="10">10</option>
+      <option [ngValue]="25">25</option>
+      <option [ngValue]="50">50</option>
+    </select>
+  </div>
+
+  <nav *ngIf="lastPage > 1" aria-label="Paginación de productos">
+    <ul class="pagination paginador-bn mb-0">
+  <li class="page-item" [class.disabled]="currentPage === 1">
+    <a class="page-link" role="button" (click)="cambiarPagina(currentPage - 1)">Anterior</a>
+  </li>
+  <li class="page-item" *ngFor="let p of paginasVisibles" [class.active]="p === currentPage">
+    <a class="page-link" role="button" (click)="cambiarPagina(p)">{{ p }}</a>
+  </li>
+  <li class="page-item" [class.disabled]="currentPage === lastPage">
+    <a class="page-link" role="button" (click)="cambiarPagina(currentPage + 1)">Siguiente</a>
+  </li>
+</ul>
+  </nav>
+</div>
   </c-card-body>
 </c-card>
 

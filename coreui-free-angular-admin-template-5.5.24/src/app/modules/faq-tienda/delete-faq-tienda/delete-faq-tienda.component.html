@@ -1,0 +1,13 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header><h5 cModalTitle>Confirmar eliminación</h5></c-modal-header>
+  <c-modal-body>
+    <p>¿Eliminar <strong>{{ faq?.fqt_pregunta }}</strong>?</p>
+    <p class="small text-muted mb-0">
+      El asistente dejará de usar esta información. Si solo querés ocultarla por un tiempo, usá <strong>Desactivar</strong>.
+    </p>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="confirmar.emit()">Eliminar</button>
+  </c-modal-footer>
+</c-modal>

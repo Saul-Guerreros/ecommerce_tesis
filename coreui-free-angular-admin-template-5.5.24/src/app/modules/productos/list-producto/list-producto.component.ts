@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
-import { BadgeModule, ButtonModule, CardModule, FormModule, SpinnerModule, TableModule } from '@coreui/angular';
+import { BadgeModule, ButtonModule, CardModule, FormModule, PaginationModule, SpinnerModule, TableModule } from '@coreui/angular';
 import { Producto, VarianteResumen, MarcaOption } from '../models/producto.model';
 import { ProductosService } from '../service/productos.service';
 import { FormProductoComponent } from '../form-producto/form-producto.component';
@@ -19,6 +19,7 @@ type FilaProducto = Producto | VarianteResumen;
   selector: 'app-list-producto',
   standalone: true,
   imports: [CommonModule, FormsModule, CardModule, TableModule, ButtonModule, BadgeModule, SpinnerModule, FormModule,
+    PaginationModule,   // ← sin esto, el paginador no toma estilos
     FormProductoComponent, DeleteProductoComponent],
   templateUrl: './list-producto.component.html',
 })
@@ -26,6 +27,14 @@ export class ListProductoComponent implements OnInit {
   productos: Producto[] = [];
   marcas: MarcaOption[] = [];
   cargando = false;
+
+  // Paginación
+  currentPage = 1;
+  lastPage = 1;
+  total = 0;
+  perPage = 10;
+  desde = 0;
+  hasta = 0;
 
   search = '';
   filtroMarca: number | null = null;
@@ -53,39 +62,66 @@ export class ListProductoComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargar();
-
+   
     this.service.getConfig().subscribe({
       next: (res) => { this.marcas = res.marcas; },
       error: () => {},
     });
 
-    this.searchSubject.pipe(debounceTime(400), distinctUntilChanged()).subscribe(() => this.cargar());
+    this.searchSubject.pipe(debounceTime(400), distinctUntilChanged()).subscribe(() => this.cargar(1));
   }
 
   onSearchChange(): void {
     this.searchSubject.next(this.search);
   }
 
-  cargar(): void {
+  cargar(page: number = this.currentPage): void {
     this.cargando = true;
-    // El listado siempre viene colapsado (solo modelos base/productos
-    // sueltos, ver ProductoController::index) -- al recargar se pierde el
-    // detalle de qué estaba expandido, es un estado de sesión, no de datos.
     this.filasExpandidas.clear();
     this.variantesPorFila.clear();
 
-    this.service.getAll({ search: this.search, marca: this.filtroMarca, estado: this.filtroEstado }).subscribe({
-      next: (res) => { this.productos = res; this.cargando = false; },
+    this.service.getAll({ search: this.search, marca: this.filtroMarca, estado: this.filtroEstado }, page, this.perPage)
+     .subscribe({
+      next: (res) => {
+        // Si se eliminó el último registro de la última página, retrocede una.
+        if (res.data.length === 0 && res.meta.current_page > 1) {
+          this.cargar(res.meta.current_page - 1);
+          return;
+        }
+        this.productos   = res.data;
+        this.currentPage = res.meta.current_page;
+        this.lastPage    = res.meta.last_page;
+        this.total       = res.meta.total;
+        this.desde       = res.meta.from ?? 0;
+        this.hasta       = res.meta.to ?? 0;
+        this.cargando    = false;
+      },
       error: () => { this.toastr.error('No se pudieron cargar los productos', 'Error'); this.cargando = false; },
     });
   }
 
-  limpiarFiltros(): void {
-    this.search = '';
-    this.filtroMarca = null;
-    this.filtroEstado = '';
-    this.cargar();
+  // Filtros y búsqueda siempre vuelven a la página 1
+  filtrar(): void {
+   this.cargar(1);
   }
+
+ limpiarFiltros(): void {
+  this.search = '';
+  this.filtroMarca = null;
+  this.filtroEstado = '';
+  this.cargar(1);
+ }
+
+ cambiarPagina(page: number): void {
+  if (page < 1 || page > this.lastPage || page === this.currentPage) return;
+  this.cargar(page);
+ }
+
+ cambiarPorPagina(): void {
+  this.cargar(1);
+ }
+
+
 
   // Expandir/colapsar variantes de una fila (Producto padre). Se pide una
   // sola vez por fila y se cachea -- si se agregan variantes nuevas desde
@@ -133,6 +169,15 @@ export class ListProductoComponent implements OnInit {
     this.soloLectura = false;
     this.abrirConDetalle(p.prd_id!);
   }
+
+  // Ventana de máximo 5 páginas alrededor de la actual (evita 50 botones)
+ get paginasVisibles(): number[] {
+  const ventana = 5;
+  let inicio = Math.max(1, this.currentPage - Math.floor(ventana / 2));
+  const fin = Math.min(this.lastPage, inicio + ventana - 1);
+  inicio = Math.max(1, fin - ventana + 1);
+  return Array.from({ length: fin - inicio + 1 }, (_, i) => inicio + i);
+ }
 
   private abrirConDetalle(id: number): void {
     this.service.getOne(id).subscribe({

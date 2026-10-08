@@ -1,0 +1,65 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static" size="lg">
+  <c-modal-header><h5 cModalTitle>{{ esEdicion ? 'Editar información' : 'Nueva información' }}</h5></c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+        <div class="col-md-5">
+          <label cLabel for="fqt_tema">Tema <span class="text-danger">*</span></label>
+          <select cSelect id="fqt_tema" formControlName="fqt_tema">
+            <option value="" disabled>Seleccioná un tema</option>
+            <option *ngFor="let t of temas" [value]="t.valor">{{ t.etiqueta }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('fqt_tema')">
+            {{ errorBackend('fqt_tema') || 'Seleccioná un tema.' }}
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <label cLabel for="fqt_orden">Orden</label>
+          <input cFormControl id="fqt_orden" type="number" min="0" max="999" formControlName="fqt_orden" />
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="fqt_activo">Estado</label>
+          <select cSelect id="fqt_activo" formControlName="fqt_activo">
+            <option [ngValue]="true">Activa</option>
+            <option [ngValue]="false">Inactiva</option>
+          </select>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="fqt_pregunta">Pregunta <span class="text-danger">*</span></label>
+          <input cFormControl id="fqt_pregunta" formControlName="fqt_pregunta" maxlength="255"
+                 placeholder="Ej: ¿Hacen envíos al interior?" />
+          <div class="text-danger small" *ngIf="campoInvalido('fqt_pregunta')">
+            {{ errorBackend('fqt_pregunta') || 'La pregunta es obligatoria (máx. 255 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="fqt_respuesta">Respuesta <span class="text-danger">*</span></label>
+          <textarea cFormControl id="fqt_respuesta" rows="5" formControlName="fqt_respuesta" [maxlength]="MAX_RESPUESTA"
+                    placeholder="Ej: Sí, enviamos a todo el país por transportadora. El costo depende de la ciudad."></textarea>
+          <div class="d-flex justify-content-between small mt-1">
+            <span class="text-danger" *ngIf="campoInvalido('fqt_respuesta')">
+              {{ errorBackend('fqt_respuesta') || 'La respuesta es obligatoria.' }}
+            </span>
+            <span class="text-muted ms-auto">{{ largoRespuesta }} / {{ MAX_RESPUESTA }}</span>
+          </div>
+          <div class="form-text">
+            El asistente repite este texto tal cual. Escribí datos concretos (días, horarios, montos, condiciones).
+          </div>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

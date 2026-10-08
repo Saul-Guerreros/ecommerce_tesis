@@ -7,7 +7,8 @@ use App\Http\Resources\product\ProductoResource;
 use App\Http\Controllers\Controller;
 use App\Models\Producto;
 use App\Models\PublicacionWeb;
-use App\Models\Product\EspecificacionProducto;
+use App\Models\Product\Atributo;
+use App\Services\Catalogo\FichaTecnicaService;
 use App\Models\Compras\ProductoEquivalencia;
 use App\Services\Precio\PriceService;
 use Illuminate\Database\Eloquent\Collection;
@@ -23,8 +24,10 @@ class ProductoController extends Controller
         'stock'          => ['columna' => 'sto_prdid', 'etiqueta' => 'registro(s) de stock'],
     ];
 
-    public function __construct(private readonly PriceService $priceService)
-    {
+    public function __construct(
+        private readonly PriceService $priceService,
+        private readonly FichaTecnicaService $fichaTecnica,
+    ) {
     }
 
     private function contarUsos(): array
@@ -143,15 +146,16 @@ class ProductoController extends Controller
                 // PublicacionWeb::boot()). pub_estado: default 0 (borrador).
             ]);
 
-            EspecificacionProducto::create([
-                'esp_pubid' => $publicacion->pub_id,
-                'esp_atbid' => $fila['atb_id'],
-                'esp_prpid' => $fila['prp_id'],
-                // esp_valibr queda null a propósito: al mostrarla, el
-                // valor sale del nombre de la Propiedad (ver
-                // VitrinaController::detalle()) -- no hay nada que
-                // duplicar acá.
-            ]);
+            // El atributo diferenciador puede ser de cualquier tipo
+            // (Texto, Número, Seleccionable o Múltiple). Se delega en la
+            // Ficha Técnica para que se guarde exactamente igual que si
+            // se cargara desde esa pantalla (ya fue validado en ProductoRequest).
+            $atributo = Atributo::with('propiedades')->findOrFail($fila['atb_id']);
+            $this->fichaTecnica->guardarDiferenciador(
+                $publicacion,
+                $atributo,
+                $this->fichaTecnica->valorDesdeFila($fila)
+            );
         }
     }
 
@@ -188,10 +192,15 @@ class ProductoController extends Controller
         // ?incluir_variantes=1 para pedir la lista sin colapsar.
         $incluirVariantes = $request->boolean('incluir_variantes');
 
-        $query = Producto::query();
-        if (!$incluirVariantes) {
-            $query->whereNull('prd_padre_id')->withCount('variantes');
-        }
+       $query = Producto::query();
+
+		if ($request->filled('padre')) {
+		// Filas hijas al expandir un padre en Publicación Web: mismo Resource
+		// que el listado, así traen título web, categoría, imagen y estado.
+			$query->where('prd_padre_id', $request->integer('padre'));
+		} elseif (!$incluirVariantes) {
+			$query->whereNull('prd_padre_id')->withCount('variantes');
+		}
         $query->with([
             'marca',
             'tipoIva',
@@ -241,7 +250,7 @@ class ProductoController extends Controller
             }
         }
 
-        $perPage  = (int) ($request->per_page ?? 10);
+        $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
         $productos = $query->orderBy('prd_descri')->paginate($perPage);
 
         $usos = $this->contarUsos();
@@ -273,10 +282,19 @@ class ProductoController extends Controller
             ->orderBy('umd_nombre')
             ->get(['umd_id', 'umd_codigo', 'umd_nombre', 'umd_decimal']);
 
+        // Atributos para el "Se diferencia por" de las variantes: TODOS los
+        // tipos (Texto, Número, Seleccionable, Múltiple), activos y sin
+        // paginar (antes se tomaban los 25 primeros de /admin/atributos).
+        $atributosVariante = Atributo::with(['propiedades:prp_id,prp_atbid,prp_nombre'])
+            ->where('atb_estado', 1)
+            ->orderBy('atb_nombre')
+            ->get(['atb_id', 'atb_nombre', 'atb_tipo', 'atb_unidad']);
+
         return response()->json([
-            'marcas'    => $marcas,
-            'tipos_iva' => $tiposIva,
-            'unidades'  => $unidades,
+            'marcas'             => $marcas,
+            'tipos_iva'          => $tiposIva,
+            'unidades'           => $unidades,
+            'atributos_variante' => $atributosVariante,
         ], 200);
     }
 

@@ -8,6 +8,7 @@ use App\Http\Resources\PublicacionWebResource;
 use App\Models\ImagenProducto;
 use App\Models\Producto;
 use App\Models\PublicacionWeb;
+use App\Services\Catalogo\FichaTecnicaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -70,11 +71,15 @@ class PublicacionWebController extends Controller
     ]);
     }
 
-    public function guardar(StorePublicacionWebRequest $request, Producto $producto): JsonResponse
+    public function guardar(
+        StorePublicacionWebRequest $request,
+        Producto $producto,
+        FichaTecnicaService $fichaTecnica
+    ): JsonResponse
 {
     $esNueva = ! $producto->publicacionWeb()->exists();
  
-    $publicacion = DB::transaction(function () use ($request, $producto) {
+    $publicacion = DB::transaction(function () use ($request, $producto, $fichaTecnica) {
         // Los 6 campos de vitrina NO son columnas de publicacion_web,
         // así que se excluyen del updateOrCreate y se procesan aparte.
         $datos = $request->safe()->except([
@@ -82,6 +87,7 @@ class PublicacionWebController extends Controller
             'featured_activo', 'featured_orden',
             'trending_activo', 'trending_orden',
             'selling_activo', 'selling_orden',
+            'ficha', // no es columna: se guarda en especificacion_producto
         ]);
  
         $publicacion = PublicacionWeb::updateOrCreate(
@@ -91,6 +97,15 @@ class PublicacionWebController extends Controller
  
         $this->guardarImagenes($publicacion, $request);
         $this->guardarVitrina($publicacion, $request);
+
+        // Ficha técnica: misma transacción que la publicación, solo si el
+        // panel la mandó (si no, se conserva lo guardado). Una variante
+        // solo reescribe su atributo propio; lo demás lo hereda del base.
+        if ($request->has('ficha')) {
+            $producto->prd_padre_id
+                ? $fichaTecnica->sincronizarVariante($publicacion, $request->input('ficha', []))
+                : $fichaTecnica->sincronizar($publicacion, $publicacion->pub_catid, $request->input('ficha', []));
+        }
  
         return $publicacion;
     });

@@ -1,0 +1,73 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Información de la tienda para el asistente virtual</strong>
+    <button cButton color="primary" (click)="abrirNuevo()">+ Nueva información</button>
+  </c-card-header>
+  <c-card-body>
+    <c-alert color="info" class="small">
+      El asistente responde <strong>textualmente</strong> con esta información. Cargá solo datos reales y vigentes.
+      Los cambios se aplican desde el siguiente mensaje del chat.
+      <br />Información activa: <strong>{{ caracteresActivos }}</strong> caracteres
+      (≈ {{ tokensAproximados }} tokens que se envían en cada mensaje).
+    </c-alert>
+
+    <div class="row g-2 mb-3">
+      <div class="col-md-5">
+        <input cFormControl placeholder="Buscar en preguntas o respuestas..." [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroTema" (ngModelChange)="cargar()">
+          <option value="">Todos los temas</option>
+          <option *ngFor="let t of temas" [value]="t.valor">{{ t.etiqueta }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="">Todos</option>
+          <option value="1">Activas</option>
+          <option value="0">Inactivas</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ faqs.length }} registro(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr><th>Tema</th><th>Pregunta</th><th>Respuesta</th><th class="text-center">Orden</th>
+            <th class="text-center">Estado</th><th class="text-end">Acciones</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let f of faqs">
+          <td><c-badge color="info">{{ etiquetaTema(f.fqt_tema) }}</c-badge></td>
+          <td>{{ f.fqt_pregunta }}</td>
+          <td class="small" [title]="f.fqt_respuesta">
+            {{ f.fqt_respuesta | slice: 0 : 90 }}{{ f.fqt_respuesta.length > 90 ? '…' : '' }}
+          </td>
+          <td class="text-center">{{ f.fqt_orden }}</td>
+          <td class="text-center">
+            <c-badge [color]="f.fqt_activo ? 'success' : 'secondary'">{{ f.fqt_activo ? 'Activa' : 'Inactiva' }}</c-badge>
+          </td>
+          <td class="text-end text-nowrap">
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirEditar(f)">Editar</button>
+            <button cButton size="sm" [color]="f.fqt_activo ? 'warning' : 'success'" class="me-2 text-white" (click)="cambiarEstado(f)">
+              {{ f.fqt_activo ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(f)">Eliminar</button>
+          </td>
+        </tr>
+        <tr *ngIf="faqs.length === 0"><td colspan="6" class="text-center">No hay información registrada</td></tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-form-faq-tienda [visible]="formModalVisible" [faq]="faqSeleccionada" [temas]="temas"
+  (visibleChange)="formModalVisible = $event" (guardado)="cargar()"></app-form-faq-tienda>
+
+<app-delete-faq-tienda [visible]="deleteModalVisible" [faq]="faqSeleccionada"
+  (visibleChange)="deleteModalVisible = $event" (confirmar)="confirmarEliminar()"></app-delete-faq-tienda>
