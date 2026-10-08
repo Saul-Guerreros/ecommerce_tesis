@@ -1,0 +1,55 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar tarifa' : 'Nueva tarifa' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+
+        <div class="col-12">
+          <label cLabel for="tev_sucid">Sucursal <span class="text-danger">*</span></label>
+          <select cSelect id="tev_sucid" formControlName="tev_sucid">
+            <option [ngValue]="null">-- Seleccione --</option>
+            <option *ngFor="let s of sucursales" [ngValue]="s.suc_id">
+              {{ s.suc_nombre }} ({{ s.emp_razonsocial }})
+            </option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('tev_sucid')">
+            {{ errorBackend('tev_sucid') || 'Debe seleccionar la sucursal.' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="tev_ciuid">Ciudad <span class="text-danger">*</span></label>
+          <select cSelect id="tev_ciuid" formControlName="tev_ciuid">
+            <option [ngValue]="null">-- Seleccione --</option>
+            <option *ngFor="let c of ciudades" [ngValue]="c.ciu_id">
+              {{ c.ciu_descri }} ({{ c.dep_descri }})
+            </option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('tev_ciuid')">
+            {{ errorBackend('tev_ciuid') || 'Debe seleccionar la ciudad.' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="tev_costo">Costo de envío (Gs.) <span class="text-danger">*</span></label>
+          <input cFormControl type="number" id="tev_costo" formControlName="tev_costo" min="0" />
+          <div class="text-danger small" *ngIf="campoInvalido('tev_costo')">
+            {{ errorBackend('tev_costo') || 'El costo es obligatorio y no puede ser negativo.' }}
+          </div>
+        </div>
+
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

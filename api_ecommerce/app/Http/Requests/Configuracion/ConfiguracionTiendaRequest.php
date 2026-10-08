@@ -11,16 +11,18 @@ class ConfiguracionTiendaRequest extends FormRequest
         return true;
     }
 
-    /**
-     * Los tres campos son obligatorios: es la configuración general y no
-     * puede quedar a medias. El umbral se exige aunque el aviso esté
-     * desactivado, para que al volver a activarlo ya tenga un valor válido.
-     */
     public function rules(): array
     {
         return [
-            'ctn_pocstk_activo' => ['required', 'boolean'],
-            'ctn_pocstk_umbral' => ['required', 'integer', 'min:1', 'max:1000'],
+            'ctn_pocstk_activo' => ['sometimes', 'boolean'],
+            'ctn_pocstk_umbral' => ['sometimes', 'required', 'integer', 'min:1', 'max:1000'],
+            'ctn_pago_banco'            => ['sometimes', 'nullable', 'string', 'max:80'],
+            'ctn_pago_banco_titular'    => ['sometimes', 'nullable', 'string', 'max:150'],
+            'ctn_pago_banco_cuenta'     => ['sometimes', 'nullable', 'string', 'max:40'],
+            'ctn_pago_tigo_titular'     => ['sometimes', 'nullable', 'string', 'max:150'],
+            'ctn_pago_tigo_numero'      => ['sometimes', 'nullable', 'string', 'max:20'],
+            'ctn_pago_tigo_referencia'  => ['sometimes', 'nullable', 'string', 'max:60'],
+            'ctn_pago_efectivo_mensaje' => ['sometimes', 'nullable', 'string', 'max:200'],
         ];
     }
 
@@ -33,8 +35,6 @@ class ConfiguracionTiendaRequest extends FormRequest
             'ctn_pocstk_umbral.integer'  => 'La cantidad para el aviso de poco stock debe ser un número entero.',
             'ctn_pocstk_umbral.min'      => 'La cantidad para el aviso de poco stock debe ser al menos 1.',
             'ctn_pocstk_umbral.max'      => 'La cantidad para el aviso de poco stock no puede superar 1000.',
-            'ctn_maxstk_activo.required' => 'Indique si el aviso de máximo disponible está activo.',
-            'ctn_maxstk_activo.boolean'  => 'El aviso de máximo disponible debe ser verdadero o falso.',
         ];
     }
 }

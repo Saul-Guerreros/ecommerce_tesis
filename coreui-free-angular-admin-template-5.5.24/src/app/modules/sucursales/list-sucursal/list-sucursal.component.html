@@ -52,11 +52,12 @@
           <th>Dirección</th>
           <th>Teléfono</th>
           <th class="text-center">Depósitos</th>
+          <th class="text-center">Retiro web</th>   <!-- nuevo -->
           <th class="text-center">Estado</th>
           <th class="text-end">Acciones</th>
         </tr>
       </thead>
-      <tbody>
+           <tbody>
         <tr *ngFor="let s of sucursales">
           <td>{{ s.suc_id }}</td>
           <td>
@@ -69,6 +70,11 @@
           <td>{{ s.suc_direccion || '-' }}</td>
           <td>{{ s.suc_telef || s.suc_cel || '-' }}</td>
           <td class="text-center">{{ s.depositos_count }}</td>
+          <td class="text-center">
+            <c-badge [color]="s.suc_retiro ? 'success' : 'secondary'">
+              {{ s.suc_retiro ? 'Sí' : 'No' }}
+            </c-badge>
+          </td>
           <td class="text-center">
             <c-badge [color]="s.suc_estado === 1 ? 'success' : 'secondary'">
               {{ s.suc_estado === 1 ? 'Activo' : 'Inactivo' }}
@@ -85,7 +91,7 @@
         </tr>
 
         <tr *ngIf="sucursales.length === 0">
-          <td colspan="10" class="text-center">No hay sucursales registradas</td>
+          <td colspan="11" class="text-center">No hay sucursales registradas</td>
         </tr>
       </tbody>
     </table>

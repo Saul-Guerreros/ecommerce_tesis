@@ -16,38 +16,63 @@
 
   @if (mostrarFormulario) {
     <form class="uk-margin-medium-top" (submit)="$event.preventDefault(); guardar()">
-      <div class="uk-grid-small uk-child-width-1-3@s" uk-grid>
+
+      <div class="uk-margin">
+        <div class="uk-form-label">Nombre de la dirección</div>
+        <div class="uk-grid-small uk-child-width-1-3" uk-grid>
+          @for (a of alias; track a) {
+            <button type="button" class="uk-button uk-button-default uk-width-1-1"
+                    [class.uk-button-primary]="aliasOpcion === a"
+                    (click)="cambiarAlias(a)">{{ a }}</button>
+          }
+        </div>
+        @if (aliasEsOtro) {
+          <input class="uk-input perfil-input uk-margin-small-top" type="text"
+                 name="dir_alias" [(ngModel)]="dir_alias" maxlength="50"
+                 placeholder="Ej: Casa de mis padres" />
+        }
+      </div>
+
+      <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
         <div>
           <label>
-            <div class="uk-form-label">Ciudad</div>
-            <select class="uk-select perfil-input" name="ciudad" [(ngModel)]="ciudadId" (ngModelChange)="onCiudadChange()" required>
-              <option [ngValue]="null" disabled>Seleccioná una ciudad</option>
-              @for (c of ciudades; track c.ciu_id) {
-                <option [ngValue]="c.ciu_id">{{ c.ciu_descri }} ({{ c.dep_descri }})</option>
+            <div class="uk-form-label">Departamento</div>
+            <select class="uk-select perfil-input" name="departamento" [(ngModel)]="departamentoId"
+                    (ngModelChange)="onDepartamentoChange()" required>
+              <option [ngValue]="null" disabled>Seleccioná un departamento</option>
+              @for (d of departamentos; track d.dep_id) {
+                <option [ngValue]="d.dep_id">{{ d.dep_descri }}</option>
               }
             </select>
           </label>
         </div>
         <div>
           <label>
-            <div class="uk-form-label">Barrio</div>
-            <select class="uk-select perfil-input" name="barrio" [(ngModel)]="dir_barid" (ngModelChange)="onBarrioChange()" [disabled]="!ciudadId" required>
-              <option [ngValue]="null" disabled>Seleccioná un barrio</option>
-              @for (b of barriosFiltrados; track b.bar_id) {
-                <option [ngValue]="b.bar_id">{{ b.bar_descri }}</option>
+            <div class="uk-form-label">Ciudad</div>
+            <select class="uk-select perfil-input" name="ciudad" [(ngModel)]="dir_ciuid"
+                    [disabled]="!departamentoId" required>
+              <option [ngValue]="null" disabled>Seleccioná una ciudad</option>
+              @for (c of ciudadesFiltradas; track c.ciu_id) {
+                <option [ngValue]="c.ciu_id">{{ c.ciu_descri }}</option>
               }
             </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="uk-grid-small uk-child-width-1-2@s uk-margin-small-top" uk-grid>
+        <div>
+          <label>
+            <div class="uk-form-label">Barrio</div>
+            <input class="uk-input perfil-input" type="text" name="dir_barrio"
+                   [(ngModel)]="dir_barrio" maxlength="60" required />
           </label>
         </div>
         <div>
           <label>
             <div class="uk-form-label">Calle</div>
-            <select class="uk-select perfil-input" name="calle" [(ngModel)]="dir_calid" [disabled]="!dir_barid" required>
-              <option [ngValue]="null" disabled>Seleccioná una calle</option>
-              @for (c of callesFiltradas; track c.cal_id) {
-                <option [ngValue]="c.cal_id">{{ c.cal_descri }}</option>
-              }
-            </select>
+            <input class="uk-input perfil-input" type="text" name="dir_calle"
+                   [(ngModel)]="dir_calle" maxlength="100" required />
           </label>
         </div>
       </div>
@@ -101,7 +126,7 @@
             <div class="uk-flex uk-flex-middle uk-flex-between">
               <div class="uk-flex uk-flex-middle">
                 <span class="direccion-icono" uk-icon="icon: location; ratio: 1"></span>
-                <strong class="uk-margin-small-left">{{ dir.barrio }}</strong>
+                <strong class="uk-margin-small-left">{{ dir.dir_alias }}</strong>
               </div>
               @if (dir.dir_predet) {
                 <span class="direccion-badge">Predeterminada</span>
@@ -109,11 +134,7 @@
             </div>
 
             <div class="direccion-datos">
-              <div><span class="direccion-datos-label">Ciudad:</span> {{ dir.ciudad }}</div>
-              <div><span class="direccion-datos-label">Calle:</span> {{ dir.calle }}</div>
-              @if (dir.dir_nrocasa) {
-                <div><span class="direccion-datos-label">N° casa:</span> {{ dir.dir_nrocasa }}</div>
-              }
+              <div class="uk-text-meta">{{ dir.resumen }}</div>
               @if (dir.dir_referencia) {
                 <div><span class="direccion-datos-label">Referencia:</span> {{ dir.dir_referencia }}</div>
               }

@@ -259,6 +259,30 @@ export class CarritoService {
     return of<CarritoMensajeResponse>({ message: 'Carrito vaciado.' });
   }
 
+  /**
+   * Vacía solo una sección (Contado o Crédito), sin tocar la otra.
+   * Usado por el botón "Vaciar Carrito Contado/Crédito" de la página del
+   * carrito — vaciar() arriba sigue siendo el vaciado total (sin uso hoy
+   * en esa página, pero se deja por si algún otro punto lo necesita).
+   */
+  vaciarModalidad(modalidad: ModalidadPago): Observable<CarritoMensajeResponse> {
+    if (this.authService.isLoggedIn()) {
+      return this.http
+        .delete<CarritoMensajeResponse>(`${URL_SERVICIOS}/tienda/carrito/modalidad/${modalidad}`)
+        .pipe(
+          tap(() =>
+            this.reiniciar(this.carrito.getValue().filter((i) => (i.car_modpag ?? 'contado') !== modalidad))
+          )
+        );
+    }
+
+    this.guardarInvitado(this.leerInvitado().filter((i) => i.car_modpag !== modalidad));
+    this.reiniciar(this.carrito.getValue().filter((i) => (i.car_modpag ?? 'contado') !== modalidad));
+
+    const mensaje = modalidad === 'contado' ? 'Carrito al contado vaciado.' : 'Carrito a crédito vaciado.';
+    return of<CarritoMensajeResponse>({ message: mensaje });
+  }
+
   // ---------- Fusión al iniciar sesión ----------
 
   sincronizarTrasLogin(): Observable<any> {

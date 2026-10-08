@@ -135,6 +135,24 @@ export const navItems: INavData[] = [
     iconComponent: { name:  'cil-bell' }
   },
 
+      {
+    name: 'Datos de Pago',
+    url: '/configuracion-pago',
+    iconComponent: { name: 'cil-credit-card' }
+  },
+
+  {
+    name: 'Configuración de Envío',
+    url: '/configuracion-envio',
+    iconComponent: { name: 'cil-truck' }
+  },
+
+  {
+    name: 'Tarifas de Envío',
+    url: '/tarifas-envio',
+    iconComponent: { name: 'cil-map' }
+  },
+
   {
     name: 'Gestión de Cuotas',
     url: '/gestion-cuotas',

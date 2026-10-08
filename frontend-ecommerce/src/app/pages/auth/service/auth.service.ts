@@ -96,22 +96,22 @@ export class AuthService {
     return this.http.post(URL, data);
   }
 
-  logout() {
+  logout(returnUrl?: string) {
     let URL = URL_SERVICIOS + "/auth/logout";
     this.http.post(URL, {}).subscribe({
-      next: () => this.sesionExpirada(),
-      error: () => this.sesionExpirada() // limpiamos igual aunque falle la peticion
+      next: () => this.sesionExpirada(returnUrl),
+      error: () => this.sesionExpirada(returnUrl)
     });
   }
 
-  sesionExpirada() {
+  sesionExpirada(returnUrl?: string) {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     this.user = null;
     this.token = '';
     this.sesion.set(false);
     setTimeout(() => {
-      this.router.navigateByUrl("/login");
+      this.router.navigateByUrl(returnUrl ?? "/login");
     }, 500);
   }
 

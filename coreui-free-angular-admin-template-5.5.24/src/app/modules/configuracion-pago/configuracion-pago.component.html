@@ -1,0 +1,90 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Datos de Pago</strong></c-card-header>
+
+  <c-card-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando">
+
+      <h6 class="mb-1">Transferencia Bancaria</h6>
+      <p class="text-body-secondary small mb-4">
+        Datos informativos que ve el cliente en el Paso 2 del checkout al elegir "Transferencia Bancaria".
+      </p>
+
+      <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+          <label cLabel for="ctn_pago_banco">Banco</label>
+          <input cFormControl type="text" id="ctn_pago_banco" formControlName="ctn_pago_banco" maxlength="80">
+          <div class="text-danger small" *ngIf="campoInvalido('ctn_pago_banco')">
+            {{ errorBackend('ctn_pago_banco') }}
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <label cLabel for="ctn_pago_banco_titular">Titular</label>
+          <input cFormControl type="text" id="ctn_pago_banco_titular" formControlName="ctn_pago_banco_titular" maxlength="150">
+          <div class="text-danger small" *ngIf="campoInvalido('ctn_pago_banco_titular')">
+            {{ errorBackend('ctn_pago_banco_titular') }}
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <label cLabel for="ctn_pago_banco_cuenta">Número de cuenta</label>
+          <input cFormControl type="text" id="ctn_pago_banco_cuenta" formControlName="ctn_pago_banco_cuenta" maxlength="40">
+          <div class="text-danger small" *ngIf="campoInvalido('ctn_pago_banco_cuenta')">
+            {{ errorBackend('ctn_pago_banco_cuenta') }}
+          </div>
+        </div>
+      </div>
+
+      <h6 class="mb-1">Tigo Money</h6>
+      <p class="text-body-secondary small mb-4">
+        Datos informativos que ve el cliente en el Paso 2 del checkout al elegir "Tigo Money".
+      </p>
+
+      <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+          <label cLabel for="ctn_pago_tigo_titular">Titular</label>
+          <input cFormControl type="text" id="ctn_pago_tigo_titular" formControlName="ctn_pago_tigo_titular" maxlength="150">
+          <div class="text-danger small" *ngIf="campoInvalido('ctn_pago_tigo_titular')">
+            {{ errorBackend('ctn_pago_tigo_titular') }}
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <label cLabel for="ctn_pago_tigo_numero">Número</label>
+          <input cFormControl type="text" id="ctn_pago_tigo_numero" formControlName="ctn_pago_tigo_numero" maxlength="20">
+          <div class="text-danger small" *ngIf="campoInvalido('ctn_pago_tigo_numero')">
+            {{ errorBackend('ctn_pago_tigo_numero') }}
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <label cLabel for="ctn_pago_tigo_referencia">Referencia</label>
+          <input cFormControl type="text" id="ctn_pago_tigo_referencia" formControlName="ctn_pago_tigo_referencia" maxlength="60">
+          <div class="text-danger small" *ngIf="campoInvalido('ctn_pago_tigo_referencia')">
+            {{ errorBackend('ctn_pago_tigo_referencia') }}
+          </div>
+        </div>
+      </div>
+
+      <h6 class="mb-1">Efectivo</h6>
+      <p class="text-body-secondary small mb-4">
+        Mensaje informativo que ve el cliente al elegir "Efectivo" en el checkout.
+      </p>
+
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <label cLabel for="ctn_pago_efectivo_mensaje">Mensaje</label>
+          <input cFormControl type="text" id="ctn_pago_efectivo_mensaje" formControlName="ctn_pago_efectivo_mensaje" maxlength="200">
+          <div class="text-danger small" *ngIf="campoInvalido('ctn_pago_efectivo_mensaje')">
+            {{ errorBackend('ctn_pago_efectivo_mensaje') }}
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button cButton color="primary" type="submit" [disabled]="guardando">
+          <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+          {{ guardando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </c-card-body>
+</c-card>

@@ -63,6 +63,14 @@ use App\Http\Controllers\Admin\Configuracion\ConfiguracionCuotaController;
 use App\Http\Controllers\Chat\ChatController;
 use App\Http\Controllers\Admin\Chat\FaqTiendaController;
 
+use App\Http\Controllers\Pedido\CheckoutController;
+
+use App\Http\Controllers\Admin\Configuracion\ConfiguracionEnvioController;
+
+use App\Http\Controllers\Admin\Configuracion\TarifaEnvioController;
+
+use App\Http\Controllers\Api\DatoFiscalClienteController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -123,6 +131,14 @@ Route::group([
     // MÓDULO 6 - ChatBot (público: invitado o cliente con JWT).
     Route::post('chat/mensajes', [ChatController::class, 'enviar'])->middleware('throttle:chat');
     Route::get('chat/{token}', [ChatController::class, 'historial'])->whereUuid('token')->middleware('throttle:60,1');
+
+    Route::get('checkout/facturacion',  [CheckoutController::class, 'configFacturacion']);
+    Route::post('checkout/facturacion', [CheckoutController::class, 'guardarFacturacion']);
+
+    Route::get('checkout/pago',  [CheckoutController::class, 'configPago']);
+    Route::post('checkout/pago', [CheckoutController::class, 'guardarPago']);
+
+
 });
 
 // Rutas privadas de tienda (requieren sesión de cliente autenticado).
@@ -132,10 +148,22 @@ Route::group([
 ], function ($router) {
     Route::post('carrito/sincronizar', [CarritoController::class, 'sincronizar']);
     Route::delete('carrito', [CarritoController::class, 'vaciar']);
+    // Debe ir ANTES del apiResource: si no, 'carrito/{carrito}' (destroy)
+    // la intercepta y Laravel intenta castear "modalidad" como car_id.
+    Route::delete('carrito/modalidad/{modalidad}', [CarritoController::class, 'vaciarModalidad']);
 
     Route::apiResource('carrito', CarritoController::class)
         ->only(['index', 'store', 'update', 'destroy']);
-});
+
+     // --- Checkout (modulo transaccional M3) ---
+    Route::get('checkout/entrega',  [CheckoutController::class, 'configEntrega']);
+    Route::post('checkout/entrega', [CheckoutController::class, 'guardarEntrega']);
+
+        // --- Paso 3: Confirmación ---
+    Route::get('checkout/confirmacion', [CheckoutController::class, 'configConfirmacion']);   // <-- nuevo
+    Route::post('checkout/confirmar',   [CheckoutController::class, 'confirmar']);            // <-- nuevo
+   
+ });
 
 Route::group([
     'middleware'=> ['auth:api', 'permiso:dashboard.ver'],   // <- solo agregar esta línea
@@ -172,9 +200,10 @@ Route::group([
 
     //Sucursales
     Route::get('sucursales/config', [SucursalController::class, 'config']);
+    Route::get('sucursales/select', [SucursalController::class, 'select']);   // <-- agregar
     Route::patch('sucursales/{id}/estado', [SucursalController::class, 'toggleEstado']);
-    Route::apiResource('sucursales', SucursalController::class);// Para Ciudad
-    
+    Route::apiResource('sucursales', SucursalController::class)
+    ->parameters(['sucursales' => 'sucursal']); // fuerza el nombre del parámetro a 'sucursal' Para Ciudad
     //Departamentos
     Route::get('departamentos/select', [DepartamentoController::class, 'select']);
     Route::patch('departamentos/{id}/estado', [DepartamentoController::class, 'toggleEstado']);
@@ -318,11 +347,19 @@ Route::group([
     Route::get('configuracion-precio', [ConfiguracionPrecioController::class, 'show']);
     Route::patch('configuracion-precio', [ConfiguracionPrecioController::class, 'update']);
  
-    
-    // Configuración general de la tienda (singleton: avisos de stock)
+        // Configuración general de la tienda (singleton: avisos de stock)
     Route::get('configuracion-tienda', [ConfiguracionTiendaController::class, 'show']);
     Route::patch('configuracion-tienda', [ConfiguracionTiendaController::class, 'update']);
 
+    // Configuración de envío (singleton: gratis / fijo / sucursal)
+    Route::get('configuracion-envio', [ConfiguracionEnvioController::class, 'show']);
+    Route::patch('configuracion-envio', [ConfiguracionEnvioController::class, 'update']);
+
+    // Tarifas por sucursal + ciudad (solo relevante cuando el modo es "sucursal")
+    Route::apiResource('tarifas-envio', TarifaEnvioController::class)->except(['show']);
+
+
+    
     // junto al bloque de "Compras":
     Route::get('compras/{id}/notas-credito/config', [NotaCreditoController::class, 'config']);
     Route::get('compras/{id}/notas-credito', [NotaCreditoController::class, 'index']);
@@ -394,6 +431,14 @@ Route::group([
     Route::put('/direcciones/{id}', [DireccionClienteController::class, 'update']);
     Route::delete('/direcciones/{id}', [DireccionClienteController::class, 'destroy']);
     Route::patch('/direcciones/{id}/predeterminada', [DireccionClienteController::class, 'marcarPredeterminada']);
+
+    
+    Route::get('/dato-fiscal/verificar-propio', [DatoFiscalClienteController::class, 'verificarPropio']);
+    Route::get('/dato-fiscal', [DatoFiscalClienteController::class, 'index']);
+    Route::post('/dato-fiscal', [DatoFiscalClienteController::class, 'store']);
+    Route::put('/dato-fiscal/{id}', [DatoFiscalClienteController::class, 'update']);
+    Route::delete('/dato-fiscal/{id}', [DatoFiscalClienteController::class, 'destroy']);
+
 });
 
 Route::get('publicaciones', [PublicacionWebController::class, 'index']);

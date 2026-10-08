@@ -95,6 +95,23 @@
           </div>
         </div>
 
+                <div class="col-md-4">
+          <div class="form-check form-switch mt-4">
+            <input cFormCheckInput type="checkbox" role="switch" id="suc_retiro"
+                   formControlName="suc_retiro" />
+            <label cFormCheckLabel for="suc_retiro">Habilitada para retiro de pedidos web</label>
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <label cLabel for="suc_horario">Horario de atención</label>
+          <input cFormControl id="suc_horario" formControlName="suc_horario"
+                 placeholder="Lun a Vie 8:00 a 18:00 · Sáb 8:00 a 13:00" maxlength="150" />
+          <div class="text-danger small" *ngIf="campoInvalido('suc_horario')">
+            {{ errorBackend('suc_horario') }}
+          </div>
+        </div>
+
       </div>
     </c-modal-body>
 

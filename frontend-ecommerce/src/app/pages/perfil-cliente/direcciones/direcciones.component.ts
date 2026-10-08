@@ -4,12 +4,13 @@ import { AuthService } from '../../auth/service/auth.service';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import {
-  BarrioCatalogo,
-  CalleCatalogo,
   CiudadCatalogo,
+  DepartamentoCatalogo,
   Direccion,
 } from '../../../core/models/direccion.model';
 import { DireccionClienteService } from '../../../core/services/direccion-cliente.service';
+
+const ALIAS_SUGERIDOS = ['Mi Casa', 'Mi Trabajo', 'Otro'];
 
 @Component({
   selector: 'app-direcciones',
@@ -24,19 +25,21 @@ export class DireccionesComponent {
 
   direcciones: Direccion[] = [];
 
-  ciudades: CiudadCatalogo[] = [];
-  barrios: BarrioCatalogo[] = [];
-  calles: CalleCatalogo[] = [];
-
-  barriosFiltrados: BarrioCatalogo[] = [];
-  callesFiltradas: CalleCatalogo[] = [];
+  departamentos: DepartamentoCatalogo[] = [];
+  private ciudades: CiudadCatalogo[] = [];
+  ciudadesFiltradas: CiudadCatalogo[] = [];
 
   mostrarFormulario = false;
   direccionEnEdicion: Direccion | null = null;
 
-  ciudadId: number | null = null;
-  dir_barid: number | null = null;
-  dir_calid: number | null = null;
+  alias = ALIAS_SUGERIDOS;
+  aliasOpcion = 'Mi Casa';
+  dir_alias = 'Mi Casa';
+
+  departamentoId: number | null = null;
+  dir_ciuid: number | null = null;
+  dir_barrio = '';
+  dir_calle = '';
   dir_nrocasa = '';
   dir_referencia = '';
   dir_celular = '';
@@ -59,9 +62,8 @@ export class DireccionesComponent {
     this.cargando = true;
     this.direccionService.catalogos().subscribe({
       next: (catalogos) => {
+        this.departamentos = catalogos.departamentos;
         this.ciudades = catalogos.ciudades;
-        this.barrios = catalogos.barrios;
-        this.calles = catalogos.calles;
         this.cargarDirecciones();
       },
       error: () => (this.cargando = false),
@@ -78,54 +80,59 @@ export class DireccionesComponent {
     });
   }
 
-  // ----- Cascada Ciudad -> Barrio -> Calle (calle depende de barrio, no de ciudad) -----
+  // ----- Cascada Departamento -> Ciudad (barrio y calle son texto libre) -----
 
-  onCiudadChange(): void {
-    this.dir_barid = null;
-    this.dir_calid = null;
-    this.callesFiltradas = [];
-    this.barriosFiltrados = this.ciudadId
-      ? this.barrios.filter((b) => b.bar_ciuid === this.ciudadId)
-      : [];
+  get aliasEsOtro(): boolean {
+    return this.aliasOpcion === 'Otro';
   }
 
-  onBarrioChange(): void {
-    this.dir_calid = null;
-    this.callesFiltradas = this.dir_barid
-      ? this.calles.filter((c) => c.cal_barid === this.dir_barid)
+  cambiarAlias(opcion: string): void {
+    this.aliasOpcion = opcion;
+    this.dir_alias = opcion === 'Otro' ? '' : opcion;
+  }
+
+  onDepartamentoChange(): void {
+    this.dir_ciuid = null;
+    this.ciudadesFiltradas = this.departamentoId
+      ? this.ciudades.filter((c) => c.ciu_depid === this.departamentoId)
       : [];
   }
 
   abrirNuevo(): void {
     this.direccionEnEdicion = null;
-    this.ciudadId = null;
-    this.dir_barid = null;
-    this.dir_calid = null;
+    this.aliasOpcion = 'Mi Casa';
+    this.dir_alias = 'Mi Casa';
+    this.departamentoId = null;
+    this.dir_ciuid = null;
+    this.dir_barrio = '';
+    this.dir_calle = '';
     this.dir_nrocasa = '';
     this.dir_referencia = '';
     this.dir_celular = '';
     this.dir_telef = '';
     this.dir_predet = this.direcciones.length === 0;
-    this.barriosFiltrados = [];
-    this.callesFiltradas = [];
+    this.ciudadesFiltradas = [];
     this.mostrarFormulario = true;
   }
 
   abrirEditar(direccion: Direccion): void {
     this.direccionEnEdicion = direccion;
 
-    // El listado solo trae nombres; para preseleccionar "ciudad" hay que
-    // ubicar el barrio dentro del catálogo ya cargado.
-    const barrio = this.barrios.find((b) => b.bar_id === direccion.dir_barid);
-    this.ciudadId = barrio?.bar_ciuid ?? null;
-    this.barriosFiltrados = this.ciudadId
-      ? this.barrios.filter((b) => b.bar_ciuid === this.ciudadId)
+    // El listado solo trae el nombre de la ciudad y del departamento, no
+    // sus ids; se ubican en el catalogo ya cargado para preseleccionar.
+    const ciudad = this.ciudades.find((c) => c.ciu_id === direccion.dir_ciuid);
+    this.departamentoId = ciudad?.ciu_depid ?? null;
+    this.ciudadesFiltradas = this.departamentoId
+      ? this.ciudades.filter((c) => c.ciu_depid === this.departamentoId)
       : [];
 
-    this.dir_barid = direccion.dir_barid;
-    this.callesFiltradas = this.calles.filter((c) => c.cal_barid === this.dir_barid);
-    this.dir_calid = direccion.dir_calid;
+    this.dir_ciuid = direccion.dir_ciuid;
 
+    this.aliasOpcion = this.alias.includes(direccion.dir_alias) ? direccion.dir_alias : 'Otro';
+    this.dir_alias = direccion.dir_alias;
+
+    this.dir_barrio = direccion.dir_barrio;
+    this.dir_calle = direccion.dir_calle;
     this.dir_nrocasa = direccion.dir_nrocasa ?? '';
     this.dir_referencia = direccion.dir_referencia ?? '';
     this.dir_celular = direccion.dir_celular ?? '';
@@ -141,14 +148,16 @@ export class DireccionesComponent {
   }
 
   guardar(): void {
-    if (!this.dir_barid || !this.dir_calid) {
-      this.toastr.warning('Seleccioná ciudad, barrio y calle.', 'Faltan datos');
+    if (!this.dir_ciuid || !this.dir_barrio || !this.dir_calle) {
+      this.toastr.warning('Seleccioná la ciudad y completá barrio y calle.', 'Faltan datos');
       return;
     }
 
     const datos = {
-      dir_barid: this.dir_barid,
-      dir_calid: this.dir_calid,
+      dir_alias: this.dir_alias,
+      dir_ciuid: this.dir_ciuid,
+      dir_barrio: this.dir_barrio,
+      dir_calle: this.dir_calle,
       dir_nrocasa: this.dir_nrocasa,
       dir_referencia: this.dir_referencia,
       dir_celular: this.dir_celular,

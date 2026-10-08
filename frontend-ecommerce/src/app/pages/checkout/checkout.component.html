@@ -1,0 +1,17 @@
+<div class="uk-container uk-margin-large-top uk-margin-large-bottom">
+  <ul class="uk-breadcrumb">
+    <li><a routerLink="/">Inicio</a></li>
+    <li><a routerLink="/carrito-de-compra">Carrito</a></li>
+    <li><span>Finalizar compra</span></li>
+  </ul>
+
+  <div class="ck-pasos uk-flex uk-flex-middle uk-flex-center uk-margin-large-bottom">
+    <div class="ck-paso" [class.ck-paso--activo]="pasoActual === 'entrega'"><span>1</span> Entrega</div>
+    <div class="ck-linea"></div>
+    <div class="ck-paso" [class.ck-paso--activo]="pasoActual === 'facturacion'"><span>2</span> Facturación y pago</div>
+    <div class="ck-linea"></div>
+    <div class="ck-paso" [class.ck-paso--activo]="pasoActual === 'confirmacion'"><span>3</span> Confirmación</div>
+  </div>
+
+  <router-outlet></router-outlet>
+</div>

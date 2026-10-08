@@ -1,0 +1,36 @@
+<div class="uk-container uk-margin-large-top uk-margin-large-bottom">
+
+  <ul class="uk-breadcrumb">
+    <li><a routerLink="/">Inicio</a></li>
+    <li><span>Pedido confirmado</span></li>
+  </ul>
+
+  <div class="pc-wrapper uk-text-center">
+    <div class="uk-card uk-card-default uk-card-body pc-card">
+
+      <div class="pc-check">
+        <span uk-icon="icon: check; ratio: 2.5"></span>
+      </div>
+
+      <h3 class="uk-margin-small-top uk-margin-remove-bottom">¡Pedido realizado con éxito!</h3>
+      <p class="uk-text-meta">
+        Hemos recibido tu pedido correctamente.<br>
+        Tu pago será verificado por nuestro equipo.
+      </p>
+
+      <p class="pc-numero">N.º de pedido: #{{ numero }}</p>
+
+      <p class="uk-text-meta">
+        Recibirás información sobre el estado de tu pedido.
+      </p>
+
+      <div class="pc-botones uk-margin-medium-top">
+        <button type="button" class="uk-button uk-button-default" (click)="volverATienda()">Regresar a la tienda</button>
+        <button type="button" class="uk-button uk-button-default" (click)="volverAlCarrito()">Volver al Carrito</button>
+        <button type="button" class="uk-button uk-button-primary" (click)="verMiPedido()">Ver mi pedido</button>
+      </div>
+
+    </div>
+  </div>
+
+</div>

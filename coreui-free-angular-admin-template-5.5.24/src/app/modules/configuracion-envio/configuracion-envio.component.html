@@ -1,0 +1,49 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Configuración de Envío</strong></c-card-header>
+
+  <c-card-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando">
+      <label cLabel>Modo de envío <span class="text-danger">*</span></label>
+
+      <div class="form-check" *ngFor="let m of [['gratis','Gratis'],['fijo','Costo fijo'],['sucursal','Según sucursal']]">
+        <input cFormCheckInput type="radio" [value]="m[0]" formControlName="cfe_modo" [id]="'modo_' + m[0]" />
+        <label cFormCheckLabel [for]="'modo_' + m[0]">{{ m[1] }}</label>
+      </div>
+
+      <div class="row g-3 mt-2" *ngIf="esFijo">
+        <div class="col-md-4">
+          <label cLabel for="cfe_costo_fijo">Costo de envío (Gs.) <span class="text-danger">*</span></label>
+          <input cFormControl type="number" id="cfe_costo_fijo" formControlName="cfe_costo_fijo" min="0" placeholder="0" />
+          <div class="text-danger small" *ngIf="campoInvalido('cfe_costo_fijo')">
+            {{ errorBackend('cfe_costo_fijo') || 'El costo es obligatorio y mayor a 0.' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-2" *ngIf="!esSucursal">
+        <div class="col-md-4">
+          <label cLabel for="cfe_monto_minimo">Monto mínimo para envío gratis (Gs.)</label>
+          <input cFormControl type="number" id="cfe_monto_minimo" formControlName="cfe_monto_minimo" min="0" placeholder="0" />
+          <div class="small text-body-secondary">Dejar vacío = desactivado.</div>
+          <div class="text-danger small" *ngIf="campoInvalido('cfe_monto_minimo')">
+            {{ errorBackend('cfe_monto_minimo') }}
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info mt-3" *ngIf="esSucursal">
+        Cargá las tarifas por sucursal y ciudad en
+        <a routerLink="/tarifas-envio">Tarifas de Envío</a>.
+      </div>
+
+      <div class="mt-4">
+        <button cButton color="primary" type="submit" [disabled]="guardando">
+          <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+          {{ guardando ? 'Guardando...' : 'Guardar configuración' }}
+        </button>
+      </div>
+    </form>
+  </c-card-body>
+</c-card>

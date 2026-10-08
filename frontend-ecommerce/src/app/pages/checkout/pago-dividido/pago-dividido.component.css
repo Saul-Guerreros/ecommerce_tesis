@@ -1,0 +1,58 @@
+.pd-total {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.pd-total strong {
+  display: block;
+  font-size: 1.125rem;
+  color: #333;
+  text-align: right;
+}
+
+.pd-bloque {
+  border: 1px solid var(--uk-global-border, #e5e5e5);
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin-top: 16px;
+  transition: border-color 0.15s ease;
+}
+
+.pd-bloque:focus-within {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+}
+
+.pd-bloque .uk-form-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.pd-bloque select[disabled],
+.pd-bloque input[disabled] {
+  background-color: #f8f8f8;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.pd-resumen {
+  border-top: 1px solid var(--uk-global-border, #e5e5e5);
+  padding-top: 14px;
+}
+
+/* Reutiliza el mismo bloque de carga de archivo del paso de facturacion.
+   Se repite aca porque los estilos de componente estan encapsulados. */
+.ck-upload {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ck-upload-nombre {
+  font-size: 0.875rem;
+  color: #333;
+}
+
+.ck-upload-nombre--vacio {
+  color: #999;
+}

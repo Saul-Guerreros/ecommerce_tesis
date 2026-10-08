@@ -1,0 +1,17 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>Confirmar eliminación</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <p>
+      ¿Está seguro de eliminar la tarifa de <strong>{{ tarifa?.sucursal }}</strong>
+      hacia <strong>{{ tarifa?.ciudad }}</strong>? Esta acción no se puede deshacer.
+    </p>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="confirmar.emit()">Eliminar</button>
+  </c-modal-footer>
+</c-modal>

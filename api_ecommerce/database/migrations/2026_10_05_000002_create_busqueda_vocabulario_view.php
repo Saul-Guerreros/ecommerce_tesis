@@ -21,25 +21,27 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     public function up(): void
-    {
-        DB::unprepared(<<<'SQL'
-            CREATE MATERIALIZED VIEW busqueda_vocabulario AS
-            SELECT word AS bvo_palabra,
-                   ndoc AS bvo_docs        -- en cuántos productos aparece
-            FROM ts_stat($q$
-                SELECT to_tsvector('simple',
-                    ibu_texto_corto || ' ' ||
-                    lower(public.f_unaccent(coalesce(ibu_ficha_texto, '') || ' ' || coalesce(ibu_descripcion, '')))
-                )
-              FROM public.indice_busqueda
-            $q$)
-            WHERE length(word) >= 3
-        SQL);
+{
+    DB::statement('DROP MATERIALIZED VIEW IF EXISTS busqueda_vocabulario');
 
-        // El índice único permite REFRESH ... CONCURRENTLY (no bloquea lecturas).
-        DB::statement('CREATE UNIQUE INDEX uq_busqueda_vocabulario ON busqueda_vocabulario (bvo_palabra)');
-        DB::statement('CREATE INDEX idx_busqueda_vocabulario_trgm ON busqueda_vocabulario USING GIN (bvo_palabra gin_trgm_ops)');
-    }
+    DB::unprepared(<<<'SQL'
+        CREATE MATERIALIZED VIEW busqueda_vocabulario AS
+        SELECT word AS bvo_palabra,
+               ndoc AS bvo_docs        -- en cuántos productos aparece
+        FROM ts_stat($q$
+            SELECT to_tsvector('simple',
+                ibu_texto_corto || ' ' ||
+                lower(public.f_unaccent(coalesce(ibu_ficha_texto, '') || ' ' || coalesce(ibu_descripcion, '')))
+            )
+            FROM public.indice_busqueda
+        $q$)
+        WHERE length(word) >= 3
+    SQL);
+
+    // El índice único permite REFRESH ... CONCURRENTLY (no bloquea lecturas).
+    DB::statement('CREATE UNIQUE INDEX uq_busqueda_vocabulario ON busqueda_vocabulario (bvo_palabra)');
+    DB::statement('CREATE INDEX idx_busqueda_vocabulario_trgm ON busqueda_vocabulario USING GIN (bvo_palabra gin_trgm_ops)');
+}
 
     public function down(): void
     {

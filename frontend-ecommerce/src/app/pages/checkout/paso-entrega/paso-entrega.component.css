@@ -1,0 +1,205 @@
+.ck-opcion {
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  height: 100%;   /* <-- reemplaza al min-height: ambos botones igualan al más alto de la fila */
+  padding: 16px;
+  border: 2px solid var(--uk-global-border, #e5e5e5);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Tarjetas tipo boton: "Retirar de sucursal" / "Enviar a domicilio",
+   y "Yo mismo" / "Otra persona" */
+
+.ck-opcion:hover {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+}
+
+.ck-opcion--activa {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+  background-color: rgba(30, 135, 240, 0.06);
+}
+
+.ck-opcion strong {
+  font-size: 0.95rem;
+}
+
+.ck-opcion small {
+  color: var(--uk-global-muted-color, #999);
+}
+
+/* Variante chica: "Yo mismo" / "Otra persona" (receptor) */
+.ck-opcion--chica {
+  padding: 10px 14px;
+  text-align: center;
+  align-items: center;
+}
+
+/* Lista de sucursales / direcciones con radio */
+.ck-radio {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 20px;
+  margin-bottom: 10px;
+  border: 1px solid var(--uk-global-border, #e5e5e5);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ck-radio:hover {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+}
+
+.ck-radio--activa {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+  background-color: rgba(30, 135, 240, 0.06);
+}
+
+/* margin-top alinea el radio con el centro optico de la primera linea */
+.ck-radio input[type='radio'] {
+  margin: 4px 0 0;
+  flex: 0 0 auto;
+}
+
+/* El bloque de texto ocupa el resto de la fila */
+.ck-radio > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ck-radio .uk-text-meta {
+  font-size: 0.85rem;
+}
+
+/* El ultimo item no lleva margen: asi el aire de arriba y el de abajo
+   dentro de la tarjeta queda parejo */
+.ck-radio:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Tarjeta de resumen (sticky en pantallas grandes) */
+.ck-resumen {
+  position: sticky;
+  top: 20px;
+}
+
+/* ------------------------------------------------------------------
+   LAYOUT DE DOS COLUMNAS
+   Columna principal elastica + columna lateral de ancho fijo, para
+   que las tarjetas aprovechen el largo de la pagina y el resumen
+   no crezca de mas en pantallas anchas.
+------------------------------------------------------------------ */
+.ck-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  align-items: start;
+  gap: 30px;
+  margin-top: 30px;
+}
+
+/* El tope del resumen queda alineado con el de la primera tarjeta.
+   Ojo: uk-margin de UIkit aplica solo margin-bottom, asi que la
+   primera tarjeta no tiene margen superior y esta columna tampoco
+   debe tenerlo. */
+.ck-col-lateral {
+  margin-top: 0;
+}
+
+/* Contenido del resumen centrado */
+.ck-resumen {
+  text-align: center;
+}
+
+/* Las filas Subtotal / Envio / Total siguen con etiqueta a la
+   izquierda y monto a la derecha (uk-flex-between) */
+.ck-resumen .uk-flex-between {
+  text-align: left;
+}
+
+/* Debajo de 960px vuelve a una sola columna, apiladas */
+@media (max-width: 959px) {
+  .ck-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
+/* ------------------------------------------------------------------
+   BARRA DE ACCIONES (Volver / Continuar)
+   Centrada, ambos botones del mismo ancho y altura.
+------------------------------------------------------------------ */
+.ck-barra-botones {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+/* Mismo ancho para ambos; la altura queda la de UIkit por defecto */
+.ck-barra-botones .uk-button {
+  min-width: 305px;
+}
+
+/* "Volver" usa el mismo azul que "Continuar" */
+.ck-btn-volver {
+  background-color: var(--uk-global-primary-background, #1e87f0);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.ck-btn-volver:hover,
+.ck-btn-volver:focus {
+  background-color: #0f7ae8;
+  color: #fff;
+}
+
+/* En pantallas chicas los botones pasan a ancho completo */
+@media (max-width: 639px) {
+  .ck-barra-botones {
+    gap: 12px;
+  }
+
+  .ck-barra-botones .uk-button {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
+
+/* type="search" en Chrome/Safari agrega una "x" para limpiar el campo
+   y a veces cambia el borde/radio visualmente. Esto lo neutraliza para
+   que se vea igual que los demas inputs. */
+
+input[type="search"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+
+/* Ensancha el paso de entrega mas alla del uk-container del layout */
+:host {
+  display: block;
+  --ck-ancho: min(1350px, calc(100vw - 80px));
+  width: var(--ck-ancho);
+  margin-left: calc(50% - var(--ck-ancho) / 2);
+}

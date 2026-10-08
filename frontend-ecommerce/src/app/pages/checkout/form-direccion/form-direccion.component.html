@@ -1,0 +1,98 @@
+<div class="uk-modal" [class.uk-open]="visible" [style.display]="visible ? 'block' : 'none'">
+  <div class="uk-modal-dialog uk-modal-body">
+    <button class="uk-modal-close-default" type="button" uk-close (click)="cerrar()"></button>
+    <h3 class="uk-modal-title">{{ esEdicion ? 'Editar dirección' : 'Agregar nueva dirección' }}</h3>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()">
+
+      <div class="uk-margin">
+        <label class="uk-form-label">Nombre de la dirección</label>
+        <div class="uk-grid-small uk-child-width-1-3" uk-grid>
+          <div *ngFor="let a of alias">
+            <button type="button" class="uk-button uk-button-default uk-width-1-1"
+                    [class.uk-button-primary]="form.value.alias_opcion === a"
+                    [title]="aliasOcupado(a) ? 'Ya tenés una dirección con este nombre' : ''"
+                    (click)="cambiarAlias(a)">{{ a }}</button>
+          </div>
+        </div>
+
+        <input *ngIf="aliasEsOtro" class="uk-input uk-margin-small-top" type="text"
+               formControlName="dir_alias" placeholder="Ej: Casa de mis padres" maxlength="50"
+               [class.uk-form-danger]="campoInvalido('dir_alias')">
+
+        <div class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="campoInvalido('dir_alias')">
+          {{ mensajeAlias }}
+        </div>
+      </div>
+
+      <div class="uk-grid-small uk-child-width-1-2@s uk-margin" uk-grid>
+        <div>
+          <label class="uk-form-label">Departamento <span class="uk-text-danger">*</span></label>
+          <select class="uk-select" formControlName="dep_id" (change)="cambiarDepartamento()"
+                  [class.uk-form-danger]="campoInvalido('dep_id')">
+            <option [ngValue]="null" disabled>Seleccioná...</option>
+            <option *ngFor="let d of departamentos" [ngValue]="d.dep_id">{{ d.dep_descri }}</option>
+          </select>
+          <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('dep_id')">
+            Seleccioná un departamento.
+          </div>
+        </div>
+
+        <div>
+          <label class="uk-form-label">Ciudad <span class="uk-text-danger">*</span></label>
+          <select class="uk-select" formControlName="dir_ciuid"
+                  [disabled]="ciudadesFiltradas.length === 0"
+                  [class.uk-form-danger]="campoInvalido('dir_ciuid')">
+            <option [ngValue]="null" disabled>Seleccioná...</option>
+            <option *ngFor="let c of ciudadesFiltradas" [ngValue]="c.ciu_id">{{ c.ciu_descri }}</option>
+          </select>
+          <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('dir_ciuid')">
+            {{ errorBackend('dir_ciuid') ?? 'Seleccioná una ciudad.' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="uk-grid-small uk-child-width-1-2@s uk-margin" uk-grid>
+        <div>
+          <label class="uk-form-label">Barrio <span class="uk-text-danger">*</span></label>
+          <input class="uk-input" type="text" formControlName="dir_barrio" maxlength="60"
+                 [class.uk-form-danger]="campoInvalido('dir_barrio')">
+          <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('dir_barrio')">
+            {{ errorBackend('dir_barrio') ?? 'El barrio es obligatorio.' }}
+          </div>
+        </div>
+
+        <div>
+          <label class="uk-form-label">Calle <span class="uk-text-danger">*</span></label>
+          <input class="uk-input" type="text" formControlName="dir_calle" maxlength="100"
+                 [class.uk-form-danger]="campoInvalido('dir_calle')">
+          <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('dir_calle')">
+            {{ errorBackend('dir_calle') ?? 'La calle es obligatoria.' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="uk-margin">
+        <label class="uk-form-label">Número de casa (opcional)</label>
+        <input class="uk-input" type="text" formControlName="dir_nrocasa" maxlength="45">
+      </div>
+
+      <div class="uk-margin">
+        <label class="uk-form-label">Referencias para llegar (opcional)</label>
+        <textarea class="uk-textarea" formControlName="dir_referencia" maxlength="250" rows="2"></textarea>
+      </div>
+
+      <label class="uk-margin uk-display-block">
+        <input class="uk-checkbox" type="checkbox" formControlName="dir_predet">
+        <span class="uk-margin-small-left">Guardar como mi dirección predeterminada</span>
+      </label>
+
+      <div class="uk-text-right uk-margin-top">
+        <button type="button" class="uk-button uk-button-default" (click)="cerrar()">Cancelar</button>
+        <button type="submit" class="uk-button uk-button-primary uk-margin-small-left" [disabled]="guardando">
+          {{ guardando ? 'Guardando...' : (esEdicion ? 'Guardar cambios' : 'Guardar y continuar') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

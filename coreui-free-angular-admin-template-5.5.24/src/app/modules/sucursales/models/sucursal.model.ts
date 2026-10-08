@@ -11,6 +11,8 @@ export interface Sucursal {
   suc_email?: string | null;
   suc_estado?: number;
   suc_creado?: string;
+    suc_retiro?: boolean;        // <-- nuevo
+  suc_horario?: string | null; // <-- nuevo
 
   // campos calculados que llegan del backend
   emp_razonsocial?: string;

@@ -25,15 +25,14 @@ class ConfiguracionTiendaController extends Controller
      * en la tienda en el siguiente request del Detalle del Producto (no hay
      * nada que recalcular ni cachear).
      */
-    public function update(ConfiguracionTiendaRequest $request): JsonResponse
-    {
-        $config = ConfiguracionTienda::actual();
-        $config->fill($request->validated());
-        $config->save();
+    public function update(ConfiguracionTiendaRequest $request)
+{
+    $config = ConfiguracionTienda::actual();
+    $config->update($request->validated());   // solo pisa lo que vino en el body
 
-        return response()->json([
-            'message' => 'Configuración de la tienda actualizada correctamente.',
-            'data'    => new ConfiguracionTiendaResource($config),
-        ], 200);
-    }
+    return response()->json([
+        'message' => 'Configuración de la tienda actualizada.',
+        'data' => new ConfiguracionTiendaResource($config->fresh()),
+    ]);
+}
 }
