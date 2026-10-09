@@ -3,7 +3,7 @@
 namespace App\Models\Catalogo;
 
 use App\Models\Categoria;
-use App\Models\Product\Atributo;
+use App\Models\product\Atributo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 

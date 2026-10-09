@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Categoria;
 use App\Models\Discount\Discount;
 use App\Models\Producto;
-use App\Models\Product\EspecificacionProducto;
+use App\Models\product\EspecificacionProducto;
 use App\Models\Carrito\ConfiguracionCuota;
 
 use App\Models\Configuracion\ConfiguracionTienda;

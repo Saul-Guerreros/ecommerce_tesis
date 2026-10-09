@@ -27,7 +27,7 @@ use App\Http\Controllers\Admin\Configuracion\TimbradoController;
 use App\Http\Controllers\Admin\Compras\TipoProveedorController;
 use App\Http\Controllers\Admin\Compras\ProveedorController;
 use App\Http\Controllers\Admin\Compras\ContactoProveedorController;
-use App\Http\Controllers\Admin\product\MarcaController;
+use App\Http\Controllers\Admin\product\marcaController;
 use App\Http\Controllers\Admin\Compras\UnidadMedidaController;
 use App\Http\Controllers\Admin\product\ProductoController;
 use App\Http\Controllers\Admin\Compras\CompraController;

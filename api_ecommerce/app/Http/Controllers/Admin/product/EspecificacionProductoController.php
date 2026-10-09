@@ -4,15 +4,15 @@ namespace App\Http\Controllers\Admin\product;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Models\Product\Atributo;
-use App\Models\Product\Propiedad;
-use App\Models\Product\EspecificacionProducto;
+use App\Models\product\Atributo;
+use App\Models\product\Propiedad;
+use App\Models\product\EspecificacionProducto;
 use App\Models\PublicacionWeb;
 
 /**
  * NOTA: se asume que tu módulo de Atributos/Propiedades (ya construido) usa
- * los modelos App\Models\Product\Atributo (tabla `atributo`, columnas
- * atb_id, atb_nombre, atb_tipo, atb_estado) y App\Models\Product\Propiedad
+ * los modelos App\Models\product\Atributo (tabla `atributo`, columnas
+ * atb_id, atb_nombre, atb_tipo, atb_estado) y App\Models\product\Propiedad
  * (tabla `propiedad`, columnas prp_id, prp_atbid, prp_nombre, prp_estado).
  * Ajusta los nombres si en tu proyecto son distintos.
  *

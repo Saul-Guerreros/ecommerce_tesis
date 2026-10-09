@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-class MarcaController extends Controller
+class marcaController extends Controller
 {
     private const DEPENDENCIAS = [
         'producto' => ['columna' => 'prd_marid', 'etiqueta' => 'producto(s)'],

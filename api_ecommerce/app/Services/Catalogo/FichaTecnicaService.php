@@ -3,8 +3,8 @@
 namespace App\Services\Catalogo;
 
 use App\Models\Catalogo\CategoriaAtributo;
-use App\Models\Product\Atributo;
-use App\Models\Product\EspecificacionProducto;
+use App\Models\product\Atributo;
+use App\Models\product\EspecificacionProducto;
 use App\Models\Producto;
 use App\Models\PublicacionWeb;
 use Illuminate\Support\Collection;

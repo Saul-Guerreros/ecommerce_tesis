@@ -3,7 +3,7 @@
 namespace App\Http\Requests\product;
 
 use App\Models\Producto;
-use App\Models\Product\Atributo;
+use App\Models\product\Atributo;
 use App\Services\Catalogo\FichaTecnicaService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;

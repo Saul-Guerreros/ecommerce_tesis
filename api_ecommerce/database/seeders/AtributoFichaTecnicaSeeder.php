@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Product\Atributo;
-use App\Models\Product\Propiedad;
+use App\Models\product\Atributo;
+use App\Models\product\Propiedad;
 use Illuminate\Database\Seeder;
 
 /**

@@ -7,7 +7,7 @@ use App\Http\Resources\product\ProductoResource;
 use App\Http\Controllers\Controller;
 use App\Models\Producto;
 use App\Models\PublicacionWeb;
-use App\Models\Product\Atributo;
+use App\Models\product\Atributo;
 use App\Services\Catalogo\FichaTecnicaService;
 use App\Models\Compras\ProductoEquivalencia;
 use App\Services\Precio\PriceService;

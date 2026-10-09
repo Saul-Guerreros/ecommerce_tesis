@@ -4,7 +4,7 @@ namespace App\Observers;
 
 use App\Models\Categoria;
 use App\Models\Marca;
-use App\Models\Product\EspecificacionProducto;
+use App\Models\product\EspecificacionProducto;
 use App\Models\product\categorie;
 use App\Models\Producto;
 use App\Models\PublicacionWeb;
