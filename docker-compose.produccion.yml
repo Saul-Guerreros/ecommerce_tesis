@@ -1,0 +1,81 @@
+# Proyecto Compose: zinformatica  (usar SIEMPRE: docker compose -p zinformatica ...)
+# URL: https://zinformatica.columbiatcc.online
+#   /api/*  y /storage/*  -> api   (Laravel)
+#   /admin/*              -> admin (CoreUI)
+#   resto                 -> tienda
+# Topología asumida: Traefik en modo host (CASO A de la guía). Ver DESPLIEGUE.md.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - /opt/zinformatica/config/db.env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - "traefik.enable=false"
+
+  api:
+    build:
+      context: ./api_ecommerce
+      dockerfile: Dockerfile.produccion
+    image: zinformatica-api:release1
+    restart: unless-stopped
+    env_file:
+      - /opt/zinformatica/config/api.env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - api_storage:/var/www/html/storage/app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zinformatica-api.rule=Host(`zinformatica.columbiatcc.online`) && (PathPrefix(`/api`) || PathPrefix(`/storage`))"
+      - "traefik.http.routers.zinformatica-api.priority=30"
+      - "traefik.http.routers.zinformatica-api.entrypoints=websecure"
+      - "traefik.http.routers.zinformatica-api.tls=true"
+      - "traefik.http.routers.zinformatica-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.zinformatica-api.service=zinformatica-api"
+      - "traefik.http.services.zinformatica-api.loadbalancer.server.port=8080"
+
+  admin:
+    build:
+      context: ./coreui-free-angular-admin-template-5.5.24
+      dockerfile: Dockerfile.produccion
+    image: zinformatica-admin:release1
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zinformatica-admin.rule=Host(`zinformatica.columbiatcc.online`) && PathPrefix(`/admin`)"
+      - "traefik.http.routers.zinformatica-admin.priority=20"
+      - "traefik.http.routers.zinformatica-admin.entrypoints=websecure"
+      - "traefik.http.routers.zinformatica-admin.tls=true"
+      - "traefik.http.routers.zinformatica-admin.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.zinformatica-admin.service=zinformatica-admin"
+      - "traefik.http.services.zinformatica-admin.loadbalancer.server.port=80"
+
+  tienda:
+    build:
+      context: ./frontend-ecommerce
+      dockerfile: Dockerfile.produccion
+    image: zinformatica-tienda:release1
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zinformatica-tienda.rule=Host(`zinformatica.columbiatcc.online`)"
+      - "traefik.http.routers.zinformatica-tienda.priority=10"
+      - "traefik.http.routers.zinformatica-tienda.entrypoints=websecure"
+      - "traefik.http.routers.zinformatica-tienda.tls=true"
+      - "traefik.http.routers.zinformatica-tienda.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.zinformatica-tienda.service=zinformatica-tienda"
+      - "traefik.http.services.zinformatica-tienda.loadbalancer.server.port=80"
+
+volumes:
+  db_data:
+  api_storage:

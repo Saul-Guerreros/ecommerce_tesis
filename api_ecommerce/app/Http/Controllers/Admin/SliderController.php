@@ -174,7 +174,7 @@ class SliderController extends Controller
             'sld_color'     => $slider->sld_color,
             'sld_creado'    => $slider->sld_creado,
             'sld_imagen'    => $slider->sld_imagen
-                ? rtrim(env('APP_URL'), '/') . '/storage/' . $slider->sld_imagen
+                ? rtrim(config('app.url'), '/') . '/storage/' . $slider->sld_imagen
                 : null,
         ];
     }

@@ -29,7 +29,7 @@ class PerfilClienteResource extends JsonResource
                 'tipo_documento'  => $persona?->tipoDocumento?->tpd_descri,
                 'per_fechna'      => $persona?->per_fechna?->format('Y-m-d'),
                 'avatar_url'      => $persona?->per_avatar
-                    ? rtrim(env('APP_URL'), '/') . '/storage/' . $persona->per_avatar
+                    ? rtrim(config('app.url'), '/') . '/storage/' . $persona->per_avatar
                     : null,
             ],
 

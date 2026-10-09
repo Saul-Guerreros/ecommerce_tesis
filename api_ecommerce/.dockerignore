@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+!.env.example
+vendor
+node_modules
+storage
+bootstrap/cache/*.php
+public/storage
+.phpunit.result.cache
+cnv_estado
+**/*.key
+**/*.pem
+**/*.sql
+**/*.dump
+respaldos/

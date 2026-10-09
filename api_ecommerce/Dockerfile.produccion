@@ -1,0 +1,29 @@
+# API Laravel 10 (PHP 8.3) con nginx + PHP-FPM en la misma imagen.
+# serversideup/php expone HTTP en el puerto 8080 y corre como www-data.
+FROM serversideup/php:8.3-fpm-nginx
+
+USER root
+RUN install-php-extensions pdo_pgsql intl gd bcmath
+
+WORKDIR /var/www/html
+
+# 1) Dependencias primero (mejor cache de capas)
+COPY --chown=www-data:www-data composer.json composer.lock ./
+USER www-data
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction --prefer-dist
+
+# 2) Código de la aplicación
+COPY --chown=www-data:www-data . .
+
+# 3) Carpetas que Laravel necesita (el proyecto no trae storage/) y enlace público
+RUN mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions \
+             storage/framework/views storage/logs bootstrap/cache \
+ && rm -rf public/storage \
+ && ln -s ../storage/app/public public/storage \
+ && composer dump-autoload --optimize --no-dev
+
+# Variables NO secretas; las secretas llegan por env_file en tiempo de ejecución
+ENV PHP_OPCACHE_ENABLE=1 \
+    PHP_UPLOAD_MAX_FILE_SIZE=20M \
+    PHP_POST_MAX_SIZE=25M \
+    LOG_CHANNEL=stderr

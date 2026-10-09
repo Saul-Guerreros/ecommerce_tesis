@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -47,7 +48,7 @@ export class ListDiscountsComponent implements OnInit {
   isDeleting = false;
 
   // Ajusta a la URL real de tu tienda para el link publico de "Campaña Link"
-  urlTienda = 'http://localhost:4200';
+  urlTienda = environment.URL_FRONTEND;
 
   constructor(public discountService: DiscountsService) {}
 

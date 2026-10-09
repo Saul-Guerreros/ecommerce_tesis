@@ -12,7 +12,9 @@ class TrustProxies extends Middleware
      *
      * @var array<int, string>|string|null
      */
-    protected $proxies;
+    // Solo Traefik llega al contenedor (sin puertos publicados). Necesario para
+    // que Laravel detecte HTTPS (X-Forwarded-Proto) y genere URLs https.
+    protected $proxies = '*';
 
     /**
      * The headers that should be used to detect proxies.
