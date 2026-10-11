@@ -51,7 +51,8 @@ class DatabaseSeeder extends Seeder
             EstadoPedidoSeeder::class,   // <-- nuevo
             EstadoPagoSeeder::class,     // <-- nuevo
             MotivoRechazoPagoSeeder::class,   // <-- nuevo
-
+			  CatalogoSeeder::class,
         ]);
+		
     }
 }
