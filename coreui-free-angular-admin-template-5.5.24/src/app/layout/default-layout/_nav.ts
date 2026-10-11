@@ -701,6 +701,7 @@ export const navItems: INavData[] = [
     title: true,
     name: 'Extras'
   },
+ */ 
   {
     name: 'Pages',
     url: '/login',
@@ -716,30 +717,30 @@ export const navItems: INavData[] = [
         url: '/register',
         icon: 'nav-icon-bullet'
       },
-      {
-        name: 'Error 404',
-        url: '/404',
-        icon: 'nav-icon-bullet'
-      },
-      {
-        name: 'Error 500',
-        url: '/500',
-        icon: 'nav-icon-bullet'
-      }
+      // {
+        // name: 'Error 404',
+        // url: '/404',
+        // icon: 'nav-icon-bullet'
+      // },
+      // {
+        // name: 'Error 500',
+        // url: '/500',
+        // icon: 'nav-icon-bullet'
+      // }
     ]
   },
-  {
-    title: true,
-    name: 'Links',
-    class: 'mt-auto'
-  },
+  // {
+    // title: true,
+    // name: 'Links',
+    // class: 'mt-auto'
+  // },
 
-  {
-    name: 'Docs',
-    url: 'https://coreui.io/angular/docs/',
-    iconComponent: { name: 'cil-description' },
-    attributes: { target: '_blank' }
-  }
-*/
+  // {
+    // name: 'Docs',
+    // url: 'https://coreui.io/angular/docs/',
+    // iconComponent: { name: 'cil-description' },
+    // attributes: { target: '_blank' }
+  // }
+
 
 ];

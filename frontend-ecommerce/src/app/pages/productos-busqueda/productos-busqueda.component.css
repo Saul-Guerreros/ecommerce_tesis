@@ -1,3 +1,6 @@
+/* =========================================================
+   PANEL DE FILTROS — escritorio: barra lateral
+   ========================================================= */
 .filtros-sidebar {
   background: #fff;
   border-radius: 14px;
@@ -14,13 +17,23 @@
   padding: 0;
 }
 
+.filtros-cerrar {
+  background: none;
+  border: none;
+  padding: 6px;
+  margin-right: -6px;
+  cursor: pointer;
+  color: #333;
+  line-height: 0;
+}
+
 .filtro-grupo {
   margin-top: 18px;
   padding-top: 18px;
   border-top: 1px solid #eef0f3;
 }
 
-.filtro-grupo:first-of-type {
+.filtros-cuerpo > .filtro-grupo:first-of-type {
   border-top: none;
   padding-top: 12px;
 }
@@ -43,7 +56,8 @@
   margin-bottom: 8px;
 }
 
-.filtro-lista label {
+.filtro-lista label,
+.filtro-check {
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -57,6 +71,167 @@
   color: #9aa4b2;
 }
 
+.filtros-overlay {
+  display: none;
+}
+
+/* =========================================================
+   RESULTADOS
+   ========================================================= */
 .resultados-header {
   gap: 8px;
+}
+
+/* Chips de filtros aplicados */
+.filtros-aplicados {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chip-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 12px;
+  border: 1px solid #d6e4ff;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #1e5eff;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.chip-filtro:hover {
+  background: #dfe9ff;
+}
+
+.chip-limpiar {
+  background: none;
+  border: none;
+  padding: 6px 4px;
+  color: #6b7280;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Botón flotante "Filtrar" (visible solo < 960px por uk-hidden@m) */
+.filtros-boton-flotante {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 990;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border: none;
+  border-radius: 999px;
+  background: #222;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.filtros-contador {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #1e87f0;
+  color: #fff;
+  font-size: 12px;
+}
+
+/* =========================================================
+   MÓVIL Y TABLET (< 960px): panel inferior (bottom sheet)
+   ========================================================= */
+@media (max-width: 959px) {
+  .filtros-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s;
+  }
+
+  .filtros-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .filtros-sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+    padding: 0;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
+    transform: translateY(100%);
+    visibility: hidden;
+    transition: transform 0.3s ease, visibility 0.3s;
+  }
+
+  .filtros-sidebar.abierto {
+    transform: translateY(0);
+    visibility: visible;
+  }
+
+  .filtros-cabecera {
+    flex-shrink: 0;
+    padding: 14px 20px;
+    border-bottom: 1px solid #eef0f3;
+  }
+
+  .filtros-cuerpo {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain; /* el scroll no "se escapa" a la página */
+    padding: 0 20px 16px;
+  }
+
+  /* En el panel ya hay scroll general: las listas se muestran completas */
+  .filtro-lista {
+    max-height: none;
+  }
+
+  /* Áreas táctiles más cómodas */
+  .filtro-lista label,
+  .filtro-check {
+    min-height: 40px;
+    font-size: 15px;
+  }
+
+  .filtros-pie {
+    flex-shrink: 0;
+    display: flex;
+    gap: 10px;
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid #eef0f3;
+    background: #fff;
+  }
+
+  /* Espacio para que el botón flotante no tape la paginación */
+  .resultados-col {
+    padding-bottom: 80px;
+  }
 }

@@ -23,7 +23,11 @@ export const routes: Routes = [
         path: 'dashboard',
         loadChildren: () => import('./views/dashboard/routes').then((m) => m.routes)
       },
-	    
+	    {
+        path: 'perfil',
+        loadChildren: () => import('./modules/perfil/perfil.module').then((m) => m.PerfilModule),
+        data: { title: 'Mi perfil' },
+      },
 
       {
       path: 'inventario/productos',

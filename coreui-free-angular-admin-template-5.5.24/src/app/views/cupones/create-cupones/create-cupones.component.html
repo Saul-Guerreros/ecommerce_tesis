@@ -1,149 +1,160 @@
-<c-card>
-  <c-card-header>
-    <strong>Nuevo Cupon</strong>
+<c-card class="mb-4">
+  <c-card-header class="d-flex align-items-center">
+    <strong>{{ esEdicion ? 'Editar cupón' : 'Nuevo cupón' }}</strong>
     <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
   </c-card-header>
 
   <c-card-body>
-    <div class="alert alert-danger" *ngIf="errorMsg">{{ errorMsg }}</div>
-    <div class="alert alert-success" *ngIf="successMsg">{{ successMsg }}</div>
+    <!-- ===== Datos generales ===== -->
+    <h6 class="text-body-secondary text-uppercase small fw-semibold mb-3">Datos del cupón</h6>
 
-    <div class="row mb-6">
-      <div class="col-lg-5">
-        <label cLabel class="fw-semibold">Codigo del cupon: (*)</label>
-        <input type="text" cFormControl [(ngModel)]="code" placeholder="Ej: PROMOCIONES2024" />
+    <div class="row g-3 mb-4">
+      <div class="col-lg-4">
+        <label cLabel class="fw-semibold">Código <span class="text-danger">*</span></label>
+        <input type="text" cFormControl [(ngModel)]="code" placeholder="Ej: PROMO2026" />
       </div>
 
       <div class="col-lg-4">
-        <label cLabel class="fw-semibold d-block">Gestion de descuento: (*)</label>
+        <label cLabel class="fw-semibold d-block">Tipo de descuento <span class="text-danger">*</span></label>
         <div class="btn-group w-100" role="group">
-          <input type="radio" class="btn-check" id="td1" [checked]="type_discount == 1" (click)="changeTypeDiscount(1)">
+          <input type="radio" class="btn-check" id="td1" name="type_discount" [checked]="type_discount == 1" (change)="changeTypeDiscount(1)" />
           <label class="btn btn-outline-primary" for="td1">Porcentaje</label>
-
-          <input type="radio" class="btn-check" id="td2" [checked]="type_discount == 2" (click)="changeTypeDiscount(2)">
+          <input type="radio" class="btn-check" id="td2" name="type_discount" [checked]="type_discount == 2" (change)="changeTypeDiscount(2)" />
           <label class="btn btn-outline-primary" for="td2">Monto fijo</label>
         </div>
       </div>
 
-      <div class="col-lg-3">
-        <label cLabel class="fw-semibold">Descuento: (*)</label>
-        <input type="number" cFormControl [(ngModel)]="discount" placeholder="Ej: 50" />
-      </div>
-    </div>
-
-    <div class="row mb-6">
       <div class="col-lg-4">
-        <label cLabel class="fw-semibold d-block">Gestion de uso: (*)</label>
-        <div class="btn-group w-100" role="group">
-          <input type="radio" class="btn-check" id="tc1" [checked]="type_count == 1" (click)="changeTypeCount(1)">
-          <label class="btn btn-outline-primary" for="tc1">Ilimitado</label>
+        <label cLabel class="fw-semibold">Descuento <span class="text-danger">*</span></label>
+        <div class="input-group">
+          <input type="number" cFormControl min="1" [(ngModel)]="discount" placeholder="Ej: 10" />
+          <span class="input-group-text">{{ type_discount == 1 ? '%' : 'Gs.' }}</span>
+        </div>
+      </div>
 
-          <input type="radio" class="btn-check" id="tc2" [checked]="type_count == 2" (click)="changeTypeCount(2)">
+      <div class="col-lg-4">
+        <label cLabel class="fw-semibold d-block">Límite de uso <span class="text-danger">*</span></label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" id="tc1" name="type_count" [checked]="type_count == 1" (change)="changeTypeCount(1)" />
+          <label class="btn btn-outline-primary" for="tc1">Ilimitado</label>
+          <input type="radio" class="btn-check" id="tc2" name="type_count" [checked]="type_count == 2" (change)="changeTypeCount(2)" />
           <label class="btn btn-outline-primary" for="tc2">Limitado</label>
         </div>
       </div>
 
-      <div class="col-lg-3" *ngIf="type_count == 2">
-        <label cLabel class="fw-semibold">N&deg; de usos: (*)</label>
-        <input type="number" cFormControl [(ngModel)]="num_use" placeholder="Ej: 20" />
+      <div class="col-lg-4" *ngIf="type_count == 2">
+        <label cLabel class="fw-semibold">N° de usos <span class="text-danger">*</span></label>
+        <input type="number" cFormControl min="1" [(ngModel)]="num_use" placeholder="Ej: 20" />
+      </div>
+
+      <div class="col-lg-4" *ngIf="esEdicion">
+        <label cLabel class="fw-semibold">Estado</label>
+        <select cSelect [(ngModel)]="state">
+          <option [ngValue]="1">Activo</option>
+          <option [ngValue]="2">Inactivo</option>
+        </select>
       </div>
     </div>
 
-    <div class="row mb-6">
-      <!-- Selector de tipo de cupon -->
+    <hr class="my-4" />
+
+    <!-- ===== Alcance ===== -->
+    <h6 class="text-body-secondary text-uppercase small fw-semibold mb-3">Aplica a</h6>
+
+    <div class="row g-4 mb-4">
       <div class="col-lg-3">
         <div class="d-grid gap-2">
-          <button type="button" class="btn" [class.btn-primary]="type_cupone == 1" [class.btn-outline-primary]="type_cupone != 1" (click)="changeTypeCupone(1)">
-            Productos
-          </button>
-          <button type="button" class="btn" [class.btn-primary]="type_cupone == 2" [class.btn-outline-primary]="type_cupone != 2" (click)="changeTypeCupone(2)">
-            Categorias
-          </button>
-          <button type="button" class="btn" [class.btn-primary]="type_cupone == 3" [class.btn-outline-primary]="type_cupone != 3" (click)="changeTypeCupone(3)">
-            Marcas
-          </button>
+          <button type="button" class="btn" [class.btn-primary]="type_cupone == 1" [class.btn-outline-primary]="type_cupone != 1" (click)="changeTypeCupone(1)">Productos</button>
+          <button type="button" class="btn" [class.btn-primary]="type_cupone == 2" [class.btn-outline-primary]="type_cupone != 2" (click)="changeTypeCupone(2)">Categorías</button>
+          <button type="button" class="btn" [class.btn-primary]="type_cupone == 3" [class.btn-outline-primary]="type_cupone != 3" (click)="changeTypeCupone(3)">Marcas</button>
         </div>
       </div>
 
-      <!-- Selector segun tipo -->
       <div class="col-lg-4">
         <div *ngIf="type_cupone == 1">
-          <label cLabel class="fw-semibold">Productos: (*)</label>
-          <div class="d-flex gap-2">
+          <label cLabel class="fw-semibold">Producto <span class="text-danger">*</span></label>
+          <div class="input-group">
             <select cSelect [(ngModel)]="product_id">
-              <option value="">Selec.</option>
-              <option *ngFor="let item of products" [value]="item.id">{{ item.title }}</option>
+              <option [ngValue]="null">Seleccione...</option>
+              <option *ngFor="let item of products" [ngValue]="item.id">{{ item.title }}</option>
             </select>
-            <button cButton color="success" size="sm" (click)="addProduct()">+</button>
+            <button cButton type="button" color="primary" (click)="addProduct()">Agregar</button>
           </div>
         </div>
 
         <div *ngIf="type_cupone == 2">
-          <label cLabel class="fw-semibold">Departamento (Primer Nivel): (*)</label>
-          <div class="d-flex gap-2">
+          <label cLabel class="fw-semibold">Categorias (primer nivel) <span class="text-danger">*</span></label>
+          <div class="input-group">
             <select cSelect [(ngModel)]="categorie_id">
-              <option value="">Selec.</option>
-              <option *ngFor="let item of categories_first" [value]="item.id">{{ item.name }}</option>
+              <option [ngValue]="null">Seleccione...</option>
+              <option *ngFor="let item of categories_first" [ngValue]="item.id">{{ item.name }}</option>
             </select>
-            <button cButton color="success" size="sm" (click)="addCategorie()">+</button>
+            <button cButton type="button" color="primary" (click)="addCategorie()">Agregar</button>
           </div>
         </div>
 
         <div *ngIf="type_cupone == 3">
-          <label cLabel class="fw-semibold">Marcas: (*)</label>
-          <div class="d-flex gap-2">
+          <label cLabel class="fw-semibold">Marca <span class="text-danger">*</span></label>
+          <div class="input-group">
             <select cSelect [(ngModel)]="brand_id">
-              <option value="">Selec.</option>
-              <option *ngFor="let item of brands" [value]="item.id">{{ item.name }}</option>
+              <option [ngValue]="null">Seleccione...</option>
+              <option *ngFor="let item of brands" [ngValue]="item.id">{{ item.name }}</option>
             </select>
-            <button cButton color="success" size="sm" (click)="addBrand()">+</button>
+            <button cButton type="button" color="primary" (click)="addBrand()">Agregar</button>
           </div>
         </div>
       </div>
 
-      <!-- Lista de agregados -->
       <div class="col-lg-5">
-        <table cTable small *ngIf="type_cupone == 1">
-          <thead>
-            <tr><th>Titulo</th><th></th></tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let product of products_add">
-              <td>{{ product.title }}</td>
-              <td><button cButton color="danger" size="sm" (click)="removeProduct(product)">X</button></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="border rounded">
+          <table cTable small class="mb-0" *ngIf="type_cupone == 1">
+            <thead><tr><th>Producto</th><th class="text-end"></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let item of products_add">
+                <td class="align-middle">{{ item.title }}</td>
+                <td class="text-end">
+                  <button cButton type="button" size="sm" color="danger" class="text-white" (click)="removeProduct(item)">Quitar</button>
+                </td>
+              </tr>
+              <tr *ngIf="!products_add.length"><td colspan="2" class="text-center text-muted py-3">Sin productos agregados</td></tr>
+            </tbody>
+          </table>
 
-        <table cTable small *ngIf="type_cupone == 2">
-          <thead>
-            <tr><th>Categoria</th><th></th></tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let categorie of categories_add">
-              <td>{{ categorie.name }}</td>
-              <td><button cButton color="danger" size="sm" (click)="removeCategorie(categorie)">X</button></td>
-            </tr>
-          </tbody>
-        </table>
+          <table cTable small class="mb-0" *ngIf="type_cupone == 2">
+            <thead><tr><th>Categoría</th><th class="text-end"></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let item of categories_add">
+                <td class="align-middle">{{ item.name }}</td>
+                <td class="text-end">
+                  <button cButton type="button" size="sm" color="danger" class="text-white" (click)="removeCategorie(item)">Quitar</button>
+                </td>
+              </tr>
+              <tr *ngIf="!categories_add.length"><td colspan="2" class="text-center text-muted py-3">Sin categorías agregadas</td></tr>
+            </tbody>
+          </table>
 
-        <table cTable small *ngIf="type_cupone == 3">
-          <thead>
-            <tr><th>Marca</th><th></th></tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let brand of brands_add">
-              <td>{{ brand.name }}</td>
-              <td><button cButton color="danger" size="sm" (click)="removeBrand(brand)">X</button></td>
-            </tr>
-          </tbody>
-        </table>
+          <table cTable small class="mb-0" *ngIf="type_cupone == 3">
+            <thead><tr><th>Marca</th><th class="text-end"></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let item of brands_add">
+                <td class="align-middle">{{ item.name }}</td>
+                <td class="text-end">
+                  <button cButton type="button" size="sm" color="danger" class="text-white" (click)="removeBrand(item)">Quitar</button>
+                </td>
+              </tr>
+              <tr *ngIf="!brands_add.length"><td colspan="2" class="text-center text-muted py-3">Sin marcas agregadas</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <div class="d-flex gap-2">
-      <button cButton color="primary" (click)="save()">Guardar</button>
-      <a routerLink="/cupones/list" cButton color="light">Cancelar</a>
+    <div class="d-flex gap-2 pt-2 border-top">
+      <button cButton color="primary" class="mt-3" (click)="save()" [disabled]="guardando">
+        <span class="spinner-border spinner-border-sm me-1" *ngIf="guardando"></span>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+      <a routerLink="/cupones/list" cButton color="secondary" class="mt-3">Cancelar</a>
     </div>
   </c-card-body>
 </c-card>

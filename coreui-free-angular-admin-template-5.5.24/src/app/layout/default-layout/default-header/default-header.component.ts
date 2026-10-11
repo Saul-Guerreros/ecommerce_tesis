@@ -10,7 +10,6 @@ import {
   ContainerComponent,
   DropdownComponent,
   DropdownDividerDirective,
-  DropdownHeaderDirective,
   DropdownItemDirective,
   DropdownMenuDirective,
   DropdownToggleDirective,
@@ -28,7 +27,7 @@ import { AuthService } from '../../../auth/services/auth.service';
 @Component({
   selector: 'app-default-header',
   templateUrl: './default-header.component.html',
-  imports: [ContainerComponent, HeaderTogglerDirective, SidebarToggleDirective, IconDirective, HeaderNavComponent, NavItemComponent, NavLinkDirective, RouterLink, RouterLinkActive, NgTemplateOutlet, BreadcrumbRouterComponent, DropdownComponent, DropdownToggleDirective, AvatarComponent, DropdownMenuDirective, DropdownHeaderDirective, DropdownItemDirective, BadgeComponent, DropdownDividerDirective]
+ imports: [ContainerComponent, HeaderTogglerDirective, SidebarToggleDirective, IconDirective, HeaderNavComponent, NavItemComponent, NavLinkDirective, RouterLink, RouterLinkActive, NgTemplateOutlet, BreadcrumbRouterComponent, DropdownComponent, DropdownToggleDirective, AvatarComponent, DropdownMenuDirective, DropdownItemDirective, BadgeComponent, DropdownDividerDirective]
 })
 export class DefaultHeaderComponent extends HeaderComponent {
 
@@ -39,6 +38,12 @@ export class DefaultHeaderComponent extends HeaderComponent {
 
   // Usuario logueado (persona.nombre_completo, email, rol) - viene de /auth/login o /auth/me
   readonly currentUser = this.authService.currentUser;
+  /** Iniciales para el avatar cuando el usuario no subió foto. */
+  readonly iniciales = computed(() => {
+    const nombre = this.currentUser()?.full_name ?? '';
+    const partes = nombre.trim().split(/\s+/).filter(Boolean);
+    return ((partes[0]?.[0] ?? '') + (partes[partes.length - 1]?.[0] ?? '')).toUpperCase() || '?';
+  });
 
   readonly colorModes = [
     { name: 'light', text: 'Light', icon: 'cilSun' },

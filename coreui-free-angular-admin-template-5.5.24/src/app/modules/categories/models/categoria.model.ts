@@ -4,6 +4,7 @@ export interface Categoria {
   cat_nivel?: number;
   cat_nombre: string;
   cat_icono?: string | null; 
+  cat_imagen_url?: string | null;
   padre?: {
     cat_id: number;
     cat_nombre: string;

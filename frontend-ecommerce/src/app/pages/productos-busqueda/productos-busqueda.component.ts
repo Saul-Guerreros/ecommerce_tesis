@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
+import { Component, HostListener, Inject, OnDestroy, OnInit, Renderer2 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Subject, Subscription, debounceTime } from 'rxjs';
@@ -9,13 +9,25 @@ import { ProductoVitrina } from '../../core/models/vitrina.model';
 import { FiltroProductosService } from '../../core/services/filtro-productos.service';
 import { MonedaPyPipe } from '../../shared/pipes/moneda-py.pipe';
 import { CargandoIaComponent } from '../../shared/components/cargando-ia/cargando-ia.component';
+import { Router } from '@angular/router';
+import { ProductoCardComponent } from '../../shared/components/producto-card/producto-card.component';
 
 type Orden = 'relevancia' | 'nuevos' | 'precio_asc' | 'precio_desc';
+
+type TipoChip = 'categoria' | 'marca' | 'precio' | 'oferta';
+
+/** Filtro aplicado que se muestra como "chip" removible. */
+interface ChipFiltro {
+  clave: string;
+  tipo: TipoChip;
+  id?: number;
+  etiqueta: string;
+}
 
 @Component({
   selector: 'app-productos-busqueda',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, MonedaPyPipe, CargandoIaComponent],
+    imports: [CommonModule, FormsModule, RouterModule, CargandoIaComponent, ProductoCardComponent],
   templateUrl: './productos-busqueda.component.html',
   styleUrl: './productos-busqueda.component.css',
 })
@@ -28,6 +40,8 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
 
   categoriasSeleccionadas: number[] = [];
   marcasSeleccionadas: number[] = [];
+    /** Viene de un banner de campaña (?campania=ID). */
+  campaniaId: number | null = null;
   precioMin: number | null = null;
   precioMax: number | null = null;
   soloOferta = false;
@@ -44,10 +58,6 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
   ultimaPagina = 1;
   paginas: number[] = [];
 
-  // Mismo fallback que usa home.component.ts, para consistencia visual.
-  readonly imagenFallback =
-    'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22300%22%20height%3D%22225%22%20viewBox%3D%220%200%20300%20225%22%3E%3Crect%20width%3D%22300%22%20height%3D%22225%22%20fill%3D%22%23e9e9e9%22/%3E%3Ctext%20x%3D%22150%22%20y%3D%22117%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%2216%22%20fill%3D%22%23999%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ESin%20imagen%3C/text%3E%3C/svg%3E';
-
   private busquedaChange$ = new Subject<void>();
   private subs = new Subscription();
     /** Aviso "Procesando búsqueda con IA" (ver CargandoIaComponent). */
@@ -60,6 +70,9 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private filtroService: FiltroProductosService,
+    private router: Router,
+    private renderer: Renderer2,
+    @Inject(DOCUMENT) private document: Document,
   ) {}
 
   ngOnInit(): void {
@@ -82,6 +95,12 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
         const categoriaParam = params.get('categoria');
         this.categoriasSeleccionadas = categoriaParam ? [Number(categoriaParam)] : [];
 
+        const marcaParam = params.get('marca');
+        this.marcasSeleccionadas = marcaParam ? [Number(marcaParam)] : [];
+
+        const campaniaParam = params.get('campania');
+        this.campaniaId = campaniaParam ? Number(campaniaParam) : null;
+
         this.paginaActual = 1;
         this.buscarProductos('url');
       }),
@@ -94,6 +113,7 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
     this.subs.unsubscribe();
     this.busquedaSub?.unsubscribe();
     this.analisisSub?.unsubscribe();
+    this.cerrarFiltros(); // libera el scroll del body si el panel quedó abierto
   }
 
   private cargarConfigFiltros(): void {
@@ -145,6 +165,7 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
         busqueda: this.busqueda,
         page: this.paginaActual,
         por_pagina: this.porPagina,
+        campania: this.campaniaId,
       })
       .subscribe({
         next: (resp) => {
@@ -206,15 +227,111 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Mismo criterio que home.component.ts: el backend manda URL absoluta,
-  // pero por las dudas se resuelve acá también.
-  imagenVitrina(producto: ProductoVitrina): string {
-    if (!producto.imagen) return this.imagenFallback;
-    if (producto.imagen.startsWith('http')) return producto.imagen;
-    return `${URL_BACKEND.replace(/\/$/, '')}/${producto.imagen.replace(/^\//, '')}`;
-  }
-
   trackByVitrina(_index: number, producto: ProductoVitrina): number {
     return producto.pub_id;
+  }
+
+  /** Quita el filtro de campaña y muestra el catálogo completo. */
+  quitarCampania(): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { campania: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+    // ---------------------------------------------------------------
+  // Panel de filtros en móvil (bottom sheet)
+  // ---------------------------------------------------------------
+
+  filtrosAbiertos = false;
+  private readonly monedaPy = new MonedaPyPipe();
+
+  abrirFiltros(): void {
+    this.filtrosAbiertos = true;
+    // Evita que la página de fondo se desplace mientras el panel está abierto
+    this.renderer.setStyle(this.document.body, 'overflow', 'hidden');
+  }
+
+  cerrarFiltros(): void {
+    if (!this.filtrosAbiertos) return;
+    this.filtrosAbiertos = false;
+    this.renderer.removeStyle(this.document.body, 'overflow');
+  }
+
+  @HostListener('document:keydown.escape')
+  alPresionarEscape(): void {
+    this.cerrarFiltros();
+  }
+
+  /** Si se gira el dispositivo o se agranda la ventana a escritorio, se cierra. */
+  @HostListener('window:resize')
+  alRedimensionar(): void {
+    if (this.filtrosAbiertos && window.innerWidth >= 960) {
+      this.cerrarFiltros();
+    }
+  }
+
+  private tieneValor(valor: number | null | undefined): boolean {
+    return valor !== null && valor !== undefined && (valor as unknown) !== '';
+  }
+
+  get cantidadFiltrosActivos(): number {
+    const precio = this.tieneValor(this.precioMin) || this.tieneValor(this.precioMax) ? 1 : 0;
+    return (
+      this.categoriasSeleccionadas.length +
+      this.marcasSeleccionadas.length +
+      precio +
+      (this.soloOferta ? 1 : 0)
+    );
+  }
+
+  /** Filtros aplicados como chips removibles. */
+  get chipsFiltros(): ChipFiltro[] {
+    const chips: ChipFiltro[] = [];
+
+    for (const id of this.categoriasSeleccionadas) {
+      const cat = this.config?.categorias.find((c) => c.cat_id === id);
+      chips.push({ clave: `cat-${id}`, tipo: 'categoria', id, etiqueta: cat?.cat_nombre ?? 'Categoría' });
+    }
+
+    for (const id of this.marcasSeleccionadas) {
+      const marca = this.config?.marcas.find((m) => m.mar_id === id);
+      chips.push({ clave: `mar-${id}`, tipo: 'marca', id, etiqueta: marca?.mar_descri ?? 'Marca' });
+    }
+
+    const hayMin = this.tieneValor(this.precioMin);
+    const hayMax = this.tieneValor(this.precioMax);
+    if (hayMin || hayMax) {
+      const min = this.monedaPy.transform(this.precioMin);
+      const max = this.monedaPy.transform(this.precioMax);
+      const etiqueta = hayMin && hayMax ? `${min} – ${max}` : hayMin ? `Desde ${min}` : `Hasta ${max}`;
+      chips.push({ clave: 'precio', tipo: 'precio', etiqueta });
+    }
+
+    if (this.soloOferta) {
+      chips.push({ clave: 'oferta', tipo: 'oferta', etiqueta: 'En oferta' });
+    }
+
+    return chips;
+  }
+
+  quitarChip(chip: ChipFiltro): void {
+    switch (chip.tipo) {
+      case 'categoria':
+        this.categoriasSeleccionadas = this.categoriasSeleccionadas.filter((id) => id !== chip.id);
+        break;
+      case 'marca':
+        this.marcasSeleccionadas = this.marcasSeleccionadas.filter((id) => id !== chip.id);
+        break;
+      case 'precio':
+        this.precioMin = null;
+        this.precioMax = null;
+        break;
+      case 'oferta':
+        this.soloOferta = false;
+        break;
+    }
+    this.onFiltroChange();
   }
 }

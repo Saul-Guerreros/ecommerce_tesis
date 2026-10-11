@@ -5,6 +5,7 @@ import { map } from 'rxjs/operators';
 import { Marca } from '../models/marca.model';
 import { environment } from '../../../../environments/environment';
 
+
 @Injectable({
   providedIn: 'root'
 })
@@ -20,7 +21,10 @@ export class BrandsService {
   }
 
   getById(id: number): Observable<Marca> {
-    return this.http.get<Marca>(`${this.apiUrl}/${id}`);
+    // El backend responde { data: {...} } (contrato del estándar)
+    return this.http
+      .get<{ data: Marca }>(`${this.apiUrl}/${id}`)
+      .pipe(map((res) => res.data));
   }
 
   create(marca: Partial<Marca>): Observable<Marca> {

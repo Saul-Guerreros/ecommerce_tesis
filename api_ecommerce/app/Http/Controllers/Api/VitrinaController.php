@@ -103,7 +103,9 @@ class VitrinaController extends Controller
         $sliders = Slider::where('sld_estado', 1)
             ->orderBy('sld_orden')
             ->orderBy('sld_id')
-            ->get();
+            ->get()
+            // Banner de una campaña que ya terminó (o aún no empieza): no se muestra
+            ->reject(fn (Slider $s) => $s->sld_destino_tipo === 'campania' && !$s->campaniaVigente());
 
         $secundarios = $sliders->where('sld_tipo', 2);
 
@@ -543,7 +545,7 @@ class VitrinaController extends Controller
             'titulo' => $slider->sld_titulo,
             'subtitulo' => $slider->sld_subtitulo,
             'label' => $slider->sld_label,
-            'enlace' => $slider->sld_enlace,
+            'enlace' => $slider->enlaceTienda(),
             'color' => $slider->sld_color,
             'imagen' => $slider->sld_imagen ? asset('storage/'.$slider->sld_imagen) : null,
         ];
@@ -803,6 +805,15 @@ class VitrinaController extends Controller
             $query->whereIn('pub_prdid', $descuentos->keys());
         }
 
+        // ?campania=ID (desde un banner): solo los productos que esa campaña alcanza
+        $campaniaId = (int) $request->query('campania', 0);
+        if ($campaniaId) {
+            $idsCampania = $descuentos
+                ->filter(fn ($lista) => $lista->contains('id', $campaniaId))
+                ->keys();
+            $query->whereIn('pub_prdid', $idsCampania);
+        }
+
         $productos = $query->orderByDesc('pub_creado')
             ->get()
             ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos));
@@ -949,7 +960,7 @@ class VitrinaController extends Controller
             ->pluck('pub_catid')
             ->countBy();
 
-        $todasCategorias = Categoria::orderBy('cat_nombre')->get(['cat_id', 'cat_nombre', 'cat_idpadr', 'cat_icono']);
+        $todasCategorias = Categoria::orderBy('cat_nombre')->get(['cat_id', 'cat_nombre', 'cat_idpadr', 'cat_icono', 'cat_imagen']);
         $hijasPorPadre = $todasCategorias->whereNotNull('cat_idpadr')->groupBy('cat_idpadr');
 
         $tieneProductos = function (int $catId) use ($publicadasPorCategoria) {
@@ -964,6 +975,7 @@ class VitrinaController extends Controller
                     'cat_id' => $cat->cat_id,
                     'cat_nombre' => $cat->cat_nombre,
                     'cat_icono' => $cat->cat_icono,
+                    'cat_imagen' => $cat->cat_imagen? rtrim(config('app.url'), '/') . '/storage/' . $cat->cat_imagen: null,
                     'hijas' => ($hijasPorPadre->get($cat->cat_id) ?? collect())
                         ->filter(fn (Categoria $hija) => $tieneProductos($hija->cat_id))
                         ->map(fn (Categoria $hija) => [

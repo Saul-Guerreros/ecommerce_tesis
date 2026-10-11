@@ -1,72 +1,60 @@
 <c-card class="mb-4">
-  <c-card-header class="d-flex align-items-center justify-content-between">
+  <c-card-header class="d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div class="d-flex align-items-center gap-2">
       <input
         type="text"
         class="form-control"
         style="width: 260px"
-        placeholder="Buscar campaña por codigo"
+        placeholder="Buscar campaña por código"
         [(ngModel)]="search"
         (keyup.enter)="searchTo()"
       />
-      <button cButton color="primary" variant="outline" size="sm" (click)="searchTo()">
-        Buscar
-      </button>
+      <button cButton color="primary" size="sm" (click)="searchTo()">Buscar</button>
       <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
     </div>
 
-    <a routerLink="/discounts/register" cButton color="primary">
-      + Nueva Campaña
-    </a>
+    <a routerLink="/discounts/register" cButton color="primary">+ Nueva campaña</a>
   </c-card-header>
 
   <c-card-body>
     <table cTable hover responsive striped>
       <thead>
         <tr>
-          <th>Code</th>
-          <th>Fechas</th>
-          <th>State</th>
-          <th>Tipo de Descuento</th>
-          <th>Tipo de Campaña</th>
+          <th>Código</th>
+          <th>Vigencia</th>
+          <th>Estado</th>
+          <th>Aplica a</th>
+          <th>Tipo de campaña</th>
           <th>Descuento</th>
-          <th class="text-end">Actions</th>
+          <th class="text-end">Acciones</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let discount of discounts">
           <td class="fw-semibold">{{ discount.code }}</td>
-          <td>{{ discount.start_date }} / {{ discount.end_date }}</td>
+          <td class="text-nowrap">
+            <ng-container *ngIf="discount.start_date === discount.end_date; else rango">
+              {{ discount.start_date | date: 'dd/MM/yyyy' }}
+            </ng-container>
+            <ng-template #rango>
+              {{ discount.start_date | date: 'dd/MM/yyyy' }} al {{ discount.end_date | date: 'dd/MM/yyyy' }}
+            </ng-template>
+          </td>
           <td>
-            <span cBadge color="success" *ngIf="discount.state == 1">Activo</span>
-            <span cBadge color="danger" *ngIf="discount.state == 2">Inactivo</span>
+            <c-badge color="success" *ngIf="discount.state == 1">Activo</c-badge>
+            <c-badge color="secondary" *ngIf="discount.state == 2">Inactivo</c-badge>
           </td>
           <td>{{ getNameTypeDiscount(discount.discount_type) }}</td>
           <td>{{ getNameTypeCampaing(discount.type_campaing) }}</td>
-          <td>{{ discount.discount }} {{ discount.type_discount == 1 ? '%' : 'PEN' }}</td>
-          <td class="text-end">
-            <button
-              *ngIf="discount.type_campaing == 3"
-              cButton
-              color="light"
-              size="sm"
-              class="me-1"
-              (click)="copyLink(discount)"
-            >
-              Copiar link
-            </button>
-            <a
-              [routerLink]="['/discounts/list/edit', discount.id]"
-              cButton
-              color="light"
-              size="sm"
-              class="me-1"
-            >
-              Editar
-            </a>
-            <button cButton color="danger" variant="outline" size="sm" (click)="confirmDelete(discount)">
-              Eliminar
-            </button>
+          <td class="text-nowrap">
+            {{ +discount.discount | number: (discount.type_discount == 1 ? '1.0-2' : '1.0-0') }}
+            {{ discount.type_discount == 1 ? '%' : 'Gs.' }}
+          </td>
+          <td class="text-end text-nowrap">
+            <button *ngIf="discount.type_campaing == 3" cButton size="sm" color="secondary"
+                    class="me-2 text-white" (click)="copyLink(discount)">Copiar enlace</button>
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="irAEditar(discount.id!)">Editar</button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="confirmDelete(discount)">Eliminar</button>
           </td>
         </tr>
 
@@ -76,33 +64,32 @@
       </tbody>
     </table>
 
-    <ul cPagination align="end" *ngIf="totalPages > 1">
-      <li cPageItem [disabled]="currentPage === 1">
-        <a cPageLink href="javascript:void(0)" (click)="loadPage(currentPage - 1)">Anterior</a>
-      </li>
-      <li cPageItem *ngFor="let p of [].constructor(totalPages); let i = index" [active]="currentPage === i + 1">
-        <a cPageLink href="javascript:void(0)" (click)="loadPage(i + 1)">{{ i + 1 }}</a>
-      </li>
-      <li cPageItem [disabled]="currentPage === totalPages">
-        <a cPageLink href="javascript:void(0)" (click)="loadPage(currentPage + 1)">Siguiente</a>
-      </li>
-    </ul>
+    <nav *ngIf="totalPages > 1" class="mt-3">
+      <ul cPagination align="end">
+        <li cPageItem [disabled]="currentPage === 1">
+          <a cPageLink role="button" (click)="loadPage(currentPage - 1)">Anterior</a>
+        </li>
+        <li cPageItem *ngFor="let p of pagesArray" [active]="currentPage === p">
+          <a cPageLink role="button" (click)="loadPage(p)">{{ p }}</a>
+        </li>
+        <li cPageItem [disabled]="currentPage === totalPages">
+          <a cPageLink role="button" (click)="loadPage(currentPage + 1)">Siguiente</a>
+        </li>
+      </ul>
+    </nav>
   </c-card-body>
 </c-card>
 
-<!-- Modal confirmacion de borrado -->
 <c-modal [visible]="deleteModalVisible" (visibleChange)="deleteModalVisible = $event">
   <c-modal-header>
-    <h5 cModalTitle>Eliminar campaña</h5>
-    <button cButtonClose (click)="cancelDelete()"></button>
+    <h5 cModalTitle>Confirmar eliminación</h5>
   </c-modal-header>
   <c-modal-body>
-    ¿Estas seguro de eliminar la campaña
-    <strong>{{ discountToDelete?.code }}</strong>?
+    ¿Seguro que deseas eliminar la campaña <strong>{{ discountToDelete?.code }}</strong>?
   </c-modal-body>
   <c-modal-footer>
-    <button cButton color="light" (click)="cancelDelete()">Cancelar</button>
-    <button cButton color="danger" [disabled]="isDeleting" (click)="deleteDiscount()">
+    <button cButton color="secondary" (click)="cancelDelete()" [disabled]="isDeleting">Cancelar</button>
+    <button cButton color="danger" class="text-white" [disabled]="isDeleting" (click)="deleteDiscount()">
       <span class="spinner-border spinner-border-sm me-1" *ngIf="isDeleting"></span>
       Eliminar
     </button>

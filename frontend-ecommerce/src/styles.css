@@ -244,3 +244,356 @@ button.toast-close-button {
 
 [uk-dropdown] { display: none; position: absolute; z-index: 1020; box-sizing: border-box; min-width: 200px; padding: 25px; background: #fff; color: #666; box-shadow: 0 5px 12px rgba(0,0,0,.15); }
 [uk-dropdown].uk-open { display: block; }
+
+/* =========================================================
+   TARJETAS DE LAS VITRINAS DEL HOME
+   (Trending Products, Deal of The Day, New Arrivals)
+   Solo afecta a elementos dentro de .tm-vitrina
+   ========================================================= */
+
+/* El contenido nunca invade la tarjeta vecina */
+body .tm-vitrina .tm-product-card {
+  overflow: hidden;
+  min-width: 0;
+}
+
+body .tm-vitrina .tm-product-card-body,
+body .tm-vitrina .tm-product-card-info {
+  min-width: 0;
+}
+
+/* Deal of The Day: el contenedor del cuotero ocupa todo el ancho */
+body .tm-vitrina .tm-product-card-body > .tm-product-card-add {
+  display: block;
+  width: 100%;
+  margin-left: 0;
+}
+
+@media (max-width: 767px) {
+  /* Tarjeta vertical: imagen arriba, datos abajo */
+  body .tm-vitrina .tm-product-card {
+    flex-direction: column;
+  }
+
+  body .tm-vitrina .tm-product-card-media {
+    width: 100%;
+  }
+
+  body .tm-vitrina .tm-product-card-media > .tm-ratio > .tm-media-box {
+    padding: 8px;
+  }
+
+  body .tm-vitrina .tm-product-card-body {
+    padding: 0 8px 10px;
+  }
+
+  /* Textos compactos */
+  body .tm-vitrina .tm-product-card-info .uk-text-meta {
+    font-size: 11px;
+  }
+
+  body .tm-vitrina .tm-product-card-title {
+    font-size: 13px;
+    line-height: 18px;
+    max-height: 36px; /* 2 líneas */
+    -webkit-line-clamp: 2;
+    margin-bottom: 8px;
+  }
+
+  body .tm-vitrina del.uk-text-meta,
+  body .tm-vitrina .uk-text-bolder,
+  body .tm-vitrina app-flash-countdown {
+    font-size: 12px;
+  }
+
+  body .tm-vitrina .tm-product-card-labels {
+    top: 6px;
+    right: 6px;
+  }
+
+  body .tm-vitrina .tm-product-card-labels > .uk-label {
+    font-size: 9px;
+  }
+
+  /* Separación entre tarjetas: 30px → 12px (más espacio para el contenido) */
+  body .tm-vitrina.uk-grid-medium {
+    margin-left: -12px;
+  }
+
+  body .tm-vitrina.uk-grid-medium > * {
+    padding-left: 12px;
+  }
+
+  /* Cuotero apilado: precio/select arriba, botón debajo */
+  body .tm-vitrina .tm-cuotero-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  body .tm-vitrina .tm-cuotero-select,
+  body .tm-vitrina .tm-cuotero-precio {
+    flex: none;
+    width: 100%;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  body .tm-vitrina .tm-cuotero-button {
+    width: 100%;
+    height: 30px;
+    border-radius: 4px;
+  }
+}
+
+/* Quita los separadores verticales de UIkit en el mega menú.
+   La plantilla los posiciona para un padding de 50px y nosotros
+   usamos 10px, por eso caían encima del texto. */
+.uk-navbar-dropdown-grid > li::before,
+.uk-navbar-dropdown-grid > li.uk-grid-margin::before {
+  display: none;
+}
+
+/* =========================================================
+   PÁGINAS DE AUTENTICACIÓN (login, registro, recuperar contraseña)
+   ========================================================= */
+.tm-auth {
+  padding: 32px 0 48px;
+}
+
+.tm-auth-caja {
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+.tm-auth-caja--ancha {
+  max-width: 580px;
+}
+
+.tm-auth-titulo {
+  margin: 8px 0 4px;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.tm-auth-subtitulo {
+  margin: 0 0 20px;
+  color: #666;
+  font-size: 0.9375rem;
+  text-align: center;
+}
+
+.tm-auth-tarjeta {
+  padding: 28px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
+}
+
+.tm-auth-campo {
+  margin-bottom: 16px;
+}
+
+.tm-auth-campo .uk-form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #333;
+  font-size: 0.875rem;
+}
+
+/* 16px evita el zoom automático de Safari en iPhone */
+.tm-auth .uk-input {
+  height: 46px;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.tm-auth .uk-button-primary {
+  height: 46px;
+  line-height: 46px;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.tm-auth-ayuda {
+  margin-top: 4px;
+  color: #888;
+  font-size: 0.8125rem;
+}
+
+.tm-auth-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 20px;
+  font-size: 0.875rem;
+}
+
+.tm-auth-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.tm-auth-check .uk-checkbox {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tm-auth-terminos {
+  margin: 4px 0 20px;
+}
+
+.tm-auth-separador {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 14px;
+  color: #999;
+  font-size: 0.8125rem;
+}
+
+.tm-auth-separador::before,
+.tm-auth-separador::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e5e5;
+}
+
+.tm-auth-google {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.tm-auth-pie {
+  margin-top: 20px;
+  color: #666;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.tm-auth-grilla-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+}
+
+/* Indicador de pasos (recuperar contraseña) */
+.tm-auth-pasos {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.tm-auth-paso {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: #e5e5e5;
+  transition: background 0.2s ease;
+}
+
+.tm-auth-paso.activo {
+  background: #1e87f0;
+}
+
+.tm-auth-codigo {
+  font-size: 20px !important;
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-align: center;
+}
+
+@media (max-width: 639px) {
+  .tm-auth {
+    padding: 16px 0 32px;
+  }
+
+  .tm-auth-titulo {
+    font-size: 1.5rem;
+  }
+
+  .tm-auth-tarjeta {
+    padding: 20px 16px;
+    border-radius: 10px;
+  }
+
+  .tm-auth-grilla-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   PÁGINAS LEGALES (Términos y Privacidad)
+   ========================================================= */
+.tm-legal {
+  padding: 32px 0 56px;
+}
+
+.tm-legal-contenido {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 40px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
+  color: #444;
+  line-height: 1.7;
+}
+
+.tm-legal h1 {
+  margin: 8px 0 4px;
+  font-size: 2rem;
+}
+
+.tm-legal-fecha {
+  margin-bottom: 28px;
+  color: #888;
+  font-size: 0.875rem;
+}
+
+.tm-legal h2 {
+  margin: 32px 0 10px;
+  color: #222;
+  font-size: 1.2rem;
+}
+
+.tm-legal ul {
+  padding-left: 20px;
+}
+
+.tm-legal li {
+  margin-bottom: 6px;
+}
+
+.tm-legal-aviso {
+  padding: 12px 16px;
+  border-left: 3px solid #1e87f0;
+  border-radius: 4px;
+  background: #f7f9fc;
+  font-size: 0.9375rem;
+}
+
+@media (max-width: 639px) {
+  .tm-legal {
+    padding: 16px 0 32px;
+  }
+
+  .tm-legal-contenido {
+    padding: 22px 16px;
+    border-radius: 10px;
+  }
+
+  .tm-legal h1 {
+    font-size: 1.5rem;
+  }
+}

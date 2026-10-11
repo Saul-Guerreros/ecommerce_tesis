@@ -25,7 +25,7 @@
               <h1 class="hero-v2-title">{{ slider.titulo }}</h1>
               <p class="hero-v2-offer" *ngIf="slider.subtitulo" [innerHTML]="resaltarOferta(slider.subtitulo)"></p>
               <a class="hero-v2-btn" [href]="enlaceSlider(slider)">
-                Shop Now
+                Comprar ahora
                 <span uk-icon="icon: arrow-right; ratio: .9;"></span>
               </a>
             </div>
@@ -57,99 +57,81 @@
               <div class="uk-grid-collapse uk-child-width-1-2 uk-child-width-1-4@s uk-text-center" uk-grid="">
                 <div class="uk-padding-small uk-flex uk-flex-middle uk-flex-center" style="gap:12px;padding:20px 15px;">
                   <span uk-icon="icon: future; ratio: 1.6;" style="color:#1e87f0;"></span>
-                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">Free Shipping</div><div class="uk-text-meta uk-text-xsmall">On orders over $99</div></div>
+                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">Envío gratis</div><div class="uk-text-meta uk-text-xsmall">En compras seleccionadas</div></div>
                 </div>
                 <div class="uk-padding-small uk-flex uk-flex-middle uk-flex-center" style="gap:12px;padding:20px 15px;">
                   <span uk-icon="icon: lock; ratio: 1.6;" style="color:#1e87f0;"></span>
-                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">Secure Payment</div><div class="uk-text-meta uk-text-xsmall">100% protected checkout</div></div>
+                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">Pago seguro</div><div class="uk-text-meta uk-text-xsmall">Compra 100% protegida</div></div>
                 </div>
                 <div class="uk-padding-small uk-flex uk-flex-middle uk-flex-center" style="gap:12px;padding:20px 15px;">
                   <span uk-icon="icon: history; ratio: 1.6;" style="color:#1e87f0;"></span>
-                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">Easy Returns</div><div class="uk-text-meta uk-text-xsmall">30-day return policy</div></div>
+                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">Devoluciones fáciles</div><div class="uk-text-meta uk-text-xsmall">Política de devolución de 30 días</div></div>
                 </div>
                 <div class="uk-padding-small uk-flex uk-flex-middle uk-flex-center" style="gap:12px;padding:20px 15px;">
                   <span uk-icon="icon: receiver; ratio: 1.6;" style="color:#1e87f0;"></span>
-                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">24/7 Support</div><div class="uk-text-meta uk-text-xsmall">Dedicated assistance</div></div>
+                  <div class="uk-text-left"><div class="uk-text-bolder uk-text-small">Soporte 24/7</div><div class="uk-text-meta uk-text-xsmall">Atención personalizada</div></div>
                 </div>
               </div>
             </div>
           </div>
         </section>
-        <!-- category grid -->
-        <section class="uk-section uk-section-default uk-section-small">
-          <div class="uk-container">
-            <div class="uk-flex uk-flex-middle uk-flex-between uk-margin">
-              <h2 class="uk-margin-remove">Shop by Category</h2>
-              <a class="uk-link-muted uk-text-uppercase tm-link-to-all uk-visible@s" href="catalog.html"><span>see all categories</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a>
-            </div>
-            <div
-              class="uk-grid-small uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-6@m"
-              uk-grid=""
-            ><div><a
-                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
-                  href="subcategory.html"
-                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
-                          alt="Laptops"
-                          class="item-brand"
-                          decoding="async"
-                          loading="lazy"
-                          src="assets/images/catalog/laptops.webp"
-                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">Laptops</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $149</div></div></a></div><div><a
-                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
-                  href="subcategory.html"
-                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
-                          alt="Smartphones"
-                          class="item-brand"
-                          decoding="async"
-                          loading="lazy"
-                          src="assets/images/catalog/smartphones.webp"
-                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">Smartphones</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $199</div></div></a></div><div><a
-                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
-                  href="subcategory.html"
-                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
-                          alt="Tablets"
-                          class="item-brand"
-                          decoding="async"
-                          loading="lazy"
-                          src="assets/images/catalog/tablets.webp"
-                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">Tablets</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $249</div></div></a></div><div><a
-                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
-                  href="subcategory.html"
-                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
-                          alt="TV"
-                          class="item-brand"
-                          decoding="async"
-                          loading="lazy"
-                          src="assets/images/catalog/tv.svg"
-                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">TV &amp; Video</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $299</div></div></a></div><div><a
-                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
-                  href="subcategory.html"
-                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
-                          alt="Watches"
-                          class="item-brand"
-                          decoding="async"
-                          loading="lazy"
-                          src="assets/images/catalog/watches.webp"
-                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">Watches</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $99</div></div></a></div><div><a
-                  class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large"
-                  href="subcategory.html"
-                ><div class="tm-ratio tm-ratio-4-3"><div class="tm-media-box"><figure class="tm-media-box-wrap"><img
-                          alt="Cameras"
-                          class="item-brand"
-                          decoding="async"
-                          loading="lazy"
-                          src="assets/images/catalog/cameras.webp"
-                        /></figure></div></div><div class="uk-margin-small-top"><div class="uk-text-truncate">Cameras</div><div class="uk-text-meta uk-text-xsmall uk-text-truncate">from $129</div></div></a></div></div>
-            <div class="uk-margin uk-text-center uk-hidden@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="catalog.html"><span>see all categories</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div>
-          </div>
-        </section>
+               <!-- category grid: categorías principales reales (nivel 1) -->
+        @if (categoriasHome.length > 0) {
+          <section class="uk-section uk-section-default uk-section-small">
+            <div class="uk-container">
+              <div class="uk-flex uk-flex-middle uk-flex-between uk-margin">
+                <h2 class="uk-margin-remove">Comprar por categoría</h2>
+                <a class="uk-link-muted uk-text-uppercase tm-link-to-all uk-visible@s" routerLink="/productos-busqueda">
+                  <span>Ver todos los productos</span><span uk-icon="icon: chevron-right; ratio: .75;"></span>
+                </a>
+              </div>
 
-     
+              <div class="uk-grid-small uk-flex-center uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-6@m" uk-grid>
+                @for (cat of categoriasHome; track cat.cat_id) {
+                  <div>
+                    <a class="uk-link-muted uk-text-center uk-display-block uk-padding-small uk-box-shadow-hover-large tm-cat-card"
+                       [routerLink]="['/productos-busqueda']"
+                       [queryParams]="{ categoria: cat.cat_id }"
+                       [attr.aria-label]="'Ver productos de ' + cat.cat_nombre">
+                      <div class="tm-ratio tm-ratio-4-3">
+                        <div class="tm-media-box">
+                          <figure class="tm-media-box-wrap">
+                            @if (cat.cat_imagen) {
+                              <img [src]="cat.cat_imagen" [alt]="cat.cat_nombre" decoding="async" loading="lazy" />
+                            } @else {
+                              <app-categoria-icono class="tm-cat-card-icono" [clave]="cat.cat_icono" [tamano]="96"></app-categoria-icono>
+                            }
+                          </figure>
+                        </div>
+                      </div>
+                      <div class="uk-margin-small-top">
+                        <div class="uk-text-truncate">{{ cat.cat_nombre }}</div>
+                        <div class="uk-text-meta uk-text-xsmall uk-text-truncate">
+                          @if (cat.hijas.length > 0) {
+                            {{ cat.hijas.length }} {{ cat.hijas.length === 1 ? 'subcategoría' : 'subcategorías' }}
+                          } @else {
+                            Ver productos
+                          }
+                        </div>
+                      </div>
+                    </a>
+                  </div>
+                }
+              </div>
+
+              <div class="uk-margin uk-text-center uk-hidden@s">
+                <a class="uk-link-muted uk-text-uppercase tm-link-to-all" routerLink="/productos-busqueda">
+                  <span>Ver todos los productos</span><span uk-icon="icon: chevron-right; ratio: .75;"></span>
+                </a>
+              </div>
+            </div>
+          </section>
+        }
         <!-- Trending Products -->
 <section class="uk-section uk-section-default uk-section-small">
   <div class="uk-container">
     <div class="uk-flex uk-flex-middle uk-flex-between uk-flex-wrap uk-margin">
-      <h2 class="uk-margin-remove">Trending Products</h2>
+      <h2 class="uk-margin-remove">Productos en tendencia</h2>
     </div>
 
     <div class="uk-card uk-card-default tm-ignore-container">
@@ -158,7 +140,7 @@
     <div class="uk-grid-small uk-flex-middle" uk-grid="">
       <div class="uk-visible@m"><a href="#" uk-slidenav-previous="" uk-slider-item="previous"></a></div>
       <div class="uk-width-expand uk-slider-container">
-        <ul class="uk-slider-items uk-grid uk-child-width-1-2 uk-child-width-1-4@m uk-grid-medium" uk-grid="">
+       <ul class="uk-slider-items uk-grid tm-vitrina uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-4@m uk-grid-medium" uk-grid="">
           <li *ngFor="let producto of trending; trackBy: trackByVitrina">
             <article class="tm-product-card uk-height-1-1">
               <div class="tm-product-card-media">
@@ -216,7 +198,7 @@
 
     <div class="uk-margin uk-text-center">
       <a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="catalog.html">
-        <span>shop all products</span><span uk-icon="icon: chevron-right; ratio: .75;"></span>
+        <span>Ver todos los productos</span><span uk-icon="icon: chevron-right; ratio: .75;"></span>
       </a>
     </div>
   </div>
@@ -247,9 +229,9 @@
                   <span class="promo-hero-thumb">
                     <img class="promo-hero-img" [src]="imagenSlider(slider)" [alt]="slider.titulo" loading="lazy" decoding="async" />
                     <span class="promo-hero-badge" *ngIf="slider.label">
-                      <span class="promo-hero-badge-top">Get Upto</span>
+                      <span class="promo-hero-badge-top">Hasta</span>
                       <span class="promo-hero-badge-value">{{ slider.label }}</span>
-                      <span class="promo-hero-badge-sale">Sale</span>
+                      <span class="promo-hero-badge-sale">Off</span>
                     </span>
                   </span>
 
@@ -257,7 +239,7 @@
                     <span class="promo-hero-title">{{ slider.titulo }}</span>
                     <span class="promo-hero-sub" *ngIf="slider.subtitulo">{{ slider.subtitulo }}</span>
                     <span class="promo-hero-btn">
-                      Order Now
+                      Comprar ahora
                       <span class="promo-hero-btn-icon" uk-icon="icon: arrow-right; ratio: .7;"></span>
                     </span>
                   </span>
@@ -288,9 +270,9 @@
 
                   <span class="promo-story-body">
                     <span class="promo-story-badge" *ngIf="slider.label">
-                      <span class="promo-story-badge-top">Sale Upto</span>
+                      <span class="promo-story-badge-top">Hasta</span>
                       <span class="promo-story-badge-value">{{ slider.label }}</span>
-                      <span class="promo-story-badge-bottom">Discount</span>
+                      <span class="promo-story-badge-bottom">Descuento</span>
                     </span>
                     <span class="promo-story-thumb">
                       <img class="promo-story-img" [src]="imagenSlider(slider)" [alt]="slider.titulo" loading="lazy" decoding="async" />
@@ -298,7 +280,7 @@
                   </span>
 
                   <span class="promo-story-btn">
-                    Order Now
+                    Comprar ahora
                     <span class="promo-story-btn-icon" uk-icon="icon: arrow-right; ratio: .7;"></span>
                   </span>
                 </a>
@@ -317,8 +299,8 @@
 <section class="uk-section uk-section-small" style="background:#f8f8f8;">
   <div class="uk-container">
     <div class="uk-flex uk-flex-middle uk-flex-between uk-flex-wrap uk-margin">
-      <h2 class="uk-margin-remove">Deal of The Day</h2>
-      <a class="uk-button uk-button-primary" href="catalog.html">View All Deals<span class="uk-margin-small-left" uk-icon="icon: chevron-right; ratio: .75;"></span></a>
+      <h2 class="uk-margin-remove">Ofertas del día</h2>
+      <!-- <a class="uk-button uk-button-primary" href="catalog.html">Ver todas las ofertas<span class="uk-margin-small-left" uk-icon="icon: chevron-right; ratio: .75;"></span></a> -->
     </div>
 
     <div uk-slider="finite: true" *ngIf="ofertaDelDia.length > 0">
@@ -326,7 +308,7 @@
         <div class="uk-grid-small uk-flex-middle" uk-grid="">
           <div class="uk-visible@m"><a href="#" uk-slidenav-previous="" uk-slider-item="previous"></a></div>
           <div class="uk-width-expand uk-slider-container">
-            <ul class="uk-slider-items uk-grid uk-child-width-1-2 uk-child-width-1-4@m uk-grid-medium" uk-grid="">
+           <ul class="uk-slider-items uk-grid tm-vitrina uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-4@m uk-grid-medium" uk-grid="">
               <li *ngFor="let producto of ofertaDelDia; trackBy: trackByVitrina">
                 <article class="tm-product-card uk-height-1-1">
                   <div class="tm-product-card-media">
@@ -442,7 +424,7 @@
                         <span class="spotlight-sub" *ngIf="slider.subtitulo">{{ slider.subtitulo }}</span>
 
                         <span class="spotlight-cta">
-                          <span class="spotlight-cta-text">Order Now</span>
+                          <span class="spotlight-cta-text">Comprar ahora</span>
                           <span class="spotlight-cta-icon" uk-icon="icon: arrow-right; ratio: .9"></span>
                         </span>
                       </span>
@@ -458,9 +440,9 @@
                         />
 
                         <span class="spotlight-badge" *ngIf="slider.label">
-                          <span class="spotlight-badge-top">Get Upto</span>
+                          <span class="spotlight-badge-top">Hasta</span>
                           <span class="spotlight-badge-value">{{ slider.label }}</span>
-                          <span class="spotlight-badge-tag">Discount</span>
+                          <span class="spotlight-badge-tag">Descuento</span>
                           <svg
                             class="spotlight-badge-arrow"
                             viewBox="0 0 140 120"
@@ -485,22 +467,22 @@
 <section class="uk-section uk-section-default uk-section-small">
   <div class="uk-container">
     <div class="uk-flex uk-flex-middle uk-flex-between uk-margin">
-      <h2 class="uk-margin-remove">New Arrivals</h2>
-      <a class="uk-link-muted uk-text-uppercase tm-link-to-all uk-visible@s" href="catalog.html"><span>see all</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a>
+      <h2 class="uk-margin-remove">Recién llegados</h2>
+      <a class="uk-link-muted uk-text-uppercase tm-link-to-all uk-visible@s" href="catalog.html"><span>Ver todo</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a>
     </div>
     <div uk-slider="finite: true" *ngIf="nuevos.length > 0">
       <div class="uk-position-relative">
         <div class="uk-grid-small uk-flex-middle" uk-grid="">
           <div class="uk-visible@m"><a href="#" uk-slidenav-previous="" uk-slider-item="previous"></a></div>
           <div class="uk-width-expand uk-slider-container">
-            <ul class="uk-slider-items uk-grid uk-child-width-1-2 uk-child-width-1-4@m uk-grid-medium" uk-grid="">
+           <ul class="uk-slider-items uk-grid tm-vitrina uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-4@m uk-grid-medium" uk-grid="">
               <li *ngFor="let producto of nuevos; trackBy: trackByVitrina">
                 <article class="tm-product-card uk-height-1-1">
                   <div class="tm-product-card-media">
                     <div class="tm-ratio tm-ratio-4-3">
                     <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
                         <div class="tm-product-card-labels">
-                          <span class="uk-label uk-label-success">New</span>
+                          <span class="uk-label uk-label-success">Nuevo</span>
                           <span class="uk-label uk-label-warning" *ngIf="mensajePocoStockVitrina(producto) as msj">{{ msj }}</span>
                         </div>
                         <figure class="tm-media-box-wrap">
@@ -548,7 +530,7 @@
             <div class="uk-grid-large uk-child-width-1-1 uk-child-width-1-3@s" uk-grid="">
 			
                             <div>
-                <h3 class="uk-h4 uk-margin-remove-bottom">Discount Products</h3>
+                <h3 class="uk-h4 uk-margin-remove-bottom">Productos en oferta</h3>
                 <ul class="uk-list uk-margin-remove">
                   <li class="uk-flex" style="gap:14px;padding:10px 0;border-bottom:1px solid #eee;" *ngFor="let producto of enOferta; trackBy: trackByVitrina">
                      <a class="uk-flex-none" style="width:64px;" [routerLink]="['/producto', producto.slug]"><img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" style="width:64px;height:64px;object-fit:contain;" /></a>
@@ -567,7 +549,7 @@
 	  
              
               <div>
-                <h3 class="uk-h4 uk-margin-remove-bottom">Featured Products</h3>
+                <h3 class="uk-h4 uk-margin-remove-bottom">Productos destacados</h3>
                 <ul class="uk-list uk-margin-remove">
                   <li class="uk-flex" style="gap:14px;padding:10px 0;border-bottom:1px solid #eee;" *ngFor="let producto of destacados; trackBy: trackByVitrina">
                    
@@ -584,7 +566,7 @@
               </div>
               
               <div>
-                <h3 class="uk-h4 uk-margin-remove-bottom">Selling Products</h3>
+                <h3 class="uk-h4 uk-margin-remove-bottom">Más vendidos</h3>
                 <ul class="uk-list uk-margin-remove">
                   <li class="uk-flex" style="gap:14px;padding:10px 0;border-bottom:1px solid #eee;" *ngFor="let producto of masVendidos; trackBy: trackByVitrina">
                    
@@ -607,15 +589,15 @@
         <!-- popular brands -->
         <section class="uk-section uk-section-default uk-section-small">
           <div class="uk-container">
-            <h2 class="uk-text-center">Popular Brands</h2>
+            <h2 class="uk-text-center">Marcas populares</h2>
             <div class="uk-margin-medium-top" uk-slider="finite: true"><div class="uk-position-relative"><div class="uk-grid-small uk-flex-middle" uk-grid=""><div class="uk-visible@m"><a href="#" uk-slidenav-previous="" uk-slider-item="previous"></a></div><div class="uk-width-expand uk-slider-container"><ul class="uk-slider-items uk-child-width-1-3 uk-child-width-1-6@s uk-grid uk-grid-large"><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Apple"><figure class="tm-media-box-wrap"><img alt="Apple" decoding="async" loading="lazy" src="assets/images/brands/apple.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Samsung"><figure class="tm-media-box-wrap"><img alt="Samsung" decoding="async" loading="lazy" src="assets/images/brands/samsung.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Sony"><figure class="tm-media-box-wrap"><img alt="Sony" decoding="async" loading="lazy" src="assets/images/brands/sony.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Microsoft"><figure class="tm-media-box-wrap"><img alt="Microsoft" decoding="async" loading="lazy" src="assets/images/brands/microsoft.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Intel"><figure class="tm-media-box-wrap"><img alt="Intel" decoding="async" loading="lazy" src="assets/images/brands/intel.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="HP"><figure class="tm-media-box-wrap"><img alt="HP" decoding="async" loading="lazy" src="assets/images/brands/hp.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="LG"><figure class="tm-media-box-wrap"><img alt="LG" decoding="async" loading="lazy" src="assets/images/brands/lg.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Lenovo"><figure class="tm-media-box-wrap"><img alt="Lenovo" decoding="async" loading="lazy" src="assets/images/brands/lenovo.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="ASUS"><figure class="tm-media-box-wrap"><img alt="ASUS" decoding="async" loading="lazy" src="assets/images/brands/asus.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Acer"><figure class="tm-media-box-wrap"><img alt="Acer" decoding="async" loading="lazy" src="assets/images/brands/acer.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Dell"><figure class="tm-media-box-wrap"><img alt="Dell" decoding="async" loading="lazy" src="assets/images/brands/dell.svg" /></figure></a></div></li><li><div class="tm-ratio tm-ratio-16-9"><a class="uk-link-muted tm-media-box tm-grayscale" href="#" title="Canon"><figure class="tm-media-box-wrap"><img alt="Canon" decoding="async" loading="lazy" src="assets/images/brands/canon.svg" /></figure></a></div></li></ul></div><div class="uk-visible@m"><a href="#" uk-slidenav-next="" uk-slider-item="next"></a></div></div></div><ul class="uk-slider-nav uk-dotnav uk-flex-center uk-margin-medium-top uk-hidden@m"></ul></div>
-            <div class="uk-margin uk-text-center"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="brands.html"><span>see all brands</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div>
+            <div class="uk-margin uk-text-center"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="brands.html"><span>Ver todas las marcas</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div>
           </div>
         </section>
         <!-- testimonials -->
         <section class="uk-section uk-section-small" style="background:#f8f8f8;">
           <div class="uk-container">
-            <h2 class="uk-text-center">What Our Customers Say</h2>
+            <h2 class="uk-text-center">Lo que dicen nuestros clientes</h2>
             <div class="uk-margin-medium-top" uk-slider="finite: true">
               <div class="uk-position-relative">
                 <div class="uk-grid-small uk-flex-middle" uk-grid="">
@@ -625,40 +607,40 @@
                       <li>
                         <div class="uk-card uk-card-default uk-card-body uk-height-1-1">
                           <div class="uk-margin-small-bottom" style="color:#faa05a;"><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span></div>
-                          <p class="uk-text-small">"Great selection and even better prices. My MacBook arrived two days early and the packaging was flawless."</p>
+                          <p class="uk-text-small">"Excelente variedad y mejores precios. Mi MacBook llegó dos días antes de lo previsto y el embalaje estaba impecable."</p>
                           <div class="uk-flex uk-flex-middle uk-margin-small-top" style="gap:12px;">
                             <img alt="Carol" class="uk-border-circle" decoding="async" height="40" loading="lazy" src="assets/images/about/carol.svg" width="40" />
-                            <div><div class="uk-text-bolder uk-text-small">Carol Danvers</div><div class="uk-text-meta uk-text-xsmall">Verified buyer</div></div>
+                            <div><div class="uk-text-bolder uk-text-small">Carol Danvers</div><div class="uk-text-meta uk-text-xsmall">Comprador verificado</div></div>
                           </div>
                         </div>
                       </li>
                       <li>
                         <div class="uk-card uk-card-default uk-card-body uk-height-1-1">
                           <div class="uk-margin-small-bottom" style="color:#faa05a;"><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span></div>
-                          <p class="uk-text-small">"Customer support helped me pick the right laptop for video editing. Couldn't be happier with the recommendation."</p>
+                          <p class="uk-text-small">"El equipo de atención me ayudó a elegir la notebook ideal para edición de video. No podría estar más conforme con la recomendación."</p>
                           <div class="uk-flex uk-flex-middle uk-margin-small-top" style="gap:12px;">
                             <img alt="George" class="uk-border-circle" decoding="async" height="40" loading="lazy" src="assets/images/about/george.svg" width="40" />
-                            <div><div class="uk-text-bolder uk-text-small">George Miller</div><div class="uk-text-meta uk-text-xsmall">Verified buyer</div></div>
+                            <div><div class="uk-text-bolder uk-text-small">George Miller</div><div class="uk-text-meta uk-text-xsmall">Comprador verificado</div></div>
                           </div>
                         </div>
                       </li>
                       <li>
                         <div class="uk-card uk-card-default uk-card-body uk-height-1-1">
                           <div class="uk-margin-small-bottom" style="color:#faa05a;"><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span></div>
-                          <p class="uk-text-small">"Fast checkout, transparent pricing and the trade-in program saved me almost $200 on my new phone."</p>
+                          <p class="uk-text-small">"Compra rápida, precios transparentes y la opción de pago en cuotas me permitió llevar mi nuevo celular sin complicaciones."</p>
                           <div class="uk-flex uk-flex-middle uk-margin-small-top" style="gap:12px;">
                             <img alt="Nicole" class="uk-border-circle" decoding="async" height="40" loading="lazy" src="assets/images/about/nicole.svg" width="40" />
-                            <div><div class="uk-text-bolder uk-text-small">Nicole Adams</div><div class="uk-text-meta uk-text-xsmall">Verified buyer</div></div>
+                            <div><div class="uk-text-bolder uk-text-small">Nicole Adams</div><div class="uk-text-meta uk-text-xsmall">Comprador verificado</div></div>
                           </div>
                         </div>
                       </li>
                       <li>
                         <div class="uk-card uk-card-default uk-card-body uk-height-1-1">
                           <div class="uk-margin-small-bottom" style="color:#faa05a;"><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span><span uk-icon="icon: star; ratio: .8;"></span></div>
-                          <p class="uk-text-small">"I've ordered three times now and every delivery has been on time. This is my go-to electronics store."</p>
+                          <p class="uk-text-small">"Ya compré tres veces y todas las entregas llegaron a tiempo. Es mi tienda de tecnología de confianza."</p>
                           <div class="uk-flex uk-flex-middle uk-margin-small-top" style="gap:12px;">
                             <img alt="Thomas" class="uk-border-circle" decoding="async" height="40" loading="lazy" src="assets/images/about/thomas.svg" width="40" />
-                            <div><div class="uk-text-bolder uk-text-small">Thomas Reed</div><div class="uk-text-meta uk-text-xsmall">Verified buyer</div></div>
+                            <div><div class="uk-text-bolder uk-text-small">Thomas Reed</div><div class="uk-text-meta uk-text-xsmall">Comprador verificado</div></div>
                           </div>
                         </div>
                       </li>
@@ -675,8 +657,8 @@
         <section class="uk-section uk-section-small">
           <div class="uk-container">
             <div class="uk-flex uk-flex-middle uk-flex-between uk-margin">
-              <h2 class="uk-margin-remove">From the Blog</h2>
-              <a class="uk-link-muted uk-text-uppercase tm-link-to-all uk-visible@s" href="blog.html"><span>see all articles</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a>
+              <h2 class="uk-margin-remove">Del blog</h2>
+              <a class="uk-link-muted uk-text-uppercase tm-link-to-all uk-visible@s" href="blog.html"><span>Ver todos los artículos</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a>
             </div>
             <div
               class="uk-grid-medium uk-grid-match uk-child-width-1-1 uk-child-width-1-3@s"
@@ -684,60 +666,60 @@
             ><div><a href="article.html"><article
                     class="uk-card uk-card-default uk-card-small uk-article uk-overflow-hidden uk-box-shadow-hover-large uk-height-1-1 tm-ignore-container"
                   ><div class="tm-ratio tm-ratio-16-9"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img
-                          alt="Everything You Need to Know About the MacBook Pro"
+                          alt="Todo lo que necesitás saber sobre la MacBook Pro"
                           decoding="async"
                           loading="lazy"
                           src="assets/images/articles/macbook-photo.webp"
                           uk-cover="uk-cover"
-                        /></figure></div><div class="uk-card-body"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>May 21, 2018</time></div><div><h3 class="uk-margin-remove">Everything You Need to Know About the MacBook Pro</h3></div><div class="uk-margin-small-top"><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id aliquam. Nam consectetur interdum nibh eget sodales.</p></div></div></div></article></a></div><div><a href="article.html"><article
+                        /></figure></div><div class="uk-card-body"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>21 de mayo de 2018</time></div><div><h3 class="uk-margin-remove">Todo lo que necesitás saber sobre la MacBook Pro</h3></div><div class="uk-margin-small-top"><p>Repasamos el rendimiento, la pantalla y la autonomía de la MacBook Pro para ayudarte a decidir si es el equipo indicado para tu trabajo.</p></div></div></div></article></a></div><div><a href="article.html"><article
                     class="uk-card uk-card-default uk-card-small uk-article uk-overflow-hidden uk-box-shadow-hover-large uk-height-1-1 tm-ignore-container"
                   ><div class="tm-ratio tm-ratio-16-9"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img
-                          alt="Apple introduces macOS Mojave"
+                          alt="Apple presenta macOS Mojave"
                           decoding="async"
                           loading="lazy"
                           src="assets/images/articles/macos.webp"
                           uk-cover="uk-cover"
-                        /></figure></div><div class="uk-card-body"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>May 21, 2018</time></div><div><h3 class="uk-margin-remove">Apple introduces macOS Mojave</h3></div><div class="uk-margin-small-top"><p>Praesent consequat justo eu massa malesuada posuere. Donec ultricies tincidunt nisl, sed euismod nulla venenatis maximus.</p></div></div></div></article></a></div><div><a href="article.html"><article
+                        /></figure></div><div class="uk-card-body"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>21 de mayo de 2018</time></div><div><h3 class="uk-margin-remove">Apple presenta macOS Mojave</h3></div><div class="uk-margin-small-top"><p>Conocé las principales novedades del sistema operativo: modo oscuro, escritorio más ordenado y nuevas herramientas de productividad.</p></div></div></div></article></a></div><div><a href="article.html"><article
                     class="uk-card uk-card-default uk-card-small uk-article uk-overflow-hidden uk-box-shadow-hover-large uk-height-1-1 tm-ignore-container"
                   ><div class="tm-ratio tm-ratio-16-9"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img
-                          alt="How to choose the right laptop for you"
+                          alt="Cómo elegir la notebook ideal para vos"
                           decoding="async"
                           loading="lazy"
                           src="assets/images/articles/macbook-promo-2.webp"
                           uk-cover="uk-cover"
-                        /></figure></div><div class="uk-card-body"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>May 18, 2018</time></div><div><h3 class="uk-margin-remove">How to choose the right laptop for you</h3></div><div class="uk-margin-small-top"><p>A quick buyer's guide covering display size, processors and battery life to help you pick the perfect laptop.</p></div></div></div></article></a></div></div>
-            <div class="uk-margin uk-text-center uk-hidden@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="blog.html"><span>see all articles</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div>
+                        /></figure></div><div class="uk-card-body"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>18 de mayo de 2018</time></div><div><h3 class="uk-margin-remove">Cómo elegir la notebook ideal para vos</h3></div><div class="uk-margin-small-top"><p>Una guía rápida sobre tamaño de pantalla, procesador y duración de batería para que elijas la notebook perfecta.</p></div></div></div></article></a></div></div>
+            <div class="uk-margin uk-text-center uk-hidden@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="blog.html"><span>Ver todos los artículos</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div>
           </div>
         </section>
 
         <!-- instagram gallery -->
         <section class="uk-section uk-section-default uk-section-small uk-padding-remove-top">
           <div class="uk-container">
-            <h2 class="uk-text-center">Follow Us on Instagram</h2>
+            <h2 class="uk-text-center">Seguinos en Instagram</h2>
             <div class="uk-margin-medium-top" style="max-width:760px;margin-left:auto;margin-right:auto;">
               <div class="uk-grid-small uk-child-width-1-3 uk-child-width-1-6@s" uk-grid="">
               <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
-                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/products/1/1-medium.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Publicación de Instagram" decoding="async" loading="lazy" src="assets/images/products/1/1-medium.webp" uk-cover="uk-cover" /></figure></div>
                   <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
                 </a></div>
               <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
-                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/products/6/6-medium.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Publicación de Instagram" decoding="async" loading="lazy" src="assets/images/products/6/6-medium.webp" uk-cover="uk-cover" /></figure></div>
                   <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
                 </a></div>
               <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
-                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/articles/macbook-photo.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Publicación de Instagram" decoding="async" loading="lazy" src="assets/images/articles/macbook-photo.webp" uk-cover="uk-cover" /></figure></div>
                   <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
                 </a></div>
               <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
-                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/products/8/8-medium.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Publicación de Instagram" decoding="async" loading="lazy" src="assets/images/products/8/8-medium.webp" uk-cover="uk-cover" /></figure></div>
                   <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
                 </a></div>
               <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
-                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/promo/iphone.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Publicación de Instagram" decoding="async" loading="lazy" src="assets/images/promo/iphone.webp" uk-cover="uk-cover" /></figure></div>
                   <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
                 </a></div>
               <div><a class="uk-display-block uk-position-relative uk-overflow-hidden uk-border-rounded" href="#" title="Instagram">
-                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Instagram post" decoding="async" loading="lazy" src="assets/images/promo/ipad.webp" uk-cover="uk-cover" /></figure></div>
+                  <div class="tm-ratio tm-ratio-1-1"><figure class="tm-media-box uk-cover-container uk-margin-remove"><img alt="Publicación de Instagram" decoding="async" loading="lazy" src="assets/images/promo/ipad.webp" uk-cover="uk-cover" /></figure></div>
                   <div class="uk-position-center uk-light" style="opacity:0;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span uk-icon="icon: instagram; ratio: 1;"></span></div>
                 </a></div>
               </div>
@@ -747,7 +729,7 @@
         <!-- about + latest news -->
         <section class="uk-section uk-section-default uk-section-small" style="background:#f8f8f8;">
           <div class="uk-container">
-            <div class="uk-grid-medium uk-child-width-1-1 uk-child-width-1-2@s" uk-grid=""><section><h2 class="uk-text-center uk-text-left@s">About</h2><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc at neque vulputate, vestibulum magna in, accumsan urna. Nulla feugiat ipsum ex, molestie porttitor nibh faucibus at. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam hendrerit lorem ut finibus semper. Donec ac vehicula erat, nec consequat massa.</p><p>Quisque rhoncus fermentum sapien id congue. Nam at rutrum turpis. Aliquam sagittis imperdiet tortor vel dignissim. Ut ipsum nunc, egestas et odio id, vestibulum posuere orci. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.</p><div class="uk-text-center uk-text-left@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="about.html"><span>read more</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div></section><section><h2 class="uk-text-center uk-text-left@s">Latest News</h2><ul class="uk-list uk-list-small uk-list-divider"><li><article class="uk-article"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>June 4, 2018</time></div><h3 class="uk-h4 uk-margin-remove"><a class="uk-link-heading" href="article.html">Highlights from WWDC</a></h3><div class="uk-margin-xsmall-top uk-text-small"><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id aliquam. Nam consectetur interdum nibh eget sodales. Cras volutpat efficitur ornare.</p></div></div></article></li><li><article class="uk-article"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>June 4, 2018</time></div><h3 class="uk-h4 uk-margin-remove"><a class="uk-link-heading" href="article.html">Apple introduces macOS Mojave</a></h3><div class="uk-margin-xsmall-top uk-text-small"><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id aliquam. Nam consectetur interdum nibh eget sodales. Cras volutpat efficitur ornare.</p></div></div></article></li><li><article class="uk-article"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>May 29, 2018</time></div><h3 class="uk-h4 uk-margin-remove"><a class="uk-link-heading" href="article.html">iOS 11.4 brings stereo pairs and multi-room audio with AirPlay 2</a></h3><div class="uk-margin-xsmall-top uk-text-small"><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin sodales eget ipsum id aliquam. Nam consectetur interdum nibh eget sodales. Cras volutpat efficitur ornare.</p></div></div></article></li></ul><div class="uk-margin uk-text-center uk-text-left@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="news.html"><span>see all news</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div></section></div>
+            <div class="uk-grid-medium uk-child-width-1-1 uk-child-width-1-2@s" uk-grid=""><section><h2 class="uk-text-center uk-text-left@s">Sobre nosotros</h2><p>Z Informática es una tienda de tecnología ubicada en Capiatá, Paraguay. Ofrecemos computadoras, notebooks, periféricos, componentes y equipos de redes de las principales marcas, con atención personalizada para ayudarte a elegir el producto que mejor se adapta a tus necesidades.</p><p>Podés comprar al contado o en cuotas, de forma rápida y segura, desde cualquier lugar. Nuestro objetivo es acercarte la mejor tecnología con precios competitivos y un servicio en el que puedas confiar.</p><div class="uk-text-center uk-text-left@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="about.html"><span>Leer más</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div></section><section><h2 class="uk-text-center uk-text-left@s">Últimas noticias</h2><ul class="uk-list uk-list-small uk-list-divider"><li><article class="uk-article"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>4 de junio de 2018</time></div><h3 class="uk-h4 uk-margin-remove"><a class="uk-link-heading" href="article.html">Lo más destacado de la WWDC</a></h3><div class="uk-margin-xsmall-top uk-text-small"><p>Un resumen de los anuncios más importantes de la conferencia anual de desarrolladores de Apple.</p></div></div></article></li><li><article class="uk-article"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>4 de junio de 2018</time></div><h3 class="uk-h4 uk-margin-remove"><a class="uk-link-heading" href="article.html">Apple presenta macOS Mojave</a></h3><div class="uk-margin-xsmall-top uk-text-small"><p>El nuevo sistema operativo llega con modo oscuro, pilas en el escritorio y mejoras en la seguridad.</p></div></div></article></li><li><article class="uk-article"><div class="uk-article-body"><div class="uk-article-meta uk-margin-xsmall-bottom"><time>29 de mayo de 2018</time></div><h3 class="uk-h4 uk-margin-remove"><a class="uk-link-heading" href="article.html">iOS 11.4 incorpora pares estéreo y audio multisala con AirPlay 2</a></h3><div class="uk-margin-xsmall-top uk-text-small"><p>La actualización permite vincular dos parlantes en estéreo y reproducir música en varias habitaciones a la vez.</p></div></div></article></li></ul><div class="uk-margin uk-text-center uk-text-left@s"><a class="uk-link-muted uk-text-uppercase tm-link-to-all" href="news.html"><span>Ver todas las noticias</span><span uk-icon="icon: chevron-right; ratio: .75;"></span></a></div></section></div>
           </div>
         </section>
 
@@ -756,12 +738,12 @@
           <div class="uk-container">
             <div class="uk-text-center">
               <span uk-icon="icon: mail; ratio: 2;"></span>
-              <div class="uk-h2 uk-margin-small-top uk-margin-remove-bottom">Subscribe for updates</div>
-              <div>Be aware of new products and special offers.</div>
+              <div class="uk-h2 uk-margin-small-top uk-margin-remove-bottom">Suscribite a nuestras novedades</div>
+              <div>Enterate antes que nadie de nuevos productos y ofertas especiales.</div>
             </div>
             <div class="uk-margin">
               <form>
-                <div class="uk-grid-small uk-flex-center" uk-grid=""><div class="uk-width-1-1 uk-width-medium@s"><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="mail"></span><input class="uk-input" placeholder="Your email" required="" type="email" /></div></div><div><button class="uk-button uk-button-primary">subscribe</button></div></div>
+                <div class="uk-grid-small uk-flex-center" uk-grid=""><div class="uk-width-1-1 uk-width-medium@s"><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="mail"></span><input class="uk-input" placeholder="Tu correo electrónico" required="" type="email" /></div></div><div><button class="uk-button uk-button-primary">Suscribirme</button></div></div>
               </form>
             </div>
           </div>

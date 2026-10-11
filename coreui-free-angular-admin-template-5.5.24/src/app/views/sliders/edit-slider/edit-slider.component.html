@@ -5,100 +5,77 @@
   </c-card-header>
 
   <c-card-body>
-    <div class="alert alert-danger" *ngIf="errorMsg">{{ errorMsg }}</div>
-    <div class="alert alert-success" *ngIf="successMsg">{{ successMsg }}</div>
-
     <form [formGroup]="form" (ngSubmit)="save()">
-      <div class="row mb-3">
+      <div class="row g-3 mb-4">
         <div class="col-md-6">
-          <label class="form-label">Producto (*)</label>
-          <div class="input-group mb-1">
-            <input
-              type="text"
-              class="form-control"
-              placeholder="Buscar producto por título..."
-              [(ngModel)]="productoSearch"
-              [ngModelOptions]="{ standalone: true }"
-              (keyup.enter)="loadProductos()"
-            />
-            <button cButton type="button" color="secondary" variant="outline" (click)="loadProductos()">
-              Buscar
-            </button>
-          </div>
-          <select class="form-select" formControlName="sld_prdid">
-            <option *ngFor="let p of productos" [value]="p.prd_id">
-              {{ p.prd_titulo }} (#{{ p.prd_id }})
-            </option>
-          </select>
+          <label class="form-label fw-semibold">Título <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" formControlName="sld_titulo" maxlength="150" />
         </div>
         <div class="col-md-6">
-          <label class="form-label">Título (*)</label>
-          <input type="text" class="form-control" formControlName="sld_titulo" />
-        </div>
-      </div>
-
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <label class="form-label">Subtítulo</label>
+          <label class="form-label fw-semibold">Subtítulo</label>
           <input type="text" class="form-control" formControlName="sld_subtitulo" />
         </div>
-        <div class="col-md-6">
-          <label class="form-label">Label</label>
-          <input type="text" class="form-control" formControlName="sld_label" />
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Label</label>
+          <input type="text" class="form-control" formControlName="sld_label" placeholder="Ej: Oferta -20%" />
         </div>
-      </div>
-
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <label class="form-label">Enlace</label>
-          <input type="text" class="form-control" formControlName="sld_enlace" />
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Tipo</label>
+          <select class="form-select" formControlName="sld_tipo">
+            <option [ngValue]="1">Banner principal</option>
+            <option [ngValue]="2">Banner secundario</option>
+            <option [ngValue]="3">Banner terciario</option>
+          </select>
         </div>
-        <div class="col-md-3">
-          <label class="form-label">Orden</label>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Orden</label>
           <input type="number" class="form-control" formControlName="sld_orden" />
         </div>
-        <div class="col-md-3">
-          <label class="form-label">Tipo</label>
-          <select class="form-select" formControlName="sld_tipo">
-            <option [value]="1">Banner principal</option>
-            <option [value]="2">Banner secundario</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row mb-3" *ngIf="form.value.sld_tipo == 2">
-        <div class="col-md-3">
-          <label class="form-label">Posición (*)</label>
+        <div class="col-md-2" *ngIf="form.value.sld_tipo == 2">
+          <label class="form-label fw-semibold">Posición <span class="text-danger">*</span></label>
           <select class="form-select" formControlName="sld_posicion">
-            <option [value]="null" disabled>Selecciona un lado</option>
-            <option [value]="1">Izquierda</option>
-            <option [value]="2">Derecha</option>
+            <option [ngValue]="null" disabled>Lado...</option>
+            <option [ngValue]="1">Izquierda</option>
+            <option [ngValue]="2">Derecha</option>
           </select>
-          <small class="text-muted">Define en qué carrusel del home se muestra este banner.</small>
         </div>
       </div>
 
-      <div class="row mb-3">
+      <hr class="my-4" />
+
+      <div class="mb-4" *ngIf="cargado">
+        <app-destino-slider [form]="form"></app-destino-slider>
+      </div>
+
+      <hr class="my-4" />
+
+      <div class="row g-3 mb-4">
         <div class="col-md-6">
-          <label class="form-label">Imagen</label>
+          <label class="form-label fw-semibold">Imagen</label>
           <input type="file" class="form-control" accept=".jpeg,.jpg,.png,.gif,.webp" (change)="onFile($event)" />
-          <img *ngIf="preview" [src]="preview" width="200" class="mt-2 rounded" alt="preview" />
+          <div class="form-text">Deja vacío para conservar la imagen actual.</div>
+          <img *ngIf="preview" [src]="preview" width="200" class="mt-2 rounded border" alt="preview" />
         </div>
         <div class="col-md-3">
-          <label class="form-label">Estado (*)</label>
+          <label class="form-label fw-semibold">Estado</label>
           <select class="form-select" formControlName="sld_estado">
-            <option [value]="1">Activo</option>
-            <option [value]="2">Inactivo</option>
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="2">Inactivo</option>
           </select>
         </div>
         <div class="col-md-3">
-          <label class="form-label">Color</label>
+          <label class="form-label fw-semibold">Color</label>
           <input type="color" class="form-control form-control-color" formControlName="sld_color" />
         </div>
       </div>
 
-      <button cButton color="primary" type="submit">Actualizar</button>
-      <a routerLink="/sliders/list" cButton color="secondary" variant="outline" class="ms-2">Volver</a>
+      <div class="d-flex gap-2 border-top pt-3">
+        <button cButton color="primary" type="submit" [disabled]="guardando">
+          <span class="spinner-border spinner-border-sm me-1" *ngIf="guardando"></span>
+          {{ guardando ? 'Guardando...' : 'Actualizar' }}
+        </button>
+        <a routerLink="/sliders/list" cButton color="secondary">Cancelar</a>
+      </div>
     </form>
   </c-card-body>
 </c-card>

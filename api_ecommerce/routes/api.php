@@ -44,24 +44,18 @@ use App\Http\Controllers\Api\DireccionClienteController;
 use App\Http\Controllers\Admin\Catalogo\CategoriaAtributoController;
 use App\Http\Controllers\Admin\Catalogo\FichaTecnicaController;
 use App\Http\Controllers\Admin\Configuracion\ConfiguracionTiendaController;
-
 use App\Http\Controllers\Admin\Compras\NotaCreditoController;
-
 use App\Http\Controllers\Admin\Compras\CuotaCompraController;
-
 use App\Http\Controllers\Admin\Compras\CuentaPorPagarController;
-
 use App\Http\Controllers\Admin\Compras\LibroCompraController;
-
 use App\Http\Controllers\Admin\Compras\TimbradoProveedorController;
-
 use App\Http\Controllers\Admin\Compras\PagoCompraController;
-
 use App\Http\Controllers\Carrito\CarritoController;
 
 use App\Http\Controllers\Admin\Configuracion\ConfiguracionCuotaController;
 use App\Http\Controllers\Chat\ChatController;
 use App\Http\Controllers\Admin\Chat\FaqTiendaController;
+use App\Http\Controllers\Admin\Perfil\PerfilController as PerfilAdminController;
 
 use App\Http\Controllers\Pedido\CheckoutController;
 
@@ -169,8 +163,7 @@ Route::group([
     'middleware'=> ['auth:api', 'permiso:dashboard.ver'],   // <- solo agregar esta línea
     'prefix'=> 'admin'
 ], function ($router) {
-    Route::get('sliders-productos', [SliderController::class, 'productos']);
-    Route::get('sliders-productos/{id}', [SliderController::class, 'productoShow']);
+    Route::get('sliders-destinos', [SliderController::class, 'destinos']);
     Route::resource('sliders', SliderController::class);
     Route::post('sliders/{id}', [SliderController::class, 'update']);
 
@@ -193,6 +186,7 @@ Route::group([
     Route::resource("cupones", CuponeController::class);
    
     Route::resource("discounts", DiscountController::class);
+	Route::get('discounts/producto/{id}/vigentes', [DiscountController::class, 'vigentesPorProducto']);
 
     // Módulo Configuracion: Fase 1 ---
     Route::patch('empresas/{id}/estado', [EmpresaController::class, 'toggleEstado']);
@@ -414,6 +408,12 @@ Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {
         
 });
 
+Route::prefix('admin/perfil')->middleware('auth:api')->group(function () {
+    Route::get('/', [PerfilAdminController::class, 'show']);
+    Route::post('/', [PerfilAdminController::class, 'update']);
+    Route::patch('/password', [PerfilAdminController::class, 'actualizarPassword']);
+});
+
 // Rutas privadas del ecommerce (requieren sesión de Cliente).
 // Van en grupo aparte del "tienda" público de arriba (home/sliders/producto)
 // porque este sí necesita auth:api.
@@ -444,6 +444,8 @@ Route::group([
 Route::get('publicaciones', [PublicacionWebController::class, 'index']);
 
 Route::apiResource('categorias', categorieController::class);
+Route::post('categorias/{id}/imagen', [categorieController::class, 'subirImagen']);
+Route::delete('categorias/{id}/imagen', [categorieController::class, 'eliminarImagen']);
 
 
 Route::get('marcas/select', [MarcaController::class, 'select']);

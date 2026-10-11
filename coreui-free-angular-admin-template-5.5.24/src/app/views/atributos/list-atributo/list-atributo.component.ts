@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
+import { ToastrService } from 'ngx-toastr';
 import {
   BadgeModule,
   ButtonModule,
@@ -41,7 +42,7 @@ export class ListAtributoComponent implements OnInit {
 
   isLoading$: Observable<boolean>;
 
-  constructor(public atributoService: AtributoService) {
+  constructor(public atributoService: AtributoService, private toastr: ToastrService) {
     this.isLoading$ = this.atributoService.isLoading$;
   }
 
@@ -49,11 +50,14 @@ export class ListAtributoComponent implements OnInit {
     this.loadList();
   }
 
-  loadList(page: number = 1): void {
-    this.atributoService.list(page, this.search).subscribe((resp: any) => {
-      this.atributos = resp.atributos;
-      this.total = resp.total;
-      this.currentPage = page;
+  loadList(page: number = this.currentPage): void {
+    this.atributoService.list(page, this.search).subscribe({
+      next: (resp: any) => {
+        this.atributos = resp.atributos;
+        this.total = resp.total;
+        this.currentPage = page;
+      },
+      error: () => this.toastr.error('No se pudieron cargar los atributos', 'Error'),
     });
   }
 
@@ -76,16 +80,11 @@ export class ListAtributoComponent implements OnInit {
 
   nombreTipo(tipo: number): string {
     switch (Number(tipo)) {
-      case 1:
-        return 'Texto';
-      case 2:
-        return 'Número';
-      case 3:
-        return 'Seleccionable';
-      case 4:
-        return 'Seleccionable Múltiple';
-      default:
-        return '';
+      case 1: return 'Texto';
+      case 2: return 'Número';
+      case 3: return 'Seleccionable';
+      case 4: return 'Seleccionable Múltiple';
+      default: return '';
     }
   }
 
@@ -97,39 +96,64 @@ export class ListAtributoComponent implements OnInit {
     return Number(tipo) === 3 || Number(tipo) === 4;
   }
 
+  /** Error de un campo devuelto por Laravel (422) o null. */
+  private errorCampo(err: any, campo: string): string | null {
+    return err?.status === 422 ? err?.error?.errors?.[campo]?.[0] ?? null : null;
+  }
+
+  /** Primer error de validación o el message del backend. */
+  private mensajeError(err: any, porDefecto: string): string {
+    const errors = err?.error?.errors;
+    if (errors) {
+      const primero = Object.values(errors)[0] as string[];
+      if (primero?.length) return primero[0];
+    }
+    return err?.error?.message ?? porDefecto;
+  }
+
   // ---- Crear ----
   showCreate = false;
   createNombre = '';
   createTipo = 1;
   createUnidad = '';
-  createError = '';
+  createErrorNombre: string | null = null;
+  guardandoCreate = false;
 
   openCreate(): void {
     this.createNombre = '';
     this.createTipo = 1;
     this.createUnidad = '';
-    this.createError = '';
+    this.createErrorNombre = null;
+    this.guardandoCreate = false;
     this.showCreate = true;
   }
 
   guardarCreate(): void {
-    if (!this.createNombre || !this.createTipo) {
-      this.createError = 'Todos los campos son necesarios';
+    if (!this.createNombre.trim()) {
+      this.createErrorNombre = 'El nombre del atributo es obligatorio.';
       return;
     }
+
     const data = {
-      atb_nombre: this.createNombre,
-      atb_tipo: this.createTipo,
+      atb_nombre: this.createNombre.trim(),
+      atb_tipo: Number(this.createTipo),
       atb_unidad: this.esNumero(this.createTipo) ? this.createUnidad.trim() || null : null,
       atb_estado: 1,
     };
-    this.atributoService.create(data).subscribe((resp: any) => {
-      if (resp.message === 403) {
-        this.createError = 'El nombre del atributo ya existe';
-        return;
-      }
-      this.atributos.unshift(resp.atributo);
-      this.showCreate = false;
+
+    this.guardandoCreate = true;
+    this.atributoService.create(data).subscribe({
+      next: (resp: any) => {
+        this.toastr.success(resp?.message ?? 'Atributo registrado', 'Éxito');
+        this.showCreate = false;
+        this.guardandoCreate = false;
+        this.loadList(1);
+      },
+      error: (err) => {
+        this.guardandoCreate = false;
+        this.createErrorNombre = this.errorCampo(err, 'atb_nombre');
+        this.toastr.error(this.mensajeError(err, 'No se pudo registrar el atributo'), 'Error');
+      },
     });
   }
 
@@ -139,58 +163,73 @@ export class ListAtributoComponent implements OnInit {
   editNombre = '';
   editTipo = 1;
   editUnidad = '';
-  editError = '';
+  editErrorNombre: string | null = null;
+  guardandoEdit = false;
 
   openEdit(atributo: any): void {
     this.editAtributo = atributo;
     this.editNombre = atributo.atb_nombre;
-    this.editTipo = atributo.atb_tipo;
+    this.editTipo = Number(atributo.atb_tipo);
     this.editUnidad = atributo.atb_unidad ?? '';
-    this.editError = '';
+    this.editErrorNombre = null;
+    this.guardandoEdit = false;
     this.showEdit = true;
   }
 
   guardarEdit(): void {
-    if (!this.editNombre || !this.editTipo) {
-      this.editError = 'Todos los campos son necesarios';
+    if (!this.editNombre.trim()) {
+      this.editErrorNombre = 'El nombre del atributo es obligatorio.';
       return;
     }
+
     const data = {
-      atb_nombre: this.editNombre,
-      atb_tipo: this.editTipo,
+      atb_nombre: this.editNombre.trim(),
+      atb_tipo: Number(this.editTipo),
       atb_unidad: this.esNumero(this.editTipo) ? this.editUnidad.trim() || null : null,
       atb_estado: this.editAtributo.atb_estado ?? 1,
     };
-    this.atributoService.update(this.editAtributo.atb_id, data).subscribe((resp: any) => {
-      if (resp.message === 403) {
-        this.editError = 'El nombre del atributo ya existe';
-        return;
-      }
-      const idx = this.atributos.findIndex((a) => a.atb_id === resp.atributo.atb_id);
-      if (idx !== -1) this.atributos[idx] = resp.atributo;
-      this.showEdit = false;
+
+    this.guardandoEdit = true;
+    this.atributoService.update(this.editAtributo.atb_id, data).subscribe({
+      next: (resp: any) => {
+        this.toastr.success(resp?.message ?? 'Atributo actualizado', 'Éxito');
+        this.showEdit = false;
+        this.guardandoEdit = false;
+        this.loadList();
+      },
+      error: (err) => {
+        this.guardandoEdit = false;
+        this.editErrorNombre = this.errorCampo(err, 'atb_nombre');
+        this.toastr.error(this.mensajeError(err, 'No se pudo actualizar el atributo'), 'Error');
+      },
     });
   }
 
   // ---- Eliminar ----
   showDelete = false;
   deleteAtributo: any = null;
-  deleteError = '';
 
   openDelete(atributo: any): void {
     this.deleteAtributo = atributo;
-    this.deleteError = '';
     this.showDelete = true;
   }
 
   confirmarDelete(): void {
+    if (!this.deleteAtributo?.atb_id) return;
+
     this.atributoService.delete(this.deleteAtributo.atb_id).subscribe({
-      next: () => {
-        this.atributos = this.atributos.filter((a) => a.atb_id !== this.deleteAtributo.atb_id);
+      next: (resp: any) => {
+        this.toastr.success(resp?.message ?? 'Atributo eliminado', 'Éxito');
+        this.showDelete = false;
+        // Si era el último de la página, retroceder una
+        const page = this.atributos.length === 1 && this.currentPage > 1 ? this.currentPage - 1 : this.currentPage;
+        this.loadList(page);
+      },
+      // 409: el atributo está en una Plantilla de Ficha Técnica
+      error: (err) => {
+        this.toastr.error(err?.error?.message ?? 'No se pudo eliminar el atributo', 'Error');
         this.showDelete = false;
       },
-      // 409: el atributo está en una Plantilla de Ficha Técnica.
-      error: (err) => (this.deleteError = err?.error?.message ?? 'No se pudo eliminar el atributo'),
     });
   }
 
@@ -200,50 +239,54 @@ export class ListAtributoComponent implements OnInit {
   propiedades: any[] = [];
   propNombre = '';
   propTipoAccion = 1; // 1 Normal, 2 Color
-  propCodigo = '';
-  propError = '';
+  propCodigo = '#000000';
+  propErrorNombre: string | null = null;
 
   openPropiedades(atributo: any): void {
     this.propAtributo = atributo;
     this.propiedades = atributo.propiedades ? [...atributo.propiedades] : [];
     this.propNombre = '';
     this.propTipoAccion = 1;
-    this.propCodigo = '';
-    this.propError = '';
+    this.propCodigo = '#000000';
+    this.propErrorNombre = null;
     this.showPropiedades = true;
   }
 
   guardarPropiedad(): void {
-    if (!this.propNombre) {
-      this.propError = 'El nombre es obligatorio';
+    if (!this.propNombre.trim()) {
+      this.propErrorNombre = 'El nombre de la propiedad es obligatorio.';
       return;
     }
-    if (this.propTipoAccion == 2 && !this.propCodigo) {
-      this.propError = 'Necesitas seleccionar un color';
-      return;
-    }
+
     const data = {
       prp_atbid: this.propAtributo.atb_id,
-      prp_nombre: this.propNombre,
-      prp_codigo: this.propTipoAccion == 2 ? this.propCodigo : '',
+      prp_nombre: this.propNombre.trim(),
+      prp_codigo: Number(this.propTipoAccion) === 2 ? this.propCodigo : '',
     };
-    this.atributoService.createPropiedad(data).subscribe((resp: any) => {
-      if (resp.message === 403) {
-        this.propError = 'La propiedad ya existe para este atributo';
-        return;
-      }
-      this.propError = '';
-      this.propiedades.unshift(resp.propiedad);
-      this.propAtributo.propiedades = this.propiedades;
-      this.propNombre = '';
-      this.propCodigo = '';
+
+    this.atributoService.createPropiedad(data).subscribe({
+      next: (resp: any) => {
+        this.toastr.success(resp?.message ?? 'Propiedad agregada', 'Éxito');
+        this.propErrorNombre = null;
+        this.propiedades.unshift(resp.propiedad);
+        this.propAtributo.propiedades = [...this.propiedades];
+        this.propNombre = '';
+      },
+      error: (err) => {
+        this.propErrorNombre = this.errorCampo(err, 'prp_nombre');
+        this.toastr.error(this.mensajeError(err, 'No se pudo agregar la propiedad'), 'Error');
+      },
     });
   }
 
   eliminarPropiedad(propiedad: any): void {
-    this.atributoService.deletePropiedad(propiedad.prp_id).subscribe(() => {
-      this.propiedades = this.propiedades.filter((p) => p.prp_id !== propiedad.prp_id);
-      this.propAtributo.propiedades = this.propiedades;
+    this.atributoService.deletePropiedad(propiedad.prp_id).subscribe({
+      next: (resp: any) => {
+        this.toastr.success(resp?.message ?? 'Propiedad eliminada', 'Éxito');
+        this.propiedades = this.propiedades.filter((p) => p.prp_id !== propiedad.prp_id);
+        this.propAtributo.propiedades = [...this.propiedades];
+      },
+      error: (err) => this.toastr.error(err?.error?.message ?? 'No se pudo eliminar la propiedad', 'Error'),
     });
   }
 }

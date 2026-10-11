@@ -581,7 +581,7 @@
   margin: 0 0 16px;
   color: var(--pd-text);
   line-height: 1.8;
-  max-width: 70ch;
+  max-width: 70ch; /* ← limita cada párrafo a ~70 caracteres por línea */
 }
 .pd-description p:last-child {
   margin-bottom: 0;

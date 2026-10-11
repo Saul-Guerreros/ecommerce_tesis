@@ -11,17 +11,21 @@ import { CarritoOffcanvasComponent } from '../components/carrito-offcanvas/carri
 // --- import nuevo ---
 import { ConfirmacionCarritoComponent } from '../components/confirmacion-carrito/confirmacion-carrito.component';
 import { BuscadorSugerenciasComponent } from '../components/buscador-sugerencias/buscador-sugerencias.component';
+import { CategoriaIconoComponent } from '../components/categoria-icono/categoria-icono.component';
+
+declare const UIkit: any;
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [
+   imports: [
     FormsModule,
     RouterModule,
     CommonModule,
     CarritoOffcanvasComponent,
     ConfirmacionCarritoComponent,
     BuscadorSugerenciasComponent,
+    CategoriaIconoComponent,
   ],  templateUrl: './header.component.html',
   styleUrl: './header.component.css',
 })
@@ -114,6 +118,16 @@ export class HeaderComponent {
   /** El usuario se lee de AuthService, no a través del carrito. */
   get user(): any {
     return this.authService.user;
+  }
+
+    /**
+   * Cierra el desplegable de cuenta al navegar. Angular cambia de página
+   * sin recargar, y UIkit no se entera: sin esto el menú quedaría abierto.
+   */
+  cerrarMenuCuenta(menu: HTMLElement): void {
+    if (typeof UIkit !== 'undefined') {
+      UIkit.dropdown(menu)?.hide(false);
+    }
   }
 
   /**

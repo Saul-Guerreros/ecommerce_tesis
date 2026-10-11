@@ -8,6 +8,8 @@ use App\Models\product\categorie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
 
 class categorieController extends Controller
 {
@@ -38,7 +40,11 @@ class categorieController extends Controller
        $validator = Validator::make($request->all(), [
             'cat_nombre' => 'required|string|max:45',
             'cat_idpadr' => 'nullable|integer|exists:categoria,cat_id',
-            'cat_icono'  => 'nullable|string|max:50', // NUEVO
+            'cat_icono' => ['nullable', 'string', Rule::in([
+                'computadora', 'notebook', 'perifericos', 'componentes', 'redes',
+                'almacenamiento', 'impresion', 'accesorios', 'audio', 'gaming',
+                'celulares', 'camara', 'promociones', 'general',
+            ])],
         ]);
 
         if ($validator->fails()) {
@@ -55,7 +61,11 @@ class categorieController extends Controller
             'cat_nombre' => $request->cat_nombre,
              'cat_idpadr' => $request->cat_idpadr,
              'cat_nivel'  => $nivel,
-             'cat_icono'  => $request->cat_icono, // NUEVO
+             'cat_icono' => ['nullable', 'string', Rule::in([
+                    'computadora', 'notebook', 'perifericos', 'componentes', 'redes',
+                    'almacenamiento', 'impresion', 'accesorios', 'audio', 'gaming',
+                    'celulares', 'camara', 'promociones', 'general',
+                ])],
         ]);
 
         return response()->json(new CategorieResource($categoria), 201);
@@ -73,7 +83,11 @@ class categorieController extends Controller
         $validator = Validator::make($request->all(), [
             'cat_nombre' => 'required|string|max:45',
             'cat_idpadr' => 'nullable|integer|exists:categoria,cat_id',
-             'cat_icono'  => 'nullable|string|max:50', // NUEVO
+            'cat_icono' => ['nullable', 'string', Rule::in([
+                'computadora', 'notebook', 'perifericos', 'componentes', 'redes',
+                'almacenamiento', 'impresion', 'accesorios', 'audio', 'gaming',
+                'celulares', 'camara', 'promociones', 'general',
+            ])],
         ]);
 
         if ($validator->fails()) {
@@ -94,7 +108,11 @@ class categorieController extends Controller
         'cat_nombre' => $request->cat_nombre,
         'cat_idpadr' => $request->cat_idpadr,
          'cat_nivel'  => $nivel,
-        'cat_icono'  => $request->cat_icono, // NUEVO
+            'cat_icono' => ['nullable', 'string', Rule::in([
+                'computadora', 'notebook', 'perifericos', 'componentes', 'redes',
+                'almacenamiento', 'impresion', 'accesorios', 'audio', 'gaming',
+                'celulares', 'camara', 'promociones', 'general',
+            ])],
         ]);
 
         return response()->json(new CategorieResource($categoria), 200);
@@ -112,9 +130,66 @@ class categorieController extends Controller
         if ($categoria->hijos()->count() > 0) {
             return response()->json(['message' => 'No se puede eliminar: tiene subcategorías asociadas'], 422);
         }
+        
+        if ($categoria->cat_imagen) {
+            Storage::disk('public')->delete($categoria->cat_imagen);
+        }
 
         $categoria->delete();
 
         return response()->json(['message' => 'Categoría eliminada correctamente'], 200);
+    }
+
+        // POST /api/categorias/{id}/imagen   (multipart/form-data, campo: imagen)
+    public function subirImagen(Request $request, $id): JsonResponse
+    {
+        $categoria = categorie::find($id);
+
+        if (!$categoria) {
+            return response()->json(['message' => 'Categoría no encontrada'], 404);
+        }
+
+        if ($categoria->cat_idpadr) {
+            return response()->json(['message' => 'Solo las categorías principales llevan imagen'], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'imagen' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        // Reemplazo: se borra el archivo anterior para no dejar basura en el disco
+        if ($categoria->cat_imagen) {
+            Storage::disk('public')->delete($categoria->cat_imagen);
+        }
+
+        $categoria->cat_imagen = Storage::disk('public')->putFile('categorias', $request->file('imagen'));
+        $categoria->save();
+
+        return response()->json(new CategorieResource($categoria), 200);
+    }
+
+    // DELETE /api/categorias/{id}/imagen
+    public function eliminarImagen($id): JsonResponse
+    {
+        $categoria = categorie::find($id);
+
+        if (!$categoria) {
+            return response()->json(['message' => 'Categoría no encontrada'], 404);
+        }
+
+        if ($categoria->cat_imagen) {
+            Storage::disk('public')->delete($categoria->cat_imagen);
+            $categoria->cat_imagen = null;
+            $categoria->save();
+        }
+
+        return response()->json(new CategorieResource($categoria), 200);
     }
 }

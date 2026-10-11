@@ -1262,3 +1262,36 @@
   margin-top: auto !important;
   margin-bottom: auto;
 }
+
+/* ---- Comprar por categoría ---- */
+.tm-cat-card .tm-media-box-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tm-cat-card .tm-media-box-wrap > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* la foto entra completa, sin recortes */
+}
+
+.tm-cat-card-icono {
+  color: #333;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.tm-cat-card:hover .tm-cat-card-icono {
+  color: #1e87f0;
+  /* se mantiene el centrado de la plantilla y se agrega el zoom */
+  transform: translate(-50%, -50%) scale(1.05);
+}
+/* Nombre de categoría en hasta 2 líneas en lugar de cortarlo con "…" */
+.tm-cat-card .uk-text-truncate {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
+  min-height: 2.6em; /* todas las tarjetas quedan con la misma altura */
+}

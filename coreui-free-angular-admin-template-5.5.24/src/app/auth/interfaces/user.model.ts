@@ -7,4 +7,5 @@ export interface User {
   email: string;
   rol: string;
   permisos: string[];
+  avatar_url?: string | null;
 }

@@ -20,13 +20,16 @@ import { ToastrService } from 'ngx-toastr';
 import { CarritoService } from '../../core/services/carrito.service';
 // --- import nuevo ---
 import { CarritoUiService } from '../../core/services/carrito-ui.service';
+import { HomeService } from './service/home.service';
+import { CategoriaMenu } from '../../core/models/categoria-menu.model';
+import { CategoriaIconoComponent } from '../../shared/components/categoria-icono/categoria-icono.component';
 
 declare const UIkit: any;
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, MonedaPyPipe, CurrencyPipe, RouterModule, FlashCountdownComponent, CuoteroComponent],
+  imports: [CommonModule, MonedaPyPipe, CurrencyPipe, RouterModule, FlashCountdownComponent, CuoteroComponent, CategoriaIconoComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })
@@ -44,6 +47,8 @@ export class HomeComponent implements OnInit {
   ofertaDelDia: ProductoVitrina[] = [];
   nuevos: ProductoVitrina[] = [];
   enOferta: ProductoVitrina[] = [];
+    // Categorías principales reales para "Comprar por categoría"
+  categoriasHome: CategoriaMenu[] = [];
 	  // Banners del home (GET /api/tienda/sliders): hero (tipo 1) y promo (tipo 2).
   slidersPrincipales: SliderVitrina[] = [];
   slidersSecundariosIzquierda: SliderVitrina[] = [];
@@ -54,6 +59,7 @@ export class HomeComponent implements OnInit {
   readonly imagenFallback = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22300%22%20height%3D%22225%22%20viewBox%3D%220%200%20300%20225%22%3E%3Crect%20width%3D%22300%22%20height%3D%22225%22%20fill%3D%22%23e9e9e9%22/%3E%3Ctext%20x%3D%22150%22%20y%3D%22117%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%2216%22%20fill%3D%22%23999%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ESin%20imagen%3C/text%3E%3C/svg%3E';
 
 	private heroInicializado = false;
+  
 	
 	constructor(
 		private productoPublicoService: ProductoPublicoService,
@@ -62,7 +68,8 @@ export class HomeComponent implements OnInit {
 		private sanitizer: DomSanitizer,
 		private carritoService: CarritoService,
 		private carritoUi: CarritoUiService,      // ← nuevo
-		private toastr: ToastrService
+		private toastr: ToastrService,
+    private homeService: HomeService,
   ) { /* ... sin cambios ... */ 
     // afterNextRender solo corre en el navegador (nunca en SSR) y después
     // de que el DOM quedó pintado/hidratado: es el punto seguro para
@@ -74,6 +81,7 @@ export class HomeComponent implements OnInit {
     this.cargarProductosPublicados();
     this.cargarVitrinaHome();
     this.cargarSliders();
+    this.cargarCategoriasHome();
   }
 
 cargarVitrinaHome(): void {
@@ -96,6 +104,14 @@ cargarVitrinaHome(): void {
     },
   });
 }
+
+/** Categorías de nivel 1 con productos publicados (mismo origen que el mega menú). */
+  cargarCategoriasHome(): void {
+    this.homeService.menus().subscribe({
+      next: (resp: any) => (this.categoriasHome = resp?.data ?? []),
+      error: () => (this.categoriasHome = []),
+    });
+  }
 
   /**
    * Devuelve la imagen del banner como valor de background-image. Se usa

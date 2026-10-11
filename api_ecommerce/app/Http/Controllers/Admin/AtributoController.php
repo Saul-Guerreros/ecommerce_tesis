@@ -11,22 +11,22 @@ use Illuminate\Support\Facades\Validator;
 
 class AtributoController extends Controller
 {
-    
     public function index(Request $request)
     {
         $search = $request->search;
 
-        $atributos = Atributo::where('atb_nombre', 'like', '%' . $search . '%')
+        // with('propiedades'): evita N+1 en transform()
+        $atributos = Atributo::with('propiedades')
+            ->where('atb_nombre', 'ilike', '%' . $search . '%')
             ->orderBy('atb_id', 'desc')
             ->paginate(25);
 
         return response()->json([
             'total'     => $atributos->total(),
             'atributos' => $atributos->map(fn ($atributo) => $this->transform($atributo)),
-        ]);
+        ], 200);
     }
 
-   
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -39,25 +39,45 @@ class AtributoController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $existe = Atributo::where('atb_nombre', $request->atb_nombre)->first();
-        if ($existe) {
-            return response()->json(['message' => 403]);
+        $nombre = trim($request->atb_nombre);
+
+        // withTrashed(): incluye los eliminados lógicamente, igual que el UNIQUE de PostgreSQL
+        $existente = Atributo::withTrashed()
+            ->whereRaw('LOWER(atb_nombre) = ?', [mb_strtolower($nombre)])
+            ->first();
+
+        if ($existente && !$existente->trashed()) {
+            return response()->json([
+                'errors' => ['atb_nombre' => ['Ya existe un atributo con ese nombre.']],
+            ], 422);
         }
 
-        $atributo = Atributo::create([
-            'atb_nombre' => $request->atb_nombre,
+        $datos = [
+            'atb_nombre' => $nombre,
             'atb_tipo'   => $request->atb_tipo,
             'atb_unidad' => $this->unidadSegunTipo($request),
             'atb_estado' => $request->atb_estado ?? 1,
-        ]);
+        ];
+
+        if ($existente) {
+            // Estaba eliminado: se restaura con los datos nuevos
+            $existente->restore();
+            $existente->update($datos);
+
+            return response()->json([
+                'message'  => 'Atributo registrado correctamente (se restauró uno eliminado con el mismo nombre)',
+                'atributo' => $this->transform($existente->fresh('propiedades')),
+            ], 201);
+        }
+
+        $atributo = Atributo::create($datos);
 
         return response()->json([
-            'message'  => 200,
+            'message'  => 'Atributo registrado correctamente',
             'atributo' => $this->transform($atributo),
-        ]);
+        ], 201);
     }
 
-    
     public function update(Request $request, string $id)
     {
         $validator = Validator::make($request->all(), [
@@ -70,31 +90,52 @@ class AtributoController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $existe = Atributo::where('atb_id', '<>', $id)
-            ->where('atb_nombre', $request->atb_nombre)
-            ->first();
-        if ($existe) {
-            return response()->json(['message' => 403]);
+        $atributo = Atributo::find($id);
+        if (!$atributo) {
+            return response()->json(['message' => 'Atributo no encontrado'], 404);
         }
 
-        $atributo = Atributo::findOrFail($id);
+        $existe = Atributo::where('atb_id', '<>', $id)
+            ->where('atb_nombre', $request->atb_nombre)
+            ->exists();
+        if ($existe) {
+            return response()->json([
+                'errors' => ['atb_nombre' => ['Ya existe un atributo con ese nombre.']],
+            ], 422);
+        }
+
         $atributo->update([
             'atb_nombre' => $request->atb_nombre,
             'atb_tipo'   => $request->atb_tipo,
             'atb_unidad' => $this->unidadSegunTipo($request),
             'atb_estado' => $request->atb_estado ?? $atributo->atb_estado,
         ]);
+		
+		$duplicado = Atributo::withTrashed()
+            ->where('atb_id', '<>', $id)
+            ->whereRaw('LOWER(atb_nombre) = ?', [mb_strtolower(trim($request->atb_nombre))])
+            ->first();
+
+        if ($duplicado) {
+            $msg = $duplicado->trashed()
+                ? 'Ese nombre pertenece a un atributo eliminado. Créelo de nuevo para restaurarlo.'
+                : 'Ya existe un atributo con ese nombre.';
+
+            return response()->json(['errors' => ['atb_nombre' => [$msg]]], 422);
+        }
 
         return response()->json([
-            'message'  => 200,
+            'message'  => 'Atributo actualizado correctamente',
             'atributo' => $this->transform($atributo),
-        ]);
+        ], 200);
     }
-
 
     public function destroy(string $id)
     {
-        $atributo = Atributo::findOrFail($id);
+        $atributo = Atributo::find($id);
+        if (!$atributo) {
+            return response()->json(['message' => 'Atributo no encontrado'], 404);
+        }
 
         // Atributo usa SoftDeletes, así que la FK de categoria_atributo no
         // lo frena: sin este control desaparecería en silencio de las
@@ -113,9 +154,8 @@ class AtributoController extends Controller
 
         $atributo->delete();
 
-        return response()->json(['message' => 200]);
+        return response()->json(['message' => 'Atributo eliminado correctamente'], 200);
     }
-
 
     public function storePropiedad(Request $request)
     {
@@ -130,9 +170,11 @@ class AtributoController extends Controller
 
         $existe = Propiedad::where('prp_atbid', $request->prp_atbid)
             ->where('prp_nombre', $request->prp_nombre)
-            ->first();
+            ->exists();
         if ($existe) {
-            return response()->json(['message' => 403]);
+            return response()->json([
+                'errors' => ['prp_nombre' => ['Esa propiedad ya existe para este atributo.']],
+            ], 422);
         }
 
         $propiedad = Propiedad::create([
@@ -142,23 +184,26 @@ class AtributoController extends Controller
         ]);
 
         return response()->json([
-            'message'   => 200,
+            'message'   => 'Propiedad agregada correctamente',
             'propiedad' => [
                 'prp_id'     => $propiedad->prp_id,
                 'prp_atbid'  => $propiedad->prp_atbid,
                 'prp_nombre' => $propiedad->prp_nombre,
                 'prp_codigo' => $propiedad->prp_codigo,
             ],
-        ]);
+        ], 201);
     }
-
 
     public function destroyPropiedad(string $id)
     {
-        $propiedad = Propiedad::findOrFail($id);
+        $propiedad = Propiedad::find($id);
+        if (!$propiedad) {
+            return response()->json(['message' => 'Propiedad no encontrada'], 404);
+        }
+
         $propiedad->delete();
 
-        return response()->json(['message' => 200]);
+        return response()->json(['message' => 'Propiedad eliminada correctamente'], 200);
     }
 
     /**

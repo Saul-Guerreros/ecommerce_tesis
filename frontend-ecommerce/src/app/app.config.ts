@@ -1,6 +1,6 @@
 import { registerLocaleData } from '@angular/common';
 import { ApplicationConfig, DEFAULT_CURRENCY_CODE, LOCALE_ID } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withInMemoryScrolling } from '@angular/router';
 
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideClientHydration } from '@angular/platform-browser';
@@ -21,8 +21,8 @@ export const appConfig: ApplicationConfig = {
     // Moneda por defecto del pipe `currency` (sin esto, `| currency` a secas
     // mostraría USD y el guaraní no tendría símbolo Gs.).
     { provide: DEFAULT_CURRENCY_CODE, useValue: 'PYG' },
-    provideRouter(routes),
+    provideRouter(routes,withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' })),
     provideAnimations(),
     provideToastr(),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor])), provideClientHydration(), provideClientHydration(), CookieService,PermisionAuth]
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor])), provideClientHydration(), CookieService,PermisionAuth]
 };

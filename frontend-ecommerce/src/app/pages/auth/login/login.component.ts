@@ -1,4 +1,4 @@
-import { Component, ElementRef, NgZone, ViewChild, afterNextRender } from '@angular/core';
+import { Component, ElementRef, NgZone, OnInit, ViewChild, afterNextRender } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
 import { AuthService } from '../service/auth.service';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -12,21 +12,17 @@ import { environment } from '../../../../environments/environment';
   standalone: true,
   imports: [FormsModule, RouterModule],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.css'
+  styleUrl: './login.component.css',
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
+  email = '';
+  password = '';
+  /** true: sesión de 30 días. false: duración normal (JWT_TTL). */
+  remember = false;
+  code_user = '';
 
-  email: string = '';
-  password: string = '';
-  remember: boolean = false;
-  code_user: string = '';
-
-  /**
-   * Ruta a la que volver después de iniciar sesión. La manda
-   * carrito.component.ts cuando el invitado toca "Continuar con el pago"
-   * (queryParams: { redirect: '/proceso-de-pago' }). Si no viene, home.
-   */
-  redirect: string = '/';
+  /** Ruta a la que volver tras iniciar sesión (ej. /proceso-de-pago). */
+  redirect = '/';
 
   /** Bloquea el botón mientras dura login + sincronización del carrito. */
   procesando = false;
@@ -34,7 +30,7 @@ export class LoginComponent {
   /** Contenedor donde Google dibuja su botón oficial. */
   @ViewChild('googleBtn') googleBtn?: ElementRef<HTMLDivElement>;
 
-   constructor(
+  constructor(
     private toastr: ToastrService,
     private authService: AuthService,
     private carritoService: CarritoService,
@@ -43,60 +39,50 @@ export class LoginComponent {
     public router: Router,
     public activedRoute: ActivatedRoute,
   ) {
-    // Se ejecuta solo en el navegador, después del primer render (compatible con SSR)
+    // Solo en el navegador, después del primer render (compatible con SSR)
     afterNextRender(() => this.renderizarBotonGoogle());
   }
 
   ngOnInit(): void {
     if (this.authService.token && this.authService.user) {
-      setTimeout(() => {
-        this.router.navigateByUrl("/");
-      }, 500);
+      setTimeout(() => this.router.navigateByUrl('/'), 500);
       return;
     }
 
     this.activedRoute.queryParams.subscribe((resp: any) => {
       this.code_user = resp.code;
-      // Se acepta solo una ruta interna: un redirect abierto permitiría
-      // mandar al usuario a un dominio externo desde un link armado.
+      // Solo rutas internas: evita redirecciones abiertas a dominios externos.
       this.redirect = resp.redirect?.startsWith('/') ? resp.redirect : '/';
     });
 
     if (this.code_user) {
-      let data = {
-        code_user: this.code_user,
-      }
-
-      this.authService.verifiedAuth(data).subscribe((resp: any) => {
+      this.authService.verifiedAuth({ code_user: this.code_user }).subscribe((resp: any) => {
         if (resp.message == 403) {
-          this.toastr.error("validacion", "El codigo no pertenece a ningun usuario");
+          this.toastr.error('El código no pertenece a ningún usuario.', 'Verificación');
         }
         if (resp.message == 200) {
-          this.toastr.success("Exito", "El correo ha sido verificado ingresar a la tienda");
-          setTimeout(() => {
-            this.router.navigateByUrl("/login");
-          }, 500);
+          this.toastr.success('Tu correo fue verificado. Ya podés iniciar sesión.', 'Cuenta verificada');
+          setTimeout(() => this.router.navigateByUrl('/login'), 500);
         }
-      })
+      });
     }
   }
 
-  login() {
-    if (!this.email || !this.password) {
-      this.toastr.error("validacion", "Necesitas ingresar todos los campos");
+  login(): void {
+    if (this.procesando) return;
+
+    if (!this.email.trim() || !this.password) {
+      this.toastr.warning('Ingresá tu correo y tu contraseña.', 'Datos incompletos');
       return;
     }
 
-    if (this.procesando) {
-      return;
-    }
     this.procesando = true;
-
-    this.authService.login(this.email, this.password).subscribe({
-      next: (resp: any) => this.procesarRespuestaLogin(
-        resp,
-        'Las credenciales son incorrectas. Si tu cuenta es nueva, revisa tu correo para verificarla.'
-      ),
+    this.authService.login(this.email.trim(), this.password, this.remember).subscribe({
+      next: (resp: any) =>
+        this.procesarRespuestaLogin(
+          resp,
+          'Correo o contraseña incorrectos. Si tu cuenta es nueva, revisá tu correo para activarla.'
+        ),
       error: (err) => this.manejarErrorLogin(err),
     });
   }
@@ -107,8 +93,7 @@ export class LoginComponent {
 
     this.googleIdentity
       .renderizarBoton(this.googleBtn.nativeElement, environment.GOOGLE_CLIENT_ID, (credential) =>
-        // El callback de Google se ejecuta fuera de Angular: se reingresa a la zona
-        // para que funcionen la navegación y los toasts.
+        // El callback de Google corre fuera de Angular: se reingresa a la zona.
         this.zone.run(() => this.loginConGoogle(credential))
       )
       .catch((err) => console.error(err));
@@ -118,16 +103,17 @@ export class LoginComponent {
     if (this.procesando) return;
     this.procesando = true;
 
-    this.authService.loginGoogle(credential).subscribe({
-      next: (resp: any) => this.procesarRespuestaLogin(resp, 'Esta cuenta de Google no tiene acceso a la tienda.'),
+    this.authService.loginGoogle(credential, this.remember).subscribe({
+      next: (resp: any) =>
+        this.procesarRespuestaLogin(resp, 'Esta cuenta de Google no tiene acceso a la tienda.'),
       error: (err) => this.manejarErrorLogin(err),
     });
   }
 
-  /** Respuesta común para el login con email/contraseña y con Google. */
+  /** Respuesta común para login con correo y con Google. */
   private procesarRespuestaLogin(resp: any, mensajeNoAutorizado: string): void {
     if (resp === true) {
-      this.toastr.success("Exito", 'Bienvenido a la tienda');
+      this.toastr.success('¡Bienvenido a la tienda!', 'Sesión iniciada');
       this.sincronizarCarrito();
       return;
     }
@@ -135,43 +121,36 @@ export class LoginComponent {
     this.procesando = false;
 
     if (resp?.status === 423) {
-      this.toastr.error("Cuenta bloqueada", resp.error?.error || "Tu cuenta fue bloqueada. Contacta al soporte.");
+      this.toastr.error(
+        resp.error?.error || 'Tu cuenta fue bloqueada. Contactá al soporte.',
+        'Cuenta bloqueada'
+      );
       return;
     }
 
     if (resp?.status === 401) {
-      this.toastr.error("Validacion", mensajeNoAutorizado);
+      this.toastr.error(mensajeNoAutorizado, 'No se pudo ingresar');
       return;
     }
 
-    this.toastr.error("Error", 'No se pudo iniciar sesión. Intentá nuevamente.');
+    this.toastr.error('No se pudo iniciar sesión. Intentá nuevamente.', 'Error');
   }
 
   private manejarErrorLogin(err: any): void {
     this.procesando = false;
     console.error('Error en el login:', err);
-    this.toastr.error("Error", 'No se pudo iniciar sesión. Intentá nuevamente.');
+    this.toastr.error('No se pudo iniciar sesión. Intentá nuevamente.', 'Error');
   }
 
   /**
-   * Vuelca el carrito que el invitado armó en localStorage al carrito
-   * persistente del usuario recién autenticado, y recién ahí redirige.
-   *
-   * La redirección va en los dos callbacks a propósito: si la
-   * sincronización falla, el usuario igual ya inició sesión y no tiene
-   * sentido dejarlo trabado en el formulario de login. El carrito se
-   * vuelve a resolver solo en la próxima llamada a cargar().
+   * Vuelca el carrito del invitado (localStorage) al carrito del usuario
+   * y recién ahí redirige. Si falla, igual redirige: la sesión ya existe.
    */
   private sincronizarCarrito(): void {
     this.carritoService.sincronizarTrasLogin().subscribe({
       next: (resp: any) => {
-        // Excepción documentada del contrato: el backend informa en
-        // "omitidos" los ítems que no pudo agregar o cuya cantidad topeó
-        // por stock, para poder avisarle al usuario.
         if (resp?.omitidos?.length) {
-          resp.omitidos.forEach((item: any) =>
-            this.toastr.warning(item.motivo, 'Carrito')
-          );
+          resp.omitidos.forEach((item: any) => this.toastr.warning(item.motivo, 'Carrito'));
         }
         this.procesando = false;
         this.router.navigateByUrl(this.redirect);

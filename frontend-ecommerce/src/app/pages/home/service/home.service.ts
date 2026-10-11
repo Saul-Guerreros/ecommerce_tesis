@@ -2,6 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { AuthService } from '../../auth/service/auth.service';
 import { URL_SERVICIOS } from '../../../config/config';
+import { Observable, throwError } from 'rxjs';
+import { catchError, shareReplay } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
@@ -18,9 +20,20 @@ export class HomeService {
     return this.http.get(URL);
   }
 
-  menus(){
-    let URL = URL_SERVICIOS+"/tienda/categorias/menu";
-    return this.http.get(URL);
+    private menus$?: Observable<any>;
+
+  menus(): Observable<any> {
+    if (!this.menus$) {
+      const URL = URL_SERVICIOS + '/tienda/categorias/menu';
+      this.menus$ = this.http.get(URL).pipe(
+        shareReplay(1),
+        catchError((err) => {
+          this.menus$ = undefined; // si falla, el próximo llamado reintenta
+          return throwError(() => err);
+        })
+      );
+    }
+    return this.menus$;
   }
 
   showProduct(slug:string,code_discount:string){

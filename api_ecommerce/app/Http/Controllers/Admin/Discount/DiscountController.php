@@ -10,6 +10,8 @@ use App\Models\Discount\DiscountProduct;
 use App\Models\Discount\DiscountCategorie;
 use App\Http\Resources\Discount\DiscountResource;
 use App\Http\Resources\Discount\DiscountCollection;
+use Illuminate\Support\Facades\Validator;
+use App\Models\Producto;
 
 class DiscountController extends Controller
 {
@@ -38,6 +40,7 @@ class DiscountController extends Controller
      */
     public function store(Request $request)
     {
+		if ($error = $this->validarCampania($request, false)) return $error;
         // Valida que el/los producto(s), categoria(s) o marca(s) elegidos no
         // esten ya dentro de otra campaña del MISMO tipo (discount_type) y
         // MISMO canal (type_campaing) en un rango de fechas que se solape.
@@ -157,6 +160,7 @@ class DiscountController extends Controller
      */
     public function update(Request $request, string $id)
     {
+		 if ($error = $this->validarCampania($request, true)) return $error;
         if($request->discount_type == 1){
             foreach ($request->product_selected as $key => $product_selected) {
                 $EXIST_DISCOUNT_START_DATE = Discount::where("type_campaing",$request->type_campaing)
@@ -281,5 +285,85 @@ class DiscountController extends Controller
         // Si la campaña ya esta ligada a una venta, evalua si deberias
         // bloquear el borrado aqui (igual que en CuponeController::destroy).
         return response()->json(["message" => 200]);
+    }
+	
+	/**
+     * Reglas de fechas y descuento comunes a store y update.
+     * En edición no se exige que el inicio sea >= hoy (la campaña puede estar en curso).
+     */
+    private function validarCampania(Request $request, bool $esEdicion)
+    {
+        $validator = Validator::make($request->all(), [
+            'discount'      => 'required|numeric|min:1',
+            'type_discount' => 'required|in:1,2',
+            'type_campaing' => 'required|in:1,2,3',
+            'start_date'    => $esEdicion ? 'required|date' : 'required|date|after_or_equal:today',
+            'end_date'      => 'required|date|after_or_equal:start_date|after_or_equal:today',
+        ], [
+            'discount.min'                => 'El descuento debe ser mayor a 0.',
+            'start_date.after_or_equal'   => 'La fecha de inicio no puede ser anterior a hoy.',
+            'end_date.after_or_equal'     => 'La fecha de fin no puede ser anterior al inicio ni estar en el pasado.',
+        ]);
+
+        $validator->after(function ($v) use ($request) {
+            if ((int) $request->type_discount === 1 && (float) $request->discount > 100) {
+                $v->errors()->add('discount', 'El porcentaje no puede superar 100.');
+            }
+            if ((int) $request->type_campaing === 2 && $request->start_date !== $request->end_date) {
+                $v->errors()->add('end_date', 'Una oferta relámpago dura un solo día.');
+            }
+        });
+
+        return $validator->fails()
+            ? response()->json(['errors' => $validator->errors()], 422)
+            : null;
+    }
+	
+	    /**
+     * GET /admin/discounts/producto/{id}/vigentes
+     * Campañas activas o programadas que alcanzan al producto: por producto,
+     * por su categoría o por su marca. Misma lógica que VitrinaController,
+     * para que el panel muestre exactamente lo que ve el cliente.
+     */
+    public function vigentesPorProducto(int $id)
+    {
+        $producto = Producto::with('publicacionWeb')->find($id);
+
+        if (!$producto) {
+            return response()->json(['message' => 'Producto no encontrado'], 404);
+        }
+
+        $hoy   = now()->toDateString();
+        $catId = $producto->publicacionWeb?->pub_catid;
+
+        $campanias = Discount::where('state', 1)
+            ->whereDate('end_date', '>=', $hoy)
+            ->where(function ($q) use ($producto, $catId) {
+                $q->where(fn ($s) => $s->where('discount_type', 1)
+                        ->whereHas('products', fn ($p) => $p->where('product_id', $producto->prd_id)))
+                  ->orWhere(fn ($s) => $s->where('discount_type', 3)
+                        ->whereHas('brands', fn ($b) => $b->where('brand_id', $producto->prd_marid)));
+
+                if ($catId) {
+                    $q->orWhere(fn ($s) => $s->where('discount_type', 2)
+                        ->whereHas('categories', fn ($c) => $c->where('categorie_id', $catId)));
+                }
+            })
+            ->orderBy('start_date')
+            ->get();
+
+        return response()->json([
+            'data' => $campanias->map(fn ($d) => [
+                'id'            => $d->id,
+                'code'          => $d->code,
+                'type_campaing' => (int) $d->type_campaing,
+                'discount_type' => (int) $d->discount_type,
+                'type_discount' => (int) $d->type_discount,
+                'discount'      => (float) $d->discount,
+                'start_date'    => \Carbon\Carbon::parse($d->start_date)->toDateString(),
+                'end_date'      => \Carbon\Carbon::parse($d->end_date)->toDateString(),
+                'en_curso'      => \Carbon\Carbon::parse($d->start_date)->toDateString() <= $hoy,
+            ]),
+        ], 200);
     }
 }

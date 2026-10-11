@@ -34,4 +34,13 @@ export class CategoriesService {
   delete(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`);
   }
+  subirImagen(id: number, archivo: File): Observable<Categoria> {
+    const datos = new FormData();
+    datos.append('imagen', archivo);
+    return this.http.post<Categoria>(`${this.apiUrl}/${id}/imagen`, datos);
+  }
+
+  eliminarImagen(id: number): Observable<Categoria> {
+    return this.http.delete<Categoria>(`${this.apiUrl}/${id}/imagen`);
+  }
 }

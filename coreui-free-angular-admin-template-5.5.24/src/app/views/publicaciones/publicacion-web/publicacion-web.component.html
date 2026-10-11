@@ -54,9 +54,9 @@
           <hr />
           <h6 class="text-muted">Secciones del home</h6>
           <p class="text-body-secondary small">
-            Elegí en qué secciones manuales de la página principal aparece este producto. "New Arrivals" (por fecha
-            de publicación) y "Discount Products"/"Deal of The Day" (por campañas activas en
-            <a routerLink="/discounts/list">Descuentos</a>) se resuelven solos — no hace falta tildarlos acá.
+            Elegí en qué secciones manuales de la página principal aparece este producto. "Novedades" (por fecha
+            de publicación) y "Productos con descuento"/"Oferta del día" (por campañas activas en
+            <a routerLink="/discounts/list">Descuentos</a>) se resuelven solos
           </p>
         </div>
 
@@ -69,7 +69,7 @@
               [checked]="seccionActiva('featured')"
               (change)="onToggleSeccion('featured', $any($event.target).checked)"
             />
-            <label cFormCheckLabel for="featured_activo">Featured Products</label>
+            <label cFormCheckLabel for="featured_activo">Productos destacados</label>
           </div>
           <input
             *ngIf="seccionActiva('featured')"
@@ -92,7 +92,7 @@
               [checked]="seccionActiva('trending')"
               (change)="onToggleSeccion('trending', $any($event.target).checked)"
             />
-            <label cFormCheckLabel for="trending_activo">Trending Products</label>
+            <label cFormCheckLabel for="trending_activo">Productos en tendencia</label>
           </div>
           <input
             *ngIf="seccionActiva('trending')"
@@ -115,7 +115,7 @@
               [checked]="seccionActiva('selling')"
               (change)="onToggleSeccion('selling', $any($event.target).checked)"
             />
-            <label cFormCheckLabel for="selling_activo">Selling Products</label>
+            <label cFormCheckLabel for="selling_activo">Productos mas vendidos</label>
           </div>
           <input
             *ngIf="seccionActiva('selling')"
@@ -133,19 +133,37 @@
         </div>
 
         <div class="col-12">
-          <a
-            cButton
-            color="warning"
-            variant="outline"
-            size="sm"
-            [routerLink]="['/discounts/register']"
-            [queryParams]="{ producto_id: productoId }"
-          >
-            Crear oferta para este producto
+          <label cLabel class="fw-semibold">Campañas de descuento</label>
+
+          <div *ngIf="campanias.length; else sinCampanias" class="border rounded mb-2">
+            <div *ngFor="let c of campanias; let ultimo = last"
+                 class="d-flex flex-wrap align-items-center gap-2 px-3 py-2"
+                 [class.border-bottom]="!ultimo">
+              <c-badge [color]="c.en_curso ? 'success' : 'info'">
+                {{ c.en_curso ? 'En curso' : 'Programada' }}
+              </c-badge>
+              <span class="fw-semibold">
+                -{{ c.discount | number: (c.type_discount === 1 ? '1.0-2' : '1.0-0') }}{{ c.type_discount === 1 ? '%' : ' Gs.' }}
+              </span>
+              <span class="text-body-secondary small">
+                {{ nombresCampania[c.type_campaing] }} · aplica por {{ nombresAlcance[c.discount_type] }} ·
+                <ng-container *ngIf="c.start_date === c.end_date; else rango">{{ c.start_date | date: 'dd/MM/yyyy' }}</ng-container>
+                <ng-template #rango>{{ c.start_date | date: 'dd/MM/yyyy' }} al {{ c.end_date | date: 'dd/MM/yyyy' }}</ng-template>
+              </span>
+                <button cButton type="button" size="sm" color="info" variant="ghost" class="ms-auto"(click)="irAVerCampania(c.id)">Ver campaña</button>
+            </div>
+          </div>
+
+          <ng-template #sinCampanias>
+            <div class="text-body-secondary small mb-2">Este producto no tiene campañas activas ni programadas.</div>
+          </ng-template>
+
+          <button cButton type="button" color="warning" variant="outline" size="sm" (click)="irACrearCampania()">
+            Crear campaña de descuento para este producto
             <svg cIcon name="cilArrowRight" size="sm"></svg>
-          </a>
+          </button>
           <span class="text-body-secondary small ms-2">
-            Para que aparezca en "Discount Products" o "Deal of The Day".
+            Tus cambios en esta publicación se conservan al volver.
           </span>
         </div>
 
@@ -226,6 +244,7 @@
             [categoriaId]="form.value.pub_catid ?? null"
             [esVariante]="esVariante"
             [productoBaseId]="producto?.prd_padre_id ?? null"
+            [valoresIniciales]="fichaInicial"
             [errores]="erroresFicha">
           </app-ficha-tecnica-form>
         </div>
@@ -282,31 +301,25 @@
           <label cLabel for="imagenes">Imágenes</label>
           <input cFormControl type="file" id="imagenes" multiple accept="image/*" (change)="onArchivosSeleccionados($event)" />
           <div class="form-text">Puedes seleccionar varias imágenes a la vez, o repetir la selección para seguir agregando más.</div>
-
-          <div class="d-flex flex-wrap gap-2 mt-2" *ngIf="publicacion?.imagenes?.length">
+                   <!-- Imágenes ya guardadas -->
+          <div class="d-flex flex-wrap gap-3 mt-3" *ngIf="publicacion?.imagenes?.length">
             <div class="position-relative" *ngFor="let img of publicacion?.imagenes">
-              <img [src]="obtenerUrlImagen(img.img_url)" width="80" height="80" style="object-fit: cover; border-radius: 4px;" />
-              <span *ngIf="img.img_princi" cBadge color="primary" class="position-absolute bottom-0 start-0" style="font-size: 9px;">Principal</span>
-              <button
-                type="button"
-                class="btn-close btn-close-white bg-danger rounded-circle position-absolute top-0 end-0"
-                style="width: 16px; height: 16px; font-size: 8px;"
-                (click)="quitarImagenExistente(img.img_id)"
-                title="Eliminar imagen"
-              ></button>
+              <img [src]="obtenerUrlImagen(img.img_url)" width="96" height="96"
+                   class="border rounded" style="object-fit: cover;" />
+              <span *ngIf="img.img_princi" cBadge color="primary"
+                    class="position-absolute bottom-0 start-0 m-1" style="font-size: 10px;">Principal</span>
+              <button type="button" class="btn-quitar-img" title="Eliminar imagen"
+                      (click)="quitarImagenExistente(img.img_id)">&times;</button>
             </div>
           </div>
 
-          <div class="d-flex flex-wrap gap-2 mt-2" *ngIf="previews.length">
+          <!-- Imágenes nuevas (aún no guardadas) -->
+          <div class="d-flex flex-wrap gap-3 mt-3" *ngIf="previews.length">
             <div class="position-relative" *ngFor="let p of previews; let i = index">
-              <img [src]="p" width="80" height="80" style="object-fit: cover; border-radius: 4px;" />
-              <button
-                type="button"
-                class="btn-close btn-close-white bg-danger rounded-circle position-absolute top-0 end-0"
-                style="width: 16px; height: 16px; font-size: 8px;"
-                (click)="quitarImagenNueva(i)"
-                title="Quitar imagen"
-              ></button>
+              <img [src]="p" width="96" height="96" class="border border-success rounded" style="object-fit: cover;" />
+              <span cBadge color="success" class="position-absolute bottom-0 start-0 m-1" style="font-size: 10px;">Nueva</span>
+              <button type="button" class="btn-quitar-img" title="Quitar imagen"
+                      (click)="quitarImagenNueva(i)">&times;</button>
             </div>
           </div>
         </div>
@@ -322,3 +335,29 @@
     </form>
   </c-card-body>
 </c-card>
+<style>
+  .btn-quitar-img {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 26px;
+    height: 26px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--cui-danger, #e55353);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s;
+  }
+  .btn-quitar-img:hover {
+    transform: scale(1.12);
+  }
+</style>

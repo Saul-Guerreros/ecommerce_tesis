@@ -1,0 +1,120 @@
+<main class="tm-legal">
+  <div class="uk-container">
+    <article class="tm-legal-contenido">
+      <ul class="uk-breadcrumb uk-margin-remove">
+        <li><a routerLink="/">Inicio</a></li>
+        <li><span>Términos y Condiciones</span></li>
+      </ul>
+      <h1>Términos y Condiciones</h1>
+      <p class="tm-legal-fecha">Última actualización: {{ tienda.ultimaActualizacion }}</p>
+
+      <p class="tm-legal-aviso">
+        Al registrarte o comprar en {{ tienda.nombreComercial }} aceptás estos Términos y Condiciones.
+        Te recomendamos leerlos junto con nuestra
+        <a routerLink="/politica-de-privacidad">Política de Privacidad</a>.
+      </p>
+
+      <h2>1. Identificación del proveedor</h2>
+      <ul>
+        <li><strong>Nombre comercial:</strong> {{ tienda.nombreComercial }}</li>
+        <li><strong>Razón social:</strong> {{ tienda.razonSocial }}</li>
+        <li><strong>RUC:</strong> {{ tienda.ruc }}</li>
+        <li><strong>Domicilio:</strong> {{ tienda.direccion }}</li>
+        <li><strong>Contacto:</strong> {{ tienda.email }} · {{ tienda.telefono }} ({{ tienda.horario }})</li>
+      </ul>
+
+      <h2>2. Alcance</h2>
+      <p>
+        Estos términos regulan el uso del sitio web y la compra de productos ofrecidos por
+        {{ tienda.nombreComercial }}. Se aplican de forma complementaria a la Ley N.º 1334/98 de Defensa
+        del Consumidor y del Usuario, a la Ley N.º 4868/2013 de Comercio Electrónico y demás normas vigentes
+        en la República del Paraguay.
+      </p>
+
+      <h2>3. Cuenta de usuario</h2>
+      <ul>
+        <li>Para comprar es necesario crear una cuenta con datos verdaderos y actualizados, o ingresar con una cuenta de Google.</li>
+        <li>La cuenta se activa al confirmar el correo electrónico.</li>
+        <li>Sos responsable de mantener la confidencialidad de tu contraseña y de la actividad realizada con tu cuenta.</li>
+        <li>Por seguridad, la cuenta puede bloquearse temporalmente tras varios intentos de inicio de sesión fallidos.</li>
+        <li>Podemos suspender cuentas usadas de forma fraudulenta o contraria a estos términos.</li>
+      </ul>
+
+      <h2>4. Productos, precios y stock</h2>
+      <ul>
+        <li>Los precios se expresan en guaraníes (Gs.) e incluyen IVA, salvo indicación en contrario.</li>
+        <li>Las imágenes son ilustrativas. Las características vinculantes son las indicadas en la ficha técnica de cada producto.</li>
+        <li>Todos los productos están sujetos a disponibilidad de stock al momento de confirmar el pedido.</li>
+        <li>Algunos productos pueden tener precio mayorista o venderse solo a partir de una cantidad mínima, lo cual se informa en cada producto.</li>
+        <li>Ante un error evidente de precio o de publicación, nos comunicaremos para ofrecerte confirmar la compra al precio correcto o cancelarla con la devolución total de lo abonado.</li>
+      </ul>
+
+      <h2>5. Formas de pago</h2>
+      <ul>
+        <li><strong>Contado:</strong> pago total del precio publicado.</li>
+        <li><strong>Cuotas:</strong> el número de cuotas y el monto de cada una se muestran antes de confirmar la compra y los calcula el sistema según las condiciones vigentes a ese momento.</li>
+        <li>Los pagos en línea se procesan mediante plataformas de terceros ([PayPal / Mercado Pago / otros]). {{ tienda.nombreComercial }} no almacena los datos de tu tarjeta.</li>
+      </ul>
+
+      <h2>6. Proceso de compra</h2>
+      <p>
+        El pedido se considera realizado cuando confirmás la compra y el sistema te muestra el número de pedido.
+        Recibirás la confirmación por correo electrónico. La factura se emite con los datos de facturación que
+        indiques en el proceso de compra; verificá que sean correctos.
+      </p>
+
+      <h2>7. Envíos y retiro</h2>
+      <p>
+        [Indicar zonas de cobertura, costos de envío, plazos estimados de entrega y la opción de retiro en el
+        local de {{ tienda.direccion }}.] Los plazos son estimativos y pueden variar por causas ajenas a la tienda.
+      </p>
+
+      <h2>8. Garantía, cambios y devoluciones</h2>
+      <ul>
+        <li>Los productos cuentan con la garantía legal y, cuando corresponda, la garantía del fabricante: [plazo por tipo de producto].</li>
+        <li>Para hacer válida la garantía es necesario presentar la factura y el producto con sus accesorios.</li>
+        <li>No cubre daños por mal uso, golpes, humedad, sobretensión eléctrica ni manipulación por terceros no autorizados.</li>
+        <li>Desistimiento de compras a distancia: [plazo en días y condiciones, conforme a la normativa vigente: producto sin uso, en su empaque original y con todos sus accesorios].</li>
+        <li>Para iniciar un cambio, devolución o reclamo escribinos a {{ tienda.email }}.</li>
+      </ul>
+
+      <h2>9. Promociones y cupones</h2>
+      <p>
+        Las promociones, descuentos y cupones tienen vigencia y condiciones propias informadas en cada caso.
+        No son acumulables salvo que se indique lo contrario.
+      </p>
+
+      <h2>10. Herramientas de inteligencia artificial</h2>
+      <p>
+        El buscador inteligente y el asistente virtual utilizan inteligencia artificial para interpretar tus consultas
+        y sugerir productos. Sus respuestas son orientativas: ante cualquier diferencia, prevalece la información de la
+        ficha del producto y la confirmada en el pedido.
+      </p>
+
+      <h2>11. Propiedad intelectual</h2>
+      <p>
+        Los contenidos del sitio (textos, diseño, logotipos e imágenes propias) pertenecen a {{ tienda.nombreComercial }}
+        o a sus respectivos titulares. Las marcas de los productos pertenecen a sus fabricantes.
+      </p>
+
+      <h2>12. Responsabilidad</h2>
+      <p>
+        Trabajamos para que el sitio funcione de forma continua y segura, pero pueden existir interrupciones por
+        mantenimiento o causas técnicas ajenas. No respondemos por daños derivados del uso indebido del sitio ni por
+        fallas de servicios de terceros.
+      </p>
+
+      <h2>13. Modificaciones</h2>
+      <p>
+        Podemos actualizar estos términos. La versión vigente es la publicada en esta página, con su fecha de
+        actualización. Los cambios no afectan a pedidos ya confirmados.
+      </p>
+
+      <h2>14. Ley aplicable y reclamos</h2>
+      <p>
+        Estos términos se rigen por las leyes de la República del Paraguay. Ante cualquier reclamo podés contactarnos
+        primero a {{ tienda.email }}. También podés recurrir a la Secretaría de Defensa del Consumidor y el Usuario (SEDECO).
+      </p>
+    </article>
+  </div>
+</main>

@@ -1,0 +1,47 @@
+<article class="tm-product-card uk-height-1-1">
+  <div class="tm-product-card-media">
+    <div class="tm-ratio tm-ratio-4-3">
+      <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
+        @if (producto.descuento_pct || mensajePocoStock) {
+          <div class="tm-product-card-labels">
+            @if (producto.descuento_pct) {
+              <span class="uk-label uk-label-danger">-{{ producto.descuento_pct }}%</span>
+            }
+            @if (mensajePocoStock; as msj) {
+              <span class="uk-label uk-label-warning">{{ msj }}</span>
+            }
+          </div>
+        }
+        <figure class="tm-media-box-wrap">
+          <img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagen" />
+        </figure>
+      </a>
+    </div>
+  </div>
+
+  <div class="tm-product-card-body">
+    <div class="tm-product-card-info">
+      <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
+      <h3 class="tm-product-card-title">
+        <a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a>
+      </h3>
+    </div>
+
+    <div class="tm-product-card-prices">
+      @if (producto.descuento_pct) {
+        <del class="uk-text-meta">{{ producto.precio_original | monedaPy }}</del>
+      }
+    </div>
+
+    <div class="tm-product-card-shop" [class.sin-cuotas]="!producto.cuotas?.length">
+      <div class="tm-product-card-add">
+        <app-cuotero
+          [producto]="producto"
+          [procesando]="agregando"
+          [sinStock]="sinStock"
+          (agregar)="agregarAlCarrito($event)">
+        </app-cuotero>
+      </div>
+    </div>
+  </div>
+</article>

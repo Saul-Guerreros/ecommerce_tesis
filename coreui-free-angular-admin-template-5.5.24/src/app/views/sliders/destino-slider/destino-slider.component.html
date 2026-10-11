@@ -1,0 +1,52 @@
+<div [formGroup]="form">
+  <label class="form-label fw-semibold d-block">Destino del banner</label>
+
+  <div class="d-flex flex-wrap gap-2">
+    <button *ngFor="let t of tipos" type="button" class="btn btn-sm"
+            [class.btn-primary]="tipo === t.valor" [class.btn-outline-primary]="tipo !== t.valor"
+            (click)="elegirTipo(t.valor)">
+      {{ t.etiqueta }}
+    </button>
+  </div>
+  <div class="form-text mb-3">{{ ayuda }}</div>
+
+  <div class="row g-2" *ngIf="tipo">
+    <!-- Buscador (solo productos) -->
+    <div class="col-12" *ngIf="tipo === 'producto'">
+      <div class="input-group">
+        <input type="text" class="form-control" placeholder="Buscar producto publicado por título..."
+               [(ngModel)]="productoSearch" [ngModelOptions]="{ standalone: true }"
+               (keydown.enter)="$event.preventDefault(); cargar()" />
+        <button class="btn btn-outline-secondary" type="button" (click)="cargar()">Buscar</button>
+      </div>
+    </div>
+
+    <!-- Producto / Categoría / Marca / Campaña -->
+    <div class="col-lg-8" *ngIf="usaSelect">
+      <select class="form-select" formControlName="sld_destino_id">
+        <option [ngValue]="null">Seleccione...</option>
+        <option *ngFor="let o of opciones" [ngValue]="o.id">{{ o.nombre }}</option>
+      </select>
+      <div class="form-text text-warning" *ngIf="tipo === 'campania' && !campanias.length">
+        No hay campañas activas o programadas. Crea una en Campañas de descuento.
+      </div>
+    </div>
+
+    <!-- Búsqueda -->
+    <div class="col-lg-8" *ngIf="tipo === 'busqueda'">
+      <input type="text" class="form-control" formControlName="sld_destino_valor" maxlength="255"
+             placeholder="Ej: gamer, monitor 27, notebook i7" />
+    </div>
+
+    <!-- Enlace manual -->
+    <div class="col-lg-8" *ngIf="tipo === 'url'">
+      <input type="text" class="form-control" formControlName="sld_destino_valor" maxlength="255"
+             placeholder="Ej: /productos-busqueda?en_oferta=1  o  https://wa.me/595981000000" />
+    </div>
+
+    <div class="col-12 small">
+      <span class="text-body-secondary">Enlace que se usará en la tienda:</span>
+      <code class="ms-1">{{ enlaceGenerado ?? '—' }}</code>
+    </div>
+  </div>
+</div>

@@ -37,22 +37,11 @@
             <c-badge color="danger" *ngIf="atributo.atb_estado == 2">Inactivo</c-badge>
           </td>
           <td>{{ atributo.propiedades?.length || 0 }}</td>
-          <td class="text-end">
-            <button
-              *ngIf="esSeleccionable(atributo.atb_tipo)"
-              cButton
-              size="sm"
-              color="info"
-              variant="outline"
-              class="me-1"
-              (click)="openPropiedades(atributo)"
-            >
-              Propiedades
-            </button>
-            <button cButton size="sm" color="light" class="me-1" (click)="openEdit(atributo)">Editar</button>
-            <button cButton size="sm" color="danger" variant="outline" (click)="openDelete(atributo)">
-              Eliminar
-            </button>
+           <td class="text-end text-nowrap">
+            <button *ngIf="esSeleccionable(atributo.atb_tipo)" cButton size="sm" color="primary"
+                    class="me-2" (click)="openPropiedades(atributo)">Propiedades</button>
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="openEdit(atributo)">Editar</button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="openDelete(atributo)">Eliminar</button>
           </td>
         </tr>
         <tr *ngIf="!atributos.length">
@@ -78,71 +67,72 @@
 </c-card>
 
 <!-- ================= MODAL: Crear ================= -->
-<c-modal [visible]="showCreate" (visibleChange)="showCreate = $event">
+<c-modal [visible]="showCreate" (visibleChange)="showCreate = $event" backdrop="static">
   <c-modal-header>
-    <h5 cModalTitle>Nuevo Atributo</h5>
+    <h5 cModalTitle>Nuevo atributo</h5>
   </c-modal-header>
   <c-modal-body>
-    <div class="alert alert-danger" *ngIf="createError">{{ createError }}</div>
     <div class="mb-3">
-      <label class="form-label">Nombre del atributo (*)</label>
-      <input type="text" class="form-control" [(ngModel)]="createNombre" placeholder="Ej: Color, Talla" />
+      <label cLabel>Nombre del atributo <span class="text-danger">*</span></label>
+      <input cFormControl maxlength="50" [(ngModel)]="createNombre" (ngModelChange)="createErrorNombre = null"
+             placeholder="Ej: Color, Memoria RAM" />
+      <div class="text-danger small" *ngIf="createErrorNombre">{{ createErrorNombre }}</div>
     </div>
     <div class="mb-3">
-      <label class="form-label">Tipo (*)</label>
-      <select class="form-select" [(ngModel)]="createTipo">
-        <option [value]="1">Texto</option>
-        <option [value]="2">Número</option>
-        <option [value]="3">Seleccionable</option>
-        <option [value]="4">Seleccionable Múltiple</option>
+      <label cLabel>Tipo <span class="text-danger">*</span></label>
+      <select cSelect [(ngModel)]="createTipo">
+        <option [ngValue]="1">Texto</option>
+        <option [ngValue]="2">Número</option>
+        <option [ngValue]="3">Seleccionable</option>
+        <option [ngValue]="4">Seleccionable Múltiple</option>
       </select>
-      <small class="text-muted">Los tipos "Seleccionable" habilitan la gestión de propiedades.</small>
+      <div class="form-text">Los tipos "Seleccionable" habilitan la gestión de propiedades.</div>
     </div>
     <div class="mb-3" *ngIf="esNumero(createTipo)">
-      <label class="form-label">Unidad de medida</label>
-      <input type="text" class="form-control" maxlength="15" [(ngModel)]="createUnidad" placeholder="Ej: GB, pulgadas, GHz" />
-      <small class="text-muted">Se muestra junto al número en la ficha del producto (ej: 16 GB).</small>
+      <label cLabel>Unidad de medida</label>
+      <input cFormControl maxlength="15" [(ngModel)]="createUnidad" placeholder="Ej: GB, pulgadas, GHz" />
+      <div class="form-text">Se muestra junto al número en la ficha del producto (ej: 16 GB).</div>
     </div>
   </c-modal-body>
   <c-modal-footer>
-    <button cButton color="secondary" (click)="showCreate = false">Cerrar</button>
-    <button cButton color="primary" (click)="guardarCreate()">
-      Registrar
-      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    <button cButton color="secondary" (click)="showCreate = false" [disabled]="guardandoCreate">Cancelar</button>
+    <button cButton color="primary" (click)="guardarCreate()" [disabled]="guardandoCreate">
+      <c-spinner size="sm" *ngIf="guardandoCreate" class="me-2"></c-spinner>
+      {{ guardandoCreate ? 'Guardando...' : 'Registrar' }}
     </button>
   </c-modal-footer>
 </c-modal>
 
 <!-- ================= MODAL: Editar ================= -->
-<c-modal [visible]="showEdit" (visibleChange)="showEdit = $event">
+<c-modal [visible]="showEdit" (visibleChange)="showEdit = $event" backdrop="static">
   <c-modal-header>
-    <h5 cModalTitle>Editar Atributo: "{{ editAtributo?.atb_nombre }}"</h5>
+    <h5 cModalTitle>Editar atributo</h5>
   </c-modal-header>
   <c-modal-body>
-    <div class="alert alert-danger" *ngIf="editError">{{ editError }}</div>
     <div class="mb-3">
-      <label class="form-label">Nombre del atributo (*)</label>
-      <input type="text" class="form-control" [(ngModel)]="editNombre" />
+      <label cLabel>Nombre del atributo <span class="text-danger">*</span></label>
+      <input cFormControl maxlength="50" [(ngModel)]="editNombre" (ngModelChange)="editErrorNombre = null" />
+      <div class="text-danger small" *ngIf="editErrorNombre">{{ editErrorNombre }}</div>
     </div>
     <div class="mb-3">
-      <label class="form-label">Tipo (*)</label>
-      <select class="form-select" [(ngModel)]="editTipo">
-        <option [value]="1">Texto</option>
-        <option [value]="2">Número</option>
-        <option [value]="3">Seleccionable</option>
-        <option [value]="4">Seleccionable Múltiple</option>
+      <label cLabel>Tipo <span class="text-danger">*</span></label>
+      <select cSelect [(ngModel)]="editTipo">
+        <option [ngValue]="1">Texto</option>
+        <option [ngValue]="2">Número</option>
+        <option [ngValue]="3">Seleccionable</option>
+        <option [ngValue]="4">Seleccionable Múltiple</option>
       </select>
     </div>
     <div class="mb-3" *ngIf="esNumero(editTipo)">
-      <label class="form-label">Unidad de medida</label>
-      <input type="text" class="form-control" maxlength="15" [(ngModel)]="editUnidad" placeholder="Ej: GB, pulgadas, GHz" />
+      <label cLabel>Unidad de medida</label>
+      <input cFormControl maxlength="15" [(ngModel)]="editUnidad" placeholder="Ej: GB, pulgadas, GHz" />
     </div>
   </c-modal-body>
   <c-modal-footer>
-    <button cButton color="secondary" (click)="showEdit = false">Cerrar</button>
-    <button cButton color="primary" (click)="guardarEdit()">
-      Actualizar
-      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
+    <button cButton color="secondary" (click)="showEdit = false" [disabled]="guardandoEdit">Cancelar</button>
+    <button cButton color="primary" (click)="guardarEdit()" [disabled]="guardandoEdit">
+      <c-spinner size="sm" *ngIf="guardandoEdit" class="me-2"></c-spinner>
+      {{ guardandoEdit ? 'Guardando...' : 'Actualizar' }}
     </button>
   </c-modal-footer>
 </c-modal>
@@ -150,18 +140,14 @@
 <!-- ================= MODAL: Eliminar ================= -->
 <c-modal [visible]="showDelete" (visibleChange)="showDelete = $event">
   <c-modal-header>
-    <h5 cModalTitle>Eliminar Atributo</h5>
+    <h5 cModalTitle>Confirmar eliminación</h5>
   </c-modal-header>
   <c-modal-body>
-    <div class="alert alert-warning" *ngIf="deleteError">{{ deleteError }}</div>
-    ¿Estás seguro de eliminar el atributo <strong>{{ deleteAtributo?.atb_nombre }}</strong>?
+    ¿Seguro que deseas eliminar el atributo <strong>{{ deleteAtributo?.atb_nombre }}</strong>?
   </c-modal-body>
   <c-modal-footer>
-    <button cButton color="secondary" (click)="showDelete = false">Cerrar</button>
-    <button cButton color="danger" (click)="confirmarDelete()">
-      Eliminar
-      <span class="spinner-border spinner-border-sm ms-2" *ngIf="isLoading$ | async"></span>
-    </button>
+    <button cButton color="secondary" (click)="showDelete = false">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="confirmarDelete()">Eliminar</button>
   </c-modal-footer>
 </c-modal>
 
@@ -171,18 +157,19 @@
     <h5 cModalTitle>Propiedades: {{ propAtributo?.atb_nombre }}</h5>
   </c-modal-header>
   <c-modal-body>
-    <div class="alert alert-danger" *ngIf="propError">{{ propError }}</div>
 
     <div class="row g-2 align-items-end mb-4">
-      <div class="col-md-4">
-        <label class="form-label">Nombre de la propiedad (*)</label>
-        <input type="text" class="form-control" [(ngModel)]="propNombre" placeholder="Ej: Rojo, S, XL" />
+       <div class="col-md-4">
+        <label cLabel>Nombre de la propiedad <span class="text-danger">*</span></label>
+        <input cFormControl maxlength="50" [(ngModel)]="propNombre" (ngModelChange)="propErrorNombre = null"
+               (keyup.enter)="guardarPropiedad()" placeholder="Ej: Rojo, 16 GB" />
+        <div class="text-danger small" *ngIf="propErrorNombre">{{ propErrorNombre }}</div>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Tipo</label>
-        <select class="form-select" [(ngModel)]="propTipoAccion">
-          <option [value]="1">Normal</option>
-          <option [value]="2">Color</option>
+        <label cLabel>Tipo</label>
+        <select cSelect [(ngModel)]="propTipoAccion">
+          <option [ngValue]="1">Normal</option>
+          <option [ngValue]="2">Color</option>
         </select>
       </div>
       <div class="col-md-3" *ngIf="propTipoAccion == 2">
@@ -217,9 +204,7 @@
             ></span>
           </td>
           <td class="text-end">
-            <button cButton size="sm" color="danger" variant="outline" (click)="eliminarPropiedad(p)">
-              Eliminar
-            </button>
+             <button cButton size="sm" color="danger" class="text-white" (click)="eliminarPropiedad(p)">Eliminar</button>
           </td>
         </tr>
         <tr *ngIf="!propiedades.length">

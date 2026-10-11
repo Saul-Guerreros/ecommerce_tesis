@@ -64,12 +64,22 @@ export class AuthService {
           full_name: res.full_name,
           email: res.email,
           rol: res.rol,
-          permisos: res.permisos ?? []
+          permisos: res.permisos ?? [],
+          avatar_url: res.avatar_url ?? null,
         };
         localStorage.setItem(USER_KEY, JSON.stringify(user));
         this.currentUser.set(user);
       })
     );
+  }
+
+  /** Actualiza datos del usuario en sesión (nombre, foto) sin volver a loguear. */
+  actualizarUsuario(cambios: Partial<User>): void {
+    const actual = this.currentUser();
+    if (!actual) return;
+    const user = { ...actual, ...cambios };
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    this.currentUser.set(user);
   }
 
   private guardarSesion(res: LoginResponse): void {

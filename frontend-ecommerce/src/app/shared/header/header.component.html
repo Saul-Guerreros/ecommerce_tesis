@@ -28,22 +28,13 @@
               <a href="#" onclick="return false;">
                 {{ currency }}<span class="uk-margin-xsmall-left" uk-icon="icon: chevron-down; ratio: .75;"></span>
               </a>
-
-              <div class="uk-navbar-dropdown uk-margin-remove" uk-drop="mode: click; pos: bottom-right;">
-              </div>
-
+              <!-- <div class="uk-navbar-dropdown uk-margin-remove" uk-drop="mode: click; pos: bottom-right;">
+              </div> -->
             </li>
             <!-- sesión -->
             <li *ngIf="!user"><a routerLink="/login">Iniciar sesión</a></li>
             <li *ngIf="user">
               <a href="#" onclick="return false;">Hola, {{ user.full_name }}<span class="uk-margin-xsmall-left" uk-icon="icon: chevron-down; ratio: .75;"></span></a>
-              <div class="uk-navbar-dropdown uk-margin-remove" uk-drop="mode: click; pos: bottom-right;">
-                <ul class="uk-nav uk-dropdown-nav">
-                  <li><a routerLink="/perfil-del-cliente" target="_blank">Mi perfil</a></li>
-                  <li class="uk-nav-divider"></li>
-                  <li><a href="#" onclick="return false" (click)="logout()">Cerrar sesión</a></li>
-                </ul>
-              </div>
             </li>
           </ul>
         </nav>
@@ -72,7 +63,7 @@
                       <li>
                         <div class="uk-margin-top uk-margin-bottom">
                           <a class="uk-link-reset" [routerLink]="['/productos-busqueda']" [queryParams]="{ categoria: cat.cat_id }">
-                            <span class="uk-display-block uk-margin-auto uk-margin-bottom" [attr.uk-icon]="'icon: ' + (cat.cat_icono || 'tag') + '; ratio: 2.2'"></span>
+                            <app-categoria-icono class="tm-cat-icono" [clave]="cat.cat_icono" [tamano]="72"></app-categoria-icono>
                             <div class="uk-text-bolder uk-text-center">{{ cat.cat_nombre }}</div>
                           </a>
                           @if(cat.hijas.length > 0) {
@@ -177,9 +168,46 @@
           <span uk-icon="copy"></span>
         </a>
 
-        <a class="uk-navbar-item uk-link-muted tm-navbar-button" [routerLink]="user ? '/perfil-del-cliente' : '/login'">
+                <!-- Cuenta del usuario: desplegable igual al de la plantilla -->
+        <a class="uk-navbar-item uk-link-muted tm-navbar-button" href="#" onclick="return false;"
+           aria-label="Mi cuenta" aria-haspopup="true">
           <span uk-icon="user"></span>
         </a>
+        <div #menuCuenta class="uk-padding-small uk-margin-remove tm-menu-cuenta"
+             uk-dropdown="pos: bottom-right; offset: -10; delay-hide: 200;">
+          @if (user) {
+            <div class="tm-menu-cuenta-saludo">
+              <div class="uk-text-meta">Hola,</div>
+              <div class="uk-text-bold uk-text-truncate">{{ user.full_name }}</div>
+            </div>
+            <ul class="uk-nav uk-dropdown-nav">
+              <li class="uk-nav-divider"></li>
+              <!-- Funcionalidades futuras: visibles pero deshabilitadas -->
+              <li class="uk-disabled">
+                <a href="#" onclick="return false;" tabindex="-1" aria-disabled="true">
+                  Mis pedidos <span class="tm-pronto">Pronto</span>
+                </a>
+              </li>
+              <li class="uk-disabled">
+                <a href="#" onclick="return false;" tabindex="-1" aria-disabled="true">
+                  Favoritos <span class="tm-pronto">Pronto</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/perfil-del-cliente" (click)="cerrarMenuCuenta(menuCuenta)">Mi perfil</a>
+              </li>
+              <li class="uk-nav-divider"></li>
+              <li>
+                <a href="#" onclick="return false;" (click)="cerrarMenuCuenta(menuCuenta); logout()">Cerrar sesión</a>
+              </li>
+            </ul>
+          } @else {
+            <ul class="uk-nav uk-dropdown-nav">
+              <li><a routerLink="/login" (click)="cerrarMenuCuenta(menuCuenta)">Iniciar sesión</a></li>
+              <li><a routerLink="/register" (click)="cerrarMenuCuenta(menuCuenta)">Crear cuenta</a></li>
+            </ul>
+          }
+        </div>
 
         <!-- CORRECCIÓN 1: listCarts ya no es un signal -> sin paréntesis -->
         <a class="uk-navbar-item uk-link-muted tm-navbar-button" href="#" onclick="return false" uk-toggle="target: #cart-offcanvas">

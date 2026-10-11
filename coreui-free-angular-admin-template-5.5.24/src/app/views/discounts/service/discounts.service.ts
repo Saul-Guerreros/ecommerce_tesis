@@ -73,4 +73,9 @@ export class DiscountsService {
       finalize(() => this.isLoadingSubject.next(false))
     );
   }
+  
+  vigentesPorProducto(productoId: number): Observable<any> {
+    const URL = `${URL_SERVICIOS}/admin/discounts/producto/${productoId}/vigentes`;
+    return this.http.get(URL, { headers: this.headers });
+  }
 }

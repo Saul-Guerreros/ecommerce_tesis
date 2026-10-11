@@ -31,6 +31,8 @@ export class FichaTecnicaFormComponent implements OnChanges {
   @Input() productoBaseId: number | null = null;
   /** Errores 422 del backend, con clave "ficha.{atb_id}". */
   @Input() errores: Record<string, string> = {};
+  /** Valores a restaurar al cargar los campos (borrador de la publicación). */
+  @Input() valoresIniciales: ValorFicha[] | null = null;
 
   campos: CampoFicha[] = [];
   cargando = false;
@@ -58,13 +60,31 @@ export class FichaTecnicaFormComponent implements OnChanges {
 
     this.cargando = true;
     this.fichaService.getCampos(this.productoId, this.categoriaId).subscribe({
-      next: (campos) => {
+       next: (campos) => {
         this.campos = campos.map((c) => ({ ...c, propiedad_ids: [...(c.propiedad_ids ?? [])] }));
+        this.aplicarValoresIniciales();
         this.cargando = false;
         this.listo = true;
       },
       error: (err) => this.handleError(err),
     });
+  }
+  
+    /** Pisa los valores cargados del backend con los del borrador (solo campos editables). */
+  private aplicarValoresIniciales(): void {
+    if (!this.valoresIniciales?.length) return;
+
+    this.campos
+      .filter((c) => c.editable)
+      .forEach((c) => {
+        const v = this.valoresIniciales!.find((x) => x.atb_id === c.atb_id);
+        if (!v) return;
+        c.valor_texto = v.valor_texto;
+        c.valor_numero = v.valor_numero;
+        c.propiedad_ids = [...(v.propiedad_ids ?? [])];
+      });
+
+    this.valoresIniciales = null; // se aplica una sola vez
   }
 
   // ---- API para el componente padre ----

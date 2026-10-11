@@ -6,6 +6,7 @@ import { CategoriesService } from '../service/categories.service';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ButtonModule, CardModule, FormModule } from '@coreui/angular';
+import { OPCIONES_ICONO } from '../models/iconos-categoria';
 
 @Component({
   selector: 'app-create-categorie',
@@ -44,18 +45,7 @@ form: FormGroup;
   });
 }
 
-  opcionesIcono = [
-    { valor: 'desktop', etiqueta: 'Computadora de escritorio' },
-    { valor: 'tablet', etiqueta: 'Tablet / Notebook' },
-    { valor: 'server', etiqueta: 'Servidor / Componentes' },
-    { valor: 'world', etiqueta: 'Redes' },
-    { valor: 'print', etiqueta: 'Impresión' },
-    { valor: 'database', etiqueta: 'Almacenamiento' },
-    { valor: 'cog', etiqueta: 'Configuración / Repuestos' },
-    { valor: 'bag', etiqueta: 'Accesorios' },
-    { valor: 'gift', etiqueta: 'Promociones' },
-    { valor: 'grid', etiqueta: 'General' },
-  ];
+   opcionesIcono = OPCIONES_ICONO;
 
   toggleSubcategoria(): void {
     this.esSubcategoria = !this.esSubcategoria;

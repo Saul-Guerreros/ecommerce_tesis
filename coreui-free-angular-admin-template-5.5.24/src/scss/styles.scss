@@ -2,7 +2,8 @@
 
 // Import styles with default layout.
 @use "@coreui/coreui/scss/coreui" as * with (
-  $enable-deprecation-messages: false
+  $enable-deprecation-messages: false,
+  $primary: #2f5fc4
 );
 
 // Import Chart.js custom tooltips styles
@@ -64,3 +65,4 @@
     border-radius: 6px;
   }
 }
+

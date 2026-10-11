@@ -47,13 +47,17 @@ export class GoogleIdentityService {
       ux_mode: 'popup',
     });
 
+    // El botón de Google no es fluido: se calcula según el espacio disponible.
+    const anchoDisponible = contenedor.parentElement?.clientWidth ?? 320;
+    const ancho = Math.max(200, Math.min(400, Math.floor(anchoDisponible)));
+
     google.accounts.id.renderButton(contenedor, {
       theme: 'outline',
       size: 'large',
       text: 'continue_with',
       shape: 'rectangular',
       locale: 'es',
-      width: 320,
+      width: ancho,
     });
   }
 }

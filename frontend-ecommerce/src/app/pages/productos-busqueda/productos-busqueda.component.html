@@ -2,80 +2,99 @@
   <section class="uk-section uk-section-small">
     <div class="uk-container">
       <ul class="uk-breadcrumb">
-        <li><a routerLink="/">Home</a></li>
+        <li><a routerLink="/">Inicio</a></li>
         <li><span>Productos</span></li>
       </ul>
 
       <div class="uk-grid-medium uk-margin-medium-top" uk-grid>
-        <!-- Sidebar de filtros -->
-        <div class="uk-width-1-4@m">
-          <div class="filtros-sidebar">
-            <div class="uk-flex uk-flex-middle uk-flex-between">
+        <!-- Filtros: barra lateral en escritorio / panel inferior en móvil -->
+        <div class="uk-width-1-4@m filtros-col">
+          <div class="filtros-overlay" [class.visible]="filtrosAbiertos" (click)="cerrarFiltros()" aria-hidden="true"></div>
+
+          <aside id="panel-filtros" class="filtros-sidebar" [class.abierto]="filtrosAbiertos" aria-label="Filtros de productos">
+            <div class="filtros-cabecera uk-flex uk-flex-middle uk-flex-between">
               <h4 class="uk-margin-remove">Filtros</h4>
-              <button class="filtro-limpiar" type="button" (click)="limpiarFiltros()">Limpiar</button>
+              <button class="filtro-limpiar uk-visible@m" type="button" (click)="limpiarFiltros()">Limpiar</button>
+              <button class="filtros-cerrar uk-hidden@m" type="button" (click)="cerrarFiltros()" aria-label="Cerrar filtros">
+                <span uk-icon="icon: close"></span>
+              </button>
             </div>
 
-            @if (cargandoFiltros) {
-              <div class="uk-text-center uk-margin">
-                <div uk-spinner="ratio: .8"></div>
-              </div>
-            }
+            <div class="filtros-cuerpo">
+              @if (cargandoFiltros) {
+                <div class="uk-text-center uk-margin">
+                  <div uk-spinner="ratio: .8"></div>
+                </div>
+              }
 
-            @if (config) {
-              <div class="filtro-grupo">
-                <div class="filtro-grupo-titulo">Precio</div>
-                <div class="uk-grid-small" uk-grid>
-                  <div class="uk-width-1-2">
-                    <input class="uk-input uk-form-small" type="number" placeholder="Mín" [(ngModel)]="precioMin" (change)="onFiltroChange()" />
-                  </div>
-                  <div class="uk-width-1-2">
-                    <input class="uk-input uk-form-small" type="number" placeholder="Máx" [(ngModel)]="precioMax" (change)="onFiltroChange()" />
+              @if (config) {
+                <div class="filtro-grupo">
+                  <div class="filtro-grupo-titulo">Precio</div>
+                  <div class="uk-grid-small" uk-grid>
+                    <div class="uk-width-1-2">
+                      <input class="uk-input uk-form-small" type="number" inputmode="numeric" placeholder="Mín" [(ngModel)]="precioMin" (change)="onFiltroChange()" />
+                    </div>
+                    <div class="uk-width-1-2">
+                      <input class="uk-input uk-form-small" type="number" inputmode="numeric" placeholder="Máx" [(ngModel)]="precioMax" (change)="onFiltroChange()" />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div class="filtro-grupo">
-                <div class="filtro-grupo-titulo">Categorías</div>
-                <ul class="filtro-lista">
-                  @for (cat of config.categorias; track cat.cat_id) {
-                    <li>
-                      <label>
-                        <input class="uk-checkbox" type="checkbox" [checked]="categoriasSeleccionadas.includes(cat.cat_id)" (change)="toggleCategoria(cat.cat_id)" />
-                        <span class="uk-margin-small-left">{{ cat.cat_nombre }}</span>
-                        <span class="filtro-count">{{ cat.productos_count }}</span>
-                      </label>
-                    </li>
-                  }
-                </ul>
-              </div>
+                <div class="filtro-grupo">
+                  <div class="filtro-grupo-titulo">Categorías</div>
+                  <ul class="filtro-lista">
+                    @for (cat of config.categorias; track cat.cat_id) {
+                      <li>
+                        <label>
+                          <input class="uk-checkbox" type="checkbox" [checked]="categoriasSeleccionadas.includes(cat.cat_id)" (change)="toggleCategoria(cat.cat_id)" />
+                          <span class="uk-margin-small-left">{{ cat.cat_nombre }}</span>
+                          <span class="filtro-count">{{ cat.productos_count }}</span>
+                        </label>
+                      </li>
+                    }
+                  </ul>
+                </div>
 
-              <div class="filtro-grupo">
-                <div class="filtro-grupo-titulo">Marcas</div>
-                <ul class="filtro-lista">
-                  @for (marca of config.marcas; track marca.mar_id) {
-                    <li>
-                      <label>
-                        <input class="uk-checkbox" type="checkbox" [checked]="marcasSeleccionadas.includes(marca.mar_id)" (change)="toggleMarca(marca.mar_id)" />
-                        <span class="uk-margin-small-left">{{ marca.mar_descri }}</span>
-                        <span class="filtro-count">{{ marca.productos_count }}</span>
-                      </label>
-                    </li>
-                  }
-                </ul>
-              </div>
+                <div class="filtro-grupo">
+                  <div class="filtro-grupo-titulo">Marcas</div>
+                  <ul class="filtro-lista">
+                    @for (marca of config.marcas; track marca.mar_id) {
+                      <li>
+                        <label>
+                          <input class="uk-checkbox" type="checkbox" [checked]="marcasSeleccionadas.includes(marca.mar_id)" (change)="toggleMarca(marca.mar_id)" />
+                          <span class="uk-margin-small-left">{{ marca.mar_descri }}</span>
+                          <span class="filtro-count">{{ marca.productos_count }}</span>
+                        </label>
+                      </li>
+                    }
+                  </ul>
+                </div>
 
-              <div class="filtro-grupo">
-                <label>
-                  <input class="uk-checkbox" type="checkbox" [(ngModel)]="soloOferta" (ngModelChange)="onFiltroChange()" />
-                  <span class="uk-margin-small-left">Solo en oferta</span>
-                </label>
-              </div>
-            }
-          </div>
+                <div class="filtro-grupo">
+                  <label class="filtro-check">
+                    <input class="uk-checkbox" type="checkbox" [(ngModel)]="soloOferta" (ngModelChange)="onFiltroChange()" />
+                    <span class="uk-margin-small-left">Solo en oferta</span>
+                  </label>
+                </div>
+              }
+            </div>
+
+            <!-- Pie fijo (solo móvil): acciones al alcance del pulgar -->
+            <div class="filtros-pie uk-hidden@m">
+              <button type="button" class="uk-button uk-button-default" (click)="limpiarFiltros()">Limpiar</button>
+              <button type="button" class="uk-button uk-button-primary uk-width-expand" (click)="cerrarFiltros()">
+                @if (cargandoProductos) {
+                  Buscando…
+                } @else {
+                  Ver {{ totalResultados }} {{ totalResultados === 1 ? 'producto' : 'productos' }}
+                }
+              </button>
+            </div>
+          </aside>
         </div>
 
         <!-- Resultados -->
-        <div class="uk-width-expand@m">
+        <div class="uk-width-expand@m resultados-col">
           <div class="resultados-header uk-flex uk-flex-middle uk-flex-between uk-flex-wrap">
             <div class="uk-margin-small-bottom uk-width-expand">
               <div class="uk-inline uk-width-1-1">
@@ -89,8 +108,8 @@
                 />
               </div>
             </div>
-            <div class="uk-margin-small-bottom uk-margin-small-left">
-              <select class="uk-select" [(ngModel)]="orden" (ngModelChange)="onFiltroChange()">
+            <div class="uk-margin-small-bottom">
+              <select class="uk-select" [(ngModel)]="orden" (ngModelChange)="onFiltroChange()" aria-label="Ordenar productos">
                 <option value="relevancia">Más relevantes</option>
                 <option value="nuevos">Más nuevos</option>
                 <option value="precio_asc">Precio: menor a mayor</option>
@@ -98,6 +117,26 @@
               </select>
             </div>
           </div>
+
+          <!-- Filtros aplicados (chips removibles) -->
+          @if (chipsFiltros.length > 0) {
+            <div class="filtros-aplicados">
+              @for (chip of chipsFiltros; track chip.clave) {
+                <button type="button" class="chip-filtro" (click)="quitarChip(chip)" [attr.aria-label]="'Quitar filtro ' + chip.etiqueta">
+                  {{ chip.etiqueta }}
+                  <span uk-icon="icon: close; ratio: .6"></span>
+                </button>
+              }
+              <button type="button" class="chip-limpiar" (click)="limpiarFiltros()">Limpiar todo</button>
+            </div>
+          }
+
+          @if (campaniaId) {
+            <div class="uk-alert uk-alert-primary uk-flex uk-flex-middle uk-flex-between">
+              <span>Estás viendo los productos de una <strong>promoción</strong>.</span>
+              <a class="uk-link" (click)="quitarCampania()">Ver todo el catálogo</a>
+            </div>
+          }
 
           @if (!cargandoProductos) {
             @if (interpretacion?.explicacion) {
@@ -130,41 +169,11 @@
           }
 
           @if (!cargandoProductos) {
-            <ul class="uk-grid-small uk-child-width-1-2 uk-child-width-1-3@s uk-child-width-1-4@m uk-grid-match" uk-grid>
+            <!-- tm-vitrina: aplica el mismo ajuste responsive que las tarjetas del home -->
+            <ul class="uk-grid-small uk-child-width-1-2 uk-child-width-1-3@m uk-grid-match tm-vitrina" uk-grid>
               @for (producto of productos; track trackByVitrina($index, producto)) {
                 <li>
-                  <article class="tm-product-card uk-height-1-1">
-                    <div class="tm-product-card-media">
-                      <div class="tm-ratio tm-ratio-4-3">
-                        <a class="tm-media-box" [routerLink]="['/producto', producto.slug]">
-                          @if (producto.descuento_pct) {
-                            <div class="tm-product-card-labels">
-                              <span class="uk-label uk-label-danger">-{{ producto.descuento_pct }}%</span>
-                            </div>
-                          }
-                          <figure class="tm-media-box-wrap">
-                            <img [alt]="producto.titulo" decoding="async" loading="lazy" [src]="imagenVitrina(producto)" />
-                          </figure>
-                        </a>
-                      </div>
-                    </div>
-                    <div class="tm-product-card-body">
-                      <div class="tm-product-card-info">
-                        <div class="uk-text-meta uk-margin-xsmall-bottom">{{ producto.categoria }}</div>
-                        <h3 class="tm-product-card-title">
-                          <a class="uk-link-heading" [routerLink]="['/producto', producto.slug]">{{ producto.titulo }}</a>
-                        </h3>
-                      </div>
-                      <div class="tm-product-card-shop">
-                        <div class="tm-product-card-prices">
-                          @if (producto.descuento_pct) {
-                            <del class="uk-text-meta">{{ producto.precio_original | monedaPy }}</del>
-                          }
-                          <div class="tm-product-card-price">{{ producto.precio_final | monedaPy }}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </article>
+                  <app-producto-card [producto]="producto"></app-producto-card>
                 </li>
               }
             </ul>
@@ -195,6 +204,22 @@
       </div>
     </div>
   </section>
+
+  <!-- Botón flotante "Filtrar" (solo móvil): siempre visible al hacer scroll -->
+  @if (!filtrosAbiertos) {
+    <button
+      type="button"
+      class="filtros-boton-flotante uk-hidden@m"
+      (click)="abrirFiltros()"
+      aria-controls="panel-filtros"
+      [attr.aria-expanded]="filtrosAbiertos">
+      <span uk-icon="icon: settings; ratio: .9"></span>
+      <span>Filtrar</span>
+      @if (cantidadFiltrosActivos > 0) {
+        <span class="filtros-contador">{{ cantidadFiltrosActivos }}</span>
+      }
+    </button>
+  }
 </main>
 <!-- Aviso a pantalla completa cuando se llega desde el buscador del header
      y la búsqueda necesita IA (difumina el fondo). -->

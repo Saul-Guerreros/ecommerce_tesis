@@ -33,23 +33,17 @@ export class AuthService {
     this.sesion.set(!!this.token);
   }
 
-  login(email: string, password: string) {
-    let URL = URL_SERVICIOS + "/auth/login_ecommerce";
-    return this.http.post(URL, { email, password }).pipe(
-      map((resp: any) => {
-        const result = this.saveLocalStorage(resp);
-        return result;
-      }),
-      catchError((err: any) => {
-        console.log(err);
-        return of(err);
-      })
+  login(email: string, password: string, remember: boolean = false) {
+    const URL = URL_SERVICIOS + '/auth/login_ecommerce';
+    return this.http.post(URL, { email, password, remember }).pipe(
+      map((resp: any) => this.saveLocalStorage(resp)),
+      catchError((err: any) => of(err))
     );
   }
 
-  loginGoogle(credential: string) {
-    let URL = URL_SERVICIOS + "/auth/login_google";
-    return this.http.post(URL, { credential }).pipe(
+  loginGoogle(credential: string, remember: boolean = false) {
+    const URL = URL_SERVICIOS + '/auth/login_google';
+    return this.http.post(URL, { credential, remember }).pipe(
       map((resp: any) => this.saveLocalStorage(resp)),
       catchError((err: any) => of(err))
     );

@@ -21,6 +21,45 @@
           <option [ngValue]="null">-- Sin ícono (genérico) --</option>
           <option *ngFor="let opcion of opcionesIcono" [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option>
         </select>
+              <div class="mb-3" *ngIf="!form.get('cat_idpadr')?.value">
+        <label cLabel for="cat_imagen">Imagen para "Comprar por categoría" (opcional)</label>
+
+        <div class="d-flex align-items-start gap-3">
+          <div class="border rounded bg-white d-flex align-items-center justify-content-center"
+               style="width: 160px; height: 120px; overflow: hidden; flex-shrink: 0;">
+            <img *ngIf="imagenPreview || imagenActual; else sinImagen"
+                 [src]="imagenPreview || imagenActual"
+                 alt="Imagen de la categoría"
+                 style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+            <ng-template #sinImagen>
+              <small class="text-body-secondary text-center px-2">Sin imagen<br />(se usa el ícono)</small>
+            </ng-template>
+          </div>
+
+          <div class="flex-grow-1">
+            <input cFormControl type="file" id="cat_imagen"
+                   accept="image/jpeg,image/png,image/webp"
+                   (change)="seleccionarImagen($event)" />
+            <div class="form-text">
+              JPG, PNG o WebP · máx. 2 MB · recomendado 800×600 px (4:3) con fondo blanco.
+            </div>
+
+            <div class="mt-2">
+              <button cButton color="primary" size="sm" type="button" class="me-2"
+                      [disabled]="!archivoImagen || procesandoImagen"
+                      (click)="subirImagen()">
+                {{ procesandoImagen ? 'Procesando...' : 'Subir imagen' }}
+              </button>
+              <button cButton color="danger" variant="outline" size="sm" type="button"
+                      *ngIf="imagenActual && !archivoImagen"
+                      [disabled]="procesandoImagen"
+                      (click)="quitarImagen()">
+                Quitar imagen
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
 
       <div class="mb-3">

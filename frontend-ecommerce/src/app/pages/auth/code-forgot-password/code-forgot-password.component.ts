@@ -1,50 +1,54 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../service/auth.service';
 import { ToastrService } from 'ngx-toastr';
+import { AuthService } from '../service/auth.service';
 
 @Component({
   selector: 'app-code-forgot-password',
   standalone: true,
-  imports: [CommonModule,FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './code-forgot-password.component.html',
-  styleUrl: './code-forgot-password.component.css'
+  styleUrl: './code-forgot-password.component.css',
 })
 export class CodeForgotPasswordComponent {
- code:string='';
-   isLoadingCode:any = null;
+  code = '';
+  procesando = false;
 
-   @Output() LoadingCodeStatus: EventEmitter<any> = new EventEmitter();
-   @Output() CodeValue: EventEmitter<any> = new EventEmitter();
-   constructor(
+  @Output() LoadingCodeStatus = new EventEmitter<any>();
+  @Output() CodeValue = new EventEmitter<string>();
+  /** El usuario pide reenviar el código: el padre vuelve al paso 1. */
+  @Output() volver = new EventEmitter<void>();
+
+  constructor(
     public authService: AuthService,
-    private toastr: ToastrService
-  ){
+    private toastr: ToastrService,
+  ) {}
 
-  }
-
-  verifiedCode(){
-    if (!this.code) {
-      this.toastr.error("validacion","Necesitas ingresar el codigo de verificacion");
+  verifiedCode(): void {
+    const code = this.code.trim();
+    if (!code) {
+      this.toastr.warning('Ingresá el código de verificación.', 'Dato requerido');
+      return;
     }
-    let data={
-      code: this.code,
-    }
-    this.authService.verifiedCode(data).subscribe((resp:any)=> {
-      console.log(resp);
-      if (resp.message == 200) {
-        this.isLoadingCode= 1;
-        this.LoadingCodeStatus.emit(this.isLoadingCode);
-        this.CodeValue.emit(this.code);
-        this.toastr.success("exito","El codigo es correcto ahora cambia tu contraseña");
-      } else {
-        this.isLoadingCode = null;
-        this.LoadingCodeStatus.emit(this.isLoadingCode);
-        this.toastr.error("validacion","Codigo no existe");
-      }
+    if (this.procesando) return;
 
+    this.procesando = true;
+    this.authService.verifiedCode({ code }).subscribe({
+      next: (resp: any) => {
+        this.procesando = false;
+        if (resp?.message == 200) {
+          this.CodeValue.emit(code);
+          this.LoadingCodeStatus.emit(1);
+          this.toastr.success('Código correcto. Ahora elegí tu nueva contraseña.', 'Código verificado');
+        } else {
+          this.toastr.error('El código no es válido o ya venció.', 'Código incorrecto');
+        }
+      },
+      error: () => {
+        this.procesando = false;
+        this.toastr.error('No se pudo verificar el código. Intentá nuevamente.', 'Error');
+      },
     });
   }
-
 }

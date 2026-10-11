@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
+import { ToastrService } from 'ngx-toastr';
 import {
   BadgeModule,
   ButtonModule,
@@ -47,7 +48,11 @@ export class ListSliderComponent implements OnInit {
 
   isLoading$: Observable<boolean>;
 
-  constructor(public sliderService: SliderService) {
+  constructor(
+    public sliderService: SliderService,
+    private toastr: ToastrService,
+    private router: Router
+  ) {
     this.isLoading$ = this.sliderService.isLoading$;
   }
 
@@ -56,10 +61,13 @@ export class ListSliderComponent implements OnInit {
   }
 
   loadList(page: number = 1): void {
-    this.sliderService.list(page, this.search).subscribe((resp: any) => {
-      this.sliders = resp.sliders;
-      this.total = resp.total;
-      this.currentPage = page;
+    this.sliderService.list(page, this.search).subscribe({
+      next: (resp: any) => {
+        this.sliders = resp.sliders;
+        this.total = resp.total;
+        this.currentPage = page;
+      },
+      error: () => this.toastr.error('No se pudieron cargar los sliders', 'Error'),
     });
   }
 
@@ -74,7 +82,7 @@ export class ListSliderComponent implements OnInit {
   searchTo(): void {
     this.loadList(1);
   }
-  
+
   tipoLabel(tipo: number): string {
     switch (Number(tipo)) {
       case 1: return 'Principal';
@@ -89,16 +97,29 @@ export class ListSliderComponent implements OnInit {
     this.loadList(page);
   }
 
+  irAEditar(id: number): void {
+    this.router.navigate(['/sliders/editar', id]);
+  }
+
   confirmDelete(slider: any): void {
     this.sliderToDelete = slider;
     this.deleteModalVisible = true;
   }
 
   deleteSlider(): void {
-    this.sliderService.delete(this.sliderToDelete.sld_id).subscribe(() => {
-      this.sliders = this.sliders.filter((s) => s.sld_id !== this.sliderToDelete.sld_id);
-      this.deleteModalVisible = false;
-      this.sliderToDelete = null;
+    if (!this.sliderToDelete?.sld_id) return;
+
+    this.sliderService.delete(this.sliderToDelete.sld_id).subscribe({
+      next: () => {
+        this.toastr.success('Slider eliminado correctamente', 'Éxito');
+        this.deleteModalVisible = false;
+        this.sliderToDelete = null;
+        this.loadList(this.currentPage);
+      },
+      error: (err) => {
+        this.toastr.error(err?.error?.message || 'No se pudo eliminar el slider', 'Error');
+        this.deleteModalVisible = false;
+      },
     });
   }
 }

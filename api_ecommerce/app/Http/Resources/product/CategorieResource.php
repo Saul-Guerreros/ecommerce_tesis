@@ -14,7 +14,8 @@ class CategorieResource extends JsonResource
         'cat_idpadr' => $this->cat_idpadr,
         'cat_nivel'  => $this->cat_nivel,
         'cat_nombre' => $this->cat_nombre,
-        'cat_icono'  => $this->cat_icono, // NUEVO
+        'cat_icono'  => $this->cat_icono, 
+        'cat_imagen_url' => $this->cat_imagen? rtrim(config('app.url'), '/') . '/storage/' . $this->cat_imagen: null,
         'padre'      => $this->whenLoaded('padre', function () {
             return [
                 'cat_id'     => $this->padre->cat_id,

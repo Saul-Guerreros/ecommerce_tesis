@@ -23,7 +23,7 @@
         <tr>
           <th>Imagen</th>
           <th>Título</th>
-          <th>Producto (ID)</th>
+          <th>Destino</th>
           <th>Orden</th>
           <th>Tipo</th>
           <th>Estado</th>
@@ -39,20 +39,16 @@
             <div class="fw-semibold">{{ slider.sld_titulo }}</div>
             <div class="text-muted small" *ngIf="slider.sld_subtitulo">{{ slider.sld_subtitulo }}</div>
           </td>
-          <td>{{ slider.sld_prdid }}</td>
+          <td class="small">{{ slider.destino_descripcion }}</td>
           <td>{{ slider.sld_orden }}</td>
           <td>{{ tipoLabel(slider.sld_tipo) }}</td>
           <td>
             <c-badge color="success" *ngIf="slider.sld_estado == 1">Activo</c-badge>
             <c-badge color="danger" *ngIf="slider.sld_estado == 2">Inactivo</c-badge>
           </td>
-          <td class="text-end">
-            <a [routerLink]="['/sliders/editar', slider.sld_id]" cButton size="sm" color="light" class="me-1">
-              Editar
-            </a>
-            <button cButton size="sm" color="danger" variant="outline" (click)="confirmDelete(slider)">
-              Eliminar
-            </button>
+         <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="irAEditar(slider.sld_id)">Editar</button>
+             <button cButton size="sm" color="danger" class="text-white" (click)="confirmDelete(slider)">Eliminar</button>
           </td>
         </tr>
         <tr *ngIf="!sliders.length">

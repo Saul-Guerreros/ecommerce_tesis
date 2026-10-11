@@ -1,0 +1,108 @@
+<main class="tm-legal">
+  <div class="uk-container">
+    <article class="tm-legal-contenido">
+      <ul class="uk-breadcrumb uk-margin-remove">
+        <li><a routerLink="/">Inicio</a></li>
+        <li><span>Política de Privacidad</span></li>
+      </ul>
+      <h1>Política de Privacidad</h1>
+      <p class="tm-legal-fecha">Última actualización: {{ tienda.ultimaActualizacion }}</p>
+
+      <p class="tm-legal-aviso">
+        En {{ tienda.nombreComercial }} cuidamos tus datos personales. Esta política explica qué datos recopilamos,
+        para qué los usamos y cómo podés ejercer tus derechos, conforme a la Ley N.º 7593/2025 de Protección de
+        Datos Personales y demás normas aplicables de la República del Paraguay.
+      </p>
+
+      <h2>1. Responsable del tratamiento</h2>
+      <p>
+        {{ tienda.razonSocial }} ({{ tienda.nombreComercial }}), RUC {{ tienda.ruc }}, con domicilio en
+        {{ tienda.direccion }}. Contacto para temas de privacidad: {{ tienda.email }}.
+      </p>
+
+      <h2>2. Datos que recopilamos</h2>
+      <ul>
+        <li><strong>Registro:</strong> nombres, apellidos, número de celular, correo electrónico y contraseña (guardada cifrada, nunca en texto legible).</li>
+        <li><strong>Ingreso con Google:</strong> nombre, correo electrónico y, si corresponde, foto de perfil de tu cuenta de Google.</li>
+        <li><strong>Compras:</strong> dirección de entrega, datos de facturación (nombre o razón social y RUC), productos, modalidad de pago y cuotas elegidas.</li>
+        <li><strong>Seguridad:</strong> dirección IP, tipo de navegador y fecha de cada inicio de sesión, incluidos los intentos fallidos.</li>
+        <li><strong>Uso del sitio:</strong> productos del carrito y términos que escribís en el buscador o en el asistente virtual.</li>
+      </ul>
+      <p>No almacenamos datos de tarjetas de crédito o débito: los procesan directamente las plataformas de pago.</p>
+
+      <h2>3. Para qué usamos tus datos</h2>
+      <ul>
+        <li>Crear y administrar tu cuenta.</li>
+        <li>Procesar, facturar y entregar tus pedidos.</li>
+        <li>Calcular y gestionar compras en cuotas.</li>
+        <li>Comunicarnos con vos sobre tus pedidos, la verificación de tu cuenta y la recuperación de tu contraseña.</li>
+        <li>Proteger tu cuenta y prevenir fraudes (detección de accesos sospechosos y bloqueo por intentos fallidos).</li>
+        <li>Mejorar el buscador y las recomendaciones de productos.</li>
+        <li>Cumplir obligaciones legales, tributarias y contables.</li>
+      </ul>
+
+      <h2>4. Base del tratamiento</h2>
+      <p>
+        Tratamos tus datos con tu consentimiento, otorgado al aceptar esta política al registrarte, y en la medida
+        necesaria para cumplir el contrato de compraventa y nuestras obligaciones legales. Podés revocar tu
+        consentimiento en cualquier momento (ver punto 8).
+      </p>
+
+      <h2>5. Con quién compartimos tus datos</h2>
+      <p>No vendemos tus datos. Solo los compartimos, en lo estrictamente necesario, con:</p>
+      <ul>
+        <li><strong>Plataformas de pago</strong> ([PayPal / Mercado Pago / otros]) para procesar los cobros.</li>
+        <li><strong>Empresas de envío</strong> ([nombre]) para entregar tus pedidos.</li>
+        <li><strong>Google</strong>, si elegís ingresar con tu cuenta de Google.</li>
+        <li><strong>Proveedores tecnológicos</strong> de alojamiento ([proveedor]), envío de correos ([proveedor]) e inteligencia artificial ([proveedor]), que procesan los textos de búsqueda y del asistente para responder tus consultas.</li>
+        <li><strong>Autoridades</strong>, cuando una norma o una orden judicial lo exija.</li>
+      </ul>
+
+      <h2>6. Almacenamiento local y cookies</h2>
+      <p>
+        El sitio guarda en tu navegador la información necesaria para funcionar: el identificador de tu sesión
+        (token), tus datos básicos de usuario y el carrito de compras cuando todavía no iniciaste sesión. Los
+        servicios de Google y de las plataformas de pago pueden usar sus propias cookies según sus políticas.
+        Al cerrar sesión, se elimina la información de sesión de tu navegador.
+      </p>
+
+      <h2>7. Conservación y seguridad</h2>
+      <ul>
+        <li>Conservamos tus datos mientras tu cuenta esté activa y, luego, durante los plazos que exijan las normas tributarias y comerciales.</li>
+        <li>Las contraseñas se almacenan cifradas mediante algoritmos de hash.</li>
+        <li>La comunicación con el sitio está cifrada (HTTPS) y las sesiones tienen fecha de vencimiento.</li>
+        <li>El acceso a los datos dentro de la tienda está limitado según el rol de cada empleado.</li>
+      </ul>
+
+      <h2>8. Tus derechos</h2>
+      <p>En cualquier momento y de forma gratuita podés solicitar:</p>
+      <ul>
+        <li><strong>Acceso:</strong> saber qué datos tuyos tenemos.</li>
+        <li><strong>Rectificación:</strong> corregir datos inexactos (también podés hacerlo desde "Mi perfil").</li>
+        <li><strong>Supresión:</strong> eliminar tus datos cuando ya no sean necesarios.</li>
+        <li><strong>Oposición:</strong> oponerte a determinados usos de tus datos.</li>
+        <li><strong>Portabilidad:</strong> recibir tus datos en un formato de uso común.</li>
+        <li><strong>Revocación del consentimiento.</strong></li>
+      </ul>
+      <p>Escribinos a {{ tienda.email }} indicando tu solicitud. Responderemos dentro de [plazo] días hábiles.</p>
+
+      <h2>9. Menores de edad</h2>
+      <p>
+        El sitio está dirigido a personas mayores de 18 años. No recopilamos intencionalmente datos de menores.
+        Si detectamos una cuenta de un menor, la eliminaremos.
+      </p>
+
+      <h2>10. Cambios en esta política</h2>
+      <p>
+        Podemos actualizar esta política. La versión vigente es la publicada en esta página. Si los cambios son
+        relevantes, te avisaremos por correo electrónico.
+      </p>
+
+      <h2>11. Contacto</h2>
+      <p>
+        {{ tienda.nombreComercial }} · {{ tienda.direccion }} · {{ tienda.email }} · {{ tienda.telefono }}.
+        También podés consultar nuestros <a routerLink="/terminos-y-condiciones">Términos y Condiciones</a>.
+      </p>
+    </article>
+  </div>
+</main>

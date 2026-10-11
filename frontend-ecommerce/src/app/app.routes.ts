@@ -23,6 +23,18 @@ import { PasoEntregaComponent } from './pages/checkout/paso-entrega/paso-entrega
 
 export const routes: Routes = [
     {
+        path: 'terminos-y-condiciones',
+        loadComponent: () =>
+            import('./pages/legal/terminos/terminos.component').then((m) => m.TerminosComponent),
+        title: 'Términos y Condiciones | Z Informática',
+    },
+    {
+        path: 'politica-de-privacidad',
+        loadComponent: () =>
+            import('./pages/legal/privacidad/privacidad.component').then((m) => m.PrivacidadComponent),
+        title: 'Política de Privacidad | Z Informática',
+    },
+    {
         path: '',
         component: HomeComponent
     },

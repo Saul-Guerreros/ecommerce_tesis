@@ -1,74 +1,83 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { AuthService } from '../service/auth.service';
 import { ToastrService } from 'ngx-toastr';
+import { AuthService } from '../service/auth.service';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [FormsModule,RouterModule],
+  imports: [FormsModule, RouterModule],
   templateUrl: './register.component.html',
-  styleUrl: './register.component.css'
+  styleUrl: './register.component.css',
 })
 export class RegisterComponent {
-  // Campos alineados a AuthController::register() en el backend
-  // (persona + cliente + usuario, ver modulo de Autenticacion y Perfil).
-  nombre1:string = '';
-  nombre2:string = '';
-  apellido1:string = '';
-  apellido2:string = '';
-  celular:string = '';
-  email:string = '';
-  password:string = '';
-  password_confirmation:string = '';
-  terminos:boolean = false;
+  // Campos alineados a AuthController::register() (persona + cliente + usuario)
+  nombre1 = '';
+  nombre2 = '';
+  apellido1 = '';
+  apellido2 = '';
+  celular = '';
+  email = '';
+  password = '';
+  password_confirmation = '';
+  terminos = false;
+
+  procesando = false;
+  private readonly regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   constructor(
     private authService: AuthService,
     private router: Router,
-    private toastr: ToastrService
-  ){
-  }
+    private toastr: ToastrService,
+  ) {}
 
-  register(){
-    if (!this.nombre1 || !this.apellido1 || !this.celular || !this.email || !this.password) {
-      this.toastr.error("validacion","Necesitas ingresar nombre, apellido, celular, email y contraseña");
+  register(): void {
+    if (this.procesando) return;
+
+    const error = this.validar();
+    if (error) {
+      this.toastr.warning(error, 'Revisá los datos');
       return;
     }
-    if (this.password !== this.password_confirmation) {
-      this.toastr.error("validacion","Las contraseñas no coinciden");
-      return;
-    }
-    if (!this.terminos) {
-      this.toastr.error("validacion","Debes aceptar los Términos y Condiciones y la Política de Privacidad");
-      return;
-    }
-    let data = {
-      nombre1: this.nombre1,
-      nombre2: this.nombre2 || null,
-      apellido1: this.apellido1,
-      apellido2: this.apellido2 || null,
-      celular: this.celular,
-      email: this.email,
+
+    this.procesando = true;
+    const data = {
+      nombre1: this.nombre1.trim(),
+      nombre2: this.nombre2.trim() || null,
+      apellido1: this.apellido1.trim(),
+      apellido2: this.apellido2.trim() || null,
+      celular: this.celular.trim(),
+      email: this.email.trim(),
       password: this.password,
-    }
+    };
+
     this.authService.register(data).subscribe({
-      next: (resp:any) => {
-        console.log(resp);
-        this.toastr.success("Exito","Ingrese a tu correo para poder completar tu registro");
-        setTimeout(() => {
-          this.router.navigateByUrl("/login");
-        }, 500);
+      next: () => {
+        this.procesando = false;
+        this.toastr.success('Te enviamos un correo para activar tu cuenta.', 'Cuenta creada');
+        this.router.navigateByUrl('/login');
       },
-      error: (err:any) => {
-        console.log(err);
-        const errores = err?.error ? this.parseErrores(err.error) : null;
-        this.toastr.error("validacion", errores || "No se pudo completar el registro. Revisa los datos.");
-      }
+      error: (err: any) => {
+        this.procesando = false;
+        const mensaje = err?.error ? this.parseErrores(err.error) : null;
+        this.toastr.error(mensaje || 'No se pudo completar el registro. Revisá los datos.', 'Error en el registro');
+      },
     });
   }
 
+  /** Devuelve el primer error encontrado, o null si todo es válido. */
+  private validar(): string | null {
+    if (!this.nombre1.trim() || !this.apellido1.trim()) return 'Ingresá tu primer nombre y tu primer apellido.';
+    if (!this.celular.trim()) return 'Ingresá tu número de celular.';
+    if (!this.regexEmail.test(this.email.trim())) return 'Ingresá un correo electrónico válido.';
+    if (this.password.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
+    if (this.password !== this.password_confirmation) return 'Las contraseñas no coinciden.';
+    if (!this.terminos) return 'Debés aceptar los Términos y Condiciones y la Política de Privacidad.';
+    return null;
+  }
+
+  /** Primer mensaje de error de validación de Laravel. */
   private parseErrores(errorBody: any): string | null {
     try {
       const errores = typeof errorBody === 'string' ? JSON.parse(errorBody) : errorBody;
@@ -77,7 +86,7 @@ export class RegisterComponent {
         return errores[primerCampo][0];
       }
     } catch {
-      // ignorar, se usa el mensaje generico
+      // se usa el mensaje genérico
     }
     return null;
   }

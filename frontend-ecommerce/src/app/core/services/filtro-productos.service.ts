@@ -14,6 +14,7 @@ export interface FiltrosBusqueda {
   busqueda?: string;
   page?: number;
   por_pagina?: number;
+  campania?: number | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -36,6 +37,7 @@ export class FiltroProductosService {
     if (filtros.en_oferta) params = params.set('en_oferta', '1');
     if (filtros.orden) params = params.set('orden', filtros.orden);
     if (filtros.busqueda) params = params.set('busqueda', filtros.busqueda);
+    if (filtros.campania) params = params.set('campania', filtros.campania);
     params = params.set('page', filtros.page ?? 1);
     params = params.set('por_pagina', filtros.por_pagina ?? 12);
 

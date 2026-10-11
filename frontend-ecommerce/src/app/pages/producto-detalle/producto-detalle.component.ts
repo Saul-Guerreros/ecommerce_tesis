@@ -519,11 +519,11 @@ export class ProductoDetalleComponent implements OnInit {
     return Array.from({ length: 5 }, (_, i) => i < llenas);
   }
 
-  get disponibilidadDetalle(): string {
+    get disponibilidadDetalle(): string {
     if (this.stockDisponible !== null) {
-      return `${this.stockDisponible} unit${this.stockDisponible === 1 ? '' : 's'} available`;
+      return this.stockDisponible === 1? '1 unidad disponible': `${this.stockDisponible} unidades disponibles`;
     }
-    return 'Ready to order';
+    return 'Listo para pedir';
   }
 
   // ---------------------------------------------------------------
@@ -691,14 +691,14 @@ export class ProductoDetalleComponent implements OnInit {
   toggleFavorito(): void {
     this.favoritoActivo = !this.favoritoActivo;
     if (this.favoritoActivo) {
-      this.toastr.info(this.producto?.titulo ?? '', 'Added to favorites');
+      this.toastr.info(this.producto?.titulo ?? '', 'Agregado a favoritos');
     }
   }
 
   toggleComparar(): void {
     this.compararActivo = !this.compararActivo;
     if (this.compararActivo) {
-      this.toastr.info(this.producto?.titulo ?? '', 'Added to compare');
+      this.toastr.info(this.producto?.titulo ?? '', 'Agregado para comparar');
     }
   }
 

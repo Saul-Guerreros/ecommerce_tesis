@@ -18,6 +18,9 @@ import { ConfiguracionTiendaService } from '../../../modules/configuracion-tiend
 import { ConfiguracionTienda } from '../../../modules/configuracion-tienda/models/configuracion-tienda.model';
 import { FichaTecnicaFormComponent } from '../../../modules/ficha-tecnica/ficha-tecnica-form/ficha-tecnica-form.component';
 import { ToastrService } from 'ngx-toastr';
+import { DiscountsService } from '../../discounts/service/discounts.service';
+import { PublicacionBorradorService } from './publicacion-borrador.service';
+import { ValorFicha } from '../../../modules/ficha-tecnica/models/ficha-tecnica.model';
 
 type OrigenUmbral = 'general' | 'individual';
 /**
@@ -47,6 +50,17 @@ type OrigenUmbral = 'general' | 'individual';
 })
 export class PublicacionWebComponent implements OnInit {
   private fb = inject(FormBuilder); // ← nuevo: se resuelve acá mismo
+  private discountsService = inject(DiscountsService);
+  private borradorService = inject(PublicacionBorradorService);
+
+  /** Campañas activas o programadas que alcanzan a este producto. */
+  campanias: any[] = [];
+  /** Valores de ficha a restaurar desde el borrador. */
+  fichaInicial: ValorFicha[] | null = null;
+
+  readonly nombresCampania: Record<number, string> = { 1: 'Normal', 2: 'De un día', 3: 'Por link' };
+  readonly nombresAlcance: Record<number, string> = { 1: 'este producto', 2: 'su categoría', 3: 'su marca' };
+  
 
   productoId!: number;
   producto: Producto | null = null;
@@ -121,6 +135,7 @@ export class PublicacionWebComponent implements OnInit {
     this.productoId = Number(this.route.snapshot.paramMap.get('id'));
     this.catalogoService.categorias().subscribe((data) => (this.categorias = data));
     this.cargarDatos();
+	this.cargarCampanias();
   }
 
   /**
@@ -264,6 +279,7 @@ copiarDelPadre(): void {
         }
 
         this.cargando = false;
+		this.aplicarBorrador();
       },
       error: () => {
         this.toastr.error('No se pudo cargar el producto o la publicación web', 'Error');
@@ -272,7 +288,51 @@ copiarDelPadre(): void {
     });
   }
 
-  
+    cargarCampanias(): void {
+    this.discountsService.vigentesPorProducto(this.productoId).subscribe({
+      next: (res: any) => (this.campanias = res.data ?? []),
+      error: () => (this.campanias = []),
+    });
+  }
+
+    /** Guarda lo que se está editando y va a crear la campaña con el producto precargado. */
+  irACrearCampania(): void {
+    this.guardarBorrador();
+    this.router.navigate(['/discounts/register'], {
+      queryParams: { producto_id: this.productoId, origen: 'publicacion' },
+    });
+  }
+
+  /** Igual que crear: guarda el borrador y abre la campaña existente con retorno a esta publicación. */
+  irAVerCampania(campaniaId: number): void {
+    this.guardarBorrador();
+    this.router.navigate(['/discounts/list/edit', campaniaId], {
+      queryParams: { producto_id: this.productoId, origen: 'publicacion' },
+    });
+  }
+
+  private guardarBorrador(): void {
+    this.borradorService.guardar(this.productoId, {
+      formValue: this.form.getRawValue(),
+      archivosNuevos: [...this.archivosNuevos],
+      previews: [...this.previews],
+      ficha: this.fichaTecnica?.listo ? this.fichaTecnica.valores() : null,
+    });
+  }
+
+  /** Si se volvió desde otro módulo, restaura lo que no se había guardado. */
+  private aplicarBorrador(): void {
+    const borrador = this.borradorService.tomar(this.productoId);
+    if (!borrador) return;
+
+    this.form.patchValue(borrador.formValue);
+    this.archivosNuevos = borrador.archivosNuevos;
+    this.previews = borrador.previews;
+    this.fichaInicial = borrador.ficha;
+    this.form.markAsDirty();
+
+    this.toastr.info('Se recuperaron los cambios que aún no habías guardado', 'Borrador');
+  }
 
   onArchivosSeleccionados(event: Event): void {
     const input = event.target as HTMLInputElement;

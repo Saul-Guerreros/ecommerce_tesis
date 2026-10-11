@@ -38,6 +38,8 @@ class AuthController extends Controller
     private const MINUTOS_EXPIRACION_VERIFICACION_EMAIL = 60 * 48; // 48 horas
     private const MINUTOS_EXPIRACION_RECUPERACION_PASSWORD = 15;    // 15 minutos
 
+    /** Duración del token cuando el cliente marca "Recordarme" (30 días). */
+    private const TTL_RECORDARME_MINUTOS = 60 * 24 * 30;
     public function __construct()
     {
         $this->middleware('auth:api', ['except' => [
@@ -307,6 +309,11 @@ class AuthController extends Controller
 
         $this->registrarIntento($usuario->usu_id, $login, true, null, $request);
 
+        // "Recordarme": token de larga duración. Sin marcar: JWT_TTL normal.
+        if ($request->boolean('remember')) {
+            auth('api')->setTTL(self::TTL_RECORDARME_MINUTOS);
+        }
+
         $token = auth('api')->login($usuario);
 
         return $this->respondWithToken($token, $usuario, $request);
@@ -321,6 +328,7 @@ class AuthController extends Controller
             'email' => $usuario->usu_login,
             'estado' => $usuario->usu_estado,
             'full_name' => $usuario->persona?->nombre_completo,
+            'avatar_url' => $usuario->persona?->per_avatar? rtrim(config('app.url'), '/') . '/storage/' . $usuario->persona->per_avatar: null,
             'persona' => $usuario->persona,
             'rol' => $usuario->rol?->rol_descri,
             'permisos' => $usuario->rol ? $usuario->rol->permisos()->pluck('prm_descri') : [],
@@ -380,6 +388,7 @@ class AuthController extends Controller
             'expires_in' => $ttlSegundos,
             'user' => [
                 'full_name' => $usuario->persona?->nombre_completo,
+                'avatar_url' => $usuario->persona?->per_avatar? rtrim(config('app.url'), '/') . '/storage/' . $usuario->persona->per_avatar: null,
                 'email' => $usuario->usu_login,
                 'rol' => $usuario->rol?->rol_descri,
                 'permisos' => $usuario->rol ? $usuario->rol->permisos()->pluck('prm_descri') : [],

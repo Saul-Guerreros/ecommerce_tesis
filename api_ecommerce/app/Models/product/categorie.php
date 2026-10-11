@@ -16,6 +16,7 @@ class categorie extends Model
         'cat_nivel',
         'cat_nombre',
         'cat_icono',
+        'cat_imagen',
     ];
 
     public function padre()

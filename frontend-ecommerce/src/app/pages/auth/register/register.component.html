@@ -1,110 +1,89 @@
-<main>
-        <section class="uk-section uk-section-small">
-          <div class="uk-container uk-container-xsmall">
-            <div class="uk-text-center">
-              <ul class="uk-breadcrumb uk-flex-center uk-margin-remove">
-                <li><a routerLink="">Home</a></li>
-                <li><span>Registrarse</span></li>
-              </ul>
-              <h1 class="uk-margin-small-top uk-margin-remove-bottom">Crear Cuenta</h1>
+<main class="tm-auth">
+  <div class="uk-container">
+    <div class="tm-auth-caja tm-auth-caja--ancha">
+      <ul class="uk-breadcrumb uk-flex-center uk-margin-remove">
+        <li><a routerLink="/">Inicio</a></li>
+        <li><span>Crear cuenta</span></li>
+      </ul>
+      <h1 class="tm-auth-titulo">Crear cuenta</h1>
+      <p class="tm-auth-subtitulo">Registrate para comprar y seguir tus pedidos.</p>
+
+      <div class="tm-auth-tarjeta">
+        <form (ngSubmit)="register()" novalidate>
+          <div class="tm-auth-grilla-2">
+            <div class="tm-auth-campo">
+              <label class="uk-form-label" for="nombre1">Primer nombre *</label>
+              <input class="uk-input" id="nombre1" type="text" name="nombre1" [(ngModel)]="nombre1"
+                     placeholder="Juan" autocomplete="given-name" required />
             </div>
-            <div class="uk-margin-medium-top">
-              <div class="uk-card uk-card-default uk-card-small tm-ignore-container">
-                <div class="uk-card-body">
-                  <div class="uk-form-stacked">
-                    <div class="uk-grid-medium uk-child-width-1-1" uk-grid="">
-
-                      <div class="uk-grid-small uk-child-width-1-2@s" uk-grid="">
-                        <div><label><div class="uk-form-label">Primer Nombre *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
-                                class="uk-input"
-                                id="nombre1"
-                                type="text"
-                                name="nombre1"
-                                [(ngModel)]="nombre1"
-                                placeholder="Juan"
-                                autocomplete="given-name"
-                                required=""
-                              /></div></label></div>
-                        <div><label><div class="uk-form-label">Segundo Nombre <span class="uk-text-meta">(opcional)</span></div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
-                                class="uk-input"
-                                id="nombre2"
-                                type="text"
-                                name="nombre2"
-                                [(ngModel)]="nombre2"
-                                placeholder="(opcional)"
-                              /></div></label></div>
-                      </div>
-
-                      <div class="uk-grid-small uk-child-width-1-2@s" uk-grid="">
-                        <div><label><div class="uk-form-label">Primer Apellido *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
-                                class="uk-input"
-                                id="apellido1"
-                                type="text"
-                                name="apellido1"
-                                [(ngModel)]="apellido1"
-                                placeholder="Pérez"
-                                autocomplete="family-name"
-                                required=""
-                              /></div></label></div>
-                        <div><label><div class="uk-form-label">Segundo Apellido <span class="uk-text-meta">(opcional)</span></div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: user"></span><input
-                                class="uk-input"
-                                id="apellido2"
-                                type="text"
-                                name="apellido2"
-                                [(ngModel)]="apellido2"
-                                placeholder="(opcional)"
-                              /></div></label></div>
-                      </div>
-
-                      <div><label><div class="uk-form-label">Celular *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: phone"></span><input
-                              class="uk-input"
-                              id="celular"
-                              type="tel"
-                              name="celular"
-                              [(ngModel)]="celular"
-                              placeholder="0981 000 000"
-                              autocomplete="tel"
-                              required=""
-                            /></div></label></div>
-
-                      <div><label><div class="uk-form-label">Correo Electrónico *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: mail"></span><input
-                              class="uk-input"
-                              id="email"
-                              type="email"
-                              name="email"
-                              [(ngModel)]="email"
-                              placeholder="correo@ejemplo.com"
-                              autocomplete="email"
-                              required=""
-                            /></div></label></div><div><label><div class="uk-form-label">Contraseña *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
-                              class="uk-input"
-                              id="tp_password" 
-                              type="password"
-                              name="password"
-                              [(ngModel)]="password"
-                             placeholder="Mín. 8 caracteres"
-                              autocomplete="new-password"
-                              required=""
-                            /></div></label></div><div><label><div class="uk-form-label">Confirmar Contraseña *</div><div class="uk-inline uk-width-1-1"><span class="uk-form-icon" uk-icon="icon: lock"></span><input
-                              class="uk-input"
-                              type="password"
-                              name="password_confirmation"
-                              [(ngModel)]="password_confirmation"
-                              placeholder="••••••••"
-                              autocomplete="new-password"
-                              required=""
-                            /></div></label></div><div><label><input class="uk-checkbox" type="checkbox" name="terminos" [(ngModel)]="terminos" required="" />
-                          <span class="uk-margin-small-left">Acepto los 
-                            <a href="#">Términos y Condiciones</a>
-                             y la 
-                            <a href="#">Política de Privacidad</a> *</span></label></div><div>
-                              <button class="uk-button uk-button-primary uk-width-1-1" type="button" (click)="register()">Registrarse</button>
-                            </div><div class="uk-text-center uk-text-meta">¿Ya tenés cuenta? 
-                        <a routerLink="/login">Iniciar sesión</a></div></div>
-                  </div>
-                </div>
-              </div>
+            <div class="tm-auth-campo">
+              <label class="uk-form-label" for="nombre2">Segundo nombre <span class="uk-text-meta">(opcional)</span></label>
+              <input class="uk-input" id="nombre2" type="text" name="nombre2" [(ngModel)]="nombre2"
+                     autocomplete="additional-name" />
+            </div>
+            <div class="tm-auth-campo">
+              <label class="uk-form-label" for="apellido1">Primer apellido *</label>
+              <input class="uk-input" id="apellido1" type="text" name="apellido1" [(ngModel)]="apellido1"
+                     placeholder="Pérez" autocomplete="family-name" required />
+            </div>
+            <div class="tm-auth-campo">
+              <label class="uk-form-label" for="apellido2">Segundo apellido <span class="uk-text-meta">(opcional)</span></label>
+              <input class="uk-input" id="apellido2" type="text" name="apellido2" [(ngModel)]="apellido2" />
             </div>
           </div>
-        </section>
+
+          <div class="tm-auth-campo">
+            <label class="uk-form-label" for="celular">Celular *</label>
+            <div class="uk-inline uk-width-1-1">
+              <span class="uk-form-icon" uk-icon="icon: phone"></span>
+              <input class="uk-input" id="celular" type="tel" name="celular" inputmode="tel"
+                     [(ngModel)]="celular" placeholder="0981 000 000" autocomplete="tel" required />
+            </div>
+          </div>
+
+          <div class="tm-auth-campo">
+            <label class="uk-form-label" for="email">Correo electrónico *</label>
+            <div class="uk-inline uk-width-1-1">
+              <span class="uk-form-icon" uk-icon="icon: mail"></span>
+              <input class="uk-input" id="email" type="email" name="email" inputmode="email"
+                     [(ngModel)]="email" placeholder="correo@ejemplo.com" autocomplete="email" required />
+            </div>
+          </div>
+
+          <div class="tm-auth-grilla-2">
+            <div class="tm-auth-campo">
+              <label class="uk-form-label" for="password">Contraseña *</label>
+              <input class="uk-input" id="password" type="password" name="password" [(ngModel)]="password"
+                     placeholder="••••••••" autocomplete="new-password" required />
+              <div class="tm-auth-ayuda">Mínimo 8 caracteres.</div>
+            </div>
+            <div class="tm-auth-campo">
+              <label class="uk-form-label" for="password_confirmation">Confirmar contraseña *</label>
+              <input class="uk-input" id="password_confirmation" type="password" name="password_confirmation"
+                     [(ngModel)]="password_confirmation" placeholder="••••••••" autocomplete="new-password" required />
+            </div>
+          </div>
+
+          <!-- Los enlaces abren en otra pestaña para no perder lo ya cargado -->
+          <label class="tm-auth-check tm-auth-terminos">
+            <input class="uk-checkbox" type="checkbox" name="terminos" [(ngModel)]="terminos" />
+            <span>
+              Leí y acepto los
+              <a routerLink="/terminos-y-condiciones" target="_blank" rel="noopener">Términos y Condiciones</a>
+              y la
+              <a routerLink="/politica-de-privacidad" target="_blank" rel="noopener">Política de Privacidad</a>. *
+            </span>
+          </label>
+
+          <button class="uk-button uk-button-primary uk-width-1-1" type="submit" [disabled]="procesando">
+            {{ procesando ? 'Creando cuenta…' : 'Crear cuenta' }}
+          </button>
+        </form>
+
+        <div class="tm-auth-pie">
+          ¿Ya tenés cuenta? <a routerLink="/login">Iniciar sesión</a>
+        </div>
+      </div>
+    </div>
+  </div>
 </main>

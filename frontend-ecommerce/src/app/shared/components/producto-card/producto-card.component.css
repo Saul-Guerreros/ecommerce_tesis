@@ -1,0 +1,28 @@
+/* El host ocupa toda la celda para que uk-height-1-1 y uk-grid-match funcionen */
+:host {
+  display: block;
+  height: 100%;
+}
+
+/* Mismo comportamiento que las tarjetas del home */
+.tm-product-card-shop {
+  flex-wrap: wrap;
+}
+
+.tm-product-card-shop > .tm-product-card-add {
+  width: 100%;
+  margin-left: 0;
+  margin-top: 12px;
+  display: block;
+}
+
+/* Sin cuotas: "Comprá al Contado" centrado en el espacio libre */
+.tm-product-card-shop.sin-cuotas {
+  flex: 1;
+  align-items: center;
+  margin-top: 0;
+}
+
+.tm-product-card-shop.sin-cuotas > .tm-product-card-add {
+  margin-top: 0;
+}

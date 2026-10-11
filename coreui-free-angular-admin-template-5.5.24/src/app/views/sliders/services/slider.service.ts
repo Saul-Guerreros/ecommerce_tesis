@@ -57,13 +57,10 @@ export class SliderService {
   }
 
 
-  listProductos(search: string = ''): Observable<any> {
-    const url = `${URL_SERVICIOS}/admin/sliders-productos?search=${search}`;
-    return this.http.get(url, { headers: this.headers });
-  }
-
-  showProducto(id: number): Observable<any> {
-    const url = `${URL_SERVICIOS}/admin/sliders-productos/${id}`;
+   /** Opciones para el bloque "Destino del banner". */
+  destinos(search: string = '', productoId: number | null = null): Observable<any> {
+    let url = `${URL_SERVICIOS}/admin/sliders-destinos?search=${encodeURIComponent(search)}`;
+    if (productoId) url += `&producto_id=${productoId}`;
     return this.http.get(url, { headers: this.headers });
   }
 }
