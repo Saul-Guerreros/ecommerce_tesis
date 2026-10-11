@@ -1,0 +1,248 @@
+<c-card class="mb-4">
+
+  <!-- ====== CABECERA ====== -->
+  <c-card-header class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <strong>PEDIDOS</strong>
+
+    <div class="d-flex gap-2">
+      <div cDropdown>
+        <button cButton cDropdownToggle color="secondary" variant="outline"
+                size="sm" [disabled]="exportando">
+          <span *ngIf="!exportando">Exportar</span>
+          <span *ngIf="exportando">Exportando...</span>
+        </button>
+        <ul cDropdownMenu>
+          <li><a cDropdownItem role="button" (click)="exportarCsv()">Exportar a CSV</a></li>
+          <li><hr cDropdownDivider /></li>
+          <li>
+            <a cDropdownItem class="disabled text-muted" aria-disabled="true">
+              Exportar a Excel <small>(próximamente)</small>
+            </a>
+          </li>
+          <li>
+            <a cDropdownItem class="disabled text-muted" aria-disabled="true">
+              Exportar a PDF <small>(próximamente)</small>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <button cButton color="secondary" variant="outline" size="sm"
+              (click)="filtrosVisibles = !filtrosVisibles">
+        {{ filtrosVisibles ? 'Ocultar filtros' : 'Filtros' }}
+      </button>
+    </div>
+  </c-card-header>
+
+  <c-card-body>
+
+    <!-- ====== BÚSQUEDA (excluyente) ====== -->
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
+        <label class="form-label small text-muted mb-1">N.º de pedido</label>
+        <input cFormControl placeholder="PED-2026-001047"
+               [(ngModel)]="busNumero"
+               [disabled]="deshabilitado('num')"
+               (ngModelChange)="onBusquedaChange()"
+               (keyup.enter)="buscarAhora()" />
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label small text-muted mb-1">C.I. / Cédula</label>
+        <input cFormControl placeholder="1234567"
+               [(ngModel)]="busCedula"
+               [disabled]="deshabilitado('ci')"
+               (ngModelChange)="onBusquedaChange()"
+               (keyup.enter)="buscarAhora()" />
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label small text-muted mb-1">Nombre del cliente</label>
+        <input cFormControl placeholder="Juan Pérez"
+               [(ngModel)]="busCliente"
+               [disabled]="deshabilitado('cliente')"
+               (ngModelChange)="onBusquedaChange()"
+               (keyup.enter)="buscarAhora()" />
+      </div>
+    </div>
+
+    <div class="small text-muted mb-3" *ngIf="campoActivo">
+      Buscando por un solo criterio. Borrá el campo para volver a habilitar los demás.
+    </div>
+
+    <!-- ====== FILTROS ====== -->
+    <div *ngIf="filtrosVisibles">
+      <div class="row g-2 mb-2">
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Pedido</label>
+          <select cSelect [(ngModel)]="filtroEstadoPedido" (ngModelChange)="cargar(1)">
+            <option [ngValue]="null">Todos</option>
+            <option *ngFor="let e of estadosPedido" [ngValue]="e.est_id">{{ e.est_descri }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Entrega</label>
+          <select cSelect [(ngModel)]="filtroTipoEntrega" (ngModelChange)="cargar(1)">
+            <option [ngValue]="null">Todos</option>
+            <option *ngFor="let t of tiposEntrega" [ngValue]="t.ten_id">{{ t.ten_descri }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Pago</label>
+          <select cSelect [(ngModel)]="filtroEstadoPago" (ngModelChange)="cargar(1)">
+            <option [ngValue]="null">Todos</option>
+            <option *ngFor="let p of estadosPago" [ngValue]="p.epa_id">{{ p.epa_descri }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Método</label>
+          <select cSelect [(ngModel)]="filtroMetodoPago" (ngModelChange)="cargar(1)">
+            <option [ngValue]="null">Todos</option>
+            <option *ngFor="let m of metodosPago" [ngValue]="m.mpa_id">{{ m.mpa_descri }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ====== RANGO DE FECHAS ====== -->
+      <div class="row g-2 mb-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Desde</label>
+          <input cFormControl type="date" [(ngModel)]="desde" [max]="hasta || null" />
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Hasta</label>
+          <input cFormControl type="date" [(ngModel)]="hasta" [min]="desde || null"
+                 [class.is-invalid]="rangoFechasInvalido" />
+          <div class="invalid-feedback d-block" *ngIf="rangoFechasInvalido">
+            La fecha "Hasta" no puede ser anterior a "Desde".
+          </div>
+        </div>
+
+        <div class="col-md-3 d-flex gap-2">
+          <button cButton color="primary" class="w-100"
+                  [disabled]="rangoFechasInvalido" (click)="aplicar()">Aplicar</button>
+          <button cButton color="secondary" variant="outline" class="w-100"
+                  (click)="limpiar()">Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== ALERTA DE PAGOS PENDIENTES ====== -->
+    <c-alert color="warning" class="py-2 d-flex justify-content-between align-items-center"
+             *ngIf="pagosPendientes > 0">
+      <span>
+        <strong>{{ pagosPendientes }}</strong>
+        {{ pagosPendientes === 1 ? 'pago esperando verificación' : 'pagos esperando verificación' }}
+      </span>
+      <button cButton color="warning" variant="outline" size="sm" (click)="verPagosPendientes()">
+        Ver pendientes
+      </button>
+    </c-alert>
+
+    <!-- ====== CONTADOR ====== -->
+    <div class="text-muted small mb-2" *ngIf="!cargando">
+      {{ total }} pedido(s) encontrado(s)
+    </div>
+
+    <div class="text-center py-5" *ngIf="cargando">
+      <c-spinner color="primary"></c-spinner>
+      <div class="text-muted small mt-2">Cargando pedidos...</div>
+    </div>
+
+    <!-- ====== TABLA ====== -->
+    <div class="table-responsive" *ngIf="!cargando">
+      <table cTable hover align="middle">
+        <thead>
+          <tr>
+            <th>N.º</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Tipo de entrega</th>
+            <th class="text-end">Total</th>
+            <th>Método de pago</th>
+            <th>Verif. pago</th>
+            <th>Pedido</th>
+            <th class="text-end">Acción</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let p of pedidos" style="cursor: pointer" (click)="verPedido(p)">
+            <td><strong>{{ p.numero }}</strong></td>
+
+            <td [title]="p.fecha_completa">{{ p.fecha }}</td>
+
+            <td>
+              {{ p.cliente.nombre }}
+              <div class="small text-muted" *ngIf="p.cliente.cedula">CI {{ p.cliente.cedula }}</div>
+            </td>
+
+            <td>{{ p.entrega.etiqueta }}</td>
+
+            <td class="text-end">Gs. {{ formatoGs(p.total) }}</td>
+
+            <td>
+              {{ p.metodo_pago.etiqueta }}
+              <div class="small text-muted" *ngIf="p.metodo_pago.dividido">
+                {{ p.metodo_pago.cantidad_pagos }} pagos registrados
+              </div>
+            </td>
+
+            <td>
+              <c-badge [color]="colorEstadoPago(p.verificacion_pago.codigo)">
+                {{ p.verificacion_pago.descripcion }}
+              </c-badge>
+              <div class="small text-muted" *ngIf="p.verificacion_pago.detalle">
+                {{ p.verificacion_pago.detalle }}
+              </div>
+            </td>
+
+            <td>
+              <c-badge [color]="colorEstadoPedido(p.estado_pedido.codigo)">
+                {{ p.estado_pedido.descripcion }}
+              </c-badge>
+            </td>
+
+            <td class="text-end">
+              <button cButton size="sm" color="info" class="text-white"
+                      (click)="verPedido(p); $event.stopPropagation()">Ver</button>
+            </td>
+          </tr>
+
+          <tr *ngIf="pedidos.length === 0">
+            <td colspan="9" class="text-center py-4 text-muted">
+              No se encontraron pedidos con los criterios aplicados.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ====== PAGINACIÓN ====== -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2"
+         *ngIf="!cargando && total > 0">
+      <div class="text-muted small">
+        Mostrando {{ rangoDesde }}-{{ rangoHasta }} de {{ total }}
+      </div>
+
+      <nav *ngIf="lastPage > 1">
+        <ul cPagination class="mb-0">
+          <li cPageItem [disabled]="currentPage === 1">
+            <a cPageLink role="button" (click)="cambiarPagina(currentPage - 1)">&#9664;</a>
+          </li>
+          <li cPageItem *ngFor="let p of pagesArray" [active]="p === currentPage">
+            <a cPageLink role="button" (click)="cambiarPagina(p)">{{ p }}</a>
+          </li>
+          <li cPageItem [disabled]="currentPage === lastPage">
+            <a cPageLink role="button" (click)="cambiarPagina(currentPage + 1)">&#9654;</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+  </c-card-body>
+</c-card>

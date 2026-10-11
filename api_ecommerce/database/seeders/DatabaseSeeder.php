@@ -40,6 +40,18 @@ class DatabaseSeeder extends Seeder
         CategoriaSeeder::class,
         AtributoFichaTecnicaSeeder::class,
         FaqTiendaSeeder::class,
+
+            // Otros catálogos actuales del sistema
+            TipoComprobanteSeeder::class,
+            UnidadMedidaSeeder::class,
+            MotivoNotaCreditoSeeder::class,   // <-- nuevo
+            TipoEntregaSeeder::class,   // <-- nuevo
+            MetodoPagoSeeder::class,   // <-- nuevo
+            ConfiguracionEnvioSeeder::class,   // <-- nuevo (Configuración de Envío)
+            EstadoPedidoSeeder::class,   // <-- nuevo
+            EstadoPagoSeeder::class,     // <-- nuevo
+            MotivoRechazoPagoSeeder::class,   // <-- nuevo
+
         ]);
     }
 }

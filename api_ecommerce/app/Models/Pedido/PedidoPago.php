@@ -2,6 +2,7 @@
 
 namespace App\Models\Pedido;
 
+use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -15,12 +16,17 @@ class PedidoPago extends Model
 
     protected $fillable = [
         'ppa_pedid', 'ppa_orden', 'ppa_mpaid', 'ppa_monto', 'ppa_epaid', 'ppa_observ',
+        'ppa_nrotrx', 'ppa_banco', 'ppa_fechpag', 'ppa_montver',
+        'ppa_mrpid', 'ppa_usuver', 'ppa_fechver',
     ];
 
     protected $casts = [
-        'ppa_orden'  => 'integer',
-        'ppa_monto'  => 'decimal:2',
-        'ppa_creado' => 'datetime',
+        'ppa_orden'   => 'integer',
+        'ppa_monto'   => 'decimal:2',
+        'ppa_montver' => 'decimal:2',
+        'ppa_fechpag' => 'date',
+        'ppa_fechver' => 'datetime',
+        'ppa_creado'  => 'datetime',
     ];
 
     public function pedido(): BelongsTo
@@ -41,5 +47,15 @@ class PedidoPago extends Model
     public function comprobante(): HasOne
     {
         return $this->hasOne(PagoComprobante::class, 'pco_ppaid', 'ppa_id');
+    }
+
+    public function motivoRechazo(): BelongsTo
+    {
+        return $this->belongsTo(MotivoRechazoPago::class, 'ppa_mrpid', 'mrp_id');
+    }
+
+    public function usuarioVerificador(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'ppa_usuver', 'usu_id');
     }
 }

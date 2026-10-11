@@ -25,19 +25,6 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-external-link' },
     attributes: { target: '_blank' }
   },
-   {
-
-  name: 'Publicación Web',
-  url: '/publicaciones',
-  iconComponent: { name: 'cilShareAll' },
-  },
-  {
-
-  name: 'Sliders',
-  url: '/sliders/list',
-  iconComponent: { name: 'cil-image' },
-  },
-
   {
     name: 'Publicaciones',
     url: '/publicaciones',
@@ -46,20 +33,23 @@ export const navItems: INavData[] = [
       { name: 'Lista de publicaciones', url: '/publicaciones' },
       { name: 'Categorías', url: '/categories' },
       { name: 'Atributos', url: '/atributos/list' },
-	  { name: 'Plantillas de Ficha Técnica', url: '/plantillas-ficha' }
-
+	  { name: 'Plantillas de Ficha Técnica', url: '/plantillas-ficha' },
+    { name: 'Atributos', url: '/atributos/list' },
+    { name: 'Marcas', url: '/brands' },
     ]
   },
- 
   {
-    name: 'Cupones',
-    url: '/cupones/list',
-    iconComponent: { name: 'cil-gift' }
+    name: 'Sliders',
+    url: '/sliders/list',
+    iconComponent: { name: 'cil-image' }
   },
   {
-    name: 'Campaña de Descuento',
-    url: '/discounts/list',
-    iconComponent: { name: 'cil-badge' }
+    name: 'Promociones',
+    iconComponent: { name: 'cil-gift' },
+    children: [
+      { name: 'Cupones', url: '/cupones/list' },
+      { name: 'Campañas de Descuento', url: '/discounts/list' }
+    ]
   },
   {
     name: 'Asistente Virtual',
@@ -70,27 +60,56 @@ export const navItems: INavData[] = [
   },
 
   // ==========================================
-  // 2. COMPRAS
+  // 2. VENTAS
+  // ==========================================
+  {
+    title: true,
+    name: 'Ventas'
+  },
+  {
+    name: 'Pedidos',
+    url: '/pedidos',
+    iconComponent: { name: 'cil-notes' }
+  },
+  {
+    name: 'Facturas de Venta',
+    url: '/facturas-venta',
+    iconComponent: { name: 'cil-description' }
+  },
+
+  // ==========================================
+  // 3. COMPRAS
   // ==========================================
   {
     title: true,
     name: 'Compras'
   },
-
   {
-    name: 'Gestión de Compras',
+    name: 'Proveedores',
     iconComponent: { name: 'cil-cart' },
     children: [
-      { name: 'Proveedores', url: '/proveedores' },
-      { name: 'Tipos de proveedor', url: '/tipos-proveedor' },
-      { name: 'Facturas de Compra', url: '/facturas-compra' },
-      { name: 'Cuentas por Pagar', url: '/cuentas-por-pagar' },
-      { name: 'Libro de Compras', url: '/libro-compra' }
+      { name: 'Lista de Proveedores', url: '/proveedores' },
+      { name: 'Tipos de Proveedor', url: '/tipos-proveedor' }
     ]
   },
-  
+  {
+    name: 'Facturas de Compra',
+    url: '/facturas-compra',
+    iconComponent: { name: 'cil-description' }
+  },
+  {
+    name: 'Cuentas por Pagar',
+    url: '/cuentas-por-pagar',
+    iconComponent: { name: 'cil-dollar' }
+  },
+  {
+    name: 'Libro de Compras',
+    url: '/libro-compra',
+    iconComponent: { name: 'cil-spreadsheet' }
+  },
+
   // ==========================================
-  // 3. INVENTARIO
+  // 4. INVENTARIO
   // ==========================================
   {
     title: true,
@@ -101,66 +120,22 @@ export const navItems: INavData[] = [
     url: '/inventario/productos',
     iconComponent: { name: 'cilBasket' },
     children: [
-    { name: 'Lista de productos', url: '/inventario/productos' },
-
-    {
-      name: 'Marcas',
-      url: '/brands',
-      //iconComponent: { name: 'cil-tag' }
-    },
-    
-    {
-        name: 'Unidades de Medida',
-        iconComponent: { name: 'cil-ruler' },
-        url: '/unidades-medida'
-      },
+      { name: 'Lista de productos', url: '/inventario/productos' },
+      { name: 'Unidades de Medida', url: '/unidades-medida' }
     ]
   },
-  
   {
-  name: 'Configuración del Margen',
-  url: '/configuracion-precio',
-  iconComponent: { name: 'cil-settings' }
+    name: 'Configuración de Margen',
+    url: '/configuracion-precio',
+    iconComponent: { name: 'cil-settings' }
   },
-
   {
     name: 'Gestión de Precios',
     url: '/precios',
     iconComponent: { name: 'cil-dollar' }
   },
-
-    {
-    name: 'Alerta de Stock en Tienda',
-    url: '/configuracion-tienda',
-    iconComponent: { name:  'cil-bell' }
-  },
-
-      {
-    name: 'Datos de Pago',
-    url: '/configuracion-pago',
-    iconComponent: { name: 'cil-credit-card' }
-  },
-
   {
-    name: 'Configuración de Envío',
-    url: '/configuracion-envio',
-    iconComponent: { name: 'cil-truck' }
-  },
-
-  {
-    name: 'Tarifas de Envío',
-    url: '/tarifas-envio',
-    iconComponent: { name: 'cil-map' }
-  },
-
-  {
-    name: 'Gestión de Cuotas',
-    url: '/gestion-cuotas',
-    iconComponent: { name: 'cil-calculator' }
-  },
-
-  {
-    name: 'Ajuste de Inventario',
+    name: 'Ajustes de Inventario',
     iconComponent: { name: 'cil-swap-vertical' },
     children: [
       { name: 'Lista de ajustes', url: '/inventario/ajustes' },
@@ -168,11 +143,10 @@ export const navItems: INavData[] = [
     ]
   },
   {
-    name: 'Movimiento de Stock',
+    name: 'Movimientos de Stock (Kardex)',
     url: '/inventario/kardex',
     iconComponent: { name: 'cil-history' }
   },
- 
   {
     name: 'Stock Actual',
     url: '/inventario/stock-actual',
@@ -180,74 +154,82 @@ export const navItems: INavData[] = [
   },
 
   // ==========================================
-  // 4. PERSONAS
+  // 5. AJUSTES DE LA TIENDA
+  // ==========================================
+  {
+    title: true,
+    name: 'Ajustes de la Tienda'
+  },
+  {
+    name: 'Gestión de Cuotas',
+    url: '/gestion-cuotas',
+    iconComponent: { name: 'cil-calculator' }
+  },
+  {
+    name: 'Alertas de Stock',
+    url: '/configuracion-tienda',
+    iconComponent: { name: 'cil-bell' }
+  },
+  {
+    name: 'Métodos de Pago',
+    url: '/configuracion-pago',
+    iconComponent: { name: 'cil-credit-card' }
+  },
+  {
+    name: 'Configuración de Envíos',
+    iconComponent: { name: 'cil-truck' },
+    children: [
+      { name: 'Configuración de Envío', url: '/configuracion-envio' },
+      { name: 'Tarifas de Envío', url: '/tarifas-envio' }
+    ]
+  },
+
+  // ==========================================
+  // 6. PERSONAS
   // ==========================================
   {
     title: true,
     name: 'Personas'
   },
   {
-    name: 'Funcionarios',
-    iconComponent: { name: 'cil-people' },
-    url: '/funcionarios'
-    
-  },
-  {
-  name:'campaña de descuento',
-  url:'/discounts/list',
-  iconComponent: { name: 'cil-image'},
-  }, 
-   {
-  name: 'Usuarios',
-  url: '/usuarios/list',
-  iconComponent: { name: 'cil-people' },
-  },
-  {
     name: 'Clientes',
     iconComponent: { name: 'cil-user' },
-    
-    url: '/clientes' 
-    
-  },
-  
-  {
-    name: 'Cargos',
-    url: '/cargos',
-    iconComponent: { name: 'cil-briefcase' }
+    children: [
+      { name: 'Lista de Clientes', url: '/clientes' },
+      { name: 'Tipos de Cliente', url: '/tipos-cliente' }
+    ]
   },
   {
-    name: 'Tipos de Cliente',
-    url: '/tipos-cliente',
-    iconComponent: { name: 'cil-tags' }
+    name: 'Funcionarios',
+    iconComponent: { name: 'cil-people' },
+    children: [
+      { name: 'Lista de Funcionarios', url: '/funcionarios' },
+      { name: 'Cargos', url: '/cargos' }
+    ]
   },
   {
     name: 'Tipos de Documento',
     url: '/tipos-documento',
     iconComponent: { name: 'cil-description' }
   },
+  {
+    name: 'Usuarios',
+    url: '/usuarios/list',
+    iconComponent: { name: 'cil-people' }
+  },
 
   // ==========================================
-  // 5. SEGURIDAD Y ACCESO
+  // 7. SEGURIDAD Y ACCESO
   // ==========================================
   {
     title: true,
     name: 'Seguridad y Acceso'
   },
-
-  {
-    name: 'Usuarios',
-    iconComponent: { name: 'cil-lock-locked' },
-    
-     url: '/usuarios' 
-  
-  },
-  
   {
     name: 'Roles',
     url: '/roles',
-    iconComponent: { name:'cil-shield-alt' }
+    iconComponent: { name: 'cil-shield-alt' }
   },
-
   {
     name: 'Permisos',
     url: '/permisos',
@@ -265,23 +247,18 @@ export const navItems: INavData[] = [
   },
 
   // ==========================================
-  // 6. CONFIGURACIÓN
+  // 8. CONFIGURACIÓN
   // ==========================================
   {
     title: true,
     name: 'Configuración'
   },
   {
-    name: 'Datos de la Empresa',
-    url: '/empresas',
-    iconComponent: { name: 'cil-building' }
-  },
-  {
-    name: 'Sucursales',
-    url: '/sucursales',
-    iconComponent: { name: 'cil-institution' },
+    name: 'Empresa',
+    iconComponent: { name: 'cil-building' },
     children: [
-      { name: 'Lista de sucursales', url: '/sucursales' },
+      { name: 'Datos de la Empresa', url: '/empresas' },
+      { name: 'Sucursales', url: '/sucursales' },
       { name: 'Depósitos', url: '/depositos' }
     ]
   },
@@ -294,26 +271,18 @@ export const navItems: INavData[] = [
       { name: 'Tipos de IVA', url: '/tipos-iva' }
     ]
   },
-  
-   {
+
+  // --- Sub-bloque dentro de Configuración ---
+  {
+    title: true,
+    name: 'Catálogos Generales'
+  },
+  {
     name: 'Ubicaciones',
     iconComponent: { name: 'cil-map' },
     children: [
-      { name: 'Departamentos',
-        url: '/departamentos',
-      },
-
-      { name: 'Ciudad',
-        url: '/ciudades',
-      },
-
-      { name: 'Barrios',
-        url: '/barrios',
-      },
-
-      { name: 'Calles',
-        url: '/calles',
-      }
+      { name: 'Departamentos', url: '/departamentos' },
+      { name: 'Ciudades', url: '/ciudades' }
     ]
   },
 
