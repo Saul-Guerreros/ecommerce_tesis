@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             ConfiguracionEnvioSeeder::class,   // <-- nuevo (Configuración de Envío)
             EstadoPedidoSeeder::class,   // <-- nuevo
             EstadoPagoSeeder::class,     // <-- nuevo
+            MotivoRechazoPagoSeeder::class,   // <-- nuevo
         ]);
     }
 }

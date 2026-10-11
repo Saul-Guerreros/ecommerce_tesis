@@ -69,6 +69,9 @@ use App\Http\Controllers\Admin\Configuracion\TarifaEnvioController;
 
 use App\Http\Controllers\Api\DatoFiscalClienteController;
 
+use App\Http\Controllers\Admin\Pedido\PedidoController;
+
+use App\Http\Controllers\Admin\Pedido\PedidoGestionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -425,6 +428,37 @@ Route::group([
     Route::delete('/dato-fiscal/{id}', [DatoFiscalClienteController::class, 'destroy']);
 
 });
+
+// Bandeja de pedidos del Panel Admin (solo lectura en esta etapa).
+// Orden obligatorio: literales antes de cualquier {id}.
+
+Route::prefix('admin/pedidos')->middleware('auth:api')->group(function () {
+    // Literales SIEMPRE antes de {pedido}
+    Route::get('/config',          [PedidoController::class, 'config'])
+        ->middleware('permiso:pedidos.ver');
+    Route::get('/exportar',        [PedidoController::class, 'exportar'])
+        ->middleware('permiso:pedidos.exportar');
+    Route::get('/gestion/config',  [PedidoGestionController::class, 'config'])
+        ->middleware('permiso:pedidos.ver');
+
+    Route::get('/',                [PedidoController::class, 'index'])
+        ->middleware('permiso:pedidos.ver');
+    Route::get('/{pedido}',        [PedidoGestionController::class, 'show'])
+        ->middleware('permiso:pedidos.ver');
+
+    // Confirmar un pago mueve dinero y stock: permiso propio.
+    Route::post('/{pedido}/pagos/{pago}/confirmar', [PedidoGestionController::class, 'confirmarPago'])
+        ->middleware('permiso:pedidos.pago.verificar');
+    Route::post('/{pedido}/pagos/{pago}/rechazar',  [PedidoGestionController::class, 'rechazarPago'])
+        ->middleware('permiso:pedidos.pago.verificar');
+
+    Route::patch('/{pedido}/estado', [PedidoGestionController::class, 'cambiarEstado'])
+        ->middleware('permiso:pedidos.gestionar');
+
+    Route::get('/{pedido}/pagos/{pago}/comprobante', [PedidoGestionController::class, 'comprobante'])
+    ->middleware('permiso:pedidos.ver');
+
+        });
 
 Route::get('publicaciones', [PublicacionWebController::class, 'index']);
 

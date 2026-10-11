@@ -170,6 +170,20 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-layers' }
   },
 
+    // ==========================================
+  // 4. VENTAS
+  // ==========================================
+  {
+    title: true,
+    name: 'Ventas'
+  },
+  {
+    name: 'Pedidos',
+    url: '/pedidos',
+    iconComponent: { name: 'cil-list-rich' }
+  },
+
+
   // ==========================================
   // 4. PERSONAS
   // ==========================================

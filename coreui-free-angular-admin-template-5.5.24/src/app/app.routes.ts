@@ -9,6 +9,7 @@ export const routes: Routes = [
     redirectTo: 'dashboard',
     pathMatch: 'full'
   },
+
   {
     path: '',
     loadComponent: () => import('./layout').then(m => m.DefaultLayoutComponent),
@@ -260,7 +261,12 @@ export const routes: Routes = [
         data: { title: 'Tarifas de Envío' },
       },
     
-  
+      {
+        path: 'pedidos',
+        loadChildren: () => import('./modules/pedidos/pedidos.module').then(m => m.PedidosModule),
+        canActivate: [permissionGuard('pedidos.ver')],
+        data: { title: 'Pedidos' },
+      },
 
 	 
    

@@ -14,6 +14,7 @@ class EstadoPago extends Model
     public const PENDIENTE = 'PENDIENTE';
     public const CONFIRMADO = 'CONFIRMADO';
     public const RECHAZADO = 'RECHAZADO';
+    public const PARCIAL    = 'PARCIAL';   // <-- nuevo
 
     protected $fillable = ['epa_codigo', 'epa_descri', 'epa_estado'];
 

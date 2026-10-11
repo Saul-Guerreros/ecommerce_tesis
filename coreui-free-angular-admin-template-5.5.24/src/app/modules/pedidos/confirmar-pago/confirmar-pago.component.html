@@ -1,0 +1,156 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" size="lg" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle *ngIf="pago && pedido">
+      CONFIRMAR PAGO {{ pago.orden }} — {{ pedido.numero }}
+    </h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="pago">
+
+    <!-- ===== BLOQUEO POR STOCK (409) ===== -->
+    <div *ngIf="faltantes.length > 0">
+      <c-alert color="danger">
+        <strong>No se pudo confirmar el pago</strong>
+        <p class="mb-2 mt-2">El stock reservado ya no está disponible:</p>
+        <ul class="mb-2">
+          <li *ngFor="let f of faltantes">
+            {{ f.producto }} — requiere {{ f.requiere }}, disponible {{ f.disponible }}
+          </li>
+        </ul>
+        <p class="mb-1 small">
+          Es posible que se haya vendido en el local o en un pedido anterior a este.
+          Regularizá el inventario antes de confirmar este pago.
+        </p>
+        <p class="mb-0 small fw-semibold">El pago NO fue confirmado. No se modificó nada.</p>
+      </c-alert>
+    </div>
+
+    <!-- ===== FORMULARIO ===== -->
+    <form [formGroup]="form" *ngIf="faltantes.length === 0">
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label small text-muted mb-1">Método</label>
+          <div class="fw-semibold">{{ pago.metodo.descri }}</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted mb-1">Monto esperado</label>
+          <div class="fw-semibold">Gs. {{ formatoGs(montoEsperado) }}</div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Monto verificado <span class="text-danger">*</span></label>
+          <input cFormControl type="number" min="1" formControlName="monto_verificado"
+                 (blur)="onMontoBlur()"
+                 [class.is-invalid]="campoInvalido('monto_verificado')
+                                   || errorBackend('monto_verificado')
+                                   || montoInsuficiente" />
+          <div class="invalid-feedback d-block" *ngIf="errorBackend('monto_verificado')">
+            {{ errorBackend('monto_verificado') }}
+          </div>
+          <div class="invalid-feedback d-block"
+               *ngIf="campoInvalido('monto_verificado') && !errorBackend('monto_verificado')">
+            Ingresá el monto que figura en el comprobante.
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">N° de transacción</label>
+          <input cFormControl formControlName="nro_transaccion" placeholder="884513"
+                 [class.is-invalid]="errorBackend('nro_transaccion')" />
+          <div class="invalid-feedback d-block" *ngIf="errorBackend('nro_transaccion')">
+            {{ errorBackend('nro_transaccion') }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Banco / Billetera</label>
+          <input cFormControl formControlName="banco" placeholder="Itaú, Tigo Money..."
+                 [class.is-invalid]="errorBackend('banco')" />
+          <div class="invalid-feedback d-block" *ngIf="errorBackend('banco')">
+            {{ errorBackend('banco') }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Fecha del pago</label>
+          <input cFormControl type="date" formControlName="fecha_pago"
+                 [class.is-invalid]="errorBackend('fecha_pago')" />
+          <div class="invalid-feedback d-block" *ngIf="errorBackend('fecha_pago')">
+            {{ errorBackend('fecha_pago') }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Observación (opcional)</label>
+          <textarea cFormControl rows="2" formControlName="observacion"></textarea>
+        </div>
+      </div>
+
+      <!-- ===== PAGO INCOMPLETO: bloqueo ===== -->
+      <c-alert color="danger" class="mt-3 mb-0" *ngIf="montoInsuficiente">
+        <strong>El pago no cubre el monto asignado</strong>
+        <p class="mb-0 mt-1">
+          El comprobante cubre Gs. {{ formatoGs(montoVerificado) }} de los
+          Gs. {{ formatoGs(montoEsperado) }} asignados.
+          Faltan <strong>Gs. {{ formatoGs(faltante) }}</strong>.
+        </p>
+        <p class="mb-0 mt-2 small">
+          Este pago no se puede confirmar. Rechazalo para que el cliente suba un
+          comprobante que cubra la diferencia.
+        </p>
+      </c-alert>
+
+      <!-- ===== PAGO EN EXCESO: confirmación ===== -->
+      <c-alert color="warning" class="mt-3 mb-0" *ngIf="montoExcedente">
+        <strong>El comprobante excede el monto asignado</strong>
+        <p class="mb-2 mt-1">
+          Se verificaron Gs. {{ formatoGs(montoVerificado) }} sobre
+          Gs. {{ formatoGs(montoEsperado) }} asignados.
+          Excedente: <strong>Gs. {{ formatoGs(faltante) }}</strong>.
+        </p>
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="confirmarDif"
+                 formControlName="confirmar_diferencia" />
+          <label class="form-check-label" for="confirmarDif">
+            Confirmo el excedente y autorizo el pago.
+          </label>
+        </div>
+      </c-alert>
+
+      <!-- ===== EFECTOS AUTOMÁTICOS ===== -->
+      <div class="border-top mt-3 pt-3" *ngIf="quedaraTotalmentePagado && !montoInsuficiente">
+        <p class="mb-2 small">
+          Al confirmar este pago el pedido quedará <strong>TOTALMENTE PAGADO</strong>.
+          Se ejecutará automáticamente:
+        </p>
+        <ul class="small mb-0">
+          <li>Descuento definitivo de stock y registro en el kardex</li>
+          <li>Estado del pedido → En preparación</li>
+        </ul>
+      </div>
+    </form>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" variant="outline" (click)="cerrar()">
+      {{ faltantes.length > 0 ? 'Entendido' : 'Cancelar' }}
+    </button>
+
+    <button cButton color="danger" variant="outline"
+            *ngIf="faltantes.length === 0"
+            [disabled]="guardando" (click)="pedirRechazo()">
+      Rechazar pago
+    </button>
+
+    <button cButton color="success" class="text-white"
+            *ngIf="faltantes.length === 0"
+            [disabled]="!puedeGuardar" (click)="confirmar()">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      Confirmar pago
+    </button>
+  </c-modal-footer>
+</c-modal>

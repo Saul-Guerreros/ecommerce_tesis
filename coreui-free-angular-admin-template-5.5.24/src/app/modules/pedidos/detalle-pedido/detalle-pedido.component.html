@@ -1,0 +1,448 @@
+<div class="text-center py-5" *ngIf="cargando">
+  <c-spinner color="primary"></c-spinner>
+  <div class="text-muted small mt-2">Cargando pedido...</div>
+</div>
+
+<div *ngIf="!cargando && pedido">
+
+  <button cButton color="link" class="px-0 mb-2" (click)="volver()">&#9664; Volver a pedidos</button>
+
+  <!-- ====== 1. ENCABEZADO ====== -->
+  <c-card class="mb-3">
+    <c-card-body class="py-3">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <h5 class="mb-1">PEDIDO {{ pedido.numero }}</h5>
+          <div class="small text-muted">
+            Creado: {{ pedido.creado }}
+            <span class="ms-3">Última actualización: {{ pedido.actualizado }}</span>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <c-badge [color]="colorEstadoPago(pedido.estado_pago.codigo)">
+            Pago: {{ pedido.estado_pago.descripcion }}
+          </c-badge>
+          <c-badge [color]="colorEstadoPedido(pedido.estado_pedido.codigo)">
+            Pedido: {{ pedido.estado_pedido.descripcion }}
+          </c-badge>
+        </div>
+      </div>
+    </c-card-body>
+  </c-card>
+
+  <!-- ====== BARRA DE ESTADO Y ACCIONES ====== -->
+  <c-card class="mb-3">
+    <c-card-body class="py-3">
+      <div class="row g-3 align-items-end">
+
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Estado del pedido</label>
+          <div>
+            <c-badge [color]="colorEstadoPedido(pedido.estado_pedido.codigo)">
+              {{ pedido.estado_pedido.descripcion }}
+            </c-badge>
+          </div>
+        </div>
+
+        <div class="col-md-5">
+          <label class="form-label small text-muted mb-1">Cambiar estado del pedido</label>
+
+          <div class="d-flex gap-2" *ngIf="hayTransiciones">
+            <select cSelect [(ngModel)]="estadoSeleccionado">
+              <option value="">Seleccionar estado</option>
+              <option *ngFor="let t of pedido.transiciones"
+                      [value]="t.codigo" [disabled]="!t.habilitado"
+                      [title]="t.motivo || ''">
+                {{ t.descripcion }}{{ !t.habilitado ? ' (bloqueado)' : '' }}
+              </option>
+            </select>
+
+            <button cButton color="primary"
+                    [disabled]="!estadoSeleccionado || cambiandoEstado"
+                    (click)="cambiarEstado()">
+              <c-spinner size="sm" *ngIf="cambiandoEstado" class="me-1"></c-spinner>
+              Actualizar
+            </button>
+          </div>
+
+          <div class="text-muted small" *ngIf="!hayTransiciones">
+            Este estado es final: el pedido no admite más cambios.
+          </div>
+
+          <div class="form-text">Solo se habilitan las transiciones permitidas.</div>
+        </div>
+
+        <div class="col-md-4 text-md-end">
+          <button cButton color="secondary" variant="outline" size="sm" class="me-2"
+                  (click)="pendiente('Agregar nota interna')">+ Agregar nota interna</button>
+          <button cButton color="danger" variant="outline" size="sm"
+                  (click)="pendiente('Cancelar pedido')">Cancelar pedido</button>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label small text-muted mb-1">
+            Nota interna (no visible para el cliente)
+          </label>
+          <input cFormControl [(ngModel)]="notaInterna" [disabled]="true"
+                 placeholder="Se habilita en una instrucción posterior" />
+        </div>
+      </div>
+    </c-card-body>
+  </c-card>
+
+  <div class="row g-3">
+
+    <!-- ============ COLUMNA IZQUIERDA ============ -->
+    <div class="col-lg-4">
+
+      <!-- ====== 2.1 CLIENTE ====== -->
+      <c-card class="mb-3">
+        <c-card-header><strong>CLIENTE</strong></c-card-header>
+        <c-card-body>
+          <div class="fw-semibold">{{ pedido.cliente.nombre }}</div>
+          <div class="small text-muted">
+            <span *ngIf="pedido.cliente.cedula">CI {{ pedido.cliente.cedula }}</span>
+            <span *ngIf="pedido.cliente.correo"> · {{ pedido.cliente.correo }}</span>
+          </div>
+          <div class="small text-muted" *ngIf="pedido.cliente.telefono">
+            {{ pedido.cliente.telefono }}
+          </div>
+
+          <hr class="my-3" />
+
+          <div class="small">Tipo: {{ pedido.cliente.tipo }}</div>
+          <div class="small" *ngIf="pedido.cliente.cliente_desde">
+            Cliente desde: {{ pedido.cliente.cliente_desde }}
+          </div>
+          <div class="small">Pedidos anteriores: {{ pedido.cliente.pedidos_anteriores }}</div>
+
+          <button cButton color="secondary" variant="outline" size="sm" class="w-100 mt-3"
+                  (click)="pendiente('Ver historial del cliente')">
+            Ver historial del cliente
+          </button>
+        </c-card-body>
+      </c-card>
+
+      <!-- ====== 2.2 ENTREGA ====== -->
+      <c-card class="mb-3" *ngIf="pedido.entrega as entrega">
+        <c-card-header><strong>ENTREGA</strong></c-card-header>
+        <c-card-body>
+          <div class="mb-3">
+            <span class="small text-muted">Modalidad:</span>
+            <span class="fw-semibold ms-1">{{ entrega.modalidad_label }}</span>
+          </div>
+
+          <div class="mb-3">
+            <span class="small text-muted">
+              {{ entrega.modalidad === 'RETIRO' ? 'Retira:' : 'Recibe:' }}
+            </span>
+            <div class="fw-semibold">
+              {{ entrega.receptor.nombre }}
+              <span class="fw-normal small text-muted">
+                ({{ entrega.receptor.es_tercero ? 'tercero' : 'titular' }})
+              </span>
+            </div>
+            <div class="small text-muted">
+              <span *ngIf="entrega.receptor.cedula">CI {{ entrega.receptor.cedula }}</span>
+              <span *ngIf="entrega.receptor.telefono"> · {{ entrega.receptor.telefono }}</span>
+            </div>
+          </div>
+
+          <!-- Variante A: envío a domicilio -->
+          <div *ngIf="entrega.direccion as dir">
+            <div class="small text-muted">Dirección:</div>
+            <div>
+              {{ dir.calle }}<span *ngIf="dir.nro_casa">, N° {{ dir.nro_casa }}</span>
+            </div>
+            <div class="small">
+              <span *ngIf="dir.barrio">Barrio {{ dir.barrio }} · </span>{{ dir.ciudad }}<span
+                *ngIf="dir.departamento">, {{ dir.departamento }}</span>
+            </div>
+
+            <div class="mt-2" *ngIf="dir.referencia">
+              <div class="small text-muted">Referencia:</div>
+              <div class="small">{{ dir.referencia }}</div>
+            </div>
+          </div>
+
+          <!-- Variante B: retiro en sucursal -->
+          <div *ngIf="entrega.sucursal as suc">
+            <div class="small text-muted">Sucursal:</div>
+            <div class="fw-semibold">{{ suc.nombre }}</div>
+            <div class="small">{{ suc.direccion }}<span *ngIf="suc.ciudad"> · {{ suc.ciudad }}</span></div>
+
+            <div class="mt-2" *ngIf="suc.horario">
+              <div class="small text-muted">Horario:</div>
+              <div class="small">{{ suc.horario }}</div>
+            </div>
+          </div>
+        </c-card-body>
+      </c-card>
+    </div>
+
+    <!-- ============ COLUMNA DERECHA ============ -->
+    <div class="col-lg-8">
+
+      <!-- ====== 3.1 PRODUCTOS ====== -->
+      <c-card class="mb-3">
+        <c-card-header><strong>PRODUCTOS</strong></c-card-header>
+        <c-card-body>
+          <div class="table-responsive">
+            <table cTable hover align="middle" class="mb-0">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="text-center">Cant.</th>
+                  <th class="text-end">P. Unit.</th>
+                  <th class="text-center">IVA</th>
+                  <th class="text-end">Liquidación</th>
+                  <th class="text-end">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let p of pedido.productos">
+                  <td>{{ p.descripcion }}</td>
+                  <td class="text-center">{{ p.cantidad }}</td>
+                  <td class="text-end">{{ formatoGs(p.precio) }}</td>
+                  <td class="text-center">{{ p.iva_tasa }}%</td>
+                  <td class="text-end">{{ formatoGs(p.iva_monto) }}</td>
+                  <td class="text-end">{{ formatoGs(p.total) }}</td>
+                </tr>
+                <tr *ngIf="pedido.productos.length === 0">
+                  <td colspan="6" class="text-center text-muted py-3">
+                    El pedido no tiene líneas registradas.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="row justify-content-end mt-3">
+            <div class="col-md-6">
+              <div class="d-flex justify-content-between small">
+                <span>Subtotal:</span><span>{{ formatoGs(pedido.totales.subtotal) }}</span>
+              </div>
+              <div class="d-flex justify-content-between small">
+                <span>IVA incluido:</span><span>{{ formatoGs(pedido.totales.iva_incluido) }}</span>
+              </div>
+              <div class="d-flex justify-content-between small">
+                <span>Costo de envío:</span><span>{{ formatoGs(pedido.totales.costo_envio) }}</span>
+              </div>
+              <hr class="my-2" />
+              <div class="d-flex justify-content-between fw-bold">
+                <span>TOTAL:</span><span>Gs. {{ formatoGs(pedido.totales.total) }}</span>
+              </div>
+            </div>
+          </div>
+        </c-card-body>
+
+        <c-card-footer class="text-end">
+          <button cButton color="secondary" variant="outline" size="sm" class="me-2"
+                  (click)="pendiente('Añadir productos')">Añadir productos</button>
+          <button cButton color="secondary" variant="outline" size="sm"
+                  (click)="pendiente('Actualizar datos')">Actualizar datos</button>
+        </c-card-footer>
+      </c-card>
+
+      <!-- ====== 3.2 DATOS DE FACTURACIÓN ====== -->
+      <c-card class="mb-3" *ngIf="pedido.facturacion as fac">
+        <c-card-header>
+          <strong>DATOS DE FACTURACIÓN</strong>
+          <span class="text-muted small ms-2">(declarados por el cliente)</span>
+        </c-card-header>
+        <c-card-body>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <span class="small text-muted">Tipo documento:</span>
+              <span class="ms-1">{{ fac.tipo_label }}</span>
+            </div>
+
+            <div class="col-md-6">
+              <span class="small text-muted">{{ fac.tipo_documento === 'RUC' ? 'RUC:' : 'Cédula:' }}</span>
+              <span class="ms-1">{{ fac.nro_documento }}</span>
+            </div>
+
+            <div class="col-12">
+              <span class="small text-muted">
+                {{ fac.tipo_documento === 'RUC' ? 'Razón social:' : 'Nombre:' }}
+              </span>
+              <span class="ms-1">{{ fac.razon_social }}</span>
+            </div>
+
+            <div class="col-md-6" *ngIf="fac.telefono">
+              <span class="small text-muted">Teléfono:</span>
+              <span class="ms-1">{{ fac.telefono }}</span>
+            </div>
+
+            <div class="col-md-6" *ngIf="fac.correo">
+              <span class="small text-muted">Correo:</span>
+              <span class="ms-1">{{ fac.correo }}</span>
+            </div>
+
+            <div class="col-12">
+              <span class="small text-muted">Recibir por:</span>
+              <span class="ms-1 fw-semibold">{{ fac.recibe_por }}</span>
+              <span class="ms-1" *ngIf="fac.destino">&rarr; {{ fac.destino }}</span>
+            </div>
+          </div>
+        </c-card-body>
+
+        <c-card-footer class="d-flex justify-content-between">
+          <button cButton color="primary" variant="outline" size="sm"
+                  (click)="pendiente('Ver factura')">Ver factura</button>
+          <div>
+            <button cButton color="secondary" variant="outline" size="sm" class="me-2"
+                    (click)="pendiente('Editar datos')">Editar datos</button>
+            <button cButton color="secondary" variant="outline" size="sm"
+                    (click)="pendiente('Guardar cambios')">Guardar cambios</button>
+          </div>
+        </c-card-footer>
+      </c-card>
+
+      <!-- ====== 3.3 PAGO / PAGOS ====== -->
+      <c-card class="mb-3">
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <strong>{{ pedido.pago.dividido ? 'PAGOS' : 'PAGO' }}</strong>
+          <c-badge [color]="colorEstadoPago(pedido.estado_pago.codigo)">
+            {{ pedido.estado_pago.descripcion }}
+          </c-badge>
+        </c-card-header>
+
+        <c-card-body>
+          <div class="d-flex justify-content-between small mb-2">
+            <span>
+              Modalidad:
+              <strong>
+                {{ pedido.pago.dividido
+                    ? 'Pago dividido en ' + pedido.pago.cantidad + ' pagos'
+                    : 'Pago único' }}
+              </strong>
+            </span>
+            <span>Total del pedido: <strong>Gs. {{ formatoGs(pedido.pago.total_pedido) }}</strong></span>
+          </div>
+
+          <!-- Progreso: sólo tiene sentido con pago dividido -->
+          <div class="mb-3" *ngIf="pedido.pago.dividido">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Verificado: Gs. {{ formatoGs(pedido.pago.monto_verificado) }}</span>
+              <span>Pendiente: Gs. {{ formatoGs(pedido.pago.monto_pendiente) }}</span>
+            </div>
+            <c-progress [value]="pedido.pago.porcentaje" color="success" height="10"></c-progress>
+            <div class="text-end small text-muted">{{ pedido.pago.porcentaje }}%</div>
+          </div>
+
+          <!-- ===== Tarjeta por pago ===== -->
+          <div class="border rounded p-3 mb-3" *ngFor="let pago of pedido.pago.items">
+
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div>
+                <div class="small text-muted" *ngIf="pedido.pago.dividido">PAGO {{ pago.orden }}</div>
+                <div class="fw-semibold">{{ pago.metodo.descri }}</div>
+              </div>
+
+              <div class="text-end">
+                <c-badge [color]="colorEstadoPago(pago.estado.codigo)">
+                  {{ pago.estado.descripcion }}
+                </c-badge>
+                <div class="small mt-1">
+                  Monto asignado: <strong>Gs. {{ formatoGs(pago.monto_asignado) }}</strong>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-2" />
+
+           <!-- Comprobante -->
+            <div class="small mb-2" *ngIf="pago.comprobante as comp">
+            <span class="text-muted">Comprobante:</span>
+            <span class="ms-1">{{ comp.archivo }}</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary ms-2 py-0"
+                    (click)="verComprobante(pago)">Ver</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary ms-1 py-0"
+                    (click)="descargarComprobante(pago)">Descargar</button>
+            <div class="text-muted" *ngIf="comp.subido">Subido: {{ comp.subido }}</div>
+            </div>
+
+            <div class="small text-muted mb-2" *ngIf="!pago.comprobante && pago.metodo.requcom">
+              Sin comprobante cargado.
+            </div>
+
+            <!-- ===== RECHAZADO ===== -->
+            <div *ngIf="pago.rechazo as rech">
+              <div class="small"><span class="text-muted">Motivo:</span> {{ rech.detalle || rech.motivo }}</div>
+              <div class="small text-muted mt-1" *ngIf="pago.verificacion as ver">
+                Rechazado por: {{ ver.por }} · {{ ver.fecha }}
+              </div>
+              <div class="small mt-2">
+                <span *ngIf="rech.faltante">
+                  Esperando que el cliente suba un nuevo comprobante completando lo faltante
+                  (Gs. {{ formatoGs(rech.faltante) }}).
+                </span>
+                <span *ngIf="!rech.faltante">
+                  Esperando que el cliente suba un nuevo comprobante para esta operación.
+                </span>
+              </div>
+            </div>
+
+            <!-- ===== DATOS DE LA VERIFICACIÓN ===== -->
+            <div class="row g-2 small" *ngIf="!pago.rechazo">
+              <div class="col-md-6">
+                <span class="text-muted">N° transacción:</span>
+                <span class="ms-1">{{ pago.verificacion?.nro_transaccion || '—' }}</span>
+              </div>
+              <div class="col-md-6">
+                <span class="text-muted">Banco / Billetera:</span>
+                <span class="ms-1">{{ pago.verificacion?.banco || '—' }}</span>
+              </div>
+              <div class="col-md-6">
+                <span class="text-muted">Fecha del pago:</span>
+                <span class="ms-1">{{ pago.verificacion?.fecha_pago || '—' }}</span>
+              </div>
+              <div class="col-md-6">
+                <span class="text-muted">Monto verificado:</span>
+                <span class="ms-1">
+                  {{ pago.verificacion?.monto_verificado
+                      ? 'Gs. ' + formatoGs(pago.verificacion!.monto_verificado!)
+                      : '—' }}
+                </span>
+              </div>
+
+              <div class="col-12" *ngIf="pago.verificacion?.por">
+                <span class="text-muted">Verificado por:</span>
+                <span class="ms-1">{{ pago.verificacion?.por }} · {{ pago.verificacion?.fecha }}</span>
+              </div>
+
+              <div class="col-12" *ngIf="pago.observacion">
+                <span class="text-muted">Observación:</span>
+                <span class="ms-1">{{ pago.observacion }}</span>
+              </div>
+            </div>
+
+            <div class="text-end mt-3" *ngIf="puedeValidar(pago)">
+              <button cButton color="success" size="sm" class="text-white"
+                      (click)="abrirConfirmar(pago)">Validar pago</button>
+            </div>
+          </div>
+
+          <c-alert color="info" class="py-2 small mb-0" *ngIf="pedido.pago.dividido">
+            El stock se descuenta y la factura se emite cuando los
+            {{ pedido.pago.cantidad }} pagos estén confirmados.
+          </c-alert>
+        </c-card-body>
+      </c-card>
+    </div>
+  </div>
+</div>
+
+<!-- ====== MODALES ====== -->
+<app-confirmar-pago
+  [visible]="confirmarVisible" [pedido]="pedido" [pago]="pagoSeleccionado"
+  (visibleChange)="confirmarVisible = $event"
+  (rechazar)="abrirRechazar($event)"
+  (guardado)="onPagoActualizado($event)"></app-confirmar-pago>
+
+<app-rechazar-pago
+  [visible]="rechazarVisible" [pedido]="pedido" [pago]="pagoSeleccionado"
+  (visibleChange)="rechazarVisible = $event"
+  (guardado)="onPagoActualizado($event)"></app-rechazar-pago>

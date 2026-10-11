@@ -40,6 +40,11 @@ class RolPermisoSeeder extends Seeder
 
             'usuarios.ver', 'usuarios.gestionar',
             'roles.gestionar',
+
+            'pedidos.ver',
+            'pedidos.exportar',
+            'pedidos.gestionar',
+            'pedidos.pago.verificar',   // se usa en la siguiente etapa
         ];
 
         foreach ($permisos as $descripcion) {
@@ -50,6 +55,7 @@ class RolPermisoSeeder extends Seeder
         $permisosVetadosParaVendedor = [
             'usuarios.ver', 'usuarios.gestionar',
             'roles.gestionar',
+            'pedidos.pago.verificar',   // <-- nuevo
         ];
 
         $administrador = Rol::where('rol_descri', 'Administrador')->first();

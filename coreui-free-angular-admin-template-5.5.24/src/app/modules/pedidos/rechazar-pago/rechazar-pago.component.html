@@ -1,0 +1,75 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" size="lg" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle *ngIf="pago && pedido">
+      RECHAZAR PAGO {{ pago.orden }} — {{ pedido.numero }}
+    </h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="pago">
+    <form [formGroup]="form">
+
+      <!-- ===== MOTIVO ===== -->
+      <label class="form-label">Motivo del rechazo <span class="text-danger">*</span></label>
+
+      <div class="form-check mb-2" *ngFor="let m of motivos">
+        <input class="form-check-input" type="radio" formControlName="motivo_id"
+               [value]="m.mrp_id" [id]="'motivo' + m.mrp_id"
+               (change)="onMotivoChange()" />
+        <label class="form-check-label" [for]="'motivo' + m.mrp_id">{{ m.mrp_descri }}</label>
+      </div>
+
+      <div class="invalid-feedback d-block" *ngIf="errorBackend('motivo_id')">
+        {{ errorBackend('motivo_id') }}
+      </div>
+
+      <!-- ===== CÁLCULO DE LA DIFERENCIA ===== -->
+      <div class="border rounded p-3 mt-3" *ngIf="pideMonto">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">El comprobante corresponde a</label>
+            <input cFormControl type="number" min="1" formControlName="monto_verificado"
+                   (ngModelChange)="onMontoChange()" (change)="onMontoChange()" />
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">El monto declarado es</label>
+            <div class="fw-semibold pb-2">Gs. {{ formatoGs(montoEsperado) }}</div>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">Diferencia faltante</label>
+            <div class="fw-semibold text-danger pb-2">Gs. {{ formatoGs(faltante) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== DETALLE PARA EL CLIENTE ===== -->
+      <div class="mt-3">
+        <label class="form-label">
+          Detalle para el cliente
+          <span class="text-danger" *ngIf="detalleObligatorio">*</span>
+        </label>
+        <textarea cFormControl rows="3" formControlName="detalle"
+                  [class.is-invalid]="errorBackend('detalle')"></textarea>
+        <div class="invalid-feedback d-block" *ngIf="errorBackend('detalle')">
+          {{ errorBackend('detalle') }}
+        </div>
+      </div>
+
+      <c-alert color="info" class="mt-3 mb-0 py-2 small">
+        Este texto será visible para el cliente, que podrá subir un nuevo comprobante
+        para este pago.
+      </c-alert>
+    </form>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" variant="outline" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" class="text-white"
+            [disabled]="!puedeGuardar" (click)="rechazar()">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      Rechazar pago
+    </button>
+  </c-modal-footer>
+</c-modal>
