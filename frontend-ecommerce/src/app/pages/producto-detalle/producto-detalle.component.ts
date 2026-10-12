@@ -4,14 +4,7 @@ import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { URL_BACKEND } from '../../config/config';
 import { SelectorCantidadComponent } from '../../shared/components/selector-cantidad/selector-cantidad.component';
-import {
-  ColorDisponible,
-  EspecificacionDetalle,
-  OpcionesCompra,
-  ProductoDetalle,
-  StockAvisos,
-  TramoPrecio,
-} from '../../core/models/producto-detalle.model';
+import {ColorDisponible,EspecificacionDetalle,OpcionesCompra,ProductoDetalle,StockAvisos,TramoPrecio,} from '../../core/models/producto-detalle.model';
 import { CuotaOpcion, ProductoVitrina } from '../../core/models/vitrina.model';
 import { LineaContado, SolicitudCredito } from '../../core/models/solicitud-compra.model';
 import { ProductoDetalleService } from '../../core/services/producto-detalle.service';
@@ -22,7 +15,7 @@ import { AuthService } from '../auth/service/auth.service';
 import { CarritoService } from '../../core/services/carrito.service';
 import { CarritoUiService } from '../../core/services/carrito-ui.service';
 import { SolicitudCreditoService } from '../../core/services/solicitud-credito.service';
-
+import { ProductoCardComponent } from '../../shared/components/producto-card/producto-card.component';
 
 type TabDetalle = 'descripcion' | 'especificaciones' | 'resenas';
 
@@ -34,7 +27,7 @@ interface CuotaVista extends CuotaOpcion {
 @Component({
   selector: 'app-producto-detalle',
   standalone: true,
-  imports: [CommonModule,MonedaPyPipe, CurrencyPipe, RouterModule, FlashCountdownComponent, SelectorCantidadComponent],
+  imports: [CommonModule, MonedaPyPipe, CurrencyPipe, RouterModule, FlashCountdownComponent, SelectorCantidadComponent, ProductoCardComponent],
   templateUrl: './producto-detalle.component.html',
   styleUrl: './producto-detalle.component.css',
 })
@@ -183,10 +176,6 @@ export class ProductoDetalleComponent implements OnInit {
 
   imagenColor(color: ColorDisponible): string {
     return this.resolverImagen(color.imagen);
-  }
-
-  imagenRelacionado(producto: ProductoVitrina): string {
-    return this.resolverImagen(producto.imagen);
   }
 
   seleccionarImagen(indice: number): void {

@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Validator;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
 
 class AuthController extends Controller
@@ -337,34 +338,59 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $usuario = auth('api')->user();
         $token = $request->bearerToken();
 
-        if ($usuario && $token) {
-            Sesion::where('ses_usuid', $usuario->usu_id)
-                ->where('ses_tokhas', hash('sha256', $token))
-                ->update(['ses_revoca' => 1]);
+        // Se revoca por el hash del token aunque esté vencido:
+        // así una sesión cerrada nunca más puede renovarse.
+        if ($token) {
+            Sesion::where('ses_tokhas', hash('sha256', $token))->update(['ses_revoca' => 1]);
         }
 
-        auth('api')->logout();
+        try {
+            auth('api')->logout();
+        } catch (JWTException $e) {
+            // Token vencido o inválido: la sesión igual quedó revocada arriba.
+        }
 
-        return response()->json(['message' => 'Successfully logged out']);
+        return response()->json(['message' => 'Sesión cerrada']);
     }
 
-    public function refresh(Request $request)
+       public function refresh(Request $request)
     {
-        $oldToken = $request->bearerToken();
-        $usuario = auth('api')->user();
+        $tokenAnterior = $request->bearerToken();
 
-        $newToken = auth('api')->refresh();
-
-        if ($usuario && $oldToken) {
-            Sesion::where('ses_usuid', $usuario->usu_id)
-                ->where('ses_tokhas', hash('sha256', $oldToken))
-                ->update(['ses_revoca' => 1]);
+        if (! $tokenAnterior) {
+            return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        return $this->respondWithToken($newToken, $usuario, $request);
+        // Una sesión cerrada (logout) o ya renovada no puede volver a renovarse.
+        $sesion = Sesion::where('ses_tokhas', hash('sha256', $tokenAnterior))->first();
+
+        if (! $sesion || $sesion->ses_revoca) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        try {
+            // Acepta tokens vencidos mientras no se supere JWT_REFRESH_TTL,
+            // contado desde el login original: es el límite absoluto de la sesión.
+            $tokenNuevo = auth('api')->setToken($tokenAnterior)->refresh();
+        } catch (JWTException $e) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Con el token vencido, auth()->user() devuelve null:
+        // el usuario se obtiene a partir del token NUEVO.
+        $usuario = auth('api')->setToken($tokenNuevo)->user();
+
+        // Si lo bloquearon durante la sesión, no se le renueva.
+        if (! $usuario || $usuario->usu_estado === Usuario::ESTADO_BLOQUEADO) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $sesion->ses_revoca = 1;
+        $sesion->save();
+
+        return $this->respondWithToken($tokenNuevo, $usuario, $request);
     }
 
     protected function respondWithToken(string $token, Usuario $usuario, Request $request)

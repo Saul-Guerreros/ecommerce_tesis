@@ -1,35 +1,69 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
-import { catchError, throwError } from 'rxjs';
+import { catchError, switchMap, throwError } from 'rxjs';
 import { URL_SERVICIOS } from '../../../config/config';
 import { AuthService } from './auth.service';
 
 /**
- * Agrega el header Authorization: Bearer <token> a toda peticion dirigida
- * al backend (URL_SERVICIOS). Ademas, si el backend responde 401 estando
- * logueado (token vencido o invalido), cierra la sesion local y redirige
- * a /login con un aviso, en vez de dejar al usuario "logueado" pero con
- * todas las peticiones fallando en silencio.
+ * Endpoints donde un 401 NO debe intentar renovar el token
+ * (credenciales incorrectas, el propio refresh, logout...).
+ */
+const RUTAS_SIN_RENOVACION = [
+  '/auth/login',
+  '/auth/login_ecommerce',
+  '/auth/login_google',
+  '/auth/refresh',
+  '/auth/logout',
+  '/auth/register',
+];
+
+/**
+ * 1. Agrega "Authorization: Bearer <token>" a las peticiones al backend.
+ * 2. Si el backend responde 401 con sesión iniciada, renueva el token
+ *    UNA vez y reintenta la petición original. Si no se puede renovar,
+ *    cierra la sesión con un aviso.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const toastr = inject(ToastrService);
-  const token = authService.token;
+  const esBackend = req.url.startsWith(URL_SERVICIOS);
 
-  if (token && req.url.startsWith(URL_SERVICIOS)) {
-    req = req.clone({
-      setHeaders: { Authorization: `Bearer ${token}` },
-    });
-  }
-
-  return next(req).pipe(
+  return next(conToken(req, authService.token)).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 && req.url.startsWith(URL_SERVICIOS) && authService.isLoggedIn()) {
-        toastr.warning('Tu sesión expiró, iniciá sesión de nuevo.', 'Sesión expirada');
-        authService.sesionExpirada();
+      const debeRenovar =
+        error.status === 401 &&
+        esBackend &&
+        authService.isLoggedIn() &&
+        !RUTAS_SIN_RENOVACION.some((ruta) => req.url.includes(ruta));
+
+      if (!debeRenovar) {
+        return throwError(() => error);
       }
-      return throwError(() => error);
+
+      // Inactivo: no se revive la sesión.
+      if (!authService.usuarioActivo()) {
+        toastr.warning('Tu sesión expiró por inactividad. Iniciá sesión de nuevo.', 'Sesión expirada');
+        authService.sesionExpirada();
+        return throwError(() => error);
+      }
+
+      return authService.renovarSesion().pipe(
+        switchMap((renovado) => {
+          if (renovado) {
+            // Reintento único con el token nuevo (sin volver a capturar el 401).
+            return next(conToken(req, authService.token));
+          }
+          toastr.warning('Tu sesión expiró, iniciá sesión de nuevo.', 'Sesión expirada');
+          authService.sesionExpirada();
+          return throwError(() => error);
+        }),
+      );
     }),
   );
 };
+
+function conToken(req: HttpRequest<unknown>, token: string): HttpRequest<unknown> {
+  if (!token || !req.url.startsWith(URL_SERVICIOS)) return req;
+  return req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+}

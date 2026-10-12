@@ -23,13 +23,13 @@ class ChatConversacion extends Model
     public const ESTADO_CERRADA  = 'cerrada';
 
     protected $fillable = [
-        'cnv_token', 'cli_id', 'cnv_estado', 'cnv_motivo_deriv',
+        'cnv_token', 'usu_id', 'cnv_estado', 'cnv_motivo_deriv',
         'cnv_ip', 'cnv_ultimo_msj',
     ];
 
     protected $casts = [
         'cnv_id'         => 'integer',
-        'cli_id'         => 'integer',
+        'usu_id'         => 'integer',
         'cnv_creado'     => 'datetime',
         'cnv_ultimo_msj' => 'datetime',
     ];
