@@ -1,11 +1,11 @@
 export const environment = {
 
-    URL_BACKEND: 'https://zinformatica.columbiatcc.online/',
-    URL_SERVICIOS: 'https://zinformatica.columbiatcc.online/api',
-    URL_FRONTEND: 'https://zinformatica.columbiatcc.online',
+  URL_BACKEND: 'http://127.0.0.1:8000',
+  URL_SERVICIOS: 'http://127.0.0.1:8000/api',
+  URL_FRONTEND: 'http://localhost:4200',
 
-    production: true,
-    apiUrl: 'https://zinformatica.columbiatcc.online/api',
+  production: false,
+  apiUrl: 'http://127.0.0.1:8000/api',
 
 };
 
