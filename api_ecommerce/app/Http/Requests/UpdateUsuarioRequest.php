@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
+use App\Rules\FechaNacimiento;
 
 class UpdateUsuarioRequest extends FormRequest
 {
@@ -27,7 +28,7 @@ class UpdateUsuarioRequest extends FormRequest
                 'required', 'string', 'max:50',
                 Rule::unique('persona', 'per_cedula')->ignore($usuario->usu_perid, 'per_id'),
             ],
-            'fecha_nacimiento' => ['nullable', 'date'],
+            'fecha_nacimiento' => ['nullable', new FechaNacimiento()],
             'cargo_id' => ['required', 'integer', 'exists:cargo,crg_id'],
             'rol_id' => ['required', 'integer', 'exists:rol,rol_id'],
             'email' => [

@@ -26,7 +26,7 @@ class UsuarioResource extends JsonResource
                 'apellido1' => $this->persona?->per_apell1,
                 'apellido2' => $this->persona?->per_apell2,
                 'cedula' => $this->persona?->per_cedula,
-                'fecha_nacimiento' => $this->persona?->per_fechna,
+                'fecha_nacimiento' => $this->persona?->per_fechna?->format('Y-m-d'),
             ],
             'cargo_id' => $funcionario?->fun_crgid,
             'cargo' => $funcionario?->cargo?->crg_descr,

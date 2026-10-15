@@ -30,6 +30,9 @@ type OrigenUmbral = 'general' | 'individual';
  * inventario/compra) porque son dos cosas distintas: un producto puede
  * existir en inventario sin estar todavía visible en la tienda.
  */
+/** Debe coincidir con VitrinaProducto::MAX_ORDEN del backend. */
+	const MAX_ORDEN_VITRINA = 12;
+ 
 @Component({
   selector: 'app-publicacion-web',
   standalone: true,
@@ -107,14 +110,14 @@ export class PublicacionWebComponent implements OnInit {
 
     // Secciones manuales del home: un checkbox + orden por sección.
     featured_activo: [false],
-    featured_orden: [null as number | null, [Validators.min(1), Validators.max(4)]],
+    featured_orden: [null as number | null, [Validators.min(1), Validators.max(MAX_ORDEN_VITRINA)]],
     trending_activo: [false],
-    trending_orden: [null as number | null, [Validators.min(1), Validators.max(4)]],
+     trending_orden: [null as number | null, [Validators.min(1), Validators.max(MAX_ORDEN_VITRINA)]],
     // "Selling Products" es un placeholder MANUAL y TEMPORAL: no hay
     // módulo de Ventas real todavía, así que esto no refleja ventas
     // verdaderas. Se deja bien marcado en la etiqueta del template.
     selling_activo: [false],
-    selling_orden: [null as number | null, [Validators.min(1), Validators.max(4)]],
+    selling_orden: [null as number | null, [Validators.min(1), Validators.max(MAX_ORDEN_VITRINA)]],
   });
 
   // Nombres de sección tal como los espera el backend (vitrina_producto.vip_seccion).
@@ -374,7 +377,7 @@ copiarDelPadre(): void {
   guardar(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.toastr.error('Revise los datos ingresados', 'Validación');
+      this.toastr.error(`Revisá estos campos: ${this.camposInvalidos().join(', ')}.`, 'Validación');
       return;
     }
 
@@ -410,6 +413,29 @@ copiarDelPadre(): void {
       },
       error: (err) => this.handleError(err),
     });
+  }
+  
+    /** Disponible en la plantilla para el atributo max y los mensajes. */
+  readonly maxOrdenVitrina = MAX_ORDEN_VITRINA;
+
+  private readonly etiquetasCampos: Record<string, string> = {
+    pub_catid: 'Categoría',
+    pub_titulo: 'Título',
+    pub_slug: 'URL amigable',
+    pub_meta_titulo: 'Meta título',
+    pub_meta_descripcion: 'Meta descripción',
+    pub_estado: 'Estado',
+    valorUmbralStock: 'Umbral de poco stock',
+    featured_orden: 'Orden en Destacados',
+    trending_orden: 'Orden en Tendencia',
+    selling_orden: 'Orden en Más vendidos',
+  };
+
+  /** Nombres legibles de los campos inválidos del formulario. */
+  private camposInvalidos(): string[] {
+    return Object.entries(this.form.controls)
+      .filter(([, control]) => control.invalid)
+      .map(([nombre]) => this.etiquetasCampos[nombre] ?? nombre);
   }
 
   private handleError(err: any): void {

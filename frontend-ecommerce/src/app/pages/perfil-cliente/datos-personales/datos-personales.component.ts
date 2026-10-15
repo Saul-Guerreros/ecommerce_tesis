@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { PerfilCliente } from '../../../core/models/perfil-cliente.model';
 import { PerfilClienteService } from '../../../core/services/perfil-cliente.service';
+import {FECHA_NACIMIENTO_MIN,errorFechaNacimiento,fechaNacimientoMax,} from '../../../shared/validators/fecha-nacimiento';
 
 @Component({
   selector: 'app-datos-personales',
@@ -25,6 +26,12 @@ export class DatosPersonalesComponent implements OnChanges {
   per_fechna = '';
   celular = '';
   cli_ruc = '';
+  per_cedula = '';
+
+  /** La cédula solo se puede cargar si todavía no está registrada. */
+  get cedulaEditable(): boolean {
+    return !this.perfil?.persona?.per_cedula;
+  }
 
   avatarPreview: string | null = null;
   private avatarFile: File | null = null;
@@ -33,6 +40,14 @@ export class DatosPersonalesComponent implements OnChanges {
     private perfilClienteService: PerfilClienteService,
     private toastr: ToastrService,
   ) {}
+
+  readonly fechaMin = FECHA_NACIMIENTO_MIN;
+  readonly fechaMax = fechaNacimientoMax();
+
+  /** Error en vivo debajo del campo. */
+  get errorFecha(): string | null {
+    return errorFechaNacimiento(this.per_fechna);
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['perfil'] && this.perfil) {
@@ -44,6 +59,7 @@ export class DatosPersonalesComponent implements OnChanges {
       this.celular = this.perfil.celular ?? '';
       this.cli_ruc = this.perfil.cliente?.cli_ruc ?? '';
       this.avatarPreview = this.perfil.persona.avatar_url;
+	  this.per_cedula = this.perfil.persona.per_cedula ?? '';
     }
   }
 
@@ -73,6 +89,7 @@ export class DatosPersonalesComponent implements OnChanges {
     if (this.celular) formData.append('celular', this.celular);
     if (this.cli_ruc) formData.append('cli_ruc', this.cli_ruc);
     if (this.avatarFile) formData.append('avatar', this.avatarFile);
+	if (this.cedulaEditable && this.per_cedula) formData.append('per_cedula', this.per_cedula);
 
     this.guardando = true;
     this.perfilClienteService.actualizar(formData).subscribe({
@@ -88,5 +105,17 @@ export class DatosPersonalesComponent implements OnChanges {
         this.toastr.error(mensaje, 'Error');
       },
     });
+
+    if (this.errorFecha) {
+      this.toastr.warning(this.errorFecha, 'Fecha de nacimiento');
+      return;
+    }
+	
+	// Solo números: se quitan los puntos que algunos clientes escriben (1.234.567)
+    this.per_cedula = this.per_cedula.replace(/\D/g, '');
+    if (this.cedulaEditable && this.per_cedula && !/^\d{4,10}$/.test(this.per_cedula)) {
+      this.toastr.warning('La cédula debe tener entre 4 y 10 números.', 'Cédula');
+      return;
+    }
   }
 }

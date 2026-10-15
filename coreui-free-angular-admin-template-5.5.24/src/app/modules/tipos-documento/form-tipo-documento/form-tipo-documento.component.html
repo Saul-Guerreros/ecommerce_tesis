@@ -1,0 +1,52 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar tipo de documento' : 'Nuevo tipo de documento' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="alert alert-info py-2 small" *ngIf="esProtegido">
+        Este tipo lo usa el sistema (registro de cuentas y datos fiscales):
+        solo se puede cambiar su descripción.
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label cLabel for="tpd_codigo">Código <span class="text-danger">*</span></label>
+          <input cFormControl id="tpd_codigo" formControlName="tpd_codigo"
+                 placeholder="Ej: CI, PAS, RUC" maxlength="10" (input)="mayusculas()" />
+          <div class="text-danger small" *ngIf="campoInvalido('tpd_codigo')">
+            {{ errorBackend('tpd_codigo') || 'Obligatorio (máx. 10; letras, números, punto o guion).' }}
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <label cLabel for="tpd_descri">Descripción <span class="text-danger">*</span></label>
+          <input cFormControl id="tpd_descri" formControlName="tpd_descri"
+                 placeholder="Ej: Cédula de Identidad, Pasaporte" maxlength="50" />
+          <div class="text-danger small" *ngIf="campoInvalido('tpd_descri')">
+            {{ errorBackend('tpd_descri') || 'La descripción es obligatoria (máx. 50 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="tpd_estado">Estado</label>
+          <select cSelect id="tpd_estado" formControlName="tpd_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+          <div class="text-danger small" *ngIf="errorBackend('tpd_estado')">{{ errorBackend('tpd_estado') }}</div>
+          <div class="text-muted small mt-1">Solo los tipos activos aparecen al registrar un documento.</div>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

@@ -1,0 +1,36 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar cargo' : 'Nuevo cargo' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+        <div class="col-12">
+          <label cLabel for="crg_descr">Descripción <span class="text-danger">*</span></label>
+          <input cFormControl id="crg_descr" formControlName="crg_descr"
+                 placeholder="Ej: Vendedor, Cajero, Administrador" maxlength="80" />
+          <div class="text-danger small" *ngIf="campoInvalido('crg_descr')">
+            {{ errorBackend('crg_descr') || 'La descripción es obligatoria (máx. 80 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="crg_estado">Estado</label>
+          <select cSelect id="crg_estado" formControlName="crg_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

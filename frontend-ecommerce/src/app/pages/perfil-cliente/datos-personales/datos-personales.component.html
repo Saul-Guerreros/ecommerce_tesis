@@ -16,11 +16,29 @@
 
     <div class="uk-width-expand">
       <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
-        <div>
-          <div class="info-chip">
-            <span class="info-chip-label">Cédula</span>
-            <span class="info-chip-valor">{{ perfil?.persona?.per_cedula }}</span>
-          </div>
+               <div>
+          @if (cedulaEditable) {
+            <!-- Todavía no tiene cédula: se puede cargar una única vez -->
+            <label class="info-chip-label" for="per_cedula">Cédula</label>
+            <div class="uk-inline uk-width-1-1">
+              <span class="uk-form-icon" uk-icon="icon: credit-card"></span>
+              <input class="uk-input perfil-input" id="per_cedula" type="text" name="per_cedula"
+                     inputmode="numeric" maxlength="12" placeholder="Número de cédula (sin puntos)"
+                     [(ngModel)]="per_cedula" />
+            </div>
+            <div class="uk-text-meta uk-text-small uk-margin-xsmall-top">
+              Revisala bien: una vez guardada no se puede modificar.
+            </div>
+          } @else {
+            <!-- Ya registrada: solo lectura -->
+            <div class="info-chip" title="Para corregirla, contactá con la tienda">
+              <span class="info-chip-label">Cédula</span>
+              <span class="info-chip-valor">
+                {{ perfil?.persona?.per_cedula }}
+                <span uk-icon="icon: lock; ratio: .7"></span>
+              </span>
+            </div>
+          }
         </div>
         <div>
           <div class="info-chip">
@@ -65,8 +83,12 @@
       <div>
         <div class="uk-inline uk-width-1-1">
           <span class="uk-form-icon" uk-icon="icon: calendar"></span>
-          <input class="uk-input perfil-input" type="date" name="per_fechna" [(ngModel)]="per_fechna" />
+          <input class="uk-input perfil-input" type="date" name="per_fechna"
+                 [(ngModel)]="per_fechna"
+                 [min]="fechaMin" [max]="fechaMax"
+                 [class.uk-form-danger]="errorFecha" />
         </div>
+        <div class="uk-text-danger uk-text-small uk-margin-xsmall-top" *ngIf="errorFecha">{{ errorFecha }}</div>
       </div>
       <div>
         <div class="uk-inline uk-width-1-1">

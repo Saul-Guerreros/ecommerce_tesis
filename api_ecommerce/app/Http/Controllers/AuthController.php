@@ -212,12 +212,13 @@ class AuthController extends Controller
     }
 
     /**
-     * Login del panel administrativo (CoreUI). Solo roles Administrador y
-     * Vendedor pueden entrar por aqui.
+     * Login del panel administrativo (CoreUI). Puede entrar el Administrador y
+     * cualquier rol activo que tenga el permiso "dashboard.ver" (Acceso al panel,
+     * se asigna en la pantalla Permisos). Cliente nunca.
      */
     public function login(Request $request)
     {
-        return $this->intentarLogin($request, ['Administrador', 'Vendedor'], exigirActivo: false);
+        return $this->intentarLogin($request, null, exigirActivo: false);
     }
 
     /**
@@ -270,42 +271,66 @@ class AuthController extends Controller
         return $this->respondWithToken($token, $usuario, $request);
     }
 
-    private function intentarLogin(Request $request, array $rolesPermitidos, bool $exigirActivo)
+    private function intentarLogin(Request $request, ?array $rolesPermitidos, bool $exigirActivo)
     {
         $login = (string) $request->email;
         $password = (string) $request->password;
+        $mensajeCredenciales = 'Correo o contraseña incorrectos.';
 
         $usuario = Usuario::where('usu_login', $login)->first();
 
+        // 1. Usuario inexistente: mismo mensaje que contraseña incorrecta.
         if (! $usuario) {
             $this->registrarIntento(null, $login, false, 'usuario no encontrado', $request);
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return $this->rechazarLogin('CREDENCIALES_INVALIDAS', $mensajeCredenciales, 401, 'usuario no encontrado');
         }
 
+        // 2. Bloqueada: se informa antes de verificar la contraseña para que el
+        //    bloqueo no pueda usarse para seguir adivinándola.
         if ($usuario->usu_estado === Usuario::ESTADO_BLOQUEADO) {
             $this->registrarIntento($usuario->usu_id, $login, false, 'cuenta bloqueada', $request);
-            return response()->json(['error' => 'Cuenta bloqueada. Contacte al administrador.'], 423);
+            return $this->rechazarLogin('CUENTA_BLOQUEADA', 'Cuenta bloqueada. Contactá al administrador.', 423);
         }
 
-        if (! in_array($usuario->rol?->rol_descri, $rolesPermitidos, true)) {
-            $this->registrarIntento($usuario->usu_id, $login, false, 'rol no autorizado para este acceso', $request);
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-
+        // 3. Contraseña ANTES que el rol: así "sin acceso" solo lo ve quien la conoce.
         if (! Hash::check($password, $usuario->usu_passwd)) {
             $this->registrarIntento($usuario->usu_id, $login, false, 'password incorrecto', $request);
 
             if ($this->intentosFallidosConsecutivos($usuario->usu_id) >= self::MAX_INTENTOS_FALLIDOS) {
                 $usuario->update(['usu_estado' => Usuario::ESTADO_BLOQUEADO]);
-                return response()->json(['error' => 'Cuenta bloqueada por demasiados intentos fallidos.'], 423);
+                return $this->rechazarLogin('CUENTA_BLOQUEADA', 'Cuenta bloqueada por demasiados intentos fallidos.', 423);
             }
 
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return $this->rechazarLogin('CREDENCIALES_INVALIDAS', $mensajeCredenciales, 401, 'contraseña incorrecta');
         }
 
+               // 4. Rol: credenciales correctas, pero sin permiso para este sistema.
+        //    $rolesPermitidos === null => login del panel: se decide por el permiso "dashboard.ver".
+        $autorizado = $rolesPermitidos === null
+            ? ($usuario->rol?->tieneAccesoPanel() ?? false)
+            : in_array($usuario->rol?->rol_descri, $rolesPermitidos, true);
+
+        if (! $autorizado) {
+            $this->registrarIntento($usuario->usu_id, $login, false, 'rol no autorizado para este acceso', $request);
+            return $this->rechazarLogin(
+                'SIN_ACCESO',
+                'Tu cuenta no tiene acceso a este sistema.',
+                401,
+                'rol "' . ($usuario->rol?->rol_descri ?? 'sin rol') . '" no permitido; '
+                    . ($rolesPermitidos === null
+                        ? 'se espera un rol con acceso al panel (dashboard.ver)'
+                        : 'se espera: ' . implode(', ', $rolesPermitidos))
+            );
+        }
+
+        // 5. Correo sin verificar (solo tienda).
         if ($exigirActivo && $usuario->usu_estado !== Usuario::ESTADO_ACTIVO) {
             $this->registrarIntento($usuario->usu_id, $login, false, 'correo no verificado', $request);
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return $this->rechazarLogin(
+                'CORREO_NO_VERIFICADO',
+                'Verificá tu correo antes de ingresar. Revisá tu bandeja de entrada o spam.',
+                401
+            );
         }
 
         $this->registrarIntento($usuario->usu_id, $login, true, null, $request);
@@ -491,6 +516,23 @@ class AuthController extends Controller
             ->where('tkv_usado', 0)
             ->where('tkv_fecexp', '>', now())
             ->first();
+    }
+
+        /**
+     * Respuesta de login rechazado.
+     * - "codigo": para que el frontend elija el mensaje sin depender del texto.
+     * - "detalle": motivo exacto, SOLO con APP_DEBUG=true (desarrollo).
+     *   En producción nunca se revela si el usuario existe (evita la enumeración).
+     */
+    private function rechazarLogin(string $codigo, string $mensaje, int $status, ?string $motivoInterno = null)
+    {
+        $respuesta = ['error' => $mensaje, 'codigo' => $codigo];
+
+        if (config('app.debug') && $motivoInterno) {
+            $respuesta['detalle'] = $motivoInterno;
+        }
+
+        return response()->json($respuesta, $status);
     }
 
     /*

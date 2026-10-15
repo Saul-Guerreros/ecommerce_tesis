@@ -1,0 +1,36 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar tipo de cliente' : 'Nuevo tipo de cliente' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+        <div class="col-12">
+          <label cLabel for="tpc_descri">Descripción <span class="text-danger">*</span></label>
+          <input cFormControl id="tpc_descri" formControlName="tpc_descri"
+                 placeholder="Ej: Minorista, Mayorista, Corporativo" maxlength="50" />
+          <div class="text-danger small" *ngIf="campoInvalido('tpc_descri')">
+            {{ errorBackend('tpc_descri') || 'La descripción es obligatoria (máx. 50 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="tpc_estado">Estado</label>
+          <select cSelect id="tpc_estado" formControlName="tpc_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

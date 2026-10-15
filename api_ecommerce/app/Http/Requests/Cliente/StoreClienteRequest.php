@@ -4,6 +4,8 @@ namespace App\Http\Requests\Cliente;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Rules\FechaNacimiento;
+
 
 class StoreClienteRequest extends FormRequest
 {
@@ -30,7 +32,7 @@ class StoreClienteRequest extends FormRequest
             'per_apell1' => ['required','string','max:50'],
             'per_apell2' => ['nullable','string','max:50'],
             'per_estciv' => ['nullable', Rule::in(['SOLTERO','CASADO','DIVORCIADO','VIUDO','UNION_LIBRE'])],
-            'per_fechna' => ['nullable','date','before:today'],
+            'per_fechna' => ['nullable', new FechaNacimiento()],
 
             // --- Datos de cliente ---
             'cli_tpcid'  => ['required','integer','exists:tipo_cliente,tpc_id'],
@@ -89,7 +91,6 @@ class StoreClienteRequest extends FormRequest
             'per_cedula.unique'   => 'Ya existe una persona registrada con ese documento.',
             'per_nombr1.required' => 'El primer nombre es obligatorio.',
             'per_apell1.required' => 'El primer apellido es obligatorio.',
-            'per_fechna.before'   => 'La fecha de nacimiento debe ser anterior a hoy.',
             'cli_tpcid.required'  => 'Debe seleccionar el tipo de cliente.',
             'cli_tpcid.exists'    => 'El tipo de cliente seleccionado no es válido.',
             'cli_ruc.unique'      => 'El RUC ya está registrado.',

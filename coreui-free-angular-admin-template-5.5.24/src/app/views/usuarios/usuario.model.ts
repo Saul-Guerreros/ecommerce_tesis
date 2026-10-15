@@ -9,6 +9,13 @@ export interface PersonaUsuario {
   fecha_nacimiento?: string | null;
 }
 
+/** Sucursal asignada a un usuario (viene dentro de Usuario.sucursales). */
+export interface SucursalUsuario {
+  suc_id: number;
+  suc_nombre: string;
+  principal: boolean;
+}
+
 export type EstadoUsuario = 'ACTIVO' | 'INACTIVO' | 'BLOQUEADO';
 
 export interface Usuario {
@@ -22,6 +29,7 @@ export interface Usuario {
   cargo_id: number;
   cargo: string;
   fecha_ingreso?: string | null;
+  sucursales?: SucursalUsuario[];
 }
 
 export interface RolCatalogo {
@@ -34,9 +42,15 @@ export interface CargoCatalogo {
   crg_descr: string;
 }
 
+export interface SucursalCatalogo {
+  suc_id: number;
+  suc_nombre: string;
+}
+
 export interface CatalogosUsuario {
   roles: RolCatalogo[];
   cargos: CargoCatalogo[];
+  sucursales: SucursalCatalogo[];
 }
 
 /**
@@ -54,4 +68,6 @@ export interface UsuarioFormValue {
   rol_id: number | null;
   email: string;
   password?: string;
+  sucursales?: number[];
+  sucursal_principal?: number | null;
 }

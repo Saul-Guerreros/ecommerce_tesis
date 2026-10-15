@@ -1,0 +1,27 @@
+<c-modal [visible]="visible" (visibleChange)="!$event && cerrar()" size="sm">
+
+  <c-modal-header>
+    <h5 cModalTitle>Confirmar eliminación</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <p class="mb-1">¿Está seguro de eliminar al siguiente funcionario?</p>
+    <strong>{{ funcionario?.persona?.nombre_completo }}</strong>
+    <div class="text-muted small">
+      Documento: {{ funcionario?.persona?.per_cedula }} · Cargo: {{ funcionario?.cargo?.crg_descr }}
+    </div>
+    <c-alert color="warning" class="mt-3 py-2 small mb-0">
+      Esta acción no se puede deshacer. Si el funcionario tiene una cuenta de usuario,
+      el sistema impedirá la eliminación: use el botón <strong>Desactivar</strong>.
+    </c-alert>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()" [disabled]="submitting">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="eliminar()" [disabled]="submitting">
+      <c-spinner *ngIf="submitting" size="sm" class="me-1"></c-spinner>
+      Eliminar
+    </button>
+  </c-modal-footer>
+
+</c-modal>

@@ -6,6 +6,7 @@ import { BadgeModule, ButtonModule, CardModule, FormModule, GridModule, SpinnerM
 import { AuthService } from '../../auth/services/auth.service';
 import { Perfil } from './models/perfil.model';
 import { PerfilService } from './service/perfil.service';
+import { FECHA_NACIMIENTO_MIN, fechaNacimientoMax, fechaNacimientoValidator } from '../../core/validators/fecha-nacimiento';
 
 /** La confirmación debe coincidir con la nueva contraseña. */
 function passwordsIguales(group: AbstractControl): ValidationErrors | null {
@@ -44,11 +45,14 @@ export class PerfilComponent implements OnInit {
     per_nombr2: ['', [Validators.maxLength(45)]],
     per_apell1: ['', [Validators.required, Validators.maxLength(50)]],
     per_apell2: ['', [Validators.maxLength(50)]],
-    per_fechna: [''],
+    per_fechna: ['', [fechaNacimientoValidator()]],
     celular: ['', [Validators.pattern(/^\+?[0-9\s\-]{6,20}$/)]],
     avatar: [null],
   });
 
+  readonly fechaMin = FECHA_NACIMIENTO_MIN;
+  readonly fechaMax = fechaNacimientoMax();
+  
   formPassword: FormGroup = this.fb.group(
     {
       password_actual: ['', [Validators.required]],

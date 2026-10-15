@@ -1,0 +1,72 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Intentos de Sesión</strong>
+    <span class="fw-bold">Fallidos (según filtros): {{ fallidos }}</span>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-3">
+        <input cFormControl placeholder="Buscar por usuario o IP..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="resultado" (ngModelChange)="cargar(1)">
+          <option value="">Todos</option>
+          <option value="1">Exitosos</option>
+          <option value="0">Fallidos</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <c-input-group>
+          <span cInputGroupText>Desde</span>
+          <input cFormControl type="date" [(ngModel)]="desde" (ngModelChange)="cargar(1)" />
+        </c-input-group>
+      </div>
+      <div class="col-md-3">
+        <c-input-group>
+          <span cInputGroupText>Hasta</span>
+          <input cFormControl type="date" [(ngModel)]="hasta" (ngModelChange)="cargar(1)" />
+        </c-input-group>
+      </div>
+      <div class="col-md-1">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ total }} registro(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover responsive *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Usuario ingresado</th>
+          <th class="text-center">Resultado</th>
+          <th>Observación</th>
+          <th>IP de origen</th>
+          <th>Dispositivo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let i of registros" [class.table-warning]="!i.exitoso">
+          <td>{{ i.ise_creado | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+          <td>
+            {{ i.ise_logusa }}
+            <div class="text-muted small" *ngIf="i.usuario?.nombre">{{ i.usuario?.nombre }}</div>
+          </td>
+          <td class="text-center">
+            <c-badge [color]="i.exitoso ? 'success' : 'danger'">{{ i.exitoso ? 'Exitoso' : 'Fallido' }}</c-badge>
+          </td>
+          <td>{{ i.ise_obs || '—' }}</td>
+          <td>{{ i.ise_iporig || '—' }}</td>
+          <td [title]="i.ise_userag || ''">{{ i.ise_userag | dispositivo }}</td>
+        </tr>
+        <tr *ngIf="registros.length === 0"><td colspan="6" class="text-center">Sin intentos de sesión registrados</td></tr>
+      </tbody>
+    </table>
+
+    <app-paginador *ngIf="!cargando" [pagina]="pagina" [total]="total" [porPagina]="porPagina"
+                   (cambio)="cargar($event)"></app-paginador>
+  </c-card-body>
+</c-card>

@@ -8,10 +8,11 @@ import { CarritoService } from '../../core/services/carrito.service';
 import { AuthService } from '../../pages/auth/service/auth.service';
 import { HomeService } from '../../pages/home/service/home.service';
 import { CarritoOffcanvasComponent } from '../components/carrito-offcanvas/carrito-offcanvas.component';
-// --- import nuevo ---
+import { ComparadorService } from '../../core/services/comparador.service';
 import { ConfirmacionCarritoComponent } from '../components/confirmacion-carrito/confirmacion-carrito.component';
 import { BuscadorSugerenciasComponent } from '../components/buscador-sugerencias/buscador-sugerencias.component';
 import { CategoriaIconoComponent } from '../components/categoria-icono/categoria-icono.component';
+import { FavoritoService } from '../../core/services/favorito.service';
 
 declare const UIkit: any;
 
@@ -63,6 +64,11 @@ export class HeaderComponent {
   totalUnidades: number = 0;
 
   private destroyRef = inject(DestroyRef);
+
+  /** Lista de favoritos: el header solo lee la cantidad para el badge del corazón. */
+  readonly favoritos = inject(FavoritoService);
+  /** Contador del icono "Comparar" (cantidad$ se lee con async en el template). */
+  readonly comparador = inject(ComparadorService);
 
   constructor(
     public homeService: HomeService,

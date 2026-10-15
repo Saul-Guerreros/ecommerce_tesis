@@ -26,3 +26,75 @@
 .tm-product-card-shop.sin-cuotas > .tm-product-card-add {
   margin-top: 0;
 }
+
+/* Botón "Comparar" de la tarjeta */
+.tm-comparar {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -8px 0 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: #999;
+  cursor: pointer;
+}
+.tm-comparar:hover,
+.tm-comparar.is-active {
+  color: #1e87f0;
+}
+
+/* ---------- Corazón de favoritos (arriba a la izquierda: la etiqueta de
+   descuento / poco stock ocupa la esquina derecha) ---------- */
+.tm-product-card-fav {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #e5e5e5;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #999;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.tm-product-card-fav svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tm-product-card-fav:hover,
+.tm-product-card-fav.is-active {
+  color: #f0506e;
+  border-color: #f0506e;
+}
+
+.tm-product-card-fav.is-active svg {
+  fill: currentColor;
+}
+
+.tm-product-card-fav:active {
+  transform: scale(0.92);
+}
+
+.tm-product-card-fav:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.tm-product-card-fav:focus-visible {
+  outline: 2px solid #1e87f0;
+  outline-offset: 2px;
+}

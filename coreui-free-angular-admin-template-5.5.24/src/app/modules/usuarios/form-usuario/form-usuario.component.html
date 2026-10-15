@@ -40,7 +40,12 @@
         </div>
         <div class="col-md-6">
           <label cLabel for="fecha_nacimiento">Fecha de nacimiento</label>
-          <input cFormControl type="date" id="fecha_nacimiento" formControlName="fecha_nacimiento" />
+          <input cFormControl type="date" id="fecha_nacimiento" formControlName="fecha_nacimiento"
+                 [min]="fechaMin" [max]="fechaMax"
+                 [class.is-invalid]="form.get('fecha_nacimiento')?.errors?.['fechaNacimiento']" />
+          <div class="invalid-feedback d-block" *ngIf="form.get('fecha_nacimiento')?.errors?.['fechaNacimiento'] as error">
+            {{ error }}
+          </div>
         </div>
 
         <div class="col-md-6">

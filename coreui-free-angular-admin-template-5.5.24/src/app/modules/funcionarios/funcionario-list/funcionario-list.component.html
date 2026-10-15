@@ -1,0 +1,82 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Funcionarios</strong>
+    <button cButton color="primary" (click)="nuevo()">+ Nuevo funcionario</button>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar por nombre, documento, cargo o contacto..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroCargo" (ngModelChange)="listar(1)">
+          <option value="">Todos los cargos</option>
+          <option *ngFor="let c of cargos" [value]="c.crg_id">{{ c.crg_descr }}</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="listar(1)">
+          <option value="">Todos los estados</option>
+          <option value="1">Activo</option>
+          <option value="0">Inactivo</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ total }} funcionario(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover responsive *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>Documento</th>
+          <th>Nombre completo</th>
+          <th>Cargo</th>
+          <th>Contacto</th>
+          <th>Ingreso</th>
+          <th class="text-center">Estado</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let f of funcionarios">
+          <td>{{ f.persona.per_cedula }}</td>
+          <td>{{ f.persona.nombre_completo }}</td>
+          <td>{{ f.cargo?.crg_descr }}</td>
+          <td>{{ (f.contactos | contactoPrincipal) || '—' }}</td>
+          <td>{{ f.fun_fecing | date:'dd/MM/yyyy' }}</td>
+          <td class="text-center">
+            <c-badge [color]="f.fun_estado === 1 ? 'success' : 'secondary'">{{ f.fun_estado === 1 ? 'Activo' : 'Inactivo' }}</c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="editar(f)">Editar</button>
+            <button cButton size="sm" [color]="f.fun_estado === 1 ? 'warning' : 'success'" class="me-2 text-white" (click)="cambiarEstado(f)">
+              {{ f.fun_estado === 1 ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="confirmarEliminar(f)">Eliminar</button>
+          </td>
+        </tr>
+        <tr *ngIf="funcionarios.length === 0"><td colspan="7" class="text-center">No hay funcionarios registrados</td></tr>
+      </tbody>
+    </table>
+
+    <div class="d-flex justify-content-center mt-3" *ngIf="!cargando && totalPaginas > 1">
+      <button cButton size="sm" variant="outline" color="secondary"
+              [disabled]="currentPage === 1" (click)="listar(currentPage - 1)">Anterior</button>
+      <span class="mx-3 align-self-center">Página {{ currentPage }} de {{ totalPaginas }}</span>
+      <button cButton size="sm" variant="outline" color="secondary"
+              [disabled]="currentPage === totalPaginas" (click)="listar(currentPage + 1)">Siguiente</button>
+    </div>
+  </c-card-body>
+</c-card>
+
+<app-funcionario-form [(visible)]="showForm" [funcionario]="funcionarioSel"
+                      (guardado)="onGuardado($event)"></app-funcionario-form>
+
+<app-funcionario-delete [(visible)]="showDelete" [funcionario]="funcionarioSel"
+                        (eliminado)="onEliminado()"></app-funcionario-delete>

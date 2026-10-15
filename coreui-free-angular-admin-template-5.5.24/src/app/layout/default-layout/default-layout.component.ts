@@ -1,20 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { NgScrollbar } from 'ngx-scrollbar';
-
+import { permisoParaUrl } from './_nav-permisos'; 
 import { IconDirective } from '@coreui/icons-angular';
-import {
-  ContainerComponent,
-  INavData,
-  ShadowOnScrollDirective,
-  SidebarBrandComponent,
-  SidebarComponent,
-  SidebarFooterComponent,
-  SidebarHeaderComponent,
-  SidebarNavComponent,
-  SidebarToggleDirective,
-  SidebarTogglerDirective
-} from '@coreui/angular';
+import {ContainerComponent,INavData,ShadowOnScrollDirective, SidebarBrandComponent,SidebarComponent,SidebarFooterComponent, SidebarHeaderComponent,SidebarNavComponent,SidebarToggleDirective,SidebarTogglerDirective} from '@coreui/angular';
 
 import { DefaultFooterComponent, DefaultHeaderComponent } from './';
 import { navItems } from './_nav';
@@ -58,15 +47,26 @@ export class DefaultLayoutComponent {
   public navItems: INavData[] = this.filtrarPorPermisos([...navItems]);
 
   private filtrarPorPermisos(items: INavData[]): INavData[] {
-    return items
-      .filter((item) => this.puedeVer(item.url))
-      .map((item) => (item.children ? { ...item, children: this.filtrarPorPermisos(item.children) } : item));
+    const visibles = items.reduce<INavData[]>((acc, item) => {
+      if (item.children) {
+        // Un grupo se muestra si al menos uno de sus hijos es visible
+        const hijos = this.filtrarPorPermisos(item.children);
+        if (hijos.length) { acc.push({ ...item, children: hijos }); }
+      } else if (item.title || this.puedeVer(item.url)) {
+        acc.push(item);
+      }
+      return acc;
+    }, []);
+
+    // Quita títulos de sección que quedaron sin ninguna opción debajo
+    return visibles.filter((it, i) => !it.title || (visibles[i + 1] !== undefined && !visibles[i + 1].title));
   }
 
   private puedeVer(url?: string | any[]): boolean {
     if (!url || typeof url !== 'string') return true;
-    const permisoRequerido = PERMISO_POR_RUTA[url];
-    if (!permisoRequerido) return true;
-    return this.authService.tienePermiso(permisoRequerido);
+    if (this.authService.tieneRol('Administrador')) return true;
+    const requerido = permisoParaUrl(url);
+    return !requerido || this.authService.tienePermiso(requerido);
   }
+
 }

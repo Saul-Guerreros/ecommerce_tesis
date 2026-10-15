@@ -109,8 +109,12 @@
               <input cFormControl formControlName="per_apell2" maxlength="50" />
             </div>
             <div class="col-md-6">
-              <label cLabel class="fw-semibold">Fecha de nacimiento</label>
-              <input cFormControl type="date" formControlName="per_fechna" [max]="hoy" />
+                <input cFormControl type="date" formControlName="per_fechna"
+                     [min]="fechaMin" [max]="fechaMax"
+                     [class.is-invalid]="formDatos.get('per_fechna')?.errors?.['fechaNacimiento']" />
+              <div class="text-danger small" *ngIf="formDatos.get('per_fechna')?.errors?.['fechaNacimiento'] as error">
+                {{ error }}
+              </div>
               <div class="text-danger small" *ngIf="errorBackend(formDatos, 'per_fechna')">
                 {{ errorBackend(formDatos, 'per_fechna') }}
               </div>

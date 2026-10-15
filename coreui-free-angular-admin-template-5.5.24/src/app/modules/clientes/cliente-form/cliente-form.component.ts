@@ -2,13 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
+import { AlertModule, ButtonModule, FormModule, GridModule, ModalModule, SpinnerModule } from '@coreui/angular';
 import { ClienteService } from '../service/cliente.service';
-import { Cliente, ClienteConfig, ClientePayload } from '../models/cliente.model';
+import { BusquedaPersona, Cliente, ClienteConfig, ClientePayload } from '../models/cliente.model';
+import { FECHA_NACIMIENTO_MIN, errorFechaNacimiento, fechaNacimientoMax } from '../../../core/validators/fecha-nacimiento';
 
 @Component({
   selector: 'app-cliente-form',
   standalone: true,
-  imports: [CommonModule, FormsModule /* + módulos de CoreUI que uses */],
+  imports: [CommonModule, FormsModule, ModalModule, GridModule, FormModule, ButtonModule, AlertModule, SpinnerModule],
   templateUrl: './cliente-form.component.html',
 })
 export class ClienteFormComponent implements OnChanges {
@@ -23,6 +25,10 @@ export class ClienteFormComponent implements OnChanges {
   submitting = false;
   buscando = false;
   personaEncontrada = false;
+
+  /** Límites del input de fecha de nacimiento (desde 1940 hasta ayer). */
+  readonly fechaMin = FECHA_NACIMIENTO_MIN;
+  readonly fechaMax = fechaNacimientoMax();
 
   config: ClienteConfig = {
     tipos_documento: [], tipos_cliente: [], estados_civiles: [], tipos_contacto: []
@@ -49,7 +55,7 @@ export class ClienteFormComponent implements OnChanges {
 
   private cargarConfig(): void {
     this.clienteService.config().subscribe({
-      next: (c) => this.config = c,
+      next: (c: ClienteConfig) => this.config = c,
       error: () => this.toastr.error('No se pudieron cargar los datos del formulario'),
     });
   }
@@ -124,7 +130,7 @@ export class ClienteFormComponent implements OnChanges {
 
     this.buscando = true;
     this.clienteService.buscarPersona(this.form.per_tpdid, this.form.per_cedula).subscribe({
-      next: (resp) => {
+      next: (resp: BusquedaPersona) => {
         this.buscando = false;
 
         if (!resp.existe) { this.personaEncontrada = false; return; }
@@ -165,6 +171,14 @@ export class ClienteFormComponent implements OnChanges {
 
   guardar(): void {
     if (this.submitting) { return; }
+
+    // Validación local antes de llamar al backend (mismo formato de errores que el 422)
+    const errorFecha = errorFechaNacimiento(this.form.per_fechna);
+    if (errorFecha) {
+      this.errors = { per_fechna: [errorFecha] };
+      return;
+    }
+
     this.submitting = true;
     this.errors = {};
 

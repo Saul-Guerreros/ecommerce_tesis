@@ -301,6 +301,40 @@ class VitrinaController extends Controller
         return max(0, round($precioBase - (float) $descuento->discount, 2));
     }
 
+        // ---------------------------------------------------------------
+    // Productos por lista de IDs (lo usa FavoritoController)
+    // ---------------------------------------------------------------
+
+    /**
+     * Devuelve las tarjetas de producto (mismo formato que el Home: precio con
+     * descuento, cuotas, stock...) para una lista de prd_id, CONSERVANDO el
+     * orden recibido. Los productos que no existen o no están publicados se
+     * omiten.
+     *
+     * @param  int[]  $ids
+     * @return Collection<int, array>
+     */
+    public function productosPorIds(array $ids): Collection
+    {
+        if (empty($ids)) {
+            return collect();
+        }
+
+        $descuentos = $this->descuentosActivosPorProducto();
+
+        $publicaciones = PublicacionWeb::publicadas()
+            ->whereIn('pub_prdid', $ids)
+            ->with(['producto.marca', 'producto.configuracionesCuota', 'producto.stock', 'categoria', 'imagenes'])
+            ->get()
+            ->keyBy('pub_prdid');
+
+        return collect($ids)
+            ->map(fn ($id) => $publicaciones->get($id))
+            ->filter()
+            ->map(fn (PublicacionWeb $pub) => $this->formatearConOferta($pub, $descuentos))
+            ->values();
+    }
+
     // ---------------------------------------------------------------
     // Formato uniforme de salida (mismo shape en todas las secciones)
     // ---------------------------------------------------------------
@@ -988,6 +1022,49 @@ class VitrinaController extends Controller
             ->values();
 
         return response()->json(['data' => $menu]);
+    }
+	
+	// GET /api/tienda/productos/comparar?slugs=a,b,c — público
+    // Comparador: devuelve en UNA petición los datos de hasta 4 productos
+    // (precio/oferta/stock/cuotas con el mismo formato que el detalle, más su
+    // ficha técnica). El orden de la respuesta es el de los slugs recibidos.
+    public function comparar(Request $request): JsonResponse
+    {
+        $slugs = collect(explode(',', (string) $request->query('slugs', '')))
+            ->map(fn ($s) => trim($s))
+            ->filter()
+            ->unique()
+            ->take(4)
+            ->values();
+
+        if ($slugs->isEmpty()) {
+            return response()->json(['data' => ['productos' => []]]);
+        }
+
+        $publicaciones = PublicacionWeb::publicadas()
+            ->whereIn('pub_slug', $slugs->all())
+            ->with(['producto.marca', 'producto.configuracionesCuota', 'producto.stock.deposito.sucursal', 'producto.padre.publicacionWeb', 'categoria', 'imagenes'])
+            ->get()
+            ->keyBy('pub_slug');
+
+        $descuentos = $this->descuentosActivosPorProducto();
+        $fichaTecnica = app(FichaTecnicaService::class);
+
+        // Un slug que ya no está publicado simplemente no aparece: el frontend
+        // lo descarta de la lista del cliente.
+        $productos = $slugs
+            ->filter(fn ($slug) => $publicaciones->has($slug))
+            ->map(function ($slug) use ($publicaciones, $descuentos, $fichaTecnica) {
+                $pub = $publicaciones->get($slug);
+
+                return [
+                    'producto' => $this->formatearConOferta($pub, $descuentos),
+                    'especificaciones' => $fichaTecnica->fichaParaMostrar($pub),
+                ];
+            })
+            ->values();
+
+        return response()->json(['data' => ['productos' => $productos]]);
     }
 
    // GET /api/tienda/producto/{slug} — público

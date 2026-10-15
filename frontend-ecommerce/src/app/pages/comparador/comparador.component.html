@@ -1,0 +1,215 @@
+<main>
+  <section class="uk-section uk-section-small">
+    <div class="uk-container">
+      <ul class="uk-breadcrumb">
+        <li><a routerLink="/">Inicio</a></li>
+        <li><span>Comparar productos</span></li>
+      </ul>
+
+      <div class="cmp-encabezado">
+        <div>
+          <h1 class="cmp-titulo">Comparar productos</h1>
+          @if (columnas.length && columnas[0].producto.categoria) {
+            <p class="uk-text-meta uk-margin-remove">Categoría: {{ columnas[0].producto.categoria }}</p>
+          }
+        </div>
+
+        @if (columnas.length) {
+          <div class="cmp-acciones">
+            <label class="cmp-switch" [class.is-disabled]="columnas.length < 2">
+              <input
+                type="checkbox"
+                [checked]="soloDiferencias"
+                [disabled]="columnas.length < 2"
+                (change)="soloDiferencias = !soloDiferencias"
+              />
+              <span>Mostrar solo diferencias @if (columnas.length > 1) { ({{ totalDiferencias }}) }</span>
+            </label>
+            <button type="button" class="cmp-link-btn" (click)="vaciar()">Vaciar comparador</button>
+          </div>
+        }
+      </div>
+
+      @if (cargando) {
+        <div class="cmp-estado">Cargando comparación…</div>
+      } @else if (error) {
+        <div class="cmp-estado">
+          <p>No pudimos cargar la comparación. Revisá tu conexión e intentá de nuevo.</p>
+          <button type="button" class="uk-button uk-button-primary uk-button-small" (click)="cargar()">Reintentar</button>
+        </div>
+      } @else if (!columnas.length) {
+        <div class="cmp-estado cmp-vacio">
+          <span uk-icon="icon: copy; ratio: 2.5"></span>
+          <h3>Todavía no agregaste productos para comparar</h3>
+          <p>
+            Tocá <strong>Comparar</strong> en cualquier producto (podés elegir hasta {{ maximo }}) y acá vas a ver
+            sus características una al lado de la otra.
+          </p>
+          <a routerLink="/productos-busqueda" class="uk-button uk-button-primary">Ver productos</a>
+        </div>
+      } @else {
+        @if (columnas.length < 2) {
+          <div class="cmp-aviso">
+            Agregá al menos un producto más
+            @if (columnas[0].producto.categoria) { de <strong>{{ columnas[0].producto.categoria }}</strong> }
+            para poder compararlos.
+          </div>
+        }
+
+        <div class="cmp-scroll">
+          <table class="cmp-table" [style.min-width.px]="anchoMinimo">
+            <thead>
+              <tr>
+                <th class="cmp-label" scope="col"></th>
+
+                @for (col of columnas; track col.producto.pub_id) {
+                  <th class="cmp-prod" scope="col">
+                    <button
+                      type="button"
+                      class="cmp-quitar"
+                      (click)="quitar(col)"
+                      [attr.aria-label]="'Quitar ' + col.producto.titulo + ' del comparador'"
+                      title="Quitar"
+                    >
+                      <span uk-icon="icon: close; ratio: .8"></span>
+                    </button>
+
+                    <a [routerLink]="['/producto', col.producto.slug]" class="cmp-foto">
+                      <img [src]="urlImagen(col.producto.imagen)" [alt]="col.producto.titulo" loading="lazy" />
+                    </a>
+
+                    <a [routerLink]="['/producto', col.producto.slug]" class="cmp-nombre uk-link-heading">
+                      {{ col.producto.titulo }}
+                    </a>
+
+                    <div class="cmp-precio">
+                      @if (col.producto.descuento_pct) {
+                        <del class="uk-text-meta">{{ col.producto.precio_original | monedaPy }}</del>
+                      }
+                      <div class="cmp-precio-final">{{ col.producto.precio_final | monedaPy }}</div>
+                      @if (esMejorPrecio(col)) {
+                        <span class="cmp-mejor">Mejor precio</span>
+                      }
+                    </div>
+
+                    <button
+                      type="button"
+                      class="uk-button uk-button-primary uk-button-small cmp-comprar"
+                      [disabled]="col.agregando || sinStock(col.producto)"
+                      (click)="agregarAlCarrito(col)"
+                    >
+                      @if (sinStock(col.producto)) { Sin stock } @else if (col.agregando) { Agregando… } @else { Agregar al carrito }
+                    </button>
+                  </th>
+                }
+
+                @if (columnas.length < maximo) {
+                  <th class="cmp-prod cmp-prod--vacio" scope="col">
+                    <a routerLink="/productos-busqueda" class="cmp-agregar-otro">
+                      <span uk-icon="icon: plus-circle; ratio: 1.6"></span>
+                      <span>Agregar otro producto</span>
+                    </a>
+                  </th>
+                }
+              </tr>
+            </thead>
+
+                       <tbody>
+              @if (!soloDiferencias || difiereGeneral('disponibilidad')) {
+              <tr [class.cmp-diff]="difiereGeneral('disponibilidad')">
+                <th class="cmp-label" scope="row">Disponibilidad</th>
+                @for (col of columnas; track col.producto.pub_id) {
+                  <td>
+                    @if (sinStock(col.producto)) {
+                      <span class="cmp-stock cmp-stock--no">Sin stock</span>
+                    } @else if (col.producto.poco_stock) {
+                      <span class="cmp-stock cmp-stock--poco">Solo quedan {{ col.producto.stock }}</span>
+                    } @else {
+                      <span class="cmp-stock cmp-stock--ok">Disponible</span>
+                    }
+                  </td>
+                }
+                @if (columnas.length < maximo) { <td></td> }
+              </tr>
+              }
+
+              @if (!soloDiferencias || difiereGeneral('cuotas')) {
+              <tr [class.cmp-diff]="difiereGeneral('cuotas')">
+                <th class="cmp-label" scope="row">Cuotas</th>
+                @for (col of columnas; track col.producto.pub_id) {
+                  <td>
+                    @if (cuotaMaxima(col.producto); as c) {
+                      Hasta {{ c.cantidad }} cuotas de {{ c.monto_cuota | monedaPy }}
+                    } @else {
+                      <span class="cmp-nd">Solo contado</span>
+                    }
+                  </td>
+                }
+                @if (columnas.length < maximo) { <td></td> }
+              </tr>
+              }
+
+              @if (!soloDiferencias || difiereGeneral('marca')) {
+              <tr [class.cmp-diff]="difiereGeneral('marca')">
+                <th class="cmp-label" scope="row">Marca</th>
+                @for (col of columnas; track col.producto.pub_id) {
+                  <td>{{ col.producto.marca || '—' }}</td>
+                }
+                @if (columnas.length < maximo) { <td></td> }
+              </tr>
+              }
+
+              @if (!soloDiferencias || difiereGeneral('sku')) {
+              <tr [class.cmp-diff]="difiereGeneral('sku')">
+                <th class="cmp-label" scope="row">Código</th>
+                @for (col of columnas; track col.producto.pub_id) {
+                  <td>{{ col.producto.sku }}</td>
+                }
+                @if (columnas.length < maximo) { <td></td> }
+              </tr>
+              }
+
+              @if (filasVisibles.length) {
+                <tr class="cmp-seccion">
+                  <th [attr.colspan]="columnas.length + (columnas.length < maximo ? 2 : 1)" scope="colgroup">
+                    Especificaciones
+                  </th>
+                </tr>
+
+                @for (fila of filasVisibles; track fila.atributo) {
+                  <tr [class.cmp-diff]="fila.difiere">
+                    <th class="cmp-label" scope="row">{{ fila.atributo }}</th>
+                    @for (valor of fila.valores; track $index) {
+                      <td>
+                        @if (valor) { {{ valor }} } @else { <span class="cmp-nd">—</span> }
+                      </td>
+                    }
+                    @if (columnas.length < maximo) { <td></td> }
+                  </tr>
+                }
+              }
+
+              @if (soloDiferencias && totalDiferencias === 0) {
+                <tr>
+                  <td [attr.colspan]="columnas.length + 2" class="cmp-sin-diferencias">
+                    Estos productos no tienen diferencias.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (columnas.length > 1 && filas.length) {
+          <p class="uk-text-meta uk-margin-small-top">
+                    @if (columnas.length > 1 && !soloDiferencias) {
+          <p class="uk-text-meta uk-margin-small-top">
+            Las filas en azul claro son las que tienen diferencias entre los productos.
+          </p>
+        }
+          </p>
+        }
+      }
+    </div>
+  </section>
+</main>

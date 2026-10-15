@@ -6,8 +6,8 @@
           <c-card class="p-4">
             <c-card-body>
               <form  cForm [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-                <h1>Login</h1>
-                <p class="text-body-secondary">Sign In to your account</p>
+                <h1>Iniciar sesión</h1>
+                <p class="text-body-secondary">Ingresá con tu cuenta del panel</p>
                 <div *ngIf="errorMsg" class="alert alert-danger py-2">
                   {{ errorMsg }}
                 </div>
@@ -64,7 +64,7 @@
               <div>
                 <h2>Acceso restringido</h2>
                 <p>
-                  Este panel es solo para personal autorizado (Administradores y Vendedores).
+                  Este panel es solo para personal autorizado.
                   Las cuentas de acceso las crea un Administrador desde el módulo de Usuarios;
                   no hay auto-registro aquí.
                 </p>

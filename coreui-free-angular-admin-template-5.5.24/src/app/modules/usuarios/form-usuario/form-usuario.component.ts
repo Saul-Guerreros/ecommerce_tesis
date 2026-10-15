@@ -6,6 +6,7 @@ import { ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/an
 import { Usuario, RolCatalogo, CargoCatalogo, SucursalCatalogo } from '../models/usuario.model';
 import { UsuariosService } from '../service/usuarios.service';
 import { FormsModule } from '@angular/forms';
+import { FECHA_NACIMIENTO_MIN, fechaNacimientoMax, fechaNacimientoValidator } from '../../../core/validators/fecha-nacimiento';
 
 @Component({
   selector: 'app-form-usuario',
@@ -45,13 +46,16 @@ export class FormUsuarioComponent implements OnInit, OnChanges {
       apellido1: ['', [Validators.required, Validators.maxLength(50)]],
       apellido2: ['', [Validators.maxLength(50)]],
       cedula: ['', [Validators.required, Validators.maxLength(50)]],
-      fecha_nacimiento: [''],
+      fecha_nacimiento: ['', [fechaNacimientoValidator()]],
       cargo_id: [null, [Validators.required]],
       rol_id: [null, [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
       password: [''],
     });
   }
+
+  readonly fechaMin = FECHA_NACIMIENTO_MIN;
+  readonly fechaMax = fechaNacimientoMax();
 
   ngOnInit(): void {
     this.service.catalogos().subscribe({

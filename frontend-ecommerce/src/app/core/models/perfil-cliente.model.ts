@@ -5,7 +5,7 @@ export interface PerfilPersona {
   per_nombr2: string | null;
   per_apell1: string;
   per_apell2: string | null;
-  per_cedula: string;
+  per_cedula: string | null;
   tipo_documento: string | null;
   per_fechna: string | null;
   avatar_url: string | null;

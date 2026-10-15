@@ -7,7 +7,7 @@
             <form cForm>
               <h1>Nuevo Usuario</h1>
               <p class="text-body-secondary">
-                Crea una cuenta de acceso al panel (Administrador o Vendedor).
+                 Crea una cuenta de acceso al panel. El rol define qué opciones podrá usar.
               </p>
 
               <div class="alert alert-danger py-2" *ngIf="errorMsg">{{ errorMsg }}</div>
@@ -47,7 +47,7 @@
                 <c-col md="6">
                   <c-input-group class="mb-3">
                     <span cInputGroupText><svg cIcon name="cilCalendar"></svg></span>
-                    <input cFormControl type="date" [(ngModel)]="form.fecha_nacimiento" name="fecha_nacimiento" />
+                          <input cFormControl type="date" [(ngModel)]="form.fecha_nacimiento" name="fecha_nacimiento" [min]="fechaMin" [max]="fechaMax" />
                   </c-input-group>
                 </c-col>
 
@@ -63,7 +63,28 @@
                     <option *ngFor="let r of roles" [ngValue]="r.rol_id">{{ r.rol_descri }}</option>
                   </select>
                 </c-col>
+                <c-col md="12" class="mb-3">
+                  <label class="form-label">Sucursales asignadas <span class="text-danger">*</span></label>
+                  <div class="border rounded p-2">
+                    <div class="form-check" *ngFor="let s of sucursales">
+                      <input class="form-check-input" type="checkbox"
+                             [id]="'suc-' + s.suc_id" [name]="'suc-' + s.suc_id"
+                             [checked]="estaSeleccionada(s.suc_id)"
+                             (change)="alternarSucursal(s.suc_id, $any($event.target).checked)" />
+                      <label class="form-check-label" [for]="'suc-' + s.suc_id">{{ s.suc_nombre }}</label>
+                    </div>
+                    <div class="text-muted small" *ngIf="sucursales.length === 0">
+                      No hay sucursales activas. Créalas primero en Configuración &gt; Empresa &gt; Sucursales.
+                    </div>
+                  </div>
+                </c-col>
 
+                <c-col md="12" class="mb-3" *ngIf="sucursalesSel.length > 1">
+                  <label class="form-label">Sucursal principal</label>
+                  <select class="form-select" [(ngModel)]="sucursalPrincipal" name="sucursal_principal">
+                    <option *ngFor="let s of sucursalesSeleccionadas" [ngValue]="s.suc_id">{{ s.suc_nombre }}</option>
+                  </select>
+                </c-col>
                 <c-col md="12">
                   <c-input-group class="mb-3">
                     <span cInputGroupText>&#64;</span>

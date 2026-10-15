@@ -1,0 +1,56 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Tipos de cliente</strong>
+    <button cButton color="primary" (click)="abrirNuevo()">+ Nuevo tipo</button>
+  </c-card-header>
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-6">
+        <input cFormControl placeholder="Buscar..." [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="">Todos los estados</option>
+          <option value="1">Activo</option>
+          <option value="0">Inactivo</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ tipos.length }} tipo(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr><th>#</th><th>Descripción</th><th class="text-center">En uso</th><th class="text-center">Estado</th><th class="text-end">Acciones</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let t of tipos">
+          <td>{{ t.tpc_id }}</td>
+          <td>{{ t.tpc_descri }}</td>
+          <td class="text-center">{{ t.usos_count }}</td>
+          <td class="text-center">
+            <c-badge [color]="t.tpc_estado === 1 ? 'success' : 'secondary'">{{ t.tpc_estado === 1 ? 'Activo' : 'Inactivo' }}</c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirEditar(t)">Editar</button>
+            <button cButton size="sm" [color]="t.tpc_estado === 1 ? 'warning' : 'success'" class="me-2 text-white" (click)="cambiarEstado(t)">
+              {{ t.tpc_estado === 1 ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(t)">Eliminar</button>
+          </td>
+        </tr>
+        <tr *ngIf="tipos.length === 0"><td colspan="5" class="text-center">No hay tipos de cliente registrados</td></tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-form-tipo-cliente [visible]="formModalVisible" [tipoCliente]="tipoSeleccionado"
+  (visibleChange)="formModalVisible = $event" (guardado)="cargar()"></app-form-tipo-cliente>
+
+<app-delete-tipo-cliente [visible]="deleteModalVisible" [tipoCliente]="tipoSeleccionado"
+  (visibleChange)="deleteModalVisible = $event" (confirmar)="confirmarEliminar()"></app-delete-tipo-cliente>

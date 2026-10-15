@@ -1,74 +1,64 @@
-/*
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, finalize } from 'rxjs';
-import { URL_SERVICIOS } from 'src/app/config/config';
-import { AuthService } from '../../auth';
+import { URL_SERVICIOS } from '../../../config/config';
 import {
-  BusquedaPersona, ClienteConfig, ClientePayload, ListaClientes
+  BusquedaPersona, Cliente, ClienteConfig, ClientePayload, ListaClientes,
 } from '../models/cliente.model';
 
+/**
+ * Servicio del módulo Clientes (admin).
+ * Los headers Authorization y Accept los agrega authInterceptor
+ * (app.config.ts), por eso aquí no se arman a mano.
+ */
 @Injectable({ providedIn: 'root' })
 export class ClienteService {
+  private readonly base = `${URL_SERVICIOS}/admin/clientes`;
 
-  private base = `${URL_SERVICIOS}/admin/clientes`;
+  private readonly isLoadingSubject = new BehaviorSubject<boolean>(false);
+  readonly isLoading$: Observable<boolean> = this.isLoadingSubject.asObservable();
 
-  isLoading$: Observable<boolean>;
-  isLoadingSubject: BehaviorSubject<boolean>;
-
-  constructor(
-    private http: HttpClient,
-    public authservice: AuthService,
-  ) {
-    this.isLoadingSubject = new BehaviorSubject<boolean>(false);
-    this.isLoading$ = this.isLoadingSubject.asObservable();
-  }
-
-  private headers(): HttpHeaders {
-    return new HttpHeaders({
-      'Authorization': 'Bearer ' + this.authservice.token,
-      'Accept': 'application/json'
-    });
-  }
+  constructor(private http: HttpClient) {}
 
   config(): Observable<ClienteConfig> {
-    return this.http.get<ClienteConfig>(`${this.base}/config`, { headers: this.headers() });
+    return this.http.get<ClienteConfig>(`${this.base}/config`);
   }
 
   buscarPersona(tipoDocumento: number, documento: string): Observable<BusquedaPersona> {
-    const params = `?tipo_documento=${tipoDocumento}&documento=${encodeURIComponent(documento)}`;
-    return this.http.get<BusquedaPersona>(
-      `${this.base}/buscar-persona${params}`, { headers: this.headers() }
-    );
+    return this.http.get<BusquedaPersona>(`${this.base}/buscar-persona`, {
+      params: { tipo_documento: tipoDocumento, documento },
+    });
   }
 
   list(page: number = 1, search: string = '', estado: string = ''): Observable<ListaClientes> {
     this.isLoadingSubject.next(true);
-    const url = `${this.base}?page=${page}&search=${encodeURIComponent(search)}&estado=${estado}`;
-    return this.http.get<ListaClientes>(url, { headers: this.headers() })
+    return this.http
+      .get<ListaClientes>(this.base, { params: { page, search, estado } })
       .pipe(finalize(() => this.isLoadingSubject.next(false)));
   }
 
-  store(data: ClientePayload): Observable<any> {
+  store(data: ClientePayload): Observable<{ data: Cliente; message?: string }> {
     this.isLoadingSubject.next(true);
-    return this.http.post(this.base, data, { headers: this.headers() })
+    return this.http
+      .post<{ data: Cliente; message?: string }>(this.base, data)
       .pipe(finalize(() => this.isLoadingSubject.next(false)));
   }
 
-  update(id: number, data: ClientePayload): Observable<any> {
+  update(id: number, data: ClientePayload): Observable<{ data: Cliente; message?: string }> {
     this.isLoadingSubject.next(true);
-    return this.http.put(`${this.base}/${id}`, data, { headers: this.headers() })
+    return this.http
+      .put<{ data: Cliente; message?: string }>(`${this.base}/${id}`, data)
       .pipe(finalize(() => this.isLoadingSubject.next(false)));
   }
 
   cambiarEstado(id: number): Observable<any> {
-    return this.http.patch(`${this.base}/${id}/estado`, {}, { headers: this.headers() });
+    return this.http.patch(`${this.base}/${id}/estado`, {});
   }
 
   destroy(id: number): Observable<any> {
     this.isLoadingSubject.next(true);
-    return this.http.delete(`${this.base}/${id}`, { headers: this.headers() })
+    return this.http
+      .delete(`${this.base}/${id}`)
       .pipe(finalize(() => this.isLoadingSubject.next(false)));
   }
 }
-  */

@@ -7,6 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
+use App\Models\VitrinaProducto;
 
 class StorePublicacionWebRequest extends FormRequest
 {
@@ -152,13 +153,13 @@ class StorePublicacionWebRequest extends FormRequest
             // Destacar en el home del ecommerce (sección "Featured Products").
             // null/vacío = no destacado; número = posición en esa sección.
             'featured_activo' => ['nullable', 'boolean'],
-			'featured_orden'  => ['nullable', 'integer', 'min:1', 'max:4', 'required_if:featured_activo,1'],
+			'featured_orden'  => ['nullable', 'integer', 'min:1', 'max:' . VitrinaProducto::MAX_ORDEN, 'required_if:featured_activo,1'],
  
 			'trending_activo' => ['nullable', 'boolean'],
-			'trending_orden'  => ['nullable', 'integer', 'min:1', 'max:4', 'required_if:trending_activo,1'],
+			'trending_orden'  => ['nullable', 'integer', 'min:1', 'max:' . VitrinaProducto::MAX_ORDEN, 'required_if:trending_activo,1'],
  
 			'selling_activo' => ['nullable', 'boolean'],
-			'selling_orden'  => ['nullable', 'integer', 'min:1', 'max:4', 'required_if:selling_activo,1'],
+			'selling_orden'   => ['nullable', 'integer', 'min:1', 'max:' . VitrinaProducto::MAX_ORDEN, 'required_if:selling_activo,1'],
 
             // imágenes opcionales al crear la publicación
             'imagenes'   => ['sometimes', 'array'],
@@ -184,6 +185,12 @@ class StorePublicacionWebRequest extends FormRequest
             'pub_slug.unique' => 'Ya existe otra publicación con esa URL amigable.',
             'ficha.array' => 'La ficha técnica enviada no tiene un formato válido.',
             'ficha.*.valor_numero.numeric' => 'El valor debe ser un número.',
+			'featured_orden.max' => 'El orden en Destacados debe estar entre 1 y :max.',
+            'trending_orden.max' => 'El orden en Tendencia debe estar entre 1 y :max.',
+            'selling_orden.max'  => 'El orden en Más vendidos debe estar entre 1 y :max.',
+            'featured_orden.required_if' => 'Indicá la posición en Destacados.',
+            'trending_orden.required_if' => 'Indicá la posición en Tendencia.',
+            'selling_orden.required_if'  => 'Indicá la posición en Más vendidos.',
         ];
     }
 }

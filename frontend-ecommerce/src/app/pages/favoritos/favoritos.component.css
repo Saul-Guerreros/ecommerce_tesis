@@ -1,0 +1,41 @@
+.fav-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.fav-title {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.fav-aviso {
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  border: 1px solid #e5e5e5;
+  border-left: 3px solid #1e87f0;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 14px;
+  color: #666;
+}
+
+.fav-estado {
+  padding: 60px 0;
+}
+
+.fav-vacio-icono {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  margin-bottom: 12px;
+}
+
+.fav-vacio-titulo {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+}

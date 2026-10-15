@@ -51,16 +51,19 @@ use App\Http\Controllers\Admin\Compras\LibroCompraController;
 use App\Http\Controllers\Admin\Compras\TimbradoProveedorController;
 use App\Http\Controllers\Admin\Compras\PagoCompraController;
 use App\Http\Controllers\Carrito\CarritoController;
-
+use App\Http\Controllers\Admin\Cliente\TipoClienteController;
+use App\Http\Controllers\Admin\Funcionario\CargoController;
+use App\Http\Controllers\Admin\Funcionario\FuncionarioController;
+use App\Http\Controllers\Admin\Seguridad\AuditoriaController;
 use App\Http\Controllers\Admin\Configuracion\ConfiguracionCuotaController;
 use App\Http\Controllers\Chat\ChatController;
 use App\Http\Controllers\Admin\Chat\FaqTiendaController;
 use App\Http\Controllers\Admin\Perfil\PerfilController as PerfilAdminController;
-
+use App\Http\Controllers\Admin\Auth\PermisoController;
 use App\Http\Controllers\Pedido\CheckoutController;
-
+use App\Http\Controllers\Api\FavoritoController;
 use App\Http\Controllers\Admin\Configuracion\ConfiguracionEnvioController;
-
+use App\Http\Controllers\Admin\Configuracion\TipoDocumentoController;
 use App\Http\Controllers\Admin\Configuracion\TarifaEnvioController;
 
 use App\Http\Controllers\Api\DatoFiscalClienteController;
@@ -120,10 +123,16 @@ Route::group([
     Route::get('productos/buscar', [VitrinaController::class, 'buscar']);
     Route::get('categorias/menu', [VitrinaController::class, 'menuCategorias']);
 	Route::get('productos/sugerencias', [VitrinaController::class, 'sugerencias'])->middleware('throttle:60,1');
+	
+	// Comparador de productos (hasta 4 slugs separados por coma).
+    Route::get('productos/comparar', [VitrinaController::class, 'comparar'])->middleware('throttle:60,1');
 
     Route::get('productos/analizar-busqueda', [VitrinaController::class, 'analizarBusqueda'])->middleware('throttle:60,1');
     // Carrito de invitado: resuelve precios e imágenes sin persistir nada.
     Route::post('carrito/previsualizar', [CarritoController::class, 'previsualizar']);
+
+    // Favoritos de invitado: resuelve productos desde ids guardados en el navegador.
+    Route::post('favoritos/previsualizar', [FavoritoController::class, 'previsualizar'])->middleware('throttle:60,1');
 
     // MÓDULO 6 - ChatBot (público: invitado o cliente con JWT).
     Route::post('chat/mensajes', [ChatController::class, 'enviar'])->middleware('throttle:chat');
@@ -145,6 +154,13 @@ Route::group([
 ], function ($router) {
     Route::post('carrito/sincronizar', [CarritoController::class, 'sincronizar']);
     Route::delete('carrito', [CarritoController::class, 'vaciar']);
+
+    // --- Favoritos (wishlist) ---
+    Route::get('favoritos/ids', [FavoritoController::class, 'ids']);
+    Route::post('favoritos/sincronizar', [FavoritoController::class, 'sincronizar']);
+    Route::get('favoritos', [FavoritoController::class, 'index']);
+    Route::post('favoritos', [FavoritoController::class, 'store']);
+    Route::delete('favoritos/{producto}', [FavoritoController::class, 'destroy'])->whereNumber('producto');
     // Debe ir ANTES del apiResource: si no, 'carrito/{carrito}' (destroy)
     // la intercepta y Laravel intenta castear "modalidad" como car_id.
     Route::delete('carrito/modalidad/{modalidad}', [CarritoController::class, 'vaciarModalidad']);
@@ -224,6 +240,11 @@ Route::group([
     Route::patch('calles/{id}/estado', [CalleController::class, 'toggleEstado']);
     Route::apiResource('calles', CalleController::class);
 
+     // --- Tipos de documento ---
+    Route::get('tipos-documento/select', [TipoDocumentoController::class, 'select']);
+    Route::patch('tipos-documento/{id}/estado', [TipoDocumentoController::class, 'toggleEstado']);
+    Route::apiResource('tipos-documento', TipoDocumentoController::class)->parameters(['tipos-documento' => 'id']);
+
     Route::get('depositos/config', [DepositoController::class, 'config']);
     Route::get('depositos/select', [DepositoController::class, 'select']);
     Route::patch('depositos/{id}/estado', [DepositoController::class, 'toggleEstado']);
@@ -236,6 +257,19 @@ Route::group([
     Route::resource("clientes", ClienteController::class)
     ->only(['index','store','update','destroy']);
 
+    // --- Tipos de cliente ---
+    Route::get('tipos-cliente/select', [TipoClienteController::class, 'select']);
+    Route::patch('tipos-cliente/{id}/estado', [TipoClienteController::class, 'toggleEstado']);
+    Route::apiResource('tipos-cliente', TipoClienteController::class)->parameters(['tipos-cliente' => 'id']);
+
+    Route::get('cargos/select', [CargoController::class, 'select']);
+    Route::patch('cargos/{id}/estado', [CargoController::class, 'toggleEstado']);
+    Route::apiResource('cargos', CargoController::class)->parameters(['cargos' => 'id']);
+
+    Route::get('funcionarios/config', [FuncionarioController::class, 'config']);
+    Route::get('funcionarios/buscar-persona', [FuncionarioController::class, 'buscarPersona']);
+    Route::patch('funcionarios/{id}/estado', [FuncionarioController::class, 'cambiarEstado']);
+    Route::apiResource('funcionarios', FuncionarioController::class)->only(['index', 'store', 'update', 'destroy']) ->parameters(['funcionarios' => 'id']);
 
     //Para Tipo_iva, Tipo_Comprobante, Timbrado
     Route::get('tipos-iva/select', [TipoIvaController::class, 'select']);
@@ -331,6 +365,13 @@ Route::group([
     Route::patch('roles/{id}/estado', [RolController::class, 'toggleEstado']);
     Route::apiResource('roles', RolController::class);
 
+	// --- Permisos por rol (matriz de acceso a las opciones del panel) ---
+    Route::middleware('permiso:permisos.gestionar')->group(function () {
+        Route::get('permisos/matriz', [PermisoController::class, 'matriz']);
+        Route::put('permisos/matriz', [PermisoController::class, 'guardar']);
+    });
+
+
     //Precios
     Route::get('precios', [PrecioController::class, 'index']);
     Route::get('precios/{id}', [PrecioController::class, 'show']);
@@ -355,7 +396,13 @@ Route::group([
     // Tarifas por sucursal + ciudad (solo relevante cuando el modo es "sucursal")
     Route::apiResource('tarifas-envio', TarifaEnvioController::class)->except(['show']);
 
-
+    // --- Auditoría (solo lectura). Reservada a quien tenga 'usuarios.ver' (el Vendedor no lo tiene) ---
+    Route::middleware('permiso:auditoria.ver')->prefix('seguridad')->group(function () { 
+        Route::get('historial-password', [AuditoriaController::class, 'historialPassword']);
+        Route::get('sesiones',           [AuditoriaController::class, 'sesiones']);
+        Route::get('intentos-sesion',    [AuditoriaController::class, 'intentosSesion']);
+        Route::get('tokens',             [AuditoriaController::class, 'tokens']);
+    });
     
     // junto al bloque de "Compras":
     Route::get('compras/{id}/notas-credito/config', [NotaCreditoController::class, 'config']);

@@ -444,6 +444,22 @@
   color: var(--pd-primary);
 }
 
+/* Corazón de favoritos: contorno normal, relleno cuando está guardado */
+.pd-heart {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pd-action-sm-btn.is-active .pd-heart {
+  fill: currentColor;
+}
+.pd-action-sm-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 .pd-meta {
   margin-bottom: 16px;
 }

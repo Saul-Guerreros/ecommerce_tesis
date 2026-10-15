@@ -159,6 +159,12 @@
           <option *ngFor="let r of roles" [ngValue]="r.rol_id">{{ r.rol_descri }}</option>
         </select>
       </div>
+      <div class="col-12">
+        <app-sucursales-selector
+          [sucursales]="sucursales"
+          [(seleccion)]="createSucursales"
+          [(principal)]="createPrincipal"></app-sucursales-selector>
+      </div>
       <div class="col-md-6">
         <label class="form-label">Email (*)</label>
         <input type="email" class="form-control" [(ngModel)]="createForm.email" autocomplete="off" />
@@ -225,6 +231,12 @@
           <option [ngValue]="null">Selecciona un rol</option>
           <option *ngFor="let r of roles" [ngValue]="r.rol_id">{{ r.rol_descri }}</option>
         </select>
+      </div>
+      <div class="col-12">
+        <app-sucursales-selector
+          [sucursales]="sucursalesEdit"
+          [(seleccion)]="editSucursales"
+          [(principal)]="editPrincipal"></app-sucursales-selector>
       </div>
       <div class="col-md-6">
         <label class="form-label">Email (*)</label>

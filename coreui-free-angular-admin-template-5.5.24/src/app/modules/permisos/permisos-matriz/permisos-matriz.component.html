@@ -1,0 +1,74 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Permisos por Rol</strong>
+    <div class="d-flex align-items-center" *ngIf="matriz">
+      <span class="text-muted small me-3" *ngIf="cambiosPendientes > 0">{{ cambiosPendientes }} cambio(s) sin guardar</span>
+      <button cButton color="secondary" variant="outline" class="me-2"
+              [disabled]="cambiosPendientes === 0 || guardando" (click)="descartar()">Descartar</button>
+      <button cButton color="primary" [disabled]="cambiosPendientes === 0 || guardando" (click)="guardar()">
+        <c-spinner *ngIf="guardando" size="sm" class="me-1"></c-spinner>
+        Guardar cambios
+      </button>
+    </div>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar opción del panel..." [(ngModel)]="busqueda" />
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2">
+      Marque a qué opciones del panel puede acceder cada rol. El Administrador siempre tiene acceso total.
+      Los cambios llegan al menú de cada usuario la próxima vez que inicie sesión.
+    </div>
+
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <div class="table-responsive" *ngIf="matriz && !cargando">
+      <table cTable hover bordered small class="align-middle">
+        <thead>
+          <tr>
+            <th>Opción del panel</th>
+            <th *ngFor="let r of matriz.roles" class="text-center">
+              {{ r.rol_descri }}
+              <div *ngIf="r.bloqueado"><c-badge color="secondary">Acceso total</c-badge></div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <ng-container *ngFor="let g of gruposFiltrados()">
+            <tr class="table-light">
+              <td><strong>{{ g.nombre }}</strong></td>
+              <td *ngFor="let r of matriz.roles" class="text-center">
+                <input cFormCheckInput type="checkbox" title="Marcar toda la sección"
+                       [checked]="seccionCompleta(r, g)"
+                       [disabled]="r.bloqueado || !tieneEditables(g)"
+                       (change)="alternarSeccion(r, g, $any($event.target).checked)" />
+              </td>
+            </tr>
+            <tr *ngFor="let o of opcionesVisibles(g)">
+              <td class="ps-4">
+                {{ o.nombre }}
+                <div class="text-muted small">{{ o.urls.join(', ') }}</div>
+              </td>
+              <td *ngFor="let r of matriz.roles" class="text-center">
+                <input cFormCheckInput type="checkbox"
+                       [checked]="marcado(r.rol_id, o.permiso)"
+                       [disabled]="!esEditable(r, o)"
+                       (change)="alternar(r, o, $any($event.target).checked)" />
+              </td>
+            </tr>
+          </ng-container>
+          <tr *ngIf="gruposFiltrados().length === 0">
+            <td [attr.colspan]="matriz.roles.length + 1" class="text-center">Ninguna opción coincide con la búsqueda</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </c-card-body>
+</c-card>

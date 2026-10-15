@@ -1,0 +1,20 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header><h5 cModalTitle>Confirmar eliminación</h5></c-modal-header>
+  <c-modal-body>
+    <p *ngIf="!enUso && !protegido">
+      ¿Está seguro de eliminar el tipo de documento
+      <strong>{{ tipoDocumento?.tpd_codigo }} - {{ tipoDocumento?.tpd_descri }}</strong>?
+    </p>
+    <div class="alert alert-warning mb-0" *ngIf="protegido">
+      Lo usa el sistema y no puede eliminarse.
+    </div>
+    <div class="alert alert-warning mb-0" *ngIf="enUso && !protegido">
+      Está en uso por {{ tipoDocumento?.usos_count }} registro(s) y no puede eliminarse.
+      Utilice el botón <strong>Desactivar</strong>.
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" class="text-white" *ngIf="!enUso && !protegido" (click)="confirmar.emit()">Eliminar</button>
+  </c-modal-footer>
+</c-modal>

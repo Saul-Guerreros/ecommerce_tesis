@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Pedido\Pedido;
 use Illuminate\Database\Eloquent\Model;
 
 class Cliente extends Model
@@ -25,5 +26,10 @@ class Cliente extends Model
     public function tipoCliente()
     {
         return $this->belongsTo(TipoCliente::class, 'cli_tpcid', 'tpc_id');
+    }
+
+    public function pedidos()
+    {
+        return $this->hasMany(Pedido::class, 'ped_cliid', 'cli_id');
     }
 }

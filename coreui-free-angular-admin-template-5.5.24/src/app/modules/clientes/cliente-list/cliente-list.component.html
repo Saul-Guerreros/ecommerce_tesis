@@ -54,15 +54,15 @@
               {{ cliente.cli_estado === 1 ? 'Activo' : 'Inactivo' }}
             </c-badge>
           </td>
-          <td class="text-end">
-            <button cButton size="sm" color="info" variant="outline"
+           <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2 text-white"
                     (click)="editar(cliente)">Editar</button>
-            <button cButton size="sm" variant="outline" class="ms-1"
+            <button cButton size="sm" class="me-2 text-white"
                     [color]="cliente.cli_estado === 1 ? 'warning' : 'success'"
                     (click)="cambiarEstado(cliente)">
               {{ cliente.cli_estado === 1 ? 'Desactivar' : 'Activar' }}
             </button>
-            <button cButton size="sm" color="danger" variant="outline" class="ms-1"
+            <button cButton size="sm" color="danger" class="text-white"
                     (click)="confirmarEliminar(cliente)">Eliminar</button>
           </td>
         </tr>

@@ -119,10 +119,10 @@
                     <li><a href="#" onclick="return false;">Producto</a></li>
                     <li><a routerLink="/carrito-de-compra">Carrito</a></li>
                     <li><a href="#" onclick="return false;">Pago</a></li>
-                    <li><a href="#" onclick="return false;">Comparar</a></li>
+                   <li><a routerLink="/comparar-productos">Comparar</a></li>
                     <li><a href="#" onclick="return false;">Marcas</a></li>
                     <li><a href="#" onclick="return false;">Cuenta</a></li>
-                    <li><a href="#" onclick="return false;">Favoritos</a></li>
+                    <li><a routerLink="/favoritos">Favoritos</a></li>
                     <li><a href="#" onclick="return false;">Datos personales</a></li>
                     <li><a href="#" onclick="return false;">Configuración</a></li>
                     <li><a href="#" onclick="return false;">Nosotros</a></li>
@@ -164,8 +164,10 @@
           </div>
         </div>
 
-        <a class="uk-navbar-item uk-link-muted uk-visible@m tm-navbar-button" routerLink="/compare-product">
+        <a class="uk-navbar-item uk-link-muted uk-visible@m tm-navbar-button" routerLink="/comparar-productos" aria-label="Comparar productos">
           <span uk-icon="copy"></span>
+          <!-- [hidden] y no @if: así el HTML del servidor y el del cliente coinciden (hidratación) -->
+          <span class="uk-badge" [hidden]="!(comparador.cantidad$ | async)">{{ comparador.cantidad$ | async }}</span>
         </a>
 
                 <!-- Cuenta del usuario: desplegable igual al de la plantilla -->
@@ -189,10 +191,10 @@
                 </a>
               </li>
               <li class="uk-disabled">
-                <a href="#" onclick="return false;" tabindex="-1" aria-disabled="true">
-                  Favoritos <span class="tm-pronto">Pronto</span>
-                </a>
-              </li>
+                <li>
+                <a routerLink="/favoritos" (click)="cerrarMenuCuenta(menuCuenta)">Favoritos</a>
+                </li>
+          
               <li>
                 <a routerLink="/perfil-del-cliente" (click)="cerrarMenuCuenta(menuCuenta)">Mi perfil</a>
               </li>
@@ -209,6 +211,13 @@
           }
         </div>
 
+        <!-- Favoritos: visible para todos (invitados incluidos) -->
+        <a class="uk-navbar-item uk-link-muted tm-navbar-button" routerLink="/favoritos" aria-label="Mis favoritos" title="Mis favoritos">
+          <span uk-icon="heart"></span>
+          @if (favoritos.cantidad() > 0) {
+            <span class="uk-badge">{{ favoritos.cantidad() }}</span>
+          }
+        </a>
         <!-- CORRECCIÓN 1: listCarts ya no es un signal -> sin paréntesis -->
         <a class="uk-navbar-item uk-link-muted tm-navbar-button" href="#" onclick="return false" uk-toggle="target: #cart-offcanvas">
           <span uk-icon="cart"></span><span class="uk-badge">{{ totalUnidades }}</span>
@@ -252,7 +261,8 @@
           }
           <li><a routerLink="/">Inicio</a></li>
           <li><a routerLink="/carrito-de-compra">Carrito</a></li>
-          <li><a routerLink="/compare-product">Comparar</a></li>
+          <li><a routerLink="/favoritos">Favoritos</a></li>
+         <li><a routerLink="/comparar-productos">Comparar</a></li>
           <li><a href="#" onclick="return false;">Marcas</a></li>
           <li><a href="#" onclick="return false;">Blog</a></li>
           <li><a href="#" onclick="return false;">Nosotros</a></li>

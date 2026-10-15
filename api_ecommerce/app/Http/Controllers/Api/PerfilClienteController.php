@@ -65,6 +65,11 @@ class PerfilClienteController extends Controller
                 'per_apell2' => $data['per_apell2'] ?? null,
                 'per_fechna' => $data['per_fechna'] ?? null,
             ]);
+			
+			// La cédula se guarda solo la primera vez (si estaba vacía).
+            if (blank($persona->per_cedula) && filled($data['per_cedula'] ?? null)) {
+                $persona->update(['per_cedula' => $data['per_cedula']]);
+            }
 
             if ($request->hasFile('avatar')) {
                 if ($persona->per_avatar) {
@@ -85,6 +90,7 @@ class PerfilClienteController extends Controller
             if (array_key_exists('cli_ruc', $data)) {
                 $persona->cliente?->update(['cli_ruc' => $data['cli_ruc']]);
             }
+
         });
 
         $usuario->refresh()->load([

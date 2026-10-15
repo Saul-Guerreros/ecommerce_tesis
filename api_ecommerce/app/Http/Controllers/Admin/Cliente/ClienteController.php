@@ -194,23 +194,30 @@ class ClienteController extends Controller
     public function destroy(string $id)
     {
         $cliente = Cliente::with('persona')->findOrFail($id);
+        $persona = $cliente->persona;
 
-        // Descomentar cuando exista el modelo Pedido
-        // if ($cliente->pedidos()->exists()) {
-        //     return response()->json([
-        //         'message' => 'No se puede eliminar el cliente porque tiene pedidos asociados. Desactive el registro en su lugar.'
-        //     ], 409);
-        // }
+        if ($cliente->pedidos()->exists()) {
+            return response()->json([
+                'message' => 'No se puede eliminar el cliente porque tiene pedidos asociados. Desactívelo en su lugar.',
+            ], 409);
+        }
 
-        DB::transaction(function () use ($cliente) {
-            $persona = $cliente->persona;
+        // Cliente registrado desde la tienda: tiene cuenta de acceso (usuario)
+        if ($persona->usuario()->exists()) {
+            return response()->json([
+                'message' => 'No se puede eliminar el cliente porque tiene una cuenta de usuario en la tienda. Desactívelo en su lugar.',
+            ], 409);
+        }
+
+        DB::transaction(function () use ($cliente, $persona) {
             $cliente->delete();
 
-            // Si la persona no tiene otro rol, se elimina junto con sus contactos
-            $tieneOtroRol = false;
-            // $tieneOtroRol = $persona->funcionario()->exists();
+            // La persona solo se elimina si no cumple otro rol ni tiene datos propios asociados
+            $conservarPersona = $persona->funcionario()->exists()
+                || $persona->direcciones()->exists()
+                || $persona->datosFiscales()->exists();
 
-            if (!$tieneOtroRol) {
+            if (!$conservarPersona) {
                 $persona->contactos()->delete();
                 $persona->delete();
             }

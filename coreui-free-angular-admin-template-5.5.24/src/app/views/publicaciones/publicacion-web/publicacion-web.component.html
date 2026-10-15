@@ -77,10 +77,14 @@
             class="mt-2"
             type="number"
             min="1"
-			max="4"
+            [max]="maxOrdenVitrina"
             placeholder="Orden (1 = primero)"
             formControlName="featured_orden"
+            [class.is-invalid]="form.get('featured_orden')?.invalid"
           />
+          <div class="text-danger small" *ngIf="seccionActiva('featured') && form.get('featured_orden')?.invalid">
+            El orden debe estar entre 1 y {{ maxOrdenVitrina }}.
+          </div>
         </div>
 
         <div class="col-md-4">
@@ -94,16 +98,20 @@
             />
             <label cFormCheckLabel for="trending_activo">Productos en tendencia</label>
           </div>
-          <input
+           <input
             *ngIf="seccionActiva('trending')"
             cFormControl
             class="mt-2"
             type="number"
             min="1"
-			max="4"
+            [max]="maxOrdenVitrina"
             placeholder="Orden (1 = primero)"
             formControlName="trending_orden"
+            [class.is-invalid]="form.get('trending_orden')?.invalid"
           />
+          <div class="text-danger small" *ngIf="seccionActiva('trending') && form.get('trending_orden')?.invalid">
+            El orden debe estar entre 1 y {{ maxOrdenVitrina }}.
+          </div>
         </div>
 
         <div class="col-md-4">
@@ -117,16 +125,20 @@
             />
             <label cFormCheckLabel for="selling_activo">Productos mas vendidos</label>
           </div>
-          <input
+           <input
             *ngIf="seccionActiva('selling')"
             cFormControl
             class="mt-2"
             type="number"
             min="1"
-			max="4"
+            [max]="maxOrdenVitrina"
             placeholder="Orden (1 = primero)"
             formControlName="selling_orden"
+            [class.is-invalid]="form.get('selling_orden')?.invalid"
           />
+          <div class="text-danger small" *ngIf="seccionActiva('selling') && form.get('selling_orden')?.invalid">
+            El orden debe estar entre 1 y {{ maxOrdenVitrina }}.
+          </div>
           <div class="form-text text-warning" *ngIf="seccionActiva('selling')">
             Manual y temporal: todavía no hay ventas reales para calcular esto solo.
           </div>

@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
+use App\Rules\FechaNacimiento;
 
 class StoreUsuarioRequest extends FormRequest
 {
@@ -21,7 +22,7 @@ class StoreUsuarioRequest extends FormRequest
             'apellido1' => ['required', 'string', 'max:50'],
             'apellido2' => ['nullable', 'string', 'max:50'],
             'cedula' => ['required', 'string', 'max:50', 'unique:persona,per_cedula'],
-            'fecha_nacimiento' => ['nullable', 'date'],
+            'fecha_nacimiento' => ['nullable', new FechaNacimiento()],
             'cargo_id' => ['required', 'integer', 'exists:cargo,crg_id'],
             'rol_id' => ['required', 'integer', 'exists:rol,rol_id'],
             'email' => ['required', 'email', 'unique:usuario,usu_login'],

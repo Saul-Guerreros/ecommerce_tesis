@@ -129,7 +129,13 @@ export class LoginComponent implements OnInit {
     }
 
     if (resp?.status === 401) {
-      this.toastr.error(mensajeNoAutorizado, 'No se pudo ingresar');
+      const codigo = resp.error?.codigo;
+      // Con credenciales correctas, el backend ya manda un mensaje específico y seguro.
+      const mensaje =
+        codigo === 'CORREO_NO_VERIFICADO' || codigo === 'SIN_ACCESO'
+          ? resp.error.error
+          : mensajeNoAutorizado;
+      this.toastr.error(mensaje, 'No se pudo ingresar');
       return;
     }
 

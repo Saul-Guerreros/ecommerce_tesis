@@ -23,9 +23,11 @@ import {
   CargoCatalogo,
   EstadoUsuario,
   RolCatalogo,
+  SucursalCatalogo,
   Usuario,
   UsuarioFormValue,
 } from '../usuario.model';
+import { SucursalesSelectorComponent } from '../sucursales-selector/sucursales-selector.component';
 
 const FORM_VACIO: UsuarioFormValue = {
   nombre1: '',
@@ -58,6 +60,7 @@ const FORM_VACIO: UsuarioFormValue = {
     DropdownToggleDirective,
     DropdownMenuDirective,
     DropdownItemDirective,
+    SucursalesSelectorComponent,
   ],
   templateUrl: './list-usuario.component.html',
 })
@@ -75,6 +78,7 @@ export class ListUsuarioComponent implements OnInit {
 
   roles: RolCatalogo[] = [];
   cargos: CargoCatalogo[] = [];
+  sucursales: SucursalCatalogo[] = [];
 
   isLoading$: Observable<boolean>;
 
@@ -91,6 +95,7 @@ export class ListUsuarioComponent implements OnInit {
     this.usuarioService.catalogos().subscribe((resp) => {
       this.roles = resp.roles;
       this.cargos = resp.cargos;
+      this.sucursales = resp.sucursales ?? [];
     });
   }
 
@@ -138,10 +143,14 @@ export class ListUsuarioComponent implements OnInit {
   // ---- Crear ----
   showCreate = false;
   createForm: UsuarioFormValue = { ...FORM_VACIO };
+  createSucursales: number[] = [];
+  createPrincipal: number | null = null;
   createError = '';
 
   openCreate(): void {
     this.createForm = { ...FORM_VACIO };
+    this.createSucursales = this.sucursalesPorDefecto();
+    this.createPrincipal = this.createSucursales[0] ?? null;
     this.createError = '';
     this.showCreate = true;
   }
@@ -151,7 +160,15 @@ export class ListUsuarioComponent implements OnInit {
       this.createError = 'Completa nombre, apellido, cédula, email, cargo, rol y contraseña (mín. 8 caracteres).';
       return;
     }
-    this.usuarioService.create(this.createForm).subscribe({
+    if (this.createSucursales.length === 0) {
+      this.createError = 'Debes asignar al menos una sucursal.';
+      return;
+    }
+    this.usuarioService.create({
+      ...this.createForm,
+      sucursales: this.createSucursales,
+      sucursal_principal: this.createPrincipal,
+    }).subscribe({
       next: () => {
         this.showCreate = false;
         this.loadList(1);
@@ -166,6 +183,9 @@ export class ListUsuarioComponent implements OnInit {
   showEdit = false;
   editUsuario: Usuario | null = null;
   editForm: UsuarioFormValue = { ...FORM_VACIO };
+  editSucursales: number[] = [];
+  editPrincipal: number | null = null;
+  sucursalesEdit: SucursalCatalogo[] = [];
   editError = '';
 
   openEdit(usuario: Usuario): void {
@@ -182,6 +202,22 @@ export class ListUsuarioComponent implements OnInit {
       email: usuario.email,
       password: '', // vacío = no se cambia
     };
+
+    // Sucursales ya asignadas (un usuario anterior a esta función puede no tener ninguna)
+    const asignadas = usuario.sucursales ?? [];
+    this.editSucursales = asignadas.length
+      ? asignadas.map((s) => s.suc_id)
+      : this.sucursalesPorDefecto();
+    this.editPrincipal = asignadas.find((s) => s.principal)?.suc_id ?? this.editSucursales[0] ?? null;
+
+    // Si tiene asignada una sucursal que ya no está activa, se muestra igual para poder verla o quitarla
+    this.sucursalesEdit = [
+      ...this.sucursales,
+      ...asignadas
+        .filter((a) => !this.sucursales.some((s) => s.suc_id === a.suc_id))
+        .map((a) => ({ suc_id: a.suc_id, suc_nombre: `${a.suc_nombre} (inactiva)` })),
+    ];
+
     this.editError = '';
     this.showEdit = true;
   }
@@ -192,7 +228,15 @@ export class ListUsuarioComponent implements OnInit {
       this.editError = 'Completa nombre, apellido, cédula, email, cargo y rol.';
       return;
     }
-    this.usuarioService.update(this.editUsuario.usuario_id, this.editForm).subscribe({
+    if (this.editSucursales.length === 0) {
+      this.editError = 'Debes asignar al menos una sucursal.';
+      return;
+    }
+    this.usuarioService.update(this.editUsuario.usuario_id, {
+      ...this.editForm,
+      sucursales: this.editSucursales,
+      sucursal_principal: this.editPrincipal,
+    }).subscribe({
       next: (resp) => {
         const idx = this.usuarios.findIndex((u) => u.usuario_id === resp.data.usuario_id);
         if (idx !== -1) this.usuarios[idx] = resp.data;
@@ -216,6 +260,11 @@ export class ListUsuarioComponent implements OnInit {
   }
 
   // ---- Helpers ----
+  /** Con una sola sucursal activa se propone esa; con varias, elige el usuario. */
+  private sucursalesPorDefecto(): number[] {
+    return this.sucursales.length === 1 ? [this.sucursales[0].suc_id] : [];
+  }
+
   private formularioValido(form: UsuarioFormValue, esCreacion: boolean): boolean {
     const base =
       !!form.nombre1 &&

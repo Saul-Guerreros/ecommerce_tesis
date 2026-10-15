@@ -1,13 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
+import { AlertModule, ButtonModule, ModalModule, SpinnerModule } from '@coreui/angular';
 import { ClienteService } from '../service/cliente.service';
 import { Cliente } from '../models/cliente.model';
 
 @Component({
   selector: 'app-cliente-delete',
   standalone: true,
-  imports: [CommonModule /* + módulos de CoreUI que uses */],
+  imports: [CommonModule, ModalModule, ButtonModule, AlertModule, SpinnerModule],
   templateUrl: './cliente-delete.component.html',
 })
 export class ClienteDeleteComponent {

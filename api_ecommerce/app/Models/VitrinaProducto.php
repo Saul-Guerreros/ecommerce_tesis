@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class VitrinaProducto extends Model
 {
     protected $table = 'vitrina_producto';
+	
+	    /**
+     * Posición máxima dentro de una sección del Home.
+     * Debe coincidir con el límite que usa VitrinaController::home().
+     */
+    const MAX_ORDEN = 12;
 
     protected $primaryKey = 'vip_id';
 

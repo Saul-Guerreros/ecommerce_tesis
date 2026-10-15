@@ -228,6 +228,35 @@
 
 
 
+/* ===== Hero v2: ajuste para celulares (<= 575px) =====
+   Contenido un poco mas grande que el original, alineado arriba (para que
+   el label, ej. "-60%", no se recorte) y con mas alto de slider para que
+   entre todo, incluida la imagen. La altura la escribe UIkit inline, por
+   eso se pisa con !important. */
+@media (max-width: 575px) {
+  .hero-v2 .uk-slideshow-items { height: 720px !important; }
+  .hero-v2-slide { align-items: flex-start; }
+  .hero-v2-inner { justify-content: flex-start; }
+
+  .hero-v2-content { padding: 30px 0 24px; }
+
+  .hero-v2-eyebrow { font-size: 20px; margin-bottom: 12px; }
+  .hero-v2-title { font-size: 38px; }
+  .hero-v2-offer { font-size: 36px; margin-bottom: 40px; }
+
+  .hero-v2-btn { font-size: 17px; padding: 16px 38px; }
+
+  .hero-v2-img { max-height: 340px; margin-bottom: 40px; }
+}
+
+/* Celulares muy chicos (<= 374px) */
+@media (max-width: 374px) {
+  .hero-v2 .uk-slideshow-items { height: 680px !important; }
+  .hero-v2-title { font-size: 33px; }
+  .hero-v2-offer { font-size: 30px; margin-bottom: 32px; }
+  .hero-v2-img { max-height: 290px; }
+}
+
 /* ===== Banners promo secundarios (inspirado en .tp-banner-item de Shofy) ===== */
 
 .promo-row {

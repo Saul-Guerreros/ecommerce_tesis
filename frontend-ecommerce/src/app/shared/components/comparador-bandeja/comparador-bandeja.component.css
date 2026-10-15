@@ -1,0 +1,38 @@
+/* z-index 970: por debajo del chat (980) y del offcanvas del carrito (1000).
+   right: 90px deja libre el botón del chat, que flota abajo a la derecha. */
+.bandeja {
+  position: fixed; left: 16px; right: 90px; bottom: 16px; z-index: 970;
+  display: flex; align-items: center; gap: 16px; max-width: 760px;
+  padding: 10px 14px; background: #fff; border: 1px solid #e5e5e5; border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+}
+
+.bandeja-items { display: flex; gap: 8px; flex-shrink: 0; }
+.bandeja-item {
+  position: relative; width: 52px; height: 52px; border: 1px solid #e5e5e5; border-radius: 6px;
+  background: #fff; display: flex; align-items: center; justify-content: center;
+}
+.bandeja-item img { max-width: 100%; max-height: 100%; object-fit: contain; padding: 3px; box-sizing: border-box; }
+.bandeja-item--vacio { border-style: dashed; color: #ccc; font-size: 20px; }
+
+.bandeja-quitar {
+  position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; padding: 0;
+  border: 0; border-radius: 50%; background: #333; color: #fff; font-size: 14px; line-height: 20px;
+  cursor: pointer;
+}
+.bandeja-quitar:hover { background: #f0506e; }
+
+.bandeja-texto { display: flex; flex-direction: column; min-width: 0; flex: 1; font-size: 13px; line-height: 1.35; color: #999; }
+.bandeja-texto strong { color: #333; font-size: 14px; font-weight: 500; }
+.bandeja-texto span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.bandeja-acciones { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.bandeja-vaciar { border: 0; background: none; padding: 0; font-size: 13px; color: #999; text-decoration: underline; cursor: pointer; }
+.bandeja-vaciar:hover { color: #f0506e; }
+
+@media (max-width: 639px) {
+  .bandeja { left: 8px; right: 76px; bottom: 8px; gap: 10px; padding: 8px 10px; }
+  .bandeja-item { width: 40px; height: 40px; }
+  .bandeja-texto { display: none; }
+  .bandeja-acciones { margin-left: auto; }
+}

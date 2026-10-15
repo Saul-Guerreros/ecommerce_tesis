@@ -192,19 +192,25 @@ export const navItems: INavData[] = [
     name: 'Personas'
   },
   {
-    name: 'Clientes',
-    iconComponent: { name: 'cil-user' },
-    children: [
-      { name: 'Lista de Clientes', url: '/clientes' },
-      { name: 'Tipos de Cliente', url: '/tipos-cliente' }
-    ]
-  },
-  {
-    name: 'Funcionarios',
+    name: 'Usuarios',
     iconComponent: { name: 'cil-people' },
     children: [
-      { name: 'Lista de Funcionarios', url: '/funcionarios' },
-      { name: 'Cargos', url: '/cargos' }
+      {
+        name: 'Clientes',
+        iconComponent: { name: 'cil-user' },
+        children: [
+          { name: 'Lista de Clientes', url: '/clientes' },
+          { name: 'Tipos de Cliente', url: '/tipos-cliente' }
+        ]
+      },
+      {
+        name: 'Funcionarios',
+        iconComponent: { name: 'cil-people' },
+        children: [
+          { name: 'Lista de Funcionarios', url: '/funcionarios' },
+          { name: 'Cargos', url: '/cargos' }
+        ]
+      }
     ]
   },
   {
@@ -212,11 +218,7 @@ export const navItems: INavData[] = [
     url: '/tipos-documento',
     iconComponent: { name: 'cil-description' }
   },
-  {
-    name: 'Usuarios',
-    url: '/usuarios/list',
-    iconComponent: { name: 'cil-people' }
-  },
+  
 
   // ==========================================
   // 7. SEGURIDAD Y ACCESO

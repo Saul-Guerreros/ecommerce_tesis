@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './auth/guards/auth.guard';
 import { permissionGuard } from './auth/guards/permission.guard';
+import { rutaPermisoGuard } from './auth/guards/ruta-permiso.guard';
+
 
 export const routes: Routes = [
   {
@@ -14,6 +16,7 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./layout').then(m => m.DefaultLayoutComponent),
     canActivate: [authGuard],
+	canActivateChild: [rutaPermisoGuard], 
 
     data: {
       title: 'Home'
@@ -142,13 +145,36 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/tipos-proveedor/tipos-proveedor.module').then(m => m.TiposProveedorModule),
         data: { title: 'Tipos de proveedor' },
       },
-
+        {
+        path: 'clientes',
+        loadChildren: () => import('./modules/clientes/clientes.routes').then(m => m.routes),
+        data: { title: 'Clientes' },
+      },
+      {
+        path: 'tipos-cliente',
+        loadChildren: () => import('./modules/tipos-cliente/tipos-cliente.module').then(m => m.TiposClienteModule),
+        data: { title: 'Tipos de cliente' },
+      },
       {
         path: 'unidades-medida',
         loadChildren: () => import('./modules/unidades-medida/unidades-medida.module').then(m => m.UnidadesMedidaModule),
         data: { title: 'Unidades de Medida' },
       },
-
+      {
+        path: 'funcionarios',
+        loadChildren: () => import('./modules/funcionarios/funcionarios.routes').then(m => m.routes),
+        data: { title: 'Funcionarios' },
+      },
+      {
+        path: 'cargos',
+        loadChildren: () => import('./modules/cargos/cargos.module').then(m => m.CargosModule),
+        data: { title: 'Cargos' },
+      },
+      {
+        path: 'tipos-documento',
+        loadChildren: () => import('./modules/tipos-documento/tipos-documento.module').then(m => m.TiposDocumentoModule),
+        data: { title: 'Tipos de documento' },
+      },
       {
         path: 'facturas-compra',
         loadChildren: () => import('./modules/facturas-compra/facturas-compra.module').then(m => m.FacturasCompraModule),
@@ -209,12 +235,24 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/stock-actual/stock-actual.module').then(m => m.StockActualModule),
         data: { title: 'Stock Actual' },
       },
+	  {
+        path: 'seguridad',
+        loadChildren: () => import('./modules/seguridad/seguridad.routes').then(m => m.routes),
+        data: { title: 'Seguridad' },
+      },
+
 
       {
         path: 'roles',
         loadChildren: () => import('./modules/roles/roles.module').then(m => m.RolesModule),
         data: { title: 'Roles' },
       },
+	  {
+        path: 'permisos',
+        loadComponent: () => import('./modules/permisos/permisos-matriz/permisos-matriz.component').then(m => m.PermisosMatrizComponent),
+        data: { title: 'Permisos' },
+      },
+
 
       {
         path: 'inventario/tipos-ajuste',

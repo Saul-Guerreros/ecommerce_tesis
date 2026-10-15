@@ -3,6 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
+import { BadgeModule, ButtonModule, CardModule, FormModule, GridModule, SpinnerModule, TableModule } from '@coreui/angular';
 import { ClienteService } from '../service/cliente.service';
 import { Cliente } from '../models/cliente.model';
 import { ClienteFormComponent } from '../cliente-form/cliente-form.component';
@@ -14,8 +15,8 @@ import { ContactoPrincipalPipe } from '../pipes/contacto-principal.pipe';
   standalone: true,
   imports: [
     CommonModule, FormsModule,
+    CardModule, TableModule, ButtonModule, BadgeModule, SpinnerModule, FormModule, GridModule,
     ClienteFormComponent, ClienteDeleteComponent, ContactoPrincipalPipe,
-    /* + módulos de CoreUI que uses */
   ],
   templateUrl: './cliente-list.component.html',
 })

@@ -97,7 +97,7 @@
 
       <c-col md="6" class="mb-3">
         <label cLabel>Fecha de nacimiento</label>
-        <input cFormControl type="date" [(ngModel)]="form.per_fechna" name="per_fechna"
+        <input cFormControl type="date" [(ngModel)]="form.per_fechna" name="per_fechna" [min]="fechaMin" [max]="fechaMax"
                [class.is-invalid]="errors.per_fechna">
         <div class="invalid-feedback d-block" *ngIf="errors.per_fechna">
           {{ errors.per_fechna[0] }}

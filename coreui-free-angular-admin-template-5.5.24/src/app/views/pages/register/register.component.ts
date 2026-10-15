@@ -2,23 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-
+import { FECHA_NACIMIENTO_MIN, errorFechaNacimiento, fechaNacimientoMax } from '../../../core/validators/fecha-nacimiento';
 import { IconDirective } from '@coreui/icons-angular';
-import {
-  ButtonDirective,
-  CardBodyComponent,
-  CardComponent,
-  ColComponent,
-  ContainerComponent,
-  FormControlDirective,
-  FormDirective,
-  InputGroupComponent,
-  InputGroupTextDirective,
-  RowComponent,
-} from '@coreui/angular';
-
+import {ButtonDirective,CardBodyComponent, CardComponent,ColComponent,ContainerComponent, FormControlDirective, FormDirective,InputGroupComponent,InputGroupTextDirective,RowComponent,} from '@coreui/angular';
 import { UsuarioService } from '../../usuarios/services/usuario.service';
-import { CargoCatalogo, RolCatalogo, UsuarioFormValue } from '../../usuarios/usuario.model';
+import { CargoCatalogo, RolCatalogo, SucursalCatalogo, UsuarioFormValue } from '../../usuarios/usuario.model';
 
 const FORM_VACIO: UsuarioFormValue = {
   nombre1: '',
@@ -71,16 +59,58 @@ export class RegisterComponent implements OnInit {
   roles: RolCatalogo[] = [];
   cargos: CargoCatalogo[] = [];
 
+  // Sucursales: el backend exige al menos una (StoreUsuarioRequest).
+  sucursales: SucursalCatalogo[] = [];
+  sucursalesSel: number[] = [];
+  sucursalPrincipal: number | null = null;
+
   loading = false;
   errorMsg = '';
   successMsg = '';
+
+  readonly fechaMin = FECHA_NACIMIENTO_MIN;
+  readonly fechaMax = fechaNacimientoMax();
 
   ngOnInit(): void {
     this.usuarioService.catalogos().subscribe((resp) => {
       this.roles = resp.roles;
       this.cargos = resp.cargos;
+      this.sucursales = resp.sucursales ?? [];
+
+      // Caso comun de una sola sucursal: queda marcada de entrada.
+      if (this.sucursales.length === 1) {
+        this.sucursalesSel = [this.sucursales[0].suc_id];
+        this.ajustarPrincipal();
+      }
     });
   }
+
+  // --- Sucursales ---
+
+  estaSeleccionada(id: number): boolean {
+    return this.sucursalesSel.includes(id);
+  }
+
+  alternarSucursal(id: number, marcada: boolean): void {
+    this.sucursalesSel = marcada
+      ? [...this.sucursalesSel, id]
+      : this.sucursalesSel.filter((s) => s !== id);
+    this.ajustarPrincipal();
+  }
+
+  /** Sucursales marcadas (para elegir la principal cuando hay mas de una). */
+  get sucursalesSeleccionadas(): SucursalCatalogo[] {
+    return this.sucursales.filter((s) => this.sucursalesSel.includes(s.suc_id));
+  }
+
+  /** La principal siempre debe ser una de las marcadas; con una sola, es esa. */
+  private ajustarPrincipal(): void {
+    if (this.sucursalPrincipal === null || !this.sucursalesSel.includes(this.sucursalPrincipal)) {
+      this.sucursalPrincipal = this.sucursalesSel[0] ?? null;
+    }
+  }
+
+  // --- Guardado ---
 
   register(): void {
     this.errorMsg = '';
@@ -99,23 +129,50 @@ export class RegisterComponent implements OnInit {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email)) {
+      this.errorMsg = 'El email no tiene un formato válido.';
+      return;
+    }
+
+    if (this.form.password.length < 8) {
+      this.errorMsg = 'La contraseña debe tener al menos 8 caracteres.';
+      return;
+    }
+
     if (this.form.password !== this.confirmPassword) {
       this.errorMsg = 'Las contraseñas no coinciden.';
       return;
     }
 
+    if (this.sucursalesSel.length === 0) {
+      this.errorMsg = 'Debes asignar al menos una sucursal.';
+      return;
+    }
+
+    const errorFecha = errorFechaNacimiento(this.form.fecha_nacimiento);
+    if (errorFecha) {
+      this.errorMsg = errorFecha;
+      return;
+    }
+
     this.loading = true;
-    this.usuarioService.create(this.form).subscribe({
-      next: () => {
-        this.loading = false;
-        this.successMsg = 'Usuario creado correctamente.';
-        setTimeout(() => this.router.navigateByUrl('/usuarios/list'), 1000);
-      },
-      error: (err) => {
-        this.loading = false;
-        this.errorMsg = this.mensajeError(err);
-      },
-    });
+    this.usuarioService
+      .create({
+        ...this.form,
+        sucursales: this.sucursalesSel,
+        sucursal_principal: this.sucursalPrincipal,
+      })
+      .subscribe({
+        next: () => {
+          this.loading = false;
+          this.successMsg = 'Usuario creado correctamente.';
+          setTimeout(() => this.router.navigateByUrl('/usuarios/list'), 1000);
+        },
+        error: (err) => {
+          this.loading = false;
+          this.errorMsg = this.mensajeError(err);
+        },
+      });
   }
 
   private mensajeError(err: any): string {

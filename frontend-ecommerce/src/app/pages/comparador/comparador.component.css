@@ -1,0 +1,114 @@
+:host { display: block; }
+
+.cmp-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin: 20px 0 24px;
+}
+.cmp-titulo { margin: 0; font-size: 1.6rem; line-height: 1.2; }
+@media (min-width: 960px) { .cmp-titulo { font-size: 2rem; } }
+
+.cmp-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+
+.cmp-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #333; }
+.cmp-switch input { margin: 0; accent-color: #1e87f0; width: 16px; height: 16px; }
+.cmp-switch.is-disabled { opacity: .5; cursor: default; }
+
+.cmp-link-btn {
+  border: 0; background: none; padding: 0; font-size: 14px; color: #999; cursor: pointer;
+  text-decoration: underline;
+}
+.cmp-link-btn:hover { color: #f0506e; }
+
+/* Estados: cargando / error / vacío */
+.cmp-estado {
+  background: #fff; border: 1px solid #e5e5e5; border-radius: 4px;
+  padding: 48px 20px; text-align: center; color: #666;
+}
+.cmp-vacio { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #999; }
+.cmp-vacio h3 { margin: 12px 0 0; color: #333; font-size: 1.25rem; }
+.cmp-vacio p { max-width: 460px; margin: 8px 0 16px; color: #666; }
+
+.cmp-aviso {
+  background: #fff8e6; border: 1px solid #ffe3a3; border-radius: 4px;
+  padding: 12px 16px; margin-bottom: 16px; font-size: 14px; color: #6b5200;
+}
+
+/* Tabla */
+.cmp-scroll { background: #fff; border: 1px solid #e5e5e5; border-radius: 4px; }
+/* En móvil la tabla se desplaza en horizontal (la columna de etiquetas queda fija a la izquierda). */
+@media (max-width: 959px) { .cmp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; } }
+
+.cmp-table {
+  width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 14px;
+}
+.cmp-table th, .cmp-table td {
+  padding: 14px 16px; vertical-align: top; text-align: left;
+  border-bottom: 1px solid #eee; border-left: 1px solid #eee; color: #444;
+}
+.cmp-table tbody tr:last-child > * { border-bottom: 0; }
+
+.cmp-label {
+  position: sticky; left: 0; z-index: 2; width: 130px; background: #fafafa;
+  border-left: 0 !important; font-weight: 500; color: #333; text-transform: none; font-size: 14px;
+}
+@media (min-width: 960px) { .cmp-label { width: 16%; } }
+
+/* Cabecera de productos: queda arriba de la tabla y se desplaza con la página
+   (no es sticky, así no tapa las especificaciones al hacer scroll). */
+.cmp-table thead th {
+  background: #fff; text-align: center;
+  border-bottom: 1px solid #e5e5e5; padding-top: 28px;
+}
+.cmp-table thead .cmp-label { background: #fafafa; }
+
+.cmp-prod { position: relative; }
+.cmp-quitar {
+  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 50%; background: transparent; color: #999; cursor: pointer;
+}
+.cmp-quitar:hover { background: #f0506e; color: #fff; }
+
+.cmp-foto { display: block; margin: 0 auto 10px; max-width: 150px; aspect-ratio: 4 / 3; }
+.cmp-foto img { width: 100%; height: 100%; object-fit: contain; }
+
+.cmp-nombre {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  min-height: 63px; margin-bottom: 8px; font-size: 14px; line-height: 21px; font-weight: 500; color: #333;
+}
+
+.cmp-precio { min-height: 62px; margin-bottom: 8px; }
+.cmp-precio-final { font-size: 18px; font-weight: 500; color: #16181b; line-height: 1.3; }
+.cmp-mejor {
+  display: inline-block; margin-top: 2px; padding: 0 8px; border-radius: 2px;
+  background: #32d296; color: #fff; font-size: 11px; line-height: 20px; text-transform: uppercase;
+}
+
+.cmp-comprar { width: 100%; padding: 0 8px; }
+
+.cmp-prod--vacio { background: #fcfcfc !important; vertical-align: middle; }
+.cmp-agregar-otro {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 0;
+  color: #999; font-size: 14px;
+}
+.cmp-agregar-otro:hover { color: #1e87f0; }
+
+/* Filas */
+.cmp-seccion th {
+  background: #f3f4f6; color: #333; font-weight: 500; text-transform: uppercase; font-size: 12px;
+  letter-spacing: .04em; border-left: 0; position: static;
+}
+.cmp-diff > td, .cmp-diff > th { background: #eaf3ff; }
+.cmp-diff > .cmp-label { box-shadow: inset 3px 0 0 #1e87f0; }
+
+.cmp-nd { color: #bbb; }
+.cmp-sin-diferencias { text-align: center !important; color: #999; padding: 28px 16px !important; }
+
+.cmp-stock { font-weight: 500; }
+.cmp-stock--ok { color: #1f9d6b; }
+.cmp-stock--poco { color: #e08a2d; }
+.cmp-stock--no { color: #f0506e; }

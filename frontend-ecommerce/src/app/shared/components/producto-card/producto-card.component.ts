@@ -8,6 +8,8 @@ import { CarritoService } from '../../../core/services/carrito.service';
 import { CarritoUiService } from '../../../core/services/carrito-ui.service';
 import { MonedaPyPipe } from '../../pipes/moneda-py.pipe';
 import { CuoteroComponent } from '../cuotero/cuotero.component';
+import { ComparadorService } from '../../../core/services/comparador.service';
+import { FavoritoService } from '../../../core/services/favorito.service';
 
 /**
  * Tarjeta de producto con cuotero y botón de carrito.
@@ -27,6 +29,8 @@ export class ProductoCardComponent {
   private readonly carritoService = inject(CarritoService);
   private readonly carritoUi = inject(CarritoUiService);
   private readonly toastr = inject(ToastrService);
+  private readonly comparador = inject(ComparadorService);
+  private readonly favoritos = inject(FavoritoService);
 
   /** Petición en curso SOLO de esta tarjeta (no bloquea a las demás). */
   agregando = false;
@@ -39,6 +43,15 @@ export class ProductoCardComponent {
     if (!img) return this.imagenFallback;
     if (img.startsWith('http')) return img;
     return `${URL_BACKEND.replace(/\/$/, '')}/${img.replace(/^\//, '')}`;
+  }
+  
+  get enComparador(): boolean {
+    return this.comparador.estaEnComparador(this.producto.slug);
+  }
+
+  /** Agrega o quita este producto del comparador (el service avisa con un toast). */
+  alternarComparar(): void {
+    this.comparador.alternar(this.producto);
   }
 
   /** controla_stock/stock son opcionales: si no llegan, se deja agregar (el backend valida). */
@@ -85,6 +98,28 @@ export class ProductoCardComponent {
           this.toastr.error(this.mensajeError(err), 'No se pudo agregar');
         },
       });
+  }
+
+    // ---------- Favoritos ----------
+
+  get esFavorito(): boolean {
+    return this.favoritos.es(this.producto.prd_id);
+  }
+
+  get favoritoPendiente(): boolean {
+    return this.favoritos.pendiente(this.producto.prd_id);
+  }
+
+  /** El corazón vive sobre el <a> de la imagen: no debe navegar al detalle. */
+  alternarFavorito(evento: Event): void {
+    evento.preventDefault();
+    evento.stopPropagation();
+
+    this.favoritos.alternar(this.producto.prd_id).subscribe({
+      next: (activo) =>
+        this.toastr.info(this.producto.titulo, activo ? 'Agregado a favoritos' : 'Quitado de favoritos'),
+      error: (err) => this.toastr.error(this.mensajeError(err), 'No se pudo actualizar favoritos'),
+    });
   }
 
   /** Primer mensaje del 422 de Laravel: { errors: { campo: ["..."] } } */

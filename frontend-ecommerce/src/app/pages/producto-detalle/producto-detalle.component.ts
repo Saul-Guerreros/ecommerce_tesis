@@ -1,5 +1,6 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
+import { ComparadorService } from '../../core/services/comparador.service';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { URL_BACKEND } from '../../config/config';
@@ -10,7 +11,7 @@ import { LineaContado, SolicitudCredito } from '../../core/models/solicitud-comp
 import { ProductoDetalleService } from '../../core/services/producto-detalle.service';
 import { FlashCountdownComponent } from '../../shared/flash-countdown/flash-countdown.component';
 import { MonedaPyPipe } from '../../shared/pipes/moneda-py.pipe';
-
+import { FavoritoService } from '../../core/services/favorito.service';
 import { AuthService } from '../auth/service/auth.service';
 import { CarritoService } from '../../core/services/carrito.service';
 import { CarritoUiService } from '../../core/services/carrito-ui.service';
@@ -58,8 +59,20 @@ export class ProductoDetalleComponent implements OnInit {
    *  para conservar la elección cuando el selector cambia de tramo. */
   private cuotaElegidaN: number | null = null;
 
-  favoritoActivo = false;
-  compararActivo = false;
+  /** Estado del corazón: sale del FavoritoService (la lista del usuario), no del componente. */
+  get favoritoActivo(): boolean {
+    return !!this.producto && this.favoritoService.es(this.producto.prd_id);
+  }
+
+  get favoritoPendiente(): boolean {
+    return !!this.producto && this.favoritoService.pendiente(this.producto.prd_id);
+  }
+  // Comparador: el estado vive en ComparadorService (persiste y se comparte con
+  // las tarjetas y el header); acá solo se lee.
+  private readonly comparador = inject(ComparadorService);
+  get compararActivo(): boolean {
+    return this.comparador.estaEnComparador(this.producto?.slug);
+  }
 
   // Visor de zoom propio (no depende de uk-lightbox, que en este proyecto
   // no reacciona de forma confiable sobre nodos que Angular inserta
@@ -94,6 +107,7 @@ export class ProductoDetalleComponent implements OnInit {
     private authService: AuthService,
     private carritoUi: CarritoUiService,
     private solicitudCredito: SolicitudCreditoService,
+    private favoritoService: FavoritoService,
   ) {}
 
   agregando = false;
@@ -132,8 +146,6 @@ export class ProductoDetalleComponent implements OnInit {
         this.cantidadContado = this.cantidadMinima;
         this.cantidadCuotas = this.cantidadMinima;
         this.cuotaElegidaN = null;
-        this.favoritoActivo = false;
-        this.compararActivo = false;
         this.tabActiva = 'descripcion';
         this.cargando = false;
 
@@ -678,17 +690,20 @@ export class ProductoDetalleComponent implements OnInit {
   }
 
   toggleFavorito(): void {
-    this.favoritoActivo = !this.favoritoActivo;
-    if (this.favoritoActivo) {
-      this.toastr.info(this.producto?.titulo ?? '', 'Agregado a favoritos');
+    if (!this.producto) {
+      return;
     }
+
+    const titulo = this.producto.titulo;
+
+    this.favoritoService.alternar(this.producto.prd_id).subscribe({
+      next: (activo) => this.toastr.info(titulo, activo ? 'Agregado a favoritos' : 'Quitado de favoritos'),
+      error: (err) => this.toastr.error(this.mensajeErrorCarrito(err), 'No se pudo actualizar favoritos'),
+    });
   }
 
-  toggleComparar(): void {
-    this.compararActivo = !this.compararActivo;
-    if (this.compararActivo) {
-      this.toastr.info(this.producto?.titulo ?? '', 'Agregado para comparar');
-    }
+    toggleComparar(): void {
+    if (this.producto) this.comparador.alternar(this.producto);
   }
 
   seleccionarTab(tab: TabDetalle): void {

@@ -9,7 +9,7 @@ import { suthGuard } from './pages/auth/service/suth.guard';
 import { ProductosBusquedaComponent } from './pages/productos-busqueda/productos-busqueda.component';
 import { authGuard } from './pages/auth/service/auth.guard';
 import { CarritoComponent } from './pages/carrito/carrito.component';
-
+import { ComparadorComponent } from './pages/comparador/comparador.component';
 import { PasoConfirmacionComponent } from './pages/checkout/paso-confirmacion/paso-confirmacion.component';
 
 import { PasoFacturacionComponent } from './pages/checkout/paso-facturacion/paso-facturacion.component';
@@ -67,6 +67,21 @@ export const routes: Routes = [
         path: 'carrito-de-compra',
         component: CarritoComponent
     },
+    // --- Favoritos: pública (los invitados guardan en su navegador). ---
+    {
+        path: 'favoritos',
+        loadComponent: () =>
+            import('./pages/favoritos/favoritos.component').then((m) => m.FavoritosComponent),
+        title: 'Mis favoritos | Z Informática',
+    },
+	// --- nuevo: Comparador de productos (público, sin sesión) ---
+    {
+        path: 'comparar-productos',
+        component: ComparadorComponent,
+        title: 'Comparar productos | Z Informática',
+    },
+    // Compatibilidad: los enlaces viejos (/compare-product) siguen funcionando.
+    { path: 'compare-product', redirectTo: 'comparar-productos', pathMatch: 'full' },
     // --- nuevo: Checkout por pasos. Exige sesión. ---
     {
         path: 'proceso-de-pago',

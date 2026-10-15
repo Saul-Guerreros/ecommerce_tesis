@@ -41,14 +41,7 @@ class UsuarioController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Usuario::query()
-            ->with(self::RELACIONES)
-            ->whereHas(
-                'rol',
-                fn ($q) => $q->whereIn(
-                    'rol_descri',
-                    ['Administrador', 'Vendedor']
-                )
-            );
+            ->with(self::RELACIONES)->whereHas('rol', fn ($q) => $q->conAccesoPanel());
 
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
@@ -117,15 +110,9 @@ class UsuarioController extends Controller
     public function catalogos(): JsonResponse
     {
         return response()->json([
-            'roles' => Rol::whereIn(
-                'rol_descri',
-                ['Administrador', 'Vendedor']
-            )
+            'roles' => Rol::conAccesoPanel()
                 ->where('rol_estado', 1)
-                ->get([
-                    'rol_id',
-                    'rol_descri'
-                ]),
+                ->get(['rol_id', 'rol_descri']),
 
             'cargos' => Cargo::where(
                 'crg_estado',

@@ -57,6 +57,8 @@ export class LoginComponent {
 
   loading = false;
   errorMsg: string | null = null;
+    /** Motivo exacto del rechazo: solo llega del backend en desarrollo (APP_DEBUG=true). */
+  errorDetalle: string | null = null;
 
   loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -71,6 +73,7 @@ export class LoginComponent {
 
     this.loading = true;
     this.errorMsg = null;
+    this.errorDetalle = null;
 
     const { email, password } = this.loginForm.value;
 
@@ -81,13 +84,27 @@ export class LoginComponent {
       },
       error: (err) => {
         this.loading = false;
-        if (err.status === 423) {
-          this.errorMsg = err.error?.error || 'Cuenta bloqueada por demasiados intentos fallidos. Contacta al administrador.';
-        } else {
-          this.errorMsg = err.error?.error || err.error?.message || 'Credenciales incorrectas';
-        }
+        this.errorMsg = this.mensajeLogin(err);
+        this.errorDetalle = err.error?.detalle ?? null;
       }
     });
+  }
+
+  /** Elige el mensaje según el "codigo" que devuelve el backend. */
+  private mensajeLogin(err: any): string {
+    switch (err.error?.codigo) {
+      case 'CREDENCIALES_INVALIDAS':
+        return 'Correo o contraseña incorrectos.';
+      case 'SIN_ACCESO':
+        return 'Tu cuenta no tiene acceso al panel de administración. Si sos cliente, ingresá desde la tienda.';
+      case 'CUENTA_BLOQUEADA':
+        return err.error?.error ?? 'Cuenta bloqueada. Contactá al administrador.';
+    }
+
+    if (err.status === 0) {
+      return 'No se pudo conectar con el servidor. Verificá que la API esté en funcionamiento.';
+    }
+    return err.error?.error ?? err.error?.message ?? 'No se pudo iniciar sesión. Intentá nuevamente.';
   }
 
 }
