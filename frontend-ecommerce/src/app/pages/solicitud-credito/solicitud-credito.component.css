@@ -1,0 +1,50 @@
+.sc-pasos {
+  margin-bottom: 56px !important;
+  flex-wrap: wrap;
+  row-gap: 12px;
+}
+
+.sc-paso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--uk-global-muted-color, #999);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.sc-paso span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  font-weight: bold;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.sc-paso--activo {
+  color: var(--uk-global-primary-background, #1e87f0);
+  font-weight: bold;
+}
+
+.sc-linea {
+  width: 28px;
+  height: 2px;
+  background-color: var(--uk-global-muted-color, #ccc);
+  flex-shrink: 0;
+}
+
+/* En mobile, con 4 pasos de texto largo, se apila igual que el checkout
+   pero con menos ancho por paso: se prioriza que no se corte el texto. */
+@media (max-width: 640px) {
+  .sc-paso {
+    font-size: 0.75rem;
+  }
+  .sc-linea {
+    width: 16px;
+  }
+}

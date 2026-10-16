@@ -19,6 +19,16 @@ import { CheckoutComponent } from './pages/checkout/checkout.component';
 import { PedidoConfirmadoComponent } from './pages/pedido-confirmado/pedido-confirmado.component';
 import { PasoEntregaComponent } from './pages/checkout/paso-entrega/paso-entrega.component';
 
+// --- Solicitud de Crédito (continúa el flujo del Carrito a Crédito) ---
+import { SolicitudCreditoComponent } from './pages/solicitud-credito/solicitud-credito.component';
+import { carritoCreditoNoVacioGuard } from './pages/solicitud-credito/guard/carrito-credito-no-vacio.guard';
+import { PasoPersonalComponent } from './pages/solicitud-credito/paso-personal/paso-personal.component';
+import { PasoLaboralComponent } from './pages/solicitud-credito/paso-laboral/paso-laboral.component';
+import { PasoReferenciasComponent } from './pages/solicitud-credito/paso-referencias/paso-referencias.component';
+import { PasoConfirmacionCreditoComponent } from './pages/solicitud-credito/paso-confirmacion-credito/paso-confirmacion-credito.component';
+import { SolicitudEnviadaComponent } from './pages/solicitud-enviada/solicitud-enviada.component';
+import { MisSolicitudesCreditoComponent } from './pages/mis-solicitudes-credito/mis-solicitudes-credito.component';
+
 
 
 export const routes: Routes = [
@@ -98,6 +108,31 @@ export const routes: Routes = [
     {
         path: 'pedido-confirmado/:numero',
         component: PedidoConfirmadoComponent,
+        canActivate: [suthGuard],
+    },
+    // --- Solicitud de Crédito: wizard de 4 pasos. Exige sesión y que haya
+    //     al menos un producto en car_modpag = 'credito' en el carrito. ---
+    {
+        path: 'solicitar-credito',
+        component: SolicitudCreditoComponent,
+        canActivate: [suthGuard, carritoCreditoNoVacioGuard],
+        canActivateChild: [suthGuard],
+        children: [
+        { path: '', pathMatch: 'full', redirectTo: 'personal' },
+        { path: 'personal', component: PasoPersonalComponent },
+        { path: 'laboral', component: PasoLaboralComponent },
+        { path: 'referencias', component: PasoReferenciasComponent },
+        { path: 'confirmacion', component: PasoConfirmacionCreditoComponent },
+        ],
+    },
+    {
+        path: 'solicitud-enviada/:numero',
+        component: SolicitudEnviadaComponent,
+        canActivate: [suthGuard],
+    },
+    {
+        path: 'mis-solicitudes-credito',
+        component: MisSolicitudesCreditoComponent,
         canActivate: [suthGuard],
     },
 ];

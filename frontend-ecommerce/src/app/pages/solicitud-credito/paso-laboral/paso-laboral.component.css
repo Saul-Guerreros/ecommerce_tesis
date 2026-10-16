@@ -1,0 +1,134 @@
+/* =====================================================================
+   Mismo lenguaje visual que el checkout (paso-entrega.component.css).
+   Las clases conservan el prefijo ck- para que el parecido sea literal
+   y no haya que traducir mentalmente entre los dos flujos; el CSS de
+   Angular es scoped, asi que convive sin pisar nada.
+   ===================================================================== */
+
+/* Tarjetas tipo boton (tipo de vivienda, relacion de referencia) */
+.ck-opcion {
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  border: 2px solid var(--uk-global-border, #e5e5e5);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ck-opcion:hover {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+}
+
+.ck-opcion--activa {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+  background-color: rgba(30, 135, 240, 0.06);
+}
+
+.ck-opcion strong {
+  font-size: 0.95rem;
+}
+
+.ck-opcion small {
+  color: var(--uk-global-muted-color, #999);
+}
+
+/* Variante chica, centrada */
+.ck-opcion--chica {
+  padding: 10px 14px;
+  text-align: center;
+  align-items: center;
+}
+
+/* Tarjeta de resumen (sticky en pantallas grandes) */
+.ck-resumen {
+  position: sticky;
+  top: 20px;
+  text-align: center;
+}
+
+/* Las filas etiqueta/monto siguen con texto a la izquierda */
+.ck-resumen .uk-flex-between {
+  text-align: left;
+}
+
+/* ------------------------------------------------------------------
+   LAYOUT DE DOS COLUMNAS
+------------------------------------------------------------------ */
+.ck-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  align-items: start;
+  gap: 30px;
+  margin-top: 30px;
+}
+
+/* uk-margin de UIkit aplica solo margin-bottom, asi que la primera
+   tarjeta no tiene margen superior y esta columna tampoco debe tenerlo. */
+.ck-col-lateral {
+  margin-top: 0;
+}
+
+@media (max-width: 959px) {
+  .ck-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
+/* ------------------------------------------------------------------
+   BARRA DE ACCIONES (Volver / Continuar)
+------------------------------------------------------------------ */
+.ck-barra-botones {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.ck-barra-botones .uk-button {
+  min-width: 305px;
+}
+
+/* "Volver" usa el mismo azul que "Continuar" */
+.ck-btn-volver {
+  background-color: var(--uk-global-primary-background, #1e87f0);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.ck-btn-volver:hover,
+.ck-btn-volver:focus {
+  background-color: #0f7ae8;
+  color: #fff;
+}
+
+@media (max-width: 639px) {
+  .ck-barra-botones {
+    gap: 12px;
+  }
+
+  .ck-barra-botones .uk-button {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
+
+/* Ensancha el paso mas alla del uk-container del layout */
+:host {
+  display: block;
+  --ck-ancho: min(1350px, calc(100vw - 80px));
+  width: var(--ck-ancho);
+  margin-left: calc(50% - var(--ck-ancho) / 2);
+}

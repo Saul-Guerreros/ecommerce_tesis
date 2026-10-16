@@ -61,7 +61,10 @@ use App\Http\Controllers\Admin\Chat\FaqTiendaController;
 use App\Http\Controllers\Admin\Perfil\PerfilController as PerfilAdminController;
 use App\Http\Controllers\Admin\Auth\PermisoController;
 use App\Http\Controllers\Pedido\CheckoutController;
+
+use App\Http\Controllers\Credito\SolicitudCreditoController;
 use App\Http\Controllers\Api\FavoritoController;
+
 use App\Http\Controllers\Admin\Configuracion\ConfiguracionEnvioController;
 use App\Http\Controllers\Admin\Configuracion\TipoDocumentoController;
 use App\Http\Controllers\Admin\Configuracion\TarifaEnvioController;
@@ -144,6 +147,12 @@ Route::group([
     Route::get('checkout/pago',  [CheckoutController::class, 'configPago']);
     Route::post('checkout/pago', [CheckoutController::class, 'guardarPago']);
 
+        Route::get('checkout/pago',  [CheckoutController::class, 'configPago']);
+    Route::post('checkout/pago', [CheckoutController::class, 'guardarPago']);
+
+    // Catálogo de estados de Solicitud de Crédito (público: se usa para
+    // leyendas antes de loguear, ej. en "Mis Solicitudes").
+    Route::get('credito/estados', [SolicitudCreditoController::class, 'estados']);
 
 });
 
@@ -176,6 +185,22 @@ Route::group([
     Route::get('checkout/confirmacion', [CheckoutController::class, 'configConfirmacion']);   // <-- nuevo
     Route::post('checkout/confirmar',   [CheckoutController::class, 'confirmar']);            // <-- nuevo
    
+        Route::get('checkout/confirmacion', [CheckoutController::class, 'configConfirmacion']);
+    Route::post('checkout/confirmar',   [CheckoutController::class, 'confirmar']);
+
+    // --- Solicitud de Crédito (continúa el flujo del Carrito a Crédito) ---
+    Route::get('credito/config', [SolicitudCreditoController::class, 'config']);
+
+    Route::post('credito/personal',    [SolicitudCreditoController::class, 'guardarPersonal']);
+    Route::post('credito/laboral',     [SolicitudCreditoController::class, 'guardarLaboral']);
+    Route::post('credito/referencias', [SolicitudCreditoController::class, 'guardarReferencias']);
+
+    Route::get('credito/confirmacion', [SolicitudCreditoController::class, 'configConfirmacion']);
+    Route::post('credito/generar',     [SolicitudCreditoController::class, 'generar']);
+
+    Route::get('credito/solicitudes',      [SolicitudCreditoController::class, 'index']);
+    Route::get('credito/solicitudes/{id}', [SolicitudCreditoController::class, 'show']);
+
  });
 
 Route::group([

@@ -1,0 +1,33 @@
+<div class="uk-container uk-margin-large-top uk-margin-large-bottom">
+
+  <ul class="uk-breadcrumb">
+    <li><a routerLink="/">Inicio</a></li>
+    <li><span>Solicitud enviada</span></li>
+  </ul>
+
+  <div class="se-wrapper uk-text-center">
+    <div class="uk-card uk-card-default uk-card-body se-card">
+
+      <div class="se-check">
+        <span uk-icon="icon: check; ratio: 2.5"></span>
+      </div>
+
+      <h3 class="uk-margin-small-top uk-margin-remove-bottom">Solicitud enviada correctamente</h3>
+
+      <p class="se-numero">N.° de solicitud: {{ numero }}</p>
+
+      <p class="uk-text-meta">
+        Tu solicitud fue recibida y está siendo revisada.<br>
+        Te notificaremos el resultado por correo electrónico.
+      </p>
+
+      <div class="se-botones uk-margin-medium-top">
+        <button type="button" class="uk-button uk-button-default" (click)="volverATienda()">Regresar a la tienda</button>
+        <button type="button" class="uk-button uk-button-default" (click)="volverAlCarrito()">Volver al Carrito</button>
+        <button type="button" class="uk-button uk-button-primary" (click)="verMisSolicitudes()">Ver mis Solicitudes</button>
+      </div>
+
+    </div>
+  </div>
+
+</div>

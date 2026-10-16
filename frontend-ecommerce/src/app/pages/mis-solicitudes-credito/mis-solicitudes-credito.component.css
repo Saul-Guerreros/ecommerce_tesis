@@ -1,0 +1,14 @@
+.msc-fila {
+  cursor: pointer;
+  padding: 8px 4px;
+  border-radius: 4px;
+}
+
+.msc-fila:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.msc-detalle {
+  padding-left: 4px;
+  padding-right: 4px;
+}

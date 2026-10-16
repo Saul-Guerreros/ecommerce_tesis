@@ -1,0 +1,162 @@
+<div *ngIf="cargando" class="uk-text-center uk-margin-large">
+  <div uk-spinner="ratio: 1.5"></div>
+</div>
+
+<form *ngIf="!cargando" [formGroup]="form" (ngSubmit)="modoEdicion ? actualizarDatos() : siguiente()">
+
+  <div class="ck-layout">
+
+    <div class="ck-col-principal">
+
+      <!-- ============ 1/2 LUGAR DE TRABAJO ============ -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin"
+           *ngIf="modoEdicion || subPaso === 1">
+        <h4 class="uk-card-title">
+          Datos laborales
+          <span class="uk-text-meta uk-text-small" *ngIf="!modoEdicion">— Lugar de trabajo (1 de 2)</span>
+          <span class="uk-text-meta uk-text-small" *ngIf="modoEdicion">— Editando 2 de 4</span>
+        </h4>
+
+        <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+          <div class="uk-width-1-1">
+            <label class="uk-form-label">Empresa o lugar de trabajo <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" formControlName="scr_empres" maxlength="150" autocomplete="off"
+                   [class.uk-form-danger]="campoInvalido('scr_empres')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_empres')">
+              La empresa es obligatoria.
+            </div>
+          </div>
+
+          <div class="uk-width-1-1">
+            <label class="uk-form-label">Dirección laboral <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" formControlName="scr_dirlab" maxlength="200" autocomplete="off"
+                   [class.uk-form-danger]="campoInvalido('scr_dirlab')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_dirlab')">
+              La dirección laboral es obligatoria.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Teléfono laboral <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" formControlName="scr_tellab" maxlength="20" autocomplete="off"
+                   placeholder="021 555 444"
+                   [class.uk-form-danger]="campoInvalido('scr_tellab')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_tellab')">
+              Solo números, espacios y guiones.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 2/2 SITUACIÓN ECONÓMICA ============ -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin"
+           *ngIf="modoEdicion || subPaso === 2">
+        <h4 class="uk-card-title">
+          Situación económica
+          <span class="uk-text-meta uk-text-small" *ngIf="!modoEdicion">— 2 de 2</span>
+        </h4>
+
+        <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+          <div>
+            <label class="uk-form-label">Cargo / Puesto <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" formControlName="scr_cargo" maxlength="100" autocomplete="off"
+                   [class.uk-form-danger]="campoInvalido('scr_cargo')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_cargo')">
+              El cargo es obligatorio.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Ingreso mensual (Gs.) <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" type="number" min="1" step="1" formControlName="scr_ingres"
+                   [class.uk-form-danger]="campoInvalido('scr_ingres')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_ingres')">
+              Ingresá un monto mayor a cero.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Fecha de ingreso <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" type="date" formControlName="scr_fecing"
+                   [class.uk-form-danger]="campoInvalido('scr_fecing')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_fecing')">
+              La fecha de ingreso no puede ser futura.
+            </div>
+          </div>
+
+          <div class="uk-flex uk-flex-column uk-flex-bottom">
+            <p class="uk-margin-remove uk-text-meta uk-text-small" *ngIf="antiguedadTexto">
+              Antigüedad: <strong>{{ antiguedadTexto }}</strong>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ RESUMEN LATERAL ============ -->
+    <div class="ck-col-lateral">
+      <div class="uk-card uk-card-default uk-card-body ck-resumen" *ngIf="resumen">
+        <h4 class="uk-card-title">Crédito solicitado</h4>
+
+        <div class="uk-flex uk-flex-between">
+          <span>Precio al contado</span>
+          <strong>{{ resumen.total_contado | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Recargo</span>
+          <strong>{{ resumen.recargo | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Impuestos</span>
+          <strong>{{ resumen.impuestos | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <hr>
+
+        <div class="uk-flex uk-flex-between">
+          <span class="uk-text-large">Total</span>
+          <span class="uk-text-large uk-text-bold">{{ resumen.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Plazo</span>
+          <strong>{{ resumen.plazo }} meses</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Cuota mensual</span>
+          <strong>{{ resumen.cuota_mensual | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <p class="uk-text-meta uk-text-small uk-margin-small-top" *ngIf="resumen.planes_mixtos">
+          Corresponde a los primeros {{ resumen.plazo }} meses: tus productos tienen planes distintos.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de acciones -->
+  <div class="ck-barra-botones uk-margin-medium-top">
+    <ng-container *ngIf="!modoEdicion">
+      <button type="button" class="uk-button ck-btn-volver" (click)="atras()" [disabled]="guardando">
+        Volver
+      </button>
+      <button type="submit" class="uk-button uk-button-primary" [disabled]="guardando">
+        <span *ngIf="!guardando">Continuar</span>
+        <span *ngIf="guardando"><span uk-spinner="ratio: 0.6"></span> Guardando...</span>
+      </button>
+    </ng-container>
+
+    <ng-container *ngIf="modoEdicion">
+      <button type="button" class="uk-button ck-btn-volver" (click)="cancelarEdicion()" [disabled]="guardando">
+        Cancelar
+      </button>
+      <button type="submit" class="uk-button uk-button-primary" [disabled]="guardando">
+        <span *ngIf="!guardando">Actualizar datos</span>
+        <span *ngIf="guardando"><span uk-spinner="ratio: 0.6"></span> Guardando...</span>
+      </button>
+    </ng-container>
+  </div>
+</form>
