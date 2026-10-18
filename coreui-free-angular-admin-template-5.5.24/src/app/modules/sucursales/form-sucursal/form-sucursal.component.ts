@@ -41,9 +41,12 @@ export class FormSucursalComponent implements OnInit, OnChanges {
       suc_cel:       ['', [Validators.maxLength(20)]],
       suc_email:     ['', [Validators.email, Validators.maxLength(60)]],
       suc_estado:    [1],
-      suc_retiro:    [false],                              // <-- nuevo
-      suc_horario:   ['', [Validators.maxLength(150)]],     // <-- nuevo
-
+      // Visibilidad en la tienda web: los tres nacen activos y el
+      // administrador los restringe cuando hace falta.
+      suc_retiro:    [true],
+      suc_webstk:    [true],
+      suc_delivery:  [true],
+      suc_horario:   ['', [Validators.maxLength(150)]],
     });
   }
 
@@ -61,9 +64,24 @@ export class FormSucursalComponent implements OnInit, OnChanges {
     return !!this.sucursal?.suc_id;
   }
 
+  /**
+   * El backend exige dirección cuando la sucursal se publica en la tienda
+   * (retiro o consulta de stock). Se avisa en el formulario para no
+   * depender del 422 y que el usuario corrija antes de enviar.
+   */
+  get requiereDireccion(): boolean {
+    return !!(this.form.value.suc_retiro || this.form.value.suc_webstk);
+  }
+
+  get faltaDireccion(): boolean {
+    return this.requiereDireccion && !String(this.form.value.suc_direccion ?? '').trim();
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible) {
-        this.form.reset({
+      const esNueva = !this.sucursal?.suc_id;
+
+      this.form.reset({
         suc_empid:     this.sucursal?.suc_empid ?? (this.empresas.length === 1 ? this.empresas[0].emp_id : null),
         suc_ciuid:     this.sucursal?.suc_ciuid ?? null,
         suc_nombre:    this.sucursal?.suc_nombre ?? '',
@@ -74,8 +92,13 @@ export class FormSucursalComponent implements OnInit, OnChanges {
         suc_cel:       this.sucursal?.suc_cel ?? '',
         suc_email:     this.sucursal?.suc_email ?? '',
         suc_estado:    this.sucursal?.suc_estado ?? 1,
-        suc_retiro:    this.sucursal?.suc_retiro ?? false,      // <-- nuevo
-        suc_horario:   this.sucursal?.suc_horario ?? '',        // <-- nuevo
+        // En alta: activos por defecto. En edición: lo que ya tiene
+        // guardado la sucursal (?? true solo cubre registros viejos que
+        // llegaran sin el campo).
+        suc_retiro:    esNueva ? true : (this.sucursal?.suc_retiro ?? true),
+        suc_webstk:    esNueva ? true : (this.sucursal?.suc_webstk ?? true),
+        suc_delivery:  esNueva ? true : (this.sucursal?.suc_delivery ?? true),
+        suc_horario:   this.sucursal?.suc_horario ?? '',
       });
       this.guardando = false;
     }
@@ -96,16 +119,25 @@ export class FormSucursalComponent implements OnInit, OnChanges {
       return;
     }
 
+    if (this.faltaDireccion) {
+      this.form.get('suc_direccion')?.markAsTouched();
+      this.toastr.error(
+        'Cargue la dirección o desactive la publicación en la tienda web',
+        'Falta la dirección'
+      );
+      return;
+    }
+
     this.guardando = true;
 
-        const datos: Partial<Sucursal> = {
+    const datos: Partial<Sucursal> = {
       ...this.form.value,
       suc_establ:    this.form.value.suc_establ || null,
       suc_direccion: this.form.value.suc_direccion || null,
       suc_telef:     this.form.value.suc_telef || null,
       suc_cel:       this.form.value.suc_cel || null,
       suc_email:     this.form.value.suc_email || null,
-      suc_horario:   this.form.value.suc_horario || null,   // <-- nuevo
+      suc_horario:   this.form.value.suc_horario || null,
     };
 
     const peticion = this.esEdicion

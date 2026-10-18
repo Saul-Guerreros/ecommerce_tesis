@@ -948,3 +948,34 @@
     margin-top: 0;
   }
 }
+
+/* ---------- Ver Stock en Tiendas ---------- */
+.pd-stock-tiendas {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--pd-border);
+  background: var(--pd-bg-soft);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--pd-black);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.pd-stock-tiendas:hover {
+  border-color: var(--pd-primary);
+  background: var(--pd-primary-soft);
+}
+.pd-stock-tiendas-icon {
+  color: var(--pd-primary);
+}
+.pd-stock-tiendas-text {
+  flex: 1 1 auto;
+}
+.pd-stock-tiendas-arrow {
+  color: var(--pd-muted);
+}

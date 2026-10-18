@@ -1,0 +1,99 @@
+<!-- Clic en el fondo cierra; el panel detiene la propagación para que un
+     clic dentro no lo cierre. Misma mecánica que confirmacion-carrito. -->
+<div class="ss-overlay" *ngIf="visible" (click)="cerrar()">
+  <div
+    class="ss-panel"
+    (click)="$event.stopPropagation()"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="ss-titulo"
+  >
+    <!-- Encabezado -->
+    <div class="ss-head">
+      <div>
+        <h3 class="ss-title" id="ss-titulo">Stock en tiendas</h3>
+        <p class="ss-subtitle" *ngIf="!cargando && !error && sucursales.length > 0">
+          <ng-container *ngIf="controlaStock">
+            Disponible en {{ sucursalesConStock }} de {{ sucursales.length }} sucursal(es)
+          </ng-container>
+          <ng-container *ngIf="!controlaStock">
+            Consultá disponibilidad con la sucursal
+          </ng-container>
+        </p>
+      </div>
+
+      <button type="button" class="ss-close" aria-label="Cerrar" (click)="cerrar()">
+        &times;
+      </button>
+    </div>
+
+    <!-- Cuerpo scrolleable -->
+    <div class="ss-body">
+      <div class="ss-state" *ngIf="cargando">
+        <span class="ss-spinner" aria-hidden="true"></span>
+        <p>Consultando disponibilidad...</p>
+      </div>
+
+      <div class="ss-state" *ngIf="!cargando && error">
+        <p>No pudimos consultar el stock en este momento.</p>
+        <button type="button" class="ss-retry" (click)="reintentar()">Reintentar</button>
+      </div>
+
+      <div class="ss-state" *ngIf="!cargando && !error && sucursales.length === 0">
+        <p>No hay sucursales publicadas para consulta de stock.</p>
+      </div>
+
+      <div
+        class="ss-card"
+        *ngFor="let suc of sucursales; trackBy: trackBySucursal"
+        [class.is-out]="controlaStock && !hayStock(suc)"
+      >
+        <div class="ss-card-info">
+          <div class="ss-card-name">
+            {{ suc.nombre }}
+            <span class="ss-tag ss-tag--main" *ngIf="suc.principal">Casa Matriz</span>
+          </div>
+
+          <div class="ss-card-line" *ngIf="suc.direccion">
+            <span class="ss-ico" uk-icon="icon: location; ratio: .75"></span>
+            {{ suc.direccion }}<ng-container *ngIf="suc.ciudad">, {{ suc.ciudad }}</ng-container>
+          </div>
+
+          <div class="ss-card-line" *ngIf="suc.horario">
+            <span class="ss-ico" uk-icon="icon: clock; ratio: .75"></span>
+            {{ suc.horario }}
+          </div>
+
+          <div class="ss-card-line" *ngIf="suc.telefono">
+            <span class="ss-ico" uk-icon="icon: receiver; ratio: .75"></span>
+            <a [href]="'tel:' + telefonoEnlace(suc.telefono)">{{ suc.telefono }}</a>
+          </div>
+
+          <div class="ss-card-tags">
+            <span class="ss-tag" *ngIf="suc.retiro">Retiro en tienda</span>
+            <span class="ss-tag" *ngIf="suc.delivery">Delivery</span>
+          </div>
+        </div>
+
+        <!-- Existencia: el número exacto, 0 incluido -->
+        <div class="ss-card-stock" *ngIf="controlaStock">
+          <span class="ss-stock-label">Existencia</span>
+          <span class="ss-stock-value" [class.is-zero]="!hayStock(suc)">{{ suc.existencia }}</span>
+          <span class="ss-stock-state">{{ hayStock(suc) ? 'Disponible' : 'Sin stock' }}</span>
+        </div>
+
+        <div class="ss-card-stock" *ngIf="!controlaStock">
+          <span class="ss-stock-state">Consultar</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pie -->
+    <div class="ss-foot">
+      <p class="ss-foot-note">
+        Las existencias se actualizan al momento de la consulta y pueden variar.
+      </p>
+      <button type="button" class="ss-btn" (click)="cerrar()">Cerrar</button>
+    </div>
+  </div>
+</div>

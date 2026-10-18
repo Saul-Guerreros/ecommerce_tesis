@@ -1,0 +1,17 @@
+<div class="ppb-banner" *ngIf="pendiente && !cerrado">
+  <div class="ppb-texto">
+    <span uk-icon="icon: warning; ratio: 0.9"></span>
+    Tenés un pedido pendiente de pago · Nº {{ pendiente.ped_numero }} ·
+    {{ pendiente.ped_total | currency:'PYG':'symbol-narrow':'1.0-0' }} ·
+    {{ restante() }}
+  </div>
+
+  <div class="ppb-acciones">
+    <button type="button" class="uk-button uk-button-small uk-button-primary" (click)="pagarAhora()">
+      Pagar ahora
+    </button>
+    <button type="button" class="ppb-cerrar" (click)="cerrar()" aria-label="Cerrar aviso">
+      <span uk-icon="icon: close; ratio: 0.8"></span>
+    </button>
+  </div>
+</div>

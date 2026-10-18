@@ -11,18 +11,20 @@ use App\Models\Pedido\Pedido;
 use App\Models\Usuario;
 
 /**
- * Descuento definitivo de stock del pedido.
+ * Stock del pedido. El ciclo completo tiene tres momentos, y separarlos es
+ * intencional:
  *
- * El ciclo completo tiene dos momentos, y separarlos es intencional:
+ *   1. Al CONFIRMAR EL PEDIDO (PedidoService, Paso 2 del checkout) se
+ *      incrementa sto_reserv. La unidad queda apartada pero sigue contada
+ *      en sto_cantid.
+ *   2. Al CONFIRMAR EL PAGO (descontarDefinitivo) se descuenta sto_cantid
+ *      y se libera sto_reserv, y recién ahí nace el movimiento de kardex.
+ *   3. Si el pedido VENCE sin pago (liberarReserva) se devuelve sto_reserv
+ *      sin tocar sto_cantid ni el kardex: nunca salió nada del depósito.
  *
- *   1. Al CONFIRMAR EL PEDIDO (PedidoService) se incrementa sto_reserv.
- *      La unidad queda apartada pero sigue contada en sto_cantid.
- *   2. Al CONFIRMAR EL PAGO (este service) se descuenta sto_cantid y se
- *      libera sto_reserv, y recien ahi nace el movimiento de kardex.
- *
- * Si se descontara todo en el paso 1, un pedido abandonado dejaria
- * mercaderia bloqueada en el sistema. Si no se reservara nada, dos
- * clientes podrian comprar la misma unidad.
+ * Si se descontara todo en el paso 1, un pedido abandonado dejaría
+ * mercadería bloqueada en el sistema. Si no se reservara nada, dos
+ * clientes podrían comprar la misma unidad.
  */
 class StockPedidoService
 {
@@ -79,6 +81,53 @@ class StockPedidoService
         // Segunda pasada: aplicar.
         foreach ($aplicar as $item) {
             $this->aplicarSalida($item['stock'], $item['detalle'], $item['cantidad'], $deposito, $usuario);
+        }
+    }
+
+    /**
+     * Devuelve la reserva de un pedido que no se va a cumplir: venció el
+     * plazo de pago, o el administrador lo canceló antes de cobrarlo.
+     *
+     * NO escribe movimiento_stock y NO toca sto_cantid, a diferencia de
+     * descontarDefinitivo(): la mercadería nunca salió del depósito, así
+     * que no hay nada que asentar en el kardex. Registrar un movimiento acá
+     * ensuciaría el costeo promedio y el libro de inventario con unidades
+     * que nunca se movieron.
+     *
+     * Es idempotente por diseño: el max(0, ...) evita que una doble
+     * ejecución (dos corridas del comando a la vez, un reintento manual)
+     * deje la reserva en negativo.
+     */
+    public function liberarReserva(Pedido $pedido): void
+    {
+        $deposito = $this->resolverDeposito($pedido);
+
+        if (!$deposito) {
+            return; // sin depósito resoluble no hubo reserva que liberar
+        }
+
+        $pedido->loadMissing('detalles.producto');
+
+        foreach ($pedido->detalles as $detalle) {
+            $producto = $detalle->producto;
+
+            if (!$producto || !$producto->prd_afestk) {
+                continue;
+            }
+
+            $stock = Stock::where('sto_prdid', $producto->prd_id)
+                ->where('sto_depid', $deposito->dpo_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$stock) {
+                continue;
+            }
+
+            $stock->update([
+                'sto_reserv' => max(0.0, (float) $stock->sto_reserv - (float) $detalle->dpd_cantid),
+                'sto_actual' => now(),
+            ]);
         }
     }
 

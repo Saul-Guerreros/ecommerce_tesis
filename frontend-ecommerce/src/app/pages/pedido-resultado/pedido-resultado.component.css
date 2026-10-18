@@ -1,0 +1,38 @@
+.pr-caja {
+  max-width: 620px;
+}
+
+.pr-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #edfbf6;
+  color: #32d296;
+}
+
+.pr-pagos {
+  margin-top: 0;
+  font-size: 0.9rem;
+}
+
+.pr-entrega {
+  padding: 12px 14px;
+  background: #f8f8f8;
+  border-radius: 6px;
+}
+
+.pr-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+@media (max-width: 639px) {
+  .pr-botones .uk-button {
+    width: 100%;
+  }
+}

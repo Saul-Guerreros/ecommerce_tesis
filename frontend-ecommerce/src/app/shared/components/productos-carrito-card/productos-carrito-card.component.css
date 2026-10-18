@@ -1,0 +1,148 @@
+/* Sin esto, el navegador trata <app-productos-carrito-card> como un
+   elemento inline (es un custom element desconocido) y uk-margin no logra
+   separarla de la tarjeta siguiente: quedan encimadas. 'relative' es lo
+   que permite que .pcc-panel (absolute) se posicione contra ESTA tarjeta
+   y no contra toda la página. */
+:host {
+  display: block;
+  position: relative;
+}
+
+.pcc-card {
+  text-align: left;
+  padding-bottom: 12px;
+}
+
+.pcc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.pcc-header-derecha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Placa con la cantidad de productos. */
+.pcc-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1.5px solid var(--uk-global-primary-background, #1e87f0);
+  border-radius: 4px;
+  color: var(--uk-global-primary-background, #1e87f0);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* El "desplazador": botón gris redondeado con flecha, como en la
+   referencia. Gira 180° al abrir en vez de cambiar de ícono. */
+.pcc-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: #f2f2f2;
+  color: #555;
+  transition: transform 0.15s ease;
+}
+
+.pcc-chevron--abierto {
+  transform: rotate(180deg);
+}
+
+.pcc-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: transparent;
+}
+
+.pcc-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+  padding: 10px 16px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.pcc-fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.pcc-fila + .pcc-fila {
+  border-top: 1px solid #f0f0f0;
+}
+
+.pcc-img-wrap {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  background: #fafafa;
+  overflow: hidden;
+}
+
+.pcc-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.pcc-img-fallback {
+  color: #b5b5b5;
+}
+
+.pcc-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pcc-nombre {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #222;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pcc-cantidad {
+  font-size: 0.78rem;
+  color: #767676;
+}
+
+.pcc-precio {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}

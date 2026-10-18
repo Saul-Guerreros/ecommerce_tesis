@@ -7,17 +7,17 @@ import { ProductoDetalleComponent } from './pages/producto-detalle/producto-deta
 import { PerfilClienteComponent } from './pages/perfil-cliente/perfil-cliente.component';
 import { suthGuard } from './pages/auth/service/suth.guard';
 import { ProductosBusquedaComponent } from './pages/productos-busqueda/productos-busqueda.component';
-import { authGuard } from './pages/auth/service/auth.guard';
 import { CarritoComponent } from './pages/carrito/carrito.component';
 import { ComparadorComponent } from './pages/comparador/comparador.component';
-import { PasoConfirmacionComponent } from './pages/checkout/paso-confirmacion/paso-confirmacion.component';
 
-import { PasoFacturacionComponent } from './pages/checkout/paso-facturacion/paso-facturacion.component';
-
-// --- nuevo ---
+// --- Checkout ---
 import { CheckoutComponent } from './pages/checkout/checkout.component';
-import { PedidoConfirmadoComponent } from './pages/pedido-confirmado/pedido-confirmado.component';
 import { PasoEntregaComponent } from './pages/checkout/paso-entrega/paso-entrega.component';
+import { PasoFacturacionComponent } from './pages/checkout/paso-facturacion/paso-facturacion.component';
+import { PasoPagoComponent } from './pages/checkout/paso-pago/paso-pago.component';
+import { PedidoResultadoComponent } from './pages/pedido-resultado/pedido-resultado.component';
+import { MisPedidosComponent } from './pages/mis-pedidos/mis-pedidos.component';
+import { PedidoDetalleComponent } from './pages/pedido-detalle/pedido-detalle.component';
 
 // --- Solicitud de Crédito (continúa el flujo del Carrito a Crédito) ---
 import { SolicitudCreditoComponent } from './pages/solicitud-credito/solicitud-credito.component';
@@ -28,8 +28,6 @@ import { PasoReferenciasComponent } from './pages/solicitud-credito/paso-referen
 import { PasoConfirmacionCreditoComponent } from './pages/solicitud-credito/paso-confirmacion-credito/paso-confirmacion-credito.component';
 import { SolicitudEnviadaComponent } from './pages/solicitud-enviada/solicitud-enviada.component';
 import { MisSolicitudesCreditoComponent } from './pages/mis-solicitudes-credito/mis-solicitudes-credito.component';
-
-
 
 export const routes: Routes = [
     {
@@ -84,7 +82,7 @@ export const routes: Routes = [
             import('./pages/favoritos/favoritos.component').then((m) => m.FavoritosComponent),
         title: 'Mis favoritos | Z Informática',
     },
-	// --- nuevo: Comparador de productos (público, sin sesión) ---
+    // --- Comparador de productos (público, sin sesión) ---
     {
         path: 'comparar-productos',
         component: ComparadorComponent,
@@ -92,37 +90,61 @@ export const routes: Routes = [
     },
     // Compatibilidad: los enlaces viejos (/compare-product) siguen funcionando.
     { path: 'compare-product', redirectTo: 'comparar-productos', pathMatch: 'full' },
-    // --- nuevo: Checkout por pasos. Exige sesión. ---
+
+    // --- Checkout por pasos. Exige sesión. ---
+    //
+    // El paso 3 lleva el número de pedido en la ruta porque, a diferencia
+    // de los dos anteriores, ya no opera sobre un borrador: el pedido
+    // existe y tiene stock reservado. Eso hace la pantalla reanudable.
     {
         path: 'proceso-de-pago',
         component: CheckoutComponent,
         canActivate: [suthGuard],
         canActivateChild: [suthGuard],
         children: [
-        { path: '', pathMatch: 'full', redirectTo: 'entrega' },
-        { path: 'entrega', component: PasoEntregaComponent },
-        { path: 'facturacion', component: PasoFacturacionComponent },
-        { path: 'confirmacion', component: PasoConfirmacionComponent },  // <-- movido acá
+            { path: '', pathMatch: 'full', redirectTo: 'entrega' },
+            { path: 'entrega', component: PasoEntregaComponent },
+            { path: 'facturacion', component: PasoFacturacionComponent },
+            { path: 'pago/:numero', component: PasoPagoComponent },
         ],
     },
+    // Pantalla final (los 3 casos). Fuera del wizard: ya no es un paso del
+    // checkout sino el estado del pedido, y sigue siendo válida siempre.
     {
-        path: 'pedido-confirmado/:numero',
-        component: PedidoConfirmadoComponent,
+        path: 'pedido-resultado/:numero',
+        component: PedidoResultadoComponent,
         canActivate: [suthGuard],
+        title: 'Tu pedido | Z Informática',
     },
-    // --- Solicitud de Crédito: wizard de 4 pasos. Exige sesión y que haya
-    //     al menos un producto en car_modpag = 'credito' en el carrito. ---
+    // Compatibilidad con el flujo anterior.
+    { path: 'pedido-confirmado/:numero', redirectTo: 'pedido-resultado/:numero' },
+
+    // --- Mis Pedidos ---
+    {
+        path: 'mis-pedidos',
+        component: MisPedidosComponent,
+        canActivate: [suthGuard],
+        title: 'Mis pedidos | Z Informática',
+    },
+    {
+        path: 'mis-pedidos/:numero',
+        component: PedidoDetalleComponent,
+        canActivate: [suthGuard],
+        title: 'Detalle del pedido | Z Informática',
+    },
+
+    // --- Solicitud de Crédito: wizard de 4 pasos. ---
     {
         path: 'solicitar-credito',
         component: SolicitudCreditoComponent,
         canActivate: [suthGuard, carritoCreditoNoVacioGuard],
         canActivateChild: [suthGuard],
         children: [
-        { path: '', pathMatch: 'full', redirectTo: 'personal' },
-        { path: 'personal', component: PasoPersonalComponent },
-        { path: 'laboral', component: PasoLaboralComponent },
-        { path: 'referencias', component: PasoReferenciasComponent },
-        { path: 'confirmacion', component: PasoConfirmacionCreditoComponent },
+            { path: '', pathMatch: 'full', redirectTo: 'personal' },
+            { path: 'personal', component: PasoPersonalComponent },
+            { path: 'laboral', component: PasoLaboralComponent },
+            { path: 'referencias', component: PasoReferenciasComponent },
+            { path: 'confirmacion', component: PasoConfirmacionCreditoComponent },
         ],
     },
     {

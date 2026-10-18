@@ -1,26 +1,41 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
-import { forkJoin, switchMap } from 'rxjs';
+import { switchMap } from 'rxjs';
 import {
-  DatosBilletera, DatosTransferencia, EntregaCheckout, MedioRecepcion,
-  GuardarPagoRequest, MetodoPagoCodigo, MetodoPagoOpcion, ModoPago, PagoDividRequest,
-  PagoItemCheckout, ResumenCompra, TipoDocumentoFacturacion, TitularFacturacion,
+  EntregaCheckout, MedioRecepcion, ResumenCompra,
+  TipoDocumentoFacturacion, TitularFacturacion,
 } from '../../../core/models/checkout.model';
 import { DatoFiscal } from '../../../core/models/dato-fiscal.model';
+import { EntregaResumenCard, ProductoResumenCardItem } from '../../../core/models/resumen-compra.model';
 import { CheckoutService } from '../../../core/services/checkout.service';
+import { CarritoService } from '../../../core/services/carrito.service';
 import { DatoFiscalClienteService } from '../../../core/services/dato-fiscal-cliente.service';
 import { FormDatoFiscalComponent } from '../form-dato-fiscal/form-dato-fiscal.component';
-import { PagoDivididoComponent } from '../pago-dividido/pago-dividido.component';
+import { ProductosCarritoCardComponent } from '../../../shared/components/productos-carrito-card/productos-carrito-card.component';
+import { DatosEntregaCardComponent } from '../../../shared/components/datos-entrega-card/datos-entrega-card.component';
 
+/**
+ * Paso 2 del checkout: Facturación + [CONFIRMAR PEDIDO].
+ *
+ * Cambio de octubre 2026: este paso ya no pide el método de pago. Antes el
+ * cliente pagaba acá y el pedido recién se creaba en el paso siguiente, de
+ * modo que podía transferir por una unidad que otro cliente se llevaba
+ * mientras tanto. Ahora el botón de este paso crea el pedido y reserva el
+ * stock; el pago se declara después, en el Paso 3, sobre un pedido que ya
+ * es suyo.
+ *
+ * Como consecuencia, este paso se volvió el último punto de revisión: por
+ * eso muestra también los productos y la entrega.
+ */
 @Component({
   selector: 'app-paso-facturacion',
   standalone: true,
   imports: [
-    CommonModule, CurrencyPipe, ReactiveFormsModule,
-    FormDatoFiscalComponent, PagoDivididoComponent,
+    CommonModule, CurrencyPipe, ReactiveFormsModule, RouterModule, FormDatoFiscalComponent,
+    ProductosCarritoCardComponent, DatosEntregaCardComponent,
   ],
   templateUrl: './paso-facturacion.component.html',
   styleUrl: './paso-facturacion.component.css',
@@ -40,84 +55,46 @@ export class PasoFacturacionComponent implements OnInit {
   entrega: EntregaCheckout | null = null;
   resumen!: ResumenCompra;
 
+  /** Tarjeta "Productos en Carrito" de la columna lateral. */
+  productos: ProductoResumenCardItem[] = [];
+
   datosFiscales: DatoFiscal[] = [];
   datoFiscalSeleccionado: DatoFiscal | null = null;
 
-  // Método de pago
-  metodos: MetodoPagoOpcion[] = [];
-  metodoSeleccionado: MetodoPagoCodigo | null = null;
-  datosTransferencia!: DatosTransferencia;
-  datosBilletera!: DatosBilletera;
-  mensajeEfectivo: string | null = null;
-  comprobanteArchivo: File | null = null;
-  comprobanteNombreGuardado: string | null = null;
-
-  /**
-   * Sin valor por defecto, mismo criterio que medioRecepcion: la primera
-   * vez ninguna opcion aparece marcada.
-   */
-  modoPago: ModoPago | null = null;
-
-  /** Total exigible; lo calcula el backend, nunca esta pantalla. */
-  totalPedido = 0;
-
-  /**
-   * Metodo del bloque que el cliente esta editando en el pago dividido.
-   * Es lo que decide que datos muestra la tarjeta "Método de Pago".
-   */
-  metodoActivo: MetodoPagoCodigo | null = null;
-
-  pagosGuardados: PagoItemCheckout[] | null = null;
-  pagosDivididos: PagoDividRequest[] = [];
-  pagosDivididosValidos = false;
-
   cargando = true;
-  guardando = false;
+  confirmando = false;
   modalVisible = false;
   datoFiscalEditar: DatoFiscal | null = null;
 
   /**
-   * true apenas el cliente intenta continuar sin completar algo. A
-   * partir de ahi los mensajes en rojo de abajo se recalculan solos a
-   * medida que corrige cada campo (son getters, no un snapshot fijo).
+   * Mensaje del backend cuando la reserva falla por falta de stock. Se
+   * muestra fijo en la pantalla y no sólo como toast: es el caso que todo
+   * el rediseño busca atajar y el cliente tiene que entender qué pasó.
    */
-  intentoContinuar = false;
-
-  get medioInvalido(): boolean {
-    return this.intentoContinuar && !this.medioRecepcion;
-  }
-
-  get modoInvalido(): boolean {
-    return this.intentoContinuar && !this.modoPago;
-  }
-
-  get esDividido(): boolean {
-    return this.modoPago === 'dividido';
-  }
-
-  get metodoInvalido(): boolean {
-    return this.intentoContinuar && !this.esDividido && !this.metodoSeleccionado;
-  }
-
-  get comprobanteInvalido(): boolean {
-    return this.intentoContinuar
-      && !this.esDividido
-      && this.metodoRequiereComprobante
-      && !this.comprobanteArchivo
-      && !this.comprobanteNombreGuardado;
-  }
+  errorStock: string | null = null;
 
   /**
-   * Metodo cuyos datos (banco, numero de Tigo, mensaje de efectivo) se
-   * muestran en la tarjeta superior. Con un solo metodo es el elegido; con
-   * pago dividido es el del bloque que el cliente esta tocando.
+   * true apenas el cliente intenta confirmar sin completar algo. A
+   * partir de ahi los mensajes en rojo se recalculan solos a medida que
+   * corrige cada campo (son getters, no un snapshot fijo).
    */
-  get metodoParaDatos(): MetodoPagoCodigo | null {
-    return this.esDividido ? this.metodoActivo : this.metodoSeleccionado;
+  intentoConfirmar = false;
+
+  get medioInvalido(): boolean {
+    return this.intentoConfirmar && !this.medioRecepcion;
+  }
+
+  get esRetiro(): boolean {
+    return this.entrega?.modalidad === 'retiro';
+  }
+
+  get total(): number {
+    return this.resumen.subtotal + this.resumen.costo_envio;
   }
 
   constructor(
     private checkoutService: CheckoutService,
+    private carritoService: CarritoService,
     private datoFiscalService: DatoFiscalClienteService,
     private toastr: ToastrService,
     private router: Router,
@@ -127,30 +104,37 @@ export class PasoFacturacionComponent implements OnInit {
     this.cargar();
   }
 
+  /**
+   * Una sola llamada: al no existir más la sección de pago, este paso ya
+   * no necesita combinar configFacturacion con configPago.
+   */
   private cargar(): void {
     this.cargando = true;
 
-    forkJoin({
-      facturacion: this.checkoutService.configFacturacion(),
-      pago: this.checkoutService.configPago(),
-    }).subscribe({
-      next: ({ facturacion, pago }) => {
-                if (!facturacion.entrega) {
-                  // cargando queda en true a proposito: mantiene el spinner y evita
-                  // que la pagina se dibuje por un instante antes de redirigir.
-                  this.toastr.info('Tu checkout anterior ya no está disponible.', 'Checkout');
-                  this.router.navigate(['/carrito-de-compra'], { replaceUrl: true });
-                  return;
-              }
+    this.checkoutService.configFacturacion().subscribe({
+      next: (resp) => {
+        if (!resp.entrega) {
+          // cargando queda en true a proposito: mantiene el spinner y evita
+          // que la pagina se dibuje por un instante antes de redirigir.
+          this.toastr.info('Tu checkout anterior ya no está disponible.', 'Checkout');
+          this.router.navigate(['/carrito-de-compra'], { replaceUrl: true });
+          return;
+        }
 
-        this.titular = facturacion.titular;
-        this.datosFiscales = facturacion.datos_fiscales;
-        this.entrega = facturacion.entrega;
-        this.resumen = facturacion.resumen;
+        this.titular = resp.titular;
+        this.datosFiscales = resp.datos_fiscales;
+        this.entrega = resp.entrega;
+        this.productos = resp.items.map((item) => ({
+          imagen: item.publicacion_web?.imagen ?? null,
+          nombre: item.publicacion_web?.pub_titulo ?? item.prd_descri,
+          cantidad: item.car_cantid,
+          total: item.car_total,
+        }));
+        this.resumen = resp.resumen;
 
-        if (facturacion.facturacion) {
-          this.tipoDocumento = facturacion.facturacion.tipo_documento;
-          this.medioRecepcion = facturacion.facturacion.pfa_recibe;
+        if (resp.facturacion) {
+          this.tipoDocumento = resp.facturacion.tipo_documento;
+          this.medioRecepcion = resp.facturacion.pfa_recibe;
         }
 
         // La predeterminada es siempre el respaldo, no solo cuando no
@@ -158,8 +142,8 @@ export class PasoFacturacionComponent implements OnInit {
         // la vez anterior el cliente habia elegido C.I. (o un RUC que
         // ya no existe), esto evita que la seccion RUC quede sin nada
         // marcado apenas se cambia a esa pestaña.
-        const dfiIdGuardado = facturacion.facturacion?.tipo_documento === 'RUC'
-          ? facturacion.facturacion.dfi_id
+        const dfiIdGuardado = resp.facturacion?.tipo_documento === 'RUC'
+          ? resp.facturacion.dfi_id
           : null;
 
         this.datoFiscalSeleccionado =
@@ -167,25 +151,6 @@ export class PasoFacturacionComponent implements OnInit {
           || this.datosFiscales.find((d) => d.dfi_principal)
           || this.datosFiscales[0]
           || null;
-
-        this.metodos = pago.metodos;
-        this.datosTransferencia = pago.datos_transferencia;
-        this.datosBilletera = pago.datos_billetera;
-        this.mensajeEfectivo = pago.mensaje_efectivo;
-
-        this.totalPedido = pago.total_pedido;
-
-        if (pago.pago) {
-          this.modoPago = pago.pago.modo;
-
-          if (pago.pago.modo === 'dividido') {
-            this.pagosGuardados = pago.pago.pagos;
-            this.metodoActivo = pago.pago.pagos[0]?.mpa_codigo ?? null;
-          } else {
-            this.metodoSeleccionado = pago.pago.mpa_codigo;
-            this.comprobanteNombreGuardado = pago.pago.tiene_comprobante ? 'Comprobante ya cargado' : null;
-          }
-        }
 
         this.cargando = false;
       },
@@ -197,17 +162,7 @@ export class PasoFacturacionComponent implements OnInit {
     });
   }
 
-  get esRetiro(): boolean {
-    return this.entrega?.modalidad === 'retiro';
-  }
-
-  get total(): number {
-    return this.resumen.subtotal + this.resumen.costo_envio;
-  }
-
-  get metodoRequiereComprobante(): boolean {
-    return this.metodos.find((m) => m.mpa_codigo === this.metodoSeleccionado)?.mpa_requcom ?? false;
-  }
+  // ---------- Datos fiscales ----------
 
   elegirTipoDocumento(tipo: TipoDocumentoFacturacion): void {
     this.tipoDocumento = tipo;
@@ -241,19 +196,11 @@ export class PasoFacturacionComponent implements OnInit {
         }
       },
       error: (err) => {
-        const mensaje = err.error?.message || 'No se pudo eliminar el dato fiscal.';
-        this.toastr.error(mensaje, 'Error');
+        this.toastr.error(err.error?.message || 'No se pudo eliminar el dato fiscal.', 'Error');
       },
     });
   }
 
-  /**
-   * El modal ahora siempre persiste (ya no existe el RUC de "uso
-   * unico"): esto solo actualiza la lista local y deja seleccionado
-   * el que se acaba de crear/editar. Si vino marcado como
-   * predeterminado, el backend ya desmarco a los demas -- se refleja
-   * eso mismo en memoria para no tener que recargar toda la lista.
-   */
   onGuardado(datoFiscal: DatoFiscal): void {
     this.modalVisible = false;
 
@@ -274,102 +221,105 @@ export class PasoFacturacionComponent implements OnInit {
     this.medioRecepcion = medio;
   }
 
-  elegirMetodo(codigo: MetodoPagoCodigo): void {
-    // En pago dividido la tarjeta es solo informativa: el metodo se elige
-    // dentro de cada bloque de pago.
-    if (this.esDividido) return;
+  // ---------- Entrega (tarjeta de resumen) ----------
 
-    this.metodoSeleccionado = codigo;
+  /**
+   * EntregaCheckout (borrador del Paso 1) -> EntregaResumenCard, la forma
+   * que espera <app-datos-entrega-card>. Es el único lugar del checkout
+   * que necesita este adaptador: el Paso 3 y "Mis Pedidos" ya reciben la
+   * entrega normalizada directamente desde el backend.
+   */
+  get entregaResumen(): EntregaResumenCard | null {
+    if (!this.entrega) return null;
+
+    return {
+      modalidad: this.entrega.modalidad,
+      receptor_nombre: `${this.entrega.rec_nombre} ${this.entrega.rec_apelli}`.trim(),
+      receptor_telefono: this.entrega.rec_telef,
+      receptor_documento: this.entrega.rec_nrodoc,
+      suc_nombre: this.entrega.suc_nombre,
+      suc_direccion: this.entrega.suc_direccion,
+      suc_horario: this.entrega.suc_horario,
+      calle: this.entrega.calle,
+      nrocasa: this.entrega.nrocasa,
+      barrio: this.entrega.barrio,
+      ciudad: this.entrega.ciudad,
+      departamento: this.entrega.departamento,
+      referencia: this.entrega.referencia,
+    };
   }
 
-  elegirModo(modo: ModoPago): void {
-    if (this.modoPago === modo) return;
+  // ---------- Confirmar ----------
 
-    this.modoPago = modo;
-    this.metodoActivo = null;
+  /**
+   * Guarda la facturación y crea el pedido en una sola acción encadenada.
+   *
+   * Van juntas porque el backend exige la facturación para poder confirmar:
+   * separarlas en dos botones dejaría al cliente ante un [Confirmar] que
+   * falla si no apretó [Guardar] antes.
+   */
+  confirmar(): void {
+    if (this.confirmando) return;
 
-    // Al cambiar de modo se descarta lo cargado en el otro: son dos formas
-    // distintas de cubrir el mismo total y mezclarlas no tiene sentido.
-    if (modo === 'dividido') {
-      this.metodoSeleccionado = null;
-      this.comprobanteArchivo = null;
-      this.comprobanteNombreGuardado = null;
-    } else {
-      this.pagosDivididos = [];
-      this.pagosDivididosValidos = false;
-    }
-  }
-
-  onCambioPagos(evento: { pagos: PagoDividRequest[]; valido: boolean }): void {
-    this.pagosDivididos = evento.pagos;
-    this.pagosDivididosValidos = evento.valido;
-  }
-
-  onArchivoSeleccionado(evento: Event): void {
-    const input = evento.target as HTMLInputElement;
-    this.comprobanteArchivo = input.files?.[0] ?? null;
-  }
-
-  continuar(): void {
-    if (this.guardando) return;
-
-    // A partir de aca los 3 getters de arriba (medioInvalido,
-    // metodoInvalido, comprobanteInvalido) empiezan a mostrar su
-    // mensaje en rojo si corresponde, sin tener que repetir la
-    // condicion aca.
-    this.intentoContinuar = true;
+    this.intentoConfirmar = true;
+    this.errorStock = null;
 
     if (this.tipoDocumento === 'RUC' && !this.datoFiscalSeleccionado) {
       this.toastr.error('Elegí o cargá un RUC.', 'Validación');
       return;
     }
 
-    if (!this.medioRecepcion || !this.modoPago) {
-      return; // el mensaje correspondiente ya quedo visible en el formulario
-    }
-
-    if (this.esDividido) {
-      // Los mensajes por bloque los muestra el propio componente hijo.
-      if (!this.pagosDivididosValidos) return;
-    } else if (!this.metodoSeleccionado || this.comprobanteInvalido) {
-      return;
+    if (!this.medioRecepcion) {
+      return; // el mensaje ya quedó visible en el formulario
     }
 
     const payload = this.tipoDocumento === 'CI'
       ? { tipo_documento: 'CI' as const, pfa_recibe: this.medioRecepcion }
       : { tipo_documento: 'RUC' as const, dfi_id: this.datoFiscalSeleccionado!.dfi_id, pfa_recibe: this.medioRecepcion };
 
-    const pagoPayload: GuardarPagoRequest = this.esDividido
-      ? { modo: 'dividido', pagos: this.pagosDivididos }
-      : { modo: 'unico', mpa_codigo: this.metodoSeleccionado!, comprobante: this.comprobanteArchivo };
+    this.confirmando = true;
 
-    this.guardando = true;
     this.checkoutService.guardarFacturacion(payload).pipe(
-      switchMap(() => this.checkoutService.guardarPago(pagoPayload)),
+      switchMap(() => this.checkoutService.confirmarPedido()),
     ).subscribe({
-      next: () => {
-        this.guardando = false;
-        this.toastr.success('Datos guardados.', 'Listo');
-        this.router.navigate(['/proceso-de-pago/confirmacion'], { replaceUrl: true });
+      next: (resp) => {
+        this.confirmando = false;
+
+        // El backend ya vació el carrito al contado: se refleja acá para
+        // que el ícono del header no siga mostrando productos fantasma.
+        this.carritoService.reiniciar();
+        this.checkoutService.reiniciar();
+
+        this.toastr.success('Pedido creado. Ya reservamos tu stock.', 'Listo');
+
+        // replaceUrl: el Paso 2 queda consumido. Volver con el botón del
+        // navegador llevaría a un borrador que ya no existe.
+        this.router.navigate(['/proceso-de-pago/pago', resp.data.ped_numero], { replaceUrl: true });
       },
       error: (e) => {
-        this.guardando = false;
-        if (e.status === 422 && e.error?.errors) {
-          // El backend revalida la suma contra el total vigente: si cambio
-          // el carrito, ese mensaje es mas util que un "revisá los datos".
-          const errores = e.error.errors as Record<string, string[]>;
-          const primero = errores['pagos']?.[0] ?? Object.values(errores)[0]?.[0];
+        this.confirmando = false;
 
-          this.toastr.error(primero ?? 'Revisá los datos marcados.', 'Validación');
+        const errores = e.error?.errors as Record<string, string[]> | undefined;
+
+        // Caso central del rediseño: el stock se agotó mientras el cliente
+        // completaba el checkout. Se avisa antes de que pague nada.
+        if (errores?.['stock']) {
+          this.errorStock = errores['stock'][0];
+          this.toastr.error(this.errorStock!, 'Sin stock');
           return;
         }
-        this.toastr.error(e.error?.message ?? 'No pudimos guardar los datos.', 'Error');
+
+        const primero = errores ? Object.values(errores)[0]?.[0] : null;
+        this.toastr.error(primero ?? e.error?.message ?? 'No pudimos confirmar tu pedido.', 'Error');
       },
     });
   }
 
   volver(): void {
-   this.router.navigate(['/proceso-de-pago/entrega'], { replaceUrl: true });
+    this.router.navigate(['/proceso-de-pago/entrega'], { replaceUrl: true });
   }
-  
+
+  irAlCarrito(): void {
+    this.router.navigate(['/carrito-de-compra']);
+  }
 }

@@ -7,15 +7,21 @@ import { ToastrService } from 'ngx-toastr';
 import {
   ConfigEnvio, ModalidadEntrega, SucursalRetiro, TipoReceptor, TitularCheckout,
 } from '../../../core/models/checkout.model';
+import { CarritoItem } from '../../../core/models/carrito.model';
 import { Direccion } from '../../../core/models/direccion.model';
+import { ProductoResumenCardItem } from '../../../core/models/resumen-compra.model';
 import { CheckoutService } from '../../../core/services/checkout.service';
 import { DireccionClienteService } from '../../../core/services/direccion-cliente.service';
 import { FormDireccionComponent } from '../form-direccion/form-direccion.component';
+import { ProductosCarritoCardComponent } from '../../../shared/components/productos-carrito-card/productos-carrito-card.component';
 
 @Component({
   selector: 'app-paso-entrega',
   standalone: true,
-  imports: [CommonModule, CurrencyPipe, ReactiveFormsModule, RouterModule, FormDireccionComponent],
+  imports: [
+    CommonModule, CurrencyPipe, ReactiveFormsModule, RouterModule,
+    FormDireccionComponent, ProductosCarritoCardComponent,
+  ],
   templateUrl: './paso-entrega.component.html',
   styleUrl: './paso-entrega.component.css',
 })
@@ -29,6 +35,9 @@ export class PasoEntregaComponent implements OnInit {
   direcciones: Direccion[] = [];
   titular!: TitularCheckout;
   envio!: ConfigEnvio;
+
+  /** Tarjeta "Productos en Carrito" del Paso 1. */
+  productos: ProductoResumenCardItem[] = [];
 
   cargando = true;
   guardando = false;
@@ -134,6 +143,7 @@ export class PasoEntregaComponent implements OnInit {
         this.direcciones = resp.direcciones;
         this.titular     = resp.titular;
         this.envio       = resp.envio;
+        this.productos   = resp.items.map((item) => this.aProductoResumen(item));
 
         if (resp.entrega) {
           this.form.patchValue({
@@ -162,6 +172,20 @@ export class PasoEntregaComponent implements OnInit {
         this.router.navigate(['/carrito-de-compra']);
       },
     });
+  }
+
+  /**
+   * CarritoItem -> ProductoResumenCardItem para la tarjeta "Productos en
+   * Carrito". La imagen ya llega absoluta desde el backend (CarritoResource
+   * la resuelve con asset()), así que no hace falta recomponer la URL acá.
+   */
+  private aProductoResumen(item: CarritoItem): ProductoResumenCardItem {
+    return {
+      imagen: item.publicacion_web?.imagen ?? null,
+      nombre: item.publicacion_web?.pub_titulo ?? item.prd_descri,
+      cantidad: item.car_cantid,
+      total: item.car_total,
+    };
   }
 
   get esRetiro(): boolean  { return this.valorDe('modalidad') === 'retiro'; }

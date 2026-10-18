@@ -9,6 +9,9 @@ use App\Models\Producto;
 use App\Models\product\EspecificacionProducto;
 use App\Models\Carrito\ConfiguracionCuota;
 
+use App\Models\Configuracion\Sucursal;
+use Illuminate\Support\Facades\DB;
+
 use App\Models\Configuracion\ConfiguracionTienda;
 use App\Models\PublicacionWeb;
 
@@ -1134,6 +1137,66 @@ class VitrinaController extends Controller
                 'sucursales_pickup' => $sucursalesPickup,
             ],
         ]);
+    }
+
+ // GET /api/tienda/producto/{slug}/stock-sucursales — público
+    public function stockSucursales(string $slug): JsonResponse
+    {
+        $pub = PublicacionWeb::publicadas()
+            ->where('pub_slug', $slug)
+            ->with('producto')
+            ->firstOrFail();
+
+        $producto = $pub->producto;
+
+        // prd_afestk = false significa "no controla stock", no "sin stock".
+        $controlaStock = (bool) $producto->prd_afestk;
+
+        $disponiblePorSucursal = collect();
+
+        if ($controlaStock) {
+            $disponiblePorSucursal = DB::table('stock')
+                ->join('deposito', 'sto_depid', '=', 'dpo_id')
+                ->where('sto_prdid', $producto->prd_id)
+                ->where('dpo_estado', 1)
+                ->groupBy('dpo_sucid')
+                ->select('dpo_sucid', DB::raw('SUM(sto_cantid - sto_reserv) AS disponible'))
+                ->pluck('disponible', 'dpo_sucid');
+        }
+
+        $sucursales = Sucursal::query()
+            ->visibleEnStockWeb()
+            ->with('ciudad')
+            ->orderByDesc('suc_princi')
+            ->orderBy('suc_nombre')
+            ->get()
+            ->map(function (Sucursal $s) use ($disponiblePorSucursal, $controlaStock) {
+                $disponible = (float) ($disponiblePorSucursal[$s->suc_id] ?? 0);
+
+                return [
+                    'suc_id'     => $s->suc_id,
+                    'nombre'     => $s->suc_nombre,
+                    'direccion'  => $s->suc_direccion,
+                    'horario'    => $s->suc_horario,
+                    'telefono'   => $s->suc_telef ?: $s->suc_cel,
+                    'ciudad'     => $s->ciudad?->ciu_descri,
+                    'principal'  => (int) $s->suc_princi === 1,
+                    'retiro'     => (bool) $s->suc_retiro,
+                    'delivery'   => (bool) $s->suc_delivery,
+                    'existencia' => $controlaStock ? (int) max(0, floor($disponible)) : null,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'data' => [
+                'producto' => [
+                    'titulo'         => $pub->pub_titulo,
+                    'controla_stock' => $controlaStock,
+                ],
+                'sucursales' => $sucursales,
+            ],
+        ], 200);
     }
 
 }

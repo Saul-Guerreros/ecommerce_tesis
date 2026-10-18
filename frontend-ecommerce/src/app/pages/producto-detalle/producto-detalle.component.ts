@@ -18,6 +18,8 @@ import { CarritoUiService } from '../../core/services/carrito-ui.service';
 import { SolicitudCreditoService } from '../../core/services/solicitud-credito.service';
 import { ProductoCardComponent } from '../../shared/components/producto-card/producto-card.component';
 
+import { StockSucursalesModalComponent } from '../../shared/components/stock-sucursales-modal/stock-sucursales-modal.component';
+
 type TabDetalle = 'descripcion' | 'especificaciones' | 'resenas';
 
 /** Opción de cuotas del backend + la cuota por la cantidad elegida. */
@@ -28,7 +30,7 @@ interface CuotaVista extends CuotaOpcion {
 @Component({
   selector: 'app-producto-detalle',
   standalone: true,
-  imports: [CommonModule, MonedaPyPipe, CurrencyPipe, RouterModule, FlashCountdownComponent, SelectorCantidadComponent, ProductoCardComponent],
+  imports: [CommonModule, MonedaPyPipe, RouterModule, FlashCountdownComponent, SelectorCantidadComponent, ProductoCardComponent, StockSucursalesModalComponent],
   templateUrl: './producto-detalle.component.html',
   styleUrl: './producto-detalle.component.css',
 })
@@ -78,6 +80,14 @@ export class ProductoDetalleComponent implements OnInit {
   // no reacciona de forma confiable sobre nodos que Angular inserta
   // dinámicamente después de que UIkit ya arrancó).
   zoomAbierto = false;
+
+    /** Modal "Ver Stock en Tiendas". La carga del stock la hace el propio
+   *  modal al abrirse: acá solo se controla la visibilidad. */
+  stockSucursalesVisible = false;
+
+  abrirStockSucursales(): void {
+    this.stockSucursalesVisible = true;
+  }
 
   readonly imagenFallback =
     'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22600%22%20height%3D%22450%22%20viewBox%3D%220%200%20600%20450%22%3E%3Crect%20width%3D%22600%22%20height%3D%22450%22%20fill%3D%22%23e9e9e9%22/%3E%3Ctext%20x%3D%22300%22%20y%3D%22235%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%2222%22%20fill%3D%22%23999%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ESin%20imagen%3C/text%3E%3C/svg%3E';

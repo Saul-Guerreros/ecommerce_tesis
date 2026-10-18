@@ -158,7 +158,7 @@
                           <option *ngFor="let c of cuotasDisponibles; trackBy: trackByCuota"
                                   [value]="c.cantidad"
                                   [selected]="c.cantidad === cuotaElegida?.cantidad">
-                                  {{ c.cantidad }}x {{ c.monto_cuota_total | currency:'PYG':'symbol':'1.0-0' }}
+                                  {{ c.cantidad }}x {{ c.monto_cuota_total | monedaPy }}
                           </option>
                         </select>
                       </div>
@@ -193,14 +193,14 @@
                       <div class="pd-compra-campo pd-compra-campo--crece">
                         <span class="pd-compra-label">Precio al Contado</span>
                         <div class="pd-compra-precio">
-                          <span>{{ precioUnitarioContado | currency:'PYG':'symbol':'1.0-0' }}</span>
+                          <span>{{ precioUnitarioContado | monedaPy }}</span>
                           <ng-container *ngIf="descuentoVigenteContado">
-                            <del class="pd-compra-precio-old">{{ producto.precio_original | currency:'PYG':'symbol':'1.0-0' }}</del>
+                            <del class="pd-compra-precio-old">{{ producto.precio_original | monedaPy }}</del>
                             <span class="pd-price-badge">-{{ producto.descuento_pct }}%</span>
                           </ng-container>
                         </div>
                         <div class="pd-compra-total" *ngIf="cantidadContado > 1">
-                          Total ({{ cantidadContado }} unidades): {{ totalContado | currency:'PYG':'symbol':'1.0-0' }}
+                          Total ({{ cantidadContado }} unidades): {{ totalContado | monedaPy }}
                         </div>
                       </div>
 
@@ -273,23 +273,13 @@
                 <div class="pd-meta-item" *ngIf="producto.marca"><span>Marca:</span> {{ producto.marca }}</div>
               </div>
 
-              <!-- Availability -->
-              <div class="pd-note" *ngIf="!sinStock">
-                <span class="pd-note-icon" uk-icon="icon: check"></span>
-                <div>
-                  <div class="pd-note-title">En stock</div>
-                  <div class="pd-note-text">{{ disponibilidadDetalle }}</div>
-                </div>
-              </div>
-
-              <!-- Pick up in store: datos reales (sucursales con stock > 0) -->
-              <div class="pd-note" *ngIf="sucursalesPickup.length > 0">
-                <span class="pd-note-icon" uk-icon="icon: location"></span>
-                <div>
-                  <div class="pd-note-title">Retiro en tienda</div>
-                  <div class="pd-note-text">Disponible en {{ sucursalesPickup.join(', ') }}</div>
-                </div>
-              </div>
+              <!-- Disponibilidad por sucursal: el detalle ya no adelanta números,
+              los muestra el modal con el dato del momento. -->
+              <button type="button" class="pd-stock-tiendas" (click)="abrirStockSucursales()">
+                <span class="pd-stock-tiendas-icon" uk-icon="icon: location"></span>
+                <span class="pd-stock-tiendas-text">Ver Stock en Tiendas</span>
+                <span class="pd-stock-tiendas-arrow" uk-icon="icon: chevron-right; ratio: .8"></span>
+              </button>
 
               <!-- Available options: mismo modelo, otro atributo (RAM, color, etc.) -->
               <div class="pd-options" *ngIf="coloresParaMostrar.length > 1">
@@ -439,3 +429,10 @@
     ></a>
   </div>
 </main>
+
+
+<app-stock-sucursales-modal
+  [slug]="slugActual"
+  [visible]="stockSucursalesVisible"
+  (visibleChange)="stockSucursalesVisible = $event">
+</app-stock-sucursales-modal>

@@ -10,10 +10,11 @@ class EstadoPagoSeeder extends Seeder
     public function run(): void
     {
         $estados = [
-            ['epa_codigo' => 'PENDIENTE',  'epa_descri' => 'Pendiente de verificación'],
-            ['epa_codigo' => 'CONFIRMADO', 'epa_descri' => 'Pago confirmado'],
-            ['epa_codigo' => 'RECHAZADO',  'epa_descri' => 'Pago rechazado'],
-            ['epa_codigo' => 'PARCIAL',    'epa_descri' => 'Pago parcial'],   // <-- nuevo
+            ['epa_codigo' => 'PENDIENTE_PAGO', 'epa_descri' => 'Pendiente de pago'],          // <-- nuevo
+            ['epa_codigo' => 'PENDIENTE',      'epa_descri' => 'Pendiente de verificación'],
+            ['epa_codigo' => 'CONFIRMADO',     'epa_descri' => 'Pago confirmado'],
+            ['epa_codigo' => 'RECHAZADO',      'epa_descri' => 'Pago rechazado'],
+            ['epa_codigo' => 'PARCIAL',        'epa_descri' => 'Pago parcial'],
         ];
 
         foreach ($estados as $e) {

@@ -19,7 +19,8 @@ class Pedido extends Model
 
     protected $fillable = [
         'ped_numero', 'ped_cliid', 'ped_subtot', 'ped_impues', 'ped_cosenv', 'ped_total',
-        'ped_tenid', 'ped_sucid', 'ped_mpaid', 'ped_pagdiv', 'ped_estid', 'ped_epaid', 'ped_obsint',
+        'ped_tenid', 'ped_sucid', 'ped_mpaid', 'ped_pagdiv', 'ped_estid', 'ped_epaid',
+        'ped_vence', 'ped_obsint',
     ];
 
     protected $casts = [
@@ -28,9 +29,51 @@ class Pedido extends Model
         'ped_cosenv' => 'decimal:2',
         'ped_total'  => 'decimal:2',
         'ped_pagdiv' => 'boolean',
+        'ped_vence'  => 'datetime',
         'ped_creado' => 'datetime',
         'ped_actual' => 'datetime',
     ];
+
+    // ---------- Vigencia de la reserva ----------
+
+    /**
+     * El pedido existe y reservo stock, pero el cliente todavia no declaro
+     * su pago. Es el unico estado en el que el Paso 3 del checkout puede
+     * operar sobre el pedido.
+     */
+    public function pendienteDePago(): bool
+    {
+        return $this->estadoPago?->epa_codigo === EstadoPago::PENDIENTE_PAGO;
+    }
+
+    /**
+     * Se le acabo el plazo para pagar. Los pedidos del flujo anterior (sin
+     * ped_vence) nunca vencen: su pago ya venia declarado desde el inicio.
+     */
+    public function vencido(): bool
+    {
+        return $this->ped_vence !== null && $this->ped_vence->isPast();
+    }
+
+    /**
+     * El cliente todavia puede entrar a pagarlo.
+     */
+    public function pagable(): bool
+    {
+        return $this->pendienteDePago()
+            && !$this->vencido()
+            && $this->estadoPedido?->est_codigo !== EstadoPedido::CANCELADO;
+    }
+
+    public function scopePendienteDePago($query)
+    {
+        return $query->whereHas(
+            'estadoPago',
+            fn ($q) => $q->where('epa_codigo', EstadoPago::PENDIENTE_PAGO)
+        );
+    }
+
+    // ---------- Relaciones ----------
 
     public function cliente(): BelongsTo
     {
@@ -50,6 +93,9 @@ class Pedido extends Model
     /**
      * Solo tiene valor cuando el pedido se pago con un unico metodo.
      * Con pago dividido es NULL: usar la relacion pagos().
+     *
+     * Desde el rediseno del checkout tambien es NULL mientras el pedido
+     * esta en PENDIENTE_PAGO: el metodo se elige recien en el Paso 3.
      */
     public function metodoPago(): BelongsTo
     {
@@ -72,8 +118,8 @@ class Pedido extends Model
     }
 
     /**
-     * Siempre tiene al menos una fila, aunque el cliente haya elegido un
-     * solo metodo de pago.
+     * Vacia mientras el pedido esta en PENDIENTE_PAGO; se puebla en el
+     * Paso 3, con una fila por cada pago declarado.
      */
     public function pagos(): HasMany
     {

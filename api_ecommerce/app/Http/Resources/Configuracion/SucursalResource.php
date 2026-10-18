@@ -22,8 +22,10 @@ class SucursalResource extends JsonResource
             'suc_email'     => $this->suc_email,
             'suc_estado'    => $this->suc_estado,
             'suc_creado'    => $this->suc_creado,
-            'suc_retiro'    => (bool) $this->suc_retiro,   // <-- nuevo
-            'suc_horario'   => $this->suc_horario,          // <-- nuevo
+            'suc_retiro'    => (bool) $this->suc_retiro,
+            'suc_horario'   => $this->suc_horario,
+            'suc_webstk'    => (bool) $this->suc_webstk,     // <-- nuevo
+            'suc_delivery'  => (bool) $this->suc_delivery,   // <-- nuevo
 
             'emp_razonsocial' => $this->whenLoaded('empresa', fn () => $this->empresa->emp_razonsocial),
             'ciu_descri'      => $this->whenLoaded('ciudad', fn () => $this->ciudad->ciu_descri),

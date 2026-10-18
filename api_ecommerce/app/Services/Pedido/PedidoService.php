@@ -2,7 +2,6 @@
 
 namespace App\Services\Pedido;
 
-use App\Http\Resources\Carrito\CarritoResource;
 use App\Models\Carrito\Carrito;
 use App\Models\Compras\Stock;
 use App\Models\Configuracion\Deposito;
@@ -10,46 +9,65 @@ use App\Models\Configuracion\Sucursal;
 use App\Models\Pedido\DetallePedido;
 use App\Models\Pedido\EstadoPago;
 use App\Models\Pedido\EstadoPedido;
-use App\Models\Pedido\MetodoPago;
-use App\Models\Pedido\PagoComprobante;
 use App\Models\Pedido\Pedido;
 use App\Models\Pedido\PedidoEntrega;
 use App\Models\Pedido\PedidoFacturacion;
 use App\Models\Pedido\PedidoHistorialEstado;
-use App\Models\Pedido\PedidoPago;
 use App\Models\Pedido\PedidoTemporal;
 use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Creacion del pedido. Corresponde al Paso 2 del checkout (boton
+ * "Confirmar Pedido"), NO al pago.
+ *
+ * Rediseno de octubre 2026 -- razon del cambio:
+ *
+ *   Antes, el cliente pagaba y subia su comprobante en el Paso 2, y el
+ *   stock recien se reservaba en el Paso 3. Entre esos dos momentos otro
+ *   cliente podia llevarse la ultima unidad, y el primero terminaba con
+ *   una transferencia hecha contra un pedido que ya no se podia cumplir:
+ *   el administrador tenia que devolver la plata a mano.
+ *
+ *   Ahora el pedido nace ANTES del pago. Al confirmarlo se toma la
+ *   reserva (sto_reserv) y el pedido queda en PENDIENTE_PAGO con un
+ *   vencimiento (ped_vence). Si no hay stock, el cliente se entera aca,
+ *   sin haber pagado nada. El pago se declara despues, en el Paso 3,
+ *   contra un pedido que ya existe (PagoPedidoService).
+ *
+ * El precio de invertir el orden es que un checkout abandonado deja stock
+ * bloqueado: por eso existe ped_vence y el comando pedidos:expirar, que
+ * cancela el pedido y devuelve la reserva.
+ */
 class PedidoService
 {
+    /**
+     * Plazo que tiene el cliente para declarar su pago antes de que la
+     * reserva se libere. Constante por ahora; si el negocio necesita
+     * cambiarlo sin tocar codigo, el lugar natural es configuracion_tienda.
+     */
+    public const HORAS_PARA_PAGAR = 24;
+
     public function __construct(
         private CheckoutResumenService $resumen,
     ) {}
 
-    // ---------- Paso 3: GET (resumen) ----------
+    // ---------- Paso 2: POST (Confirmar Pedido) ----------
 
-    public function datosConfirmacion(Usuario $usuario): array
-    {
-        $temporal = $this->temporalCompleto($usuario);
-        $carritoItems = $this->resumen->items($usuario);
-
-        return [
-            'items'       => CarritoResource::collection($carritoItems),
-            'entrega'     => $temporal->ptm_entrega,
-            'facturacion' => $temporal->ptm_factura,
-            'pago'        => $this->pagoConMontos($temporal, $carritoItems),
-            'resumen'     => $this->resumen->resumenDeItems($carritoItems, $temporal->ptm_entrega),
-        ];
-    }
-
-    // ---------- Paso 3: POST (Confirmar Pedido) ----------
-
+    /**
+     * Crea el pedido a partir del borrador (pedido_temporal) y reserva el
+     * stock. No toca metodo de pago: ped_mpaid queda NULL y ped_epaid en
+     * PENDIENTE_PAGO.
+     *
+     * Todo ocurre dentro de una transaccion con lockForUpdate() sobre las
+     * filas de stock: dos clientes confirmando a la vez se serializan, y el
+     * segundo recibe el error de stock sin haber pagado.
+     */
     public function confirmar(Usuario $usuario): Pedido
     {
-        $temporal = $this->temporalCompleto($usuario);
+        $temporal     = $this->temporalCompleto($usuario);
         $carritoItems = $this->resumen->items($usuario);
 
         $cliente = $usuario->persona->cliente;
@@ -59,15 +77,8 @@ class PedidoService
         $facturacion = $temporal->ptm_factura;
         $resumen     = $this->resumen->resumenDeItems($carritoItems, $entrega);
 
-        // Entre el Paso 2 y el Paso 3 el carrito pudo cambiar (precio, cantidad,
-        // costo de envio). Los montos se revalidan aca contra el total recien
-        // calculado: sin esto se podria confirmar un pedido cuyos pagos no lo
-        // cubren.
-        $pago   = $this->pagoConMontos($temporal, $carritoItems);
-        $metodo = $this->metodoPrincipal($pago);
-
         return DB::transaction(function () use (
-            $usuario, $cliente, $carritoItems, $entrega, $facturacion, $pago, $metodo, $resumen, $temporal
+            $usuario, $cliente, $carritoItems, $entrega, $facturacion, $resumen, $temporal
         ) {
             $pedido = Pedido::create([
                 'ped_cliid'  => $cliente->cli_id,
@@ -77,10 +88,15 @@ class PedidoService
                 'ped_total'  => $resumen['total'],
                 'ped_tenid'  => $entrega['ten_id'],
                 'ped_sucid'  => $entrega['suc_id'] ?? null,
-                'ped_mpaid'  => $metodo?->mpa_id,                  // null cuando el pago es dividido
-                'ped_pagdiv' => count($pago['pagos']) > 1,
+
+                // El metodo de pago se define en el Paso 3. Con pago
+                // dividido se queda en NULL de forma definitiva.
+                'ped_mpaid'  => null,
+                'ped_pagdiv' => false,
+
                 'ped_estid'  => EstadoPedido::porCodigo(EstadoPedido::PENDIENTE)->est_id,
-                'ped_epaid'  => EstadoPago::porCodigo(EstadoPago::PENDIENTE)->epa_id,
+                'ped_epaid'  => EstadoPago::porCodigo(EstadoPago::PENDIENTE_PAGO)->epa_id,
+                'ped_vence'  => now()->addHours(self::HORAS_PARA_PAGAR),
             ]);
 
             // Numeración simple basada en el correlativo real del pedido.
@@ -91,7 +107,6 @@ class PedidoService
             $this->crearDetalle($pedido, $carritoItems);
             $this->crearEntrega($pedido, $entrega);
             $this->crearFacturacion($pedido, $facturacion);
-            $this->crearPagos($pedido, $pago['pagos']);
             $this->reservarStock($carritoItems, $entrega);
 
             PedidoHistorialEstado::create([
@@ -100,16 +115,15 @@ class PedidoService
                 'peh_tipo'   => 'PEDIDO',
                 'peh_estant' => null,
                 'peh_estid'  => $pedido->ped_estid,
-                'peh_coment' => count($pago['pagos']) > 1
-                    ? 'Pedido creado con pago dividido en ' . count($pago['pagos']) . ' pagos'
-                    : 'Pedido creado',
+                'peh_coment' => 'Pedido creado — stock reservado, pendiente de pago',
             ]);
 
-            // Los comprobantes NO se borran de disco: pago_comprobante.pco_archiv
-            // pasa a ser su referencia definitiva.
-
-            // Solo se vacia la modalidad contado: el carrito a credito
-            // queda intacto para su propio flujo.
+            // El carrito al contado se vacia aca y no en el Paso 3: a partir
+            // de este momento la verdad de la compra es el pedido, no el
+            // carrito. Dejarlo lleno permitiria que el cliente confirmara el
+            // mismo carrito dos veces y duplicara la reserva.
+            //
+            // El carrito a credito queda intacto: tiene su propio flujo.
             Carrito::where('car_idusu', $usuario->usu_id)
                 ->where(function ($q) {
                     $q->whereNull('car_modpag')->orWhere('car_modpag', 'contado');
@@ -118,87 +132,16 @@ class PedidoService
 
             $temporal->delete();
 
-            return $pedido->fresh();
+            return $pedido->fresh(['estadoPedido', 'estadoPago']);
         });
-    }
-
-    // ---------- Pagos ----------
-
-    /**
-     * Devuelve el borrador de pago normalizado y con los montos resueltos
-     * contra el total vigente.
-     *
-     * - Pago unico: el monto es siempre el total, se recalcula aca (tambien
-     *   cubre los borradores viejos, que no guardaban monto).
-     * - Pago dividido: la suma debe coincidir exactamente con el total.
-     */
-    private function pagoConMontos(PedidoTemporal $temporal, Collection $carritoItems): array
-    {
-        $pago  = $temporal->pagoNormalizado();
-        $total = (int) round($this->resumen->resumenDeItems($carritoItems, $temporal->ptm_entrega)['total']);
-
-        if (count($pago['pagos']) === 1) {
-            $pago['pagos'][0]['monto'] = $total;
-
-            return $pago;
-        }
-
-        $asignado = array_sum(array_map(fn ($p) => (int) ($p['monto'] ?? 0), $pago['pagos']));
-
-        if ($asignado !== $total) {
-            throw ValidationException::withMessages([
-                'pagos' => 'El total de tu pedido cambió (Gs. ' . number_format($total, 0, ',', '.')
-                    . '). Volvé al paso de pago y ajustá los montos.',
-            ]);
-        }
-
-        return $pago;
-    }
-
-    /**
-     * Metodo "principal" de pedido.ped_mpaid: solo existe cuando el cliente
-     * pago con uno solo. Con pago dividido la verdad esta en pedido_pago.
-     */
-    private function metodoPrincipal(array $pago): ?MetodoPago
-    {
-        return count($pago['pagos']) === 1
-            ? MetodoPago::porCodigo($pago['pagos'][0]['mpa_codigo'])
-            : null;
-    }
-
-    /**
-     * Una fila de pedido_pago por cada pago declarado, siempre: con un solo
-     * metodo se escribe una sola fila. Cada comprobante temporal se
-     * convierte en una fila de pago_comprobante ligada a su pago.
-     */
-    private function crearPagos(Pedido $pedido, array $pagos): void
-    {
-        $pendiente = EstadoPago::porCodigo(EstadoPago::PENDIENTE)->epa_id;
-
-        foreach (array_values($pagos) as $i => $p) {
-            $metodo = MetodoPago::porCodigo($p['mpa_codigo']);
-
-            $pedidoPago = PedidoPago::create([
-                'ppa_pedid' => $pedido->ped_id,
-                'ppa_orden' => $i + 1,
-                'ppa_mpaid' => $metodo->mpa_id,
-                'ppa_monto' => $p['monto'],
-                'ppa_epaid' => $pendiente,
-            ]);
-
-            if ($metodo->mpa_requcom && !empty($p['comprobante_temp'])) {
-                PagoComprobante::create([
-                    'pco_pedid'  => $pedido->ped_id,
-                    'pco_ppaid'  => $pedidoPago->ppa_id,
-                    'pco_archiv' => $p['comprobante_temp'],
-                    'pco_verifi' => false,
-                ]);
-            }
-        }
     }
 
     // ---------- Helpers ----------
 
+    /**
+     * El borrador ya NO necesita tener ptm_pago: el metodo de pago dejo de
+     * ser un requisito para crear el pedido.
+     */
     private function temporalCompleto(Usuario $usuario): PedidoTemporal
     {
         $temporal = PedidoTemporal::where('ptm_usuid', $usuario->usu_id)->first();
@@ -208,9 +151,6 @@ class PedidoService
         }
         if (empty($temporal->ptm_factura)) {
             throw ValidationException::withMessages(['facturacion' => 'Completá primero los datos de facturación.']);
-        }
-        if (empty($temporal->ptm_pago)) {
-            throw ValidationException::withMessages(['pago' => 'Completá primero el método de pago.']);
         }
 
         return $temporal;
@@ -275,10 +215,12 @@ class PedidoService
 
     /**
      * Reserva (sto_reserv), no descuenta (sto_cantid): el descuento
-     * definitivo y el movimiento_stock 'S' quedan para PagoService, cuando
-     * el admin confirma el pago (fuera del alcance de este paso).
-     * lockForUpdate() evita que dos confirmaciones simultáneas sobrevendan
-     * la última unidad.
+     * definitivo y el movimiento_stock 'S' quedan para StockPedidoService,
+     * cuando el admin confirma el pago.
+     *
+     * lockForUpdate() es lo que resuelve el problema original: dos
+     * confirmaciones simultaneas sobre la ultima unidad se ponen en fila, y
+     * la segunda falla ANTES de que ese cliente haya pagado.
      */
     private function reservarStock(Collection $carritoItems, array $entrega): void
     {
@@ -313,9 +255,8 @@ class PedidoService
     /**
      * Resolución simplificada del depósito de despacho: el principal de la
      * sucursal de retiro elegida, o el de la sucursal principal de la
-     * empresa cuando es envío a domicilio. La resolución multi-sucursal
-     * por stock y tarifa (Parte 2 del checkout) queda para una etapa
-     * posterior — mismo TODO ya anotado en CheckoutEntregaService.
+     * empresa cuando es envío a domicilio. Tiene que coincidir con el
+     * criterio de StockPedidoService, que despues libera esa misma reserva.
      */
     private function resolverDeposito(array $entrega): ?Deposito
     {

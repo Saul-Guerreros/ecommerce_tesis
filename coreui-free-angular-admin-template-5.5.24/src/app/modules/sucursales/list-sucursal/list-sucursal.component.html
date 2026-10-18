@@ -52,7 +52,7 @@
           <th>Dirección</th>
           <th>Teléfono</th>
           <th class="text-center">Depósitos</th>
-          <th class="text-center">Retiro web</th>   <!-- nuevo -->
+          <th class="text-center">Tienda web</th>  <!-- nuevo -->
           <th class="text-center">Estado</th>
           <th class="text-end">Acciones</th>
         </tr>
@@ -71,9 +71,12 @@
           <td>{{ s.suc_telef || s.suc_cel || '-' }}</td>
           <td class="text-center">{{ s.depositos_count }}</td>
           <td class="text-center">
-            <c-badge [color]="s.suc_retiro ? 'success' : 'secondary'">
-              {{ s.suc_retiro ? 'Sí' : 'No' }}
-            </c-badge>
+            <c-badge [color]="s.suc_webstk ? 'success' : 'secondary'" class="me-1"
+                    title="Visible en Ver Stock en Tiendas">Stock</c-badge>
+            <c-badge [color]="s.suc_retiro ? 'success' : 'secondary'" class="me-1"
+                    title="Habilitada para retiro de pedidos web">Retiro</c-badge>
+            <c-badge [color]="s.suc_delivery ? 'success' : 'secondary'"
+                    title="Habilitada para envíos a domicilio">Delivery</c-badge>
           </td>
           <td class="text-center">
             <c-badge [color]="s.suc_estado === 1 ? 'success' : 'secondary'">

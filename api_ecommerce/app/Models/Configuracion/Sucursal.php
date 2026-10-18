@@ -13,13 +13,13 @@ class Sucursal extends Model
     protected $fillable = [
         'suc_empid', 'suc_ciuid', 'suc_nombre', 'suc_princi', 'suc_establ',
         'suc_direccion', 'suc_telef', 'suc_cel', 'suc_email', 'suc_estado',
-        'suc_retiro', 'suc_horario',
+        'suc_retiro', 'suc_horario', 'suc_webstk', 'suc_delivery',
     ];
 
     protected $casts = [
         'suc_id' => 'integer', 'suc_empid' => 'integer', 'suc_ciuid' => 'integer',
         'suc_princi' => 'integer', 'suc_estado' => 'integer', 'suc_creado' => 'datetime',
-        'suc_retiro' => 'boolean',
+        'suc_retiro' => 'boolean', 'suc_webstk' => 'boolean', 'suc_delivery' => 'boolean',
     ];
 
     public function empresa()
@@ -37,8 +37,21 @@ class Sucursal extends Model
         $this->attributes['suc_email'] = $value ? strtolower(trim($value)) : null;
     }
 
-        public function scopeParaRetiro($query)
+    public function scopeParaRetiro($query)
     {
         return $query->where('suc_estado', 1)->where('suc_retiro', true);
+    }
+
+    /**
+     * Sucursales que el administrador decidió exponer en el modal
+     * "Ver Stock en Tiendas" del detalle de producto.
+     *
+     * Se separa de scopeParaRetiro() a propósito: mostrar existencias y
+     * atender retiros son decisiones distintas. Una sucursal puede querer
+     * publicar su stock como referencia aunque no entregue pedidos web.
+     */
+    public function scopeVisibleEnStockWeb($query)
+    {
+        return $query->where('suc_estado', 1)->where('suc_webstk', true);
     }
 }

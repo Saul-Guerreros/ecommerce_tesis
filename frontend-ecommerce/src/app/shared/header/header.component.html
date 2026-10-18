@@ -170,13 +170,18 @@
           <span class="uk-badge" [hidden]="!(comparador.cantidad$ | async)">{{ comparador.cantidad$ | async }}</span>
         </a>
 
-                <!-- Cuenta del usuario: desplegable igual al de la plantilla -->
-        <a class="uk-navbar-item uk-link-muted tm-navbar-button" href="#" onclick="return false;"
-           aria-label="Mi cuenta" aria-haspopup="true">
-          <span uk-icon="user"></span>
-        </a>
+        <!-- Cuenta del usuario: desplegable igual al de la plantilla -->
+        <span class="ppp-anchor">
+          <a id="cuenta-toggle" class="uk-navbar-item uk-link-muted tm-navbar-button" href="#" onclick="return false;"
+            aria-label="Mi cuenta" aria-haspopup="true">
+            <span uk-icon="user"></span>
+          </a>
+          <app-pedidos-pendientes-popover #pendientesPopover
+            [activo]="!!user" [enHome]="esHome"></app-pedidos-pendientes-popover>
+        </span>
+
         <div #menuCuenta class="uk-padding-small uk-margin-remove tm-menu-cuenta"
-             uk-dropdown="pos: bottom-right; offset: -10; delay-hide: 200;">
+          uk-dropdown="pos: bottom-right; offset: -10; delay-hide: 200; toggle: #cuenta-toggle">
           @if (user) {
             <div class="tm-menu-cuenta-saludo">
               <div class="uk-text-meta">Hola,</div>
@@ -185,22 +190,19 @@
             <ul class="uk-nav uk-dropdown-nav">
               <li class="uk-nav-divider"></li>
               <!-- Funcionalidades futuras: visibles pero deshabilitadas -->
-              <li class="uk-disabled">
-                <a href="#" onclick="return false;" tabindex="-1" aria-disabled="true">
-                  Mis pedidos <span class="tm-pronto">Pronto</span>
+              <li>
+                <a routerLink="/mis-pedidos" (click)="cerrarMenuCuenta(menuCuenta)">
+                  Mis pedidos
+                  <span class="uk-badge ppp-badge-inline" *ngIf="pendientesPopover.cantidad > 0">
+                    {{ pendientesPopover.cantidad }}
+                  </span>
                 </a>
               </li>
-              <li class="uk-disabled">
-                <li>
+              <li>
                 <a routerLink="/favoritos" (click)="cerrarMenuCuenta(menuCuenta)">Favoritos</a>
-                </li>
-          
+              </li>
               <li>
                 <a routerLink="/perfil-del-cliente" (click)="cerrarMenuCuenta(menuCuenta)">Mi perfil</a>
-              </li>
-              <li class="uk-nav-divider"></li>
-              <li>
-                <a href="#" onclick="return false;" (click)="cerrarMenuCuenta(menuCuenta); logout()">Cerrar sesión</a>
               </li>
             </ul>
           } @else {
@@ -272,6 +274,7 @@
       <nav class="uk-card-body">
         <ul class="uk-nav uk-nav-default">
           <li *ngIf="!user"><a routerLink="/login">Iniciar sesión</a></li>
+                    <li *ngIf="user"><a routerLink="/mis-pedidos">Mis pedidos</a></li>
           <li *ngIf="user"><a routerLink="/perfil-del-cliente">Mi perfil</a></li>
           <li *ngIf="user"><a href="#" onclick="return false" (click)="logout()">Cerrar sesión</a></li>
         </ul>

@@ -62,10 +62,15 @@
         </div>
 
         <div class="col-md-8">
-          <label cLabel for="suc_direccion">Dirección</label>
+          <label cLabel for="suc_direccion">
+            Dirección <span class="text-danger" *ngIf="requiereDireccion">*</span>
+          </label>
           <input cFormControl id="suc_direccion" formControlName="suc_direccion" maxlength="100" />
           <div class="text-danger small" *ngIf="campoInvalido('suc_direccion')">
             {{ errorBackend('suc_direccion') || 'Máximo 100 caracteres.' }}
+          </div>
+          <div class="text-danger small" *ngIf="faltaDireccion && !errorBackend('suc_direccion')">
+            Obligatoria mientras la sucursal esté publicada en la tienda web.
           </div>
         </div>
 
@@ -95,20 +100,57 @@
           </div>
         </div>
 
-                <div class="col-md-4">
-          <div class="form-check form-switch mt-4">
-            <input cFormCheckInput type="checkbox" role="switch" id="suc_retiro"
-                   formControlName="suc_retiro" />
-            <label cFormCheckLabel for="suc_retiro">Habilitada para retiro de pedidos web</label>
-          </div>
-        </div>
-
-        <div class="col-md-8">
+        <div class="col-md-12">
           <label cLabel for="suc_horario">Horario de atención</label>
           <input cFormControl id="suc_horario" formControlName="suc_horario"
                  placeholder="Lun a Vie 8:00 a 18:00 · Sáb 8:00 a 13:00" maxlength="150" />
           <div class="text-danger small" *ngIf="campoInvalido('suc_horario')">
             {{ errorBackend('suc_horario') }}
+          </div>
+        </div>
+
+        <!-- ============ Visibilidad en la tienda web ============ -->
+        <div class="col-12">
+          <hr class="my-2" />
+          <h6 class="mb-1">Visibilidad en la tienda web</h6>
+          <p class="text-muted small mb-3">
+            Define qué ve el cliente de esta sucursal en el ecommerce.
+            Una sucursal inactiva nunca se muestra, sin importar estos switches.
+          </p>
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="form-check form-switch">
+                <input cFormCheckInput type="checkbox" role="switch" id="suc_webstk"
+                       formControlName="suc_webstk" />
+                <label cFormCheckLabel for="suc_webstk">Mostrar stock en la tienda web</label>
+              </div>
+              <div class="text-muted small">
+                Aparece en “Ver Stock en Tiendas” del detalle de producto.
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="form-check form-switch">
+                <input cFormCheckInput type="checkbox" role="switch" id="suc_retiro"
+                       formControlName="suc_retiro" />
+                <label cFormCheckLabel for="suc_retiro">Habilitada para retiro</label>
+              </div>
+              <div class="text-muted small">
+                El cliente puede elegirla en el Checkout para retirar su pedido.
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="form-check form-switch">
+                <input cFormCheckInput type="checkbox" role="switch" id="suc_delivery"
+                       formControlName="suc_delivery" />
+                <label cFormCheckLabel for="suc_delivery">Habilitada para delivery</label>
+              </div>
+              <div class="text-muted small">
+                La sucursal despacha envíos a domicilio.
+              </div>
+            </div>
           </div>
         </div>
 

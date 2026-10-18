@@ -42,8 +42,10 @@ class SucursalRequest extends FormRequest
             'suc_cel'       => ['nullable', 'string', 'max:20'],
             'suc_email'     => ['nullable', 'email', 'max:60'],
             'suc_estado'    => ['nullable', 'integer', 'in:0,1'],
-            'suc_retiro'    => ['nullable', 'boolean'],              // <-- nuevo
-            'suc_horario'   => ['nullable', 'string', 'max:150'],    // <-- nuevo
+            'suc_retiro'    => ['nullable', 'boolean'],
+            'suc_horario'   => ['nullable', 'string', 'max:150'],
+            'suc_webstk'    => ['nullable', 'boolean'],   // visible en "Ver Stock en Tiendas"
+            'suc_delivery'  => ['nullable', 'boolean'],   // despacha envíos a domicilio
         ];
     }
 
@@ -76,6 +78,16 @@ class SucursalRequest extends FormRequest
                 $validator->errors()->add(
                     'suc_direccion',
                     'Una sucursal habilitada para retiro necesita dirección.'
+                );
+            }
+
+            // Misma lógica para el modal de stock: la tarjeta de cada
+            // sucursal muestra dirección y horario. Publicar una sucursal
+            // sin dirección dejaría una tarjeta incompleta en la tienda.
+            if ($this->boolean('suc_webstk') && blank($this->input('suc_direccion'))) {
+                $validator->errors()->add(
+                    'suc_direccion',
+                    'Una sucursal visible en la consulta de stock web necesita dirección.'
                 );
             }
         });

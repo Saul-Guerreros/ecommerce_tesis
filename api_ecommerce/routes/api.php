@@ -75,6 +75,10 @@ use App\Http\Controllers\Admin\Pedido\PedidoController;
 
 use App\Http\Controllers\Admin\Pedido\PedidoGestionController;
 
+use App\Http\Controllers\Pedido\PagoPedidoController;
+
+use App\Http\Controllers\Pedido\PedidoClienteController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -120,6 +124,7 @@ Route::group([
     Route::get('home', [VitrinaController::class, 'home']);
     Route::get('sliders', [VitrinaController::class, 'sliders']);
     Route::get('producto/{slug}', [VitrinaController::class, 'detalle']);
+    Route::get('producto/{slug}/stock-sucursales', [VitrinaController::class, 'stockSucursales']);   // <-- nueva
 
      // NUEVO — filtro avanzado / catálogo con búsqueda:
     Route::get('productos/filtros', [VitrinaController::class, 'configFiltros']);
@@ -140,15 +145,6 @@ Route::group([
     // MÓDULO 6 - ChatBot (público: invitado o cliente con JWT).
     Route::post('chat/mensajes', [ChatController::class, 'enviar'])->middleware('throttle:chat');
     Route::get('chat/{token}', [ChatController::class, 'historial'])->whereUuid('token')->middleware('throttle:60,1');
-
-    Route::get('checkout/facturacion',  [CheckoutController::class, 'configFacturacion']);
-    Route::post('checkout/facturacion', [CheckoutController::class, 'guardarFacturacion']);
-
-    Route::get('checkout/pago',  [CheckoutController::class, 'configPago']);
-    Route::post('checkout/pago', [CheckoutController::class, 'guardarPago']);
-
-        Route::get('checkout/pago',  [CheckoutController::class, 'configPago']);
-    Route::post('checkout/pago', [CheckoutController::class, 'guardarPago']);
 
     // Catálogo de estados de Solicitud de Crédito (público: se usa para
     // leyendas antes de loguear, ej. en "Mis Solicitudes").
@@ -177,16 +173,27 @@ Route::group([
     Route::apiResource('carrito', CarritoController::class)
         ->only(['index', 'store', 'update', 'destroy']);
 
-     // --- Checkout (modulo transaccional M3) ---
+    // --- Checkout (módulo transaccional M3) ---
+    // Paso 1: Entrega
     Route::get('checkout/entrega',  [CheckoutController::class, 'configEntrega']);
     Route::post('checkout/entrega', [CheckoutController::class, 'guardarEntrega']);
 
-        // --- Paso 3: Confirmación ---
-    Route::get('checkout/confirmacion', [CheckoutController::class, 'configConfirmacion']);   // <-- nuevo
-    Route::post('checkout/confirmar',   [CheckoutController::class, 'confirmar']);            // <-- nuevo
-   
-        Route::get('checkout/confirmacion', [CheckoutController::class, 'configConfirmacion']);
+    // Paso 2: Facturación + Confirmar Pedido (crea el pedido y reserva stock)
+    Route::get('checkout/facturacion',  [CheckoutController::class, 'configFacturacion']);
+    Route::post('checkout/facturacion', [CheckoutController::class, 'guardarFacturacion']);
     Route::post('checkout/confirmar',   [CheckoutController::class, 'confirmar']);
+
+       // --- Mis Pedidos + Paso 3 (Pago de un pedido ya creado) ---
+    Route::prefix('pedidos')->group(function () {
+       Route::get('pendientes', [PedidoClienteController::class, 'pendientes']);
+        Route::get('/', [PedidoClienteController::class, 'index']);
+        Route::get('{numero}', [PedidoClienteController::class, 'show']);
+        Route::get('{numero}/pagos/{pago}/comprobante', [PedidoClienteController::class, 'comprobante']);
+
+        Route::get('{numero}/pago', [PagoPedidoController::class, 'config']);
+        Route::post('{numero}/pago', [PagoPedidoController::class, 'registrar']);
+        Route::get('{numero}/resultado', [PagoPedidoController::class, 'resultado']);
+    });
 
     // --- Solicitud de Crédito (continúa el flujo del Carrito a Crédito) ---
     Route::get('credito/config', [SolicitudCreditoController::class, 'config']);
@@ -544,8 +551,8 @@ Route::prefix('admin/pedidos')->middleware('auth:api')->group(function () {
 
     Route::get('/{pedido}/pagos/{pago}/comprobante', [PedidoGestionController::class, 'comprobante'])
     ->middleware('permiso:pedidos.ver');
+});
 
-        });
 
 Route::get('publicaciones', [PublicacionWebController::class, 'index']);
 

@@ -1,0 +1,77 @@
+<div class="uk-container uk-margin-large-top uk-margin-large-bottom">
+  <h2 class="uk-margin-remove-bottom">Mis Pedidos</h2>
+
+  <!-- Pestañas de filtro -->
+  <ul class="mp-tabs uk-margin-small-top">
+    <li *ngFor="let t of pestanas" [class.mp-tab--activa]="filtro === t.valor">
+      <button type="button" (click)="cambiarFiltro(t.valor)">{{ t.etiqueta }}</button>
+    </li>
+  </ul>
+
+  <p class="mp-descripcion uk-text-meta uk-margin-remove uk-margin-medium-bottom">
+    {{ descripcionFiltro }}
+  </p>
+
+  <div *ngIf="cargando" class="uk-text-center uk-margin-large">
+    <div uk-spinner="ratio: 1.5"></div>
+  </div>
+
+  <div *ngIf="!cargando && pedidos.length === 0" class="uk-text-center uk-margin-large">
+    <span uk-icon="icon: cart; ratio: 2.5" class="uk-text-muted"></span>
+    <p class="uk-text-meta">No tenés pedidos en esta categoría.</p>
+    <a routerLink="/" class="uk-button uk-button-primary">Ir a la tienda</a>
+  </div>
+
+  <div *ngIf="!cargando && pedidos.length > 0" class="mp-lista">
+    <div class="mp-fila uk-card uk-card-default uk-card-body"
+         *ngFor="let p of pedidos" (click)="verDetalle(p.ped_numero)">
+
+      <div class="mp-fila-top">
+        <div>
+          <strong>Pedido Nº {{ p.ped_numero }}</strong>
+          <div class="uk-text-meta uk-text-small">
+            {{ p.ped_creado | date:'dd/MM/yyyy HH:mm' }} · {{ p.entrega.etiqueta }}
+          </div>
+        </div>
+        <div class="uk-text-right">
+          <div class="uk-text-bold">{{ p.ped_total | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+        </div>
+      </div>
+
+      <div class="mp-fila-bottom">
+        <div class="mp-badges">
+          <!-- Mismas dos etiquetas que en el detalle: "Estado" (dónde va
+               el pedido) y "Pago" (si ya se verificó) son cosas distintas
+               y, sin el prefijo, se leen como información repetida. -->
+          <span class="mp-badge-grupo">
+            <span class="mp-badge-etiqueta">Estado:</span>
+            <span class="uk-label" [ngClass]="claseEstadoPedido(p.estado_pedido.codigo)">
+              {{ p.estado_pedido.descripcion }}
+            </span>
+          </span>
+          <span class="mp-badge-grupo">
+            <span class="mp-badge-etiqueta">Pago:</span>
+            <span class="uk-label" [ngClass]="claseEstadoPago(p.estado_pago.codigo)">
+              {{ p.estado_pago.descripcion }}
+            </span>
+          </span>
+          <span class="uk-text-meta uk-text-small" *ngIf="p.pagable">
+            {{ restante(p.ped_vence) }}
+          </span>
+        </div>
+
+        <button *ngIf="p.pagable" type="button" class="uk-button uk-button-primary uk-button-small"
+                (click)="pagarAhora($event, p.ped_numero)">
+          Pagar ahora
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paginación simple -->
+  <ul class="uk-pagination uk-flex-center uk-margin-top" *ngIf="!cargando && ultimaPagina > 1">
+    <li [class.uk-disabled]="pagina === 1"><a (click)="irAPagina(pagina - 1)">«</a></li>
+    <li class="uk-active"><span>{{ pagina }} / {{ ultimaPagina }}</span></li>
+    <li [class.uk-disabled]="pagina === ultimaPagina"><a (click)="irAPagina(pagina + 1)">»</a></li>
+  </ul>
+</div>

@@ -1,0 +1,233 @@
+/*
+ * Copiado de paso-facturacion.component.css: los estilos de componente de
+ * Angular no se comparten entre componentes aunque usen las mismas clases
+ * (ck-opcion, ck-dato-pago, ck-upload, ck-layout, etc.), así que este
+ * bloque tiene que existir en los dos archivos.
+ */
+
+.ck-opcion {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--uk-global-border, #e5e5e5);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ck-opcion:hover {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+}
+
+.ck-opcion--activa {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+  background-color: rgba(30, 135, 240, 0.06);
+}
+
+.ck-radio {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 20px;
+  margin-bottom: 10px;
+  border: 1px solid var(--uk-global-border, #e5e5e5);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ck-radio:hover {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+}
+
+.ck-radio--activa {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+  background-color: rgba(30, 135, 240, 0.06);
+}
+
+.ck-radio input[type='radio'] {
+  margin: 4px 0 0;
+  flex: 0 0 auto;
+}
+
+.ck-radio > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ck-radio:last-of-type {
+  margin-bottom: 0;
+}
+
+.ck-barra-botones {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.ck-barra-botones .uk-button {
+  min-width: 305px;
+}
+
+.ck-btn-volver {
+  background-color: var(--uk-global-primary-background, #1e87f0);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.ck-btn-volver:hover,
+.ck-btn-volver:focus {
+  background-color: #0f7ae8;
+  color: #fff;
+}
+
+@media (max-width: 639px) {
+  .ck-barra-botones {
+    gap: 12px;
+  }
+  .ck-barra-botones .uk-button {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
+
+:host {
+  display: block;
+  --ck-ancho: min(1350px, calc(100vw - 80px));
+  width: var(--ck-ancho);
+  margin-left: calc(50% - var(--ck-ancho) / 2);
+}
+
+.ck-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  align-items: start;
+  gap: 30px;
+  margin-top: 30px;
+}
+
+.ck-col-lateral {
+  margin-top: 0;
+}
+
+.ck-resumen {
+  text-align: center;
+}
+
+.ck-resumen .uk-flex-between {
+  text-align: left;
+}
+
+@media (max-width: 959px) {
+  .ck-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
+.ck-dato-pago {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--uk-global-border, #e5e5e5);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.ck-opcion--centrada {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  padding: 24px 16px;
+  gap: 8px;
+  min-height: 140px;
+}
+
+.ck-opcion--centrada [uk-icon] {
+  margin-bottom: 2px;
+}
+
+.ck-opcion--centrada small {
+  color: #767676;
+  line-height: 1.3;
+}
+
+.ck-upload {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ck-upload-nombre {
+  font-size: 0.875rem;
+  color: #333;
+}
+
+.ck-upload-nombre--vacio {
+  color: #999;
+}
+
+/* El pago dividido elige el metodo dentro de cada bloque: aca los tres
+   botones pasan a ser un indicador de que datos se estan mostrando. */
+.ck-opcion--informativa {
+  cursor: default;
+}
+
+.ck-opcion--informativa:hover {
+  border-color: var(--uk-global-border, #e5e5e5);
+}
+
+.ck-opcion--informativa.ck-opcion--activa:hover {
+  border-color: var(--uk-global-primary-background, #1e87f0);
+}
+
+.ck-opcion:disabled {
+  opacity: 1; /* no es un control inhabilitado, es informativo */
+}
+
+/* ---------- Propio del Paso 3 ---------- */
+
+/* Padding reducido respecto del uk-card-body estándar: es una tarjeta de
+   cabecera con dos líneas de texto, no necesita el alto de las tarjetas
+   de contenido. */
+.pg-cabecera.uk-card-body {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.pg-cabecera {
+  border-left: 4px solid #1e87f0;
+
+  /* uk-card-body trae 40px de padding: demasiado para una cabecera que
+     sólo lleva dos líneas de texto. Ajustá estos valores para cambiarle
+     el alto (vertical / horizontal). */
+  padding: 18px 30px;
+}
+
+.pg-cabecera h4 {
+  font-weight: 600;
+}
+
+/* Texto suelto entre la cabecera y "¿Cómo deseas pagar?": sin recuadro ni
+   fondo, sólo la palabra "Advertencia" destacada en rojo. */
+.pg-advertencia {
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.pg-advertencia strong {
+  color: #f0506e;
+}
