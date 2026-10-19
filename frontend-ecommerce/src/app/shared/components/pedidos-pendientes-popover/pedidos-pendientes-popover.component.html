@@ -41,9 +41,12 @@
         </div>
 
         <div class="ppp-monto">{{ p.ped_total | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
-        <div class="ppp-vence">Vence en {{ restante(p.ped_vence) }}</div>
+        <div class="ppp-vence">
+          <span *ngIf="p.estado_pago === 'RECHAZADO'" class="ppp-rechazado">Comprobante rechazado · </span>
+          Vence en {{ restante(p.ped_vence) }}
+        </div>
 
-        <button type="button" class="ppp-pagar" (click)="pagarAhora(p.ped_numero)">Pagar ahora</button>
+        <button type="button" class="ppp-pagar" (click)="accion(p)">{{ etiquetaAccion(p) }}</button>
       </div>
     </div>
   </div>

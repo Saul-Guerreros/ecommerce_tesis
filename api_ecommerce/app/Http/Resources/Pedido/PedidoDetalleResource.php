@@ -47,6 +47,15 @@ class PedidoDetalleResource extends JsonResource
                 'descripcion' => $this->estadoPedido?->est_descri,
             ],
 
+            // Los dos relojes del documento de máquinas de estado (pago y
+            // retiro) nunca corren a la vez: en la práctica sólo uno de
+            // los dos llega con valor. Se devuelven los dos de todas
+            // formas, sin resolver cuál mostrar — esa es decisión de
+            // presentación del Angular, no del backend.
+            'ped_vence'   => $this->ped_vence?->toIso8601String(),
+            'ped_vencret' => $this->ped_vencret?->toIso8601String(),
+            'retiro_vencido' => $this->retiroVencido(),
+
             // Combo «Cambiar estado»: lo arma PedidoEstadoService y llega
             // por withTransiciones() desde el controlador.
             'transiciones' => $this->additional['transiciones'] ?? [],

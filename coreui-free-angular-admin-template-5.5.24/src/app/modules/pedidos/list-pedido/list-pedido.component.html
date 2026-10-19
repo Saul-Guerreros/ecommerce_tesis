@@ -143,6 +143,22 @@
       </button>
     </c-alert>
 
+    <!-- ====== ALERTA DE RETIROS VENCIDOS ======
+         Son pedidos ya pagados que el barrido automático NO pudo cerrar
+         solo (si no tuvieran pago confirmado, el cron ya los habría
+         cancelado): necesitan que el admin decida — extender el plazo,
+         mandarlos a domicilio, o devolver el dinero. -->
+    <c-alert color="danger" class="py-2 d-flex justify-content-between align-items-center"
+             *ngIf="retirosVencidos > 0">
+      <span>
+        <strong>{{ retirosVencidos }}</strong>
+        {{ retirosVencidos === 1 ? 'retiro vencido con pago confirmado' : 'retiros vencidos con pago confirmado' }}
+      </span>
+      <button cButton color="danger" variant="outline" size="sm" (click)="verRetirosVencidos()">
+        Ver retiros vencidos
+      </button>
+    </c-alert>
+
     <!-- ====== CONTADOR ====== -->
     <div class="text-muted small mb-2" *ngIf="!cargando">
       {{ total }} pedido(s) encontrado(s)
@@ -166,6 +182,7 @@
             <th>Método de pago</th>
             <th>Verif. pago</th>
             <th>Pedido</th>
+            <th>Retiro</th>
             <th class="text-end">Acción</th>
           </tr>
         </thead>
@@ -207,6 +224,16 @@
               </c-badge>
             </td>
 
+            <!-- Sólo tiene valor con el pedido en LISTO y entrega RETIRO.
+                 'vencido' lo calcula el backend (ped_vencret < now()): no
+                 se recalcula acá para no desincronizarse con el barrido. -->
+            <td>
+              <span *ngIf="p.retiro as r" class="small" [class.text-danger]="r.vencido" [class.fw-bold]="r.vencido">
+                {{ r.vencido ? '⚠ ' : '' }}{{ textoRetiro(r.vence) }}
+              </span>
+              <span *ngIf="!p.retiro" class="text-muted small">—</span>
+            </td>
+
             <td class="text-end">
               <button cButton size="sm" color="info" class="text-white"
                       (click)="verPedido(p); $event.stopPropagation()">Ver</button>
@@ -214,7 +241,7 @@
           </tr>
 
           <tr *ngIf="pedidos.length === 0">
-            <td colspan="9" class="text-center py-4 text-muted">
+            <td colspan="10" class="text-center py-4 text-muted">
               No se encontraron pedidos con los criterios aplicados.
             </td>
           </tr>

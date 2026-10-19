@@ -107,6 +107,23 @@
           <div class="text-danger small" *ngIf="campoInvalido('suc_horario')">
             {{ errorBackend('suc_horario') }}
           </div>
+          <div class="text-muted small">
+            Es el texto que ve el cliente. No se usa para calcular nada — abajo se marcan
+            los días reales, que es lo que el sistema usa para el plazo de retiro.
+          </div>
+        </div>
+
+        <div class="col-md-12" formArrayName="suc_diaslab_dias">
+          <label cLabel>Días laborables (plazo de retiro en días hábiles)</label>
+          <div class="d-flex flex-wrap gap-3">
+            <div class="form-check form-check-inline" *ngFor="let dia of etiquetasDias; let i = index">
+              <input cFormCheckInput type="checkbox" [id]="'suc_diaslab_' + i" [formControlName]="i" />
+              <label cFormCheckLabel [for]="'suc_diaslab_' + i">{{ dia }}</label>
+            </div>
+          </div>
+          <div class="text-danger small" *ngIf="!tieneAlMenosUnDiaLaborable">
+            Marque al menos un día: sin esto, el plazo de retiro de los pedidos nunca se cumple.
+          </div>
         </div>
 
         <!-- ============ Visibilidad en la tienda web ============ -->

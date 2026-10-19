@@ -20,7 +20,7 @@ class Pedido extends Model
     protected $fillable = [
         'ped_numero', 'ped_cliid', 'ped_subtot', 'ped_impues', 'ped_cosenv', 'ped_total',
         'ped_tenid', 'ped_sucid', 'ped_mpaid', 'ped_pagdiv', 'ped_estid', 'ped_epaid',
-        'ped_vence', 'ped_obsint',
+        'ped_vence', 'ped_vencret', 'ped_obsint',
     ];
 
     protected $casts = [
@@ -30,6 +30,7 @@ class Pedido extends Model
         'ped_total'  => 'decimal:2',
         'ped_pagdiv' => 'boolean',
         'ped_vence'  => 'datetime',
+        'ped_vencret' => 'datetime',
         'ped_creado' => 'datetime',
         'ped_actual' => 'datetime',
     ];
@@ -71,6 +72,81 @@ class Pedido extends Model
             'estadoPago',
             fn ($q) => $q->where('epa_codigo', EstadoPago::PENDIENTE_PAGO)
         );
+    }
+
+    /**
+     * Estados de pago en los que la reserva sigue viva pero el pedido
+     * todavia no se cobro, y por lo tanto puede vencer:
+     *
+     *   - PENDIENTE_PAGO: el cliente nunca declaro nada (checkout
+     *     abandonado en el Paso 3).
+     *   - RECHAZADO: el admin rechazo su comprobante y le reabrio el
+     *     plazo para subir otro. Si no lo sube, la reserva no puede
+     *     quedar tomada para siempre.
+     */
+    public const ESTADOS_PAGO_EXPIRABLES = [
+        EstadoPago::PENDIENTE_PAGO,
+        EstadoPago::RECHAZADO,
+    ];
+
+    public function scopeConPagoExpirable($query)
+    {
+        return $query->whereHas(
+            'estadoPago',
+            fn ($q) => $q->whereIn('epa_codigo', self::ESTADOS_PAGO_EXPIRABLES)
+        );
+    }
+
+    /**
+     * Hay plata del cliente en el pedido: al menos un pago ya confirmado.
+     *
+     * Es la condicion que impide que una tarea automatica cancele el
+     * pedido. Pasa con el pago dividido: se confirmo la transferencia y
+     * se rechazo el segundo comprobante. Cancelarlo solo dejaria a la
+     * tienda con el dinero Y la mercaderia; eso necesita que una persona
+     * contacte al cliente, igual que el caso del retiro vencido ya pagado.
+     */
+    // ---------- Plazo de retiro en sucursal ----------
+
+    public function esRetiro(): bool
+    {
+        return $this->tipoEntrega?->ten_codigo === TipoEntrega::RETIRO;
+    }
+
+    /**
+     * Se le pasó el plazo para venir a buscar el pedido.
+     *
+     * Distinto de vencido(), que mira el plazo de PAGO. Los dos relojes
+     * nunca corren a la vez, así que nunca hay ambigüedad sobre cuál
+     * mirar: si ped_vencret tiene valor, el pedido ya está LISTO y su
+     * pago dejó de estar pendiente hace rato.
+     */
+    public function retiroVencido(): bool
+    {
+        return $this->ped_vencret !== null && $this->ped_vencret->isPast();
+    }
+
+    public function tienePagoConfirmado(): bool
+    {
+        return $this->pagos()
+            ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', EstadoPago::CONFIRMADO))
+            ->exists();
+    }
+
+    /**
+     * La reserva de este pedido puede liberarse de forma automatica.
+     *
+     * Reemplaza a pagable() como criterio del barrido: pagable() responde
+     * "el cliente puede entrar a pagar en el Paso 3", que es una pregunta
+     * distinta y mas estrecha (solo PENDIENTE_PAGO).
+     */
+    public function expirable(): bool
+    {
+        return in_array($this->estadoPago?->epa_codigo, self::ESTADOS_PAGO_EXPIRABLES, true)
+            && $this->vencido()
+            && $this->estadoPedido?->est_codigo !== EstadoPedido::CANCELADO
+            && $this->estadoPedido?->est_codigo !== EstadoPedido::ENTREGADO
+            && !$this->tienePagoConfirmado();
     }
 
     // ---------- Relaciones ----------

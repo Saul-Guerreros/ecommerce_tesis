@@ -139,8 +139,24 @@ export class PedidosPendientesPopoverComponent implements OnInit, OnChanges, OnD
     return horas > 0 ? `${horas} h ${minutos} min` : `${minutos} min`;
   }
 
-  pagarAhora(numero: string): void {
+  /**
+   * Dos destinos posibles, según por qué el pedido sigue pendiente:
+   *   - PENDIENTE_PAGO: nunca declaró su pago -> Paso 3 (pantalla de pago).
+   *   - RECHAZADO: tiene un comprobante a corregir -> detalle del pedido,
+   *     donde está el formulario de reemplazo. Mandarlo al Paso 3 en este
+   *     caso devuelve 422 ("ya tiene un pago registrado").
+   */
+  accion(p: PedidoPendienteItem): void {
     this.cerrar();
-    this.router.navigate(['/proceso-de-pago/pago', numero]);
+
+    const destino = p.estado_pago === 'RECHAZADO'
+      ? ['/mis-pedidos', p.ped_numero]
+      : ['/proceso-de-pago/pago', p.ped_numero];
+
+    this.router.navigate(destino);
+  }
+
+  etiquetaAccion(p: PedidoPendienteItem): string {
+    return p.estado_pago === 'RECHAZADO' ? 'Corregir comprobante' : 'Pagar ahora';
   }
 }

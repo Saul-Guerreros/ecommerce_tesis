@@ -1,0 +1,114 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Facturas de Venta</strong>
+    <span class="text-muted small">
+      Se emiten automáticamente al confirmar el pago o al entregar el pedido
+    </span>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar por N° de factura, cliente o RUC/CI..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="">Todos los estados</option>
+          <option *ngFor="let e of estados" [value]="e.valor">{{ e.descripcion }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input cFormControl type="date" [(ngModel)]="filtroDesde" (ngModelChange)="cargar()" />
+      </div>
+      <div class="col-md-2">
+        <input cFormControl type="date" [(ngModel)]="filtroHasta" (ngModelChange)="cargar()" />
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">
+          Limpiar
+        </button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">
+      {{ ventas.length }} factura(s) encontrada(s)
+    </div>
+
+    <div class="text-center py-4" *ngIf="cargando">
+      <c-spinner color="primary"></c-spinner>
+    </div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>N°</th>
+          <th>Cliente</th>
+          <th>Documento</th>
+          <th>Factura</th>
+          <th>Fecha</th>
+          <th class="text-end">Total</th>
+          <th class="text-center">Estado</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let v of ventas">
+          <td>{{ v.ven_id }}</td>
+          <td>{{ v.ven_razonsocial }}</td>
+          <td>{{ identificacion(v) }}</td>
+          <td>{{ v.ven_nrodoc }}</td>
+          <td>{{ v.ven_fchaem }}</td>
+          <td class="text-end">{{ v.ven_total | number:'1.0-2' }}</td>
+          <td class="text-center">
+            <c-badge [color]="colorEstado(v.ven_estado)">{{ textoEstado(v.ven_estado) }}</c-badge>
+          </td>
+          <td class="text-end">
+            <button cButton size="sm" color="secondary" class="me-2 text-white"
+                    [disabled]="cargandoVer" (click)="abrirVer(v)">Ver</button>
+            <button cButton size="sm" color="danger" class="me-2 text-white"
+                    *ngIf="v.ven_estado !== 9" (click)="pedirAnular(v)">Anular</button>
+          </td>
+        </tr>
+        <tr *ngIf="ventas.length === 0">
+          <td colspan="8" class="text-center">No hay facturas de venta emitidas</td>
+        </tr>
+      </tbody>
+    </table>
+  </c-card-body>
+</c-card>
+
+<app-ver-venta
+  [visible]="verModalVisible"
+  [venta]="ventaSeleccionada"
+  (visibleChange)="verModalVisible = $event"
+  (anular)="pedirAnular($event)">
+</app-ver-venta>
+
+<!-- Confirmacion de anulacion: mismo modal se dispare desde el listado o
+     desde el footer del modal Ver. -->
+<c-modal [visible]="anularModalVisible" (visibleChange)="anularModalVisible = $event">
+  <c-modal-header><h5 cModalTitle>Confirmar anulación</h5></c-modal-header>
+  <c-modal-body>
+    <p>
+      ¿Anular la factura <strong>{{ ventaAAnular?.ven_nrodoc }}</strong>
+      de {{ ventaAAnular?.ven_razonsocial }}?
+    </p>
+    <p class="text-muted small">
+      El número del timbrado queda consumido: un documento fiscal no se borra ni se
+      renumera. El stock <strong>no</strong> se devuelve — eso requiere una nota de
+      crédito, que es un proceso aparte.
+    </p>
+    <div class="mb-2">
+      <label class="form-label">Motivo (opcional)</label>
+      <input cFormControl [(ngModel)]="motivoAnulacion" maxlength="255"
+             placeholder="Ej.: datos de facturación incorrectos" />
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cancelarAnular()">Cancelar</button>
+    <button cButton color="danger" class="text-white" [disabled]="anulando" (click)="confirmarAnular()">
+      {{ anulando ? 'Anulando...' : 'Anular' }}
+    </button>
+  </c-modal-footer>
+</c-modal>

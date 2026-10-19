@@ -23,7 +23,14 @@ class EstadoPago extends Model
      */
     public const PENDIENTE_PAGO = 'PENDIENTE_PAGO';
 
-    public const PENDIENTE = 'PENDIENTE';
+    /**
+     * El cliente declaró su pago (subió comprobante o eligió contra
+     * entrega) y falta que el admin lo verifique. Antes se llamaba
+     * PENDIENTE a secas; se renombra para que el código hable igual que
+     * el documento de máquinas de estado y no se confunda con
+     * PENDIENTE_PAGO, que es un momento anterior y distinto.
+     */
+    public const PAGO_VERIFICAR = 'PAGO_VERIFICAR';
     public const CONFIRMADO = 'CONFIRMADO';
     public const RECHAZADO = 'RECHAZADO';
     public const PARCIAL    = 'PARCIAL';

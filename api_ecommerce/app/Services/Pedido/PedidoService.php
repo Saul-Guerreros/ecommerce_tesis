@@ -94,7 +94,7 @@ class PedidoService
                 'ped_mpaid'  => null,
                 'ped_pagdiv' => false,
 
-                'ped_estid'  => EstadoPedido::porCodigo(EstadoPedido::PENDIENTE)->est_id,
+                'ped_estid'  => EstadoPedido::porCodigo(EstadoPedido::PENDIENTE_PEDIDO)->est_id,
                 'ped_epaid'  => EstadoPago::porCodigo(EstadoPago::PENDIENTE_PAGO)->epa_id,
                 'ped_vence'  => now()->addHours(self::HORAS_PARA_PAGAR),
             ]);

@@ -17,6 +17,19 @@
             Creado: {{ pedido.creado }}
             <span class="ms-3">Última actualización: {{ pedido.actualizado }}</span>
           </div>
+
+          <!-- Los dos relojes nunca corren a la vez: a lo sumo uno de los
+               dos spans siguientes tiene algo que mostrar. -->
+          <div class="small mt-1" *ngIf="pedido.ped_vence">
+            <span class="text-warning">Plazo de pago: vence {{ pedido.ped_vence | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+          <div class="small mt-1" *ngIf="pedido.ped_vencret"
+               [class.text-danger]="pedido.retiro_vencido" [class.fw-bold]="pedido.retiro_vencido"
+               [class.text-muted]="!pedido.retiro_vencido">
+            Plazo de retiro: {{ pedido.retiro_vencido ? 'venció' : 'vence' }}
+            {{ pedido.ped_vencret | date:'dd/MM/yyyy' }}
+            <span *ngIf="pedido.retiro_vencido"> — el cliente ya pagó, requiere resolución manual</span>
+          </div>
         </div>
 
         <div class="d-flex gap-2">

@@ -34,6 +34,13 @@ class PedidoPendienteResource extends JsonResource
             'ped_total'  => (float) $this->ped_total,
             'ped_vence'  => $this->ped_vence?->toIso8601String(),
 
+            // El frontend necesita distinguir los dos casos que cubre
+            // Pedido::ESTADOS_PAGO_EXPIRABLES: uno manda al cliente al
+            // Paso 3 ("Pagar ahora"), el otro a "Mis Pedidos" a reemplazar
+            // el comprobante ("Corregir comprobante") — son pantallas
+            // distintas y mandarlo a la que no corresponde devuelve 422.
+            'estado_pago' => $this->estadoPago?->epa_codigo,
+
             'producto' => $primero ? [
                 'imagen'   => $this->urlImagen($imagen?->img_url),
                 'nombre'   => $primero->dpd_descri,

@@ -20,6 +20,26 @@
       </button>
     </div>
 
+    <!-- Plazo de retiro en sucursal. No es excluyente con el aviso de
+         pago de arriba por construcción (los dos relojes del documento
+         nunca corren a la vez), pero el color sí depende de si ya venció:
+         un retiro vencido no cancela el pedido solo, así que el cliente
+         necesita verlo igual para saber que debe acercarse o contactar
+         a la tienda. -->
+    <div class="uk-alert uk-margin" uk-alert
+         [ngClass]="retiroVencido() ? 'uk-alert-danger' : 'uk-alert-primary'"
+         *ngIf="pedido.ped_vencret">
+      <p class="uk-margin-remove">
+        <ng-container *ngIf="!retiroVencido()">
+          Tenés hasta {{ pedido.ped_vencret | date:'dd/MM/yyyy' }} para retirar tu pedido en sucursal.
+        </ng-container>
+        <ng-container *ngIf="retiroVencido()">
+          El plazo para retirar tu pedido venció el {{ pedido.ped_vencret | date:'dd/MM/yyyy' }}.
+          Contactá a la tienda para coordinar el retiro.
+        </ng-container>
+      </p>
+    </div>
+
     <div class="pd-layout">
       <div class="pd-col-principal">
 
@@ -77,17 +97,53 @@
         <div class="uk-card uk-card-default uk-card-body uk-margin" *ngIf="pedido.pagos.length > 0">
           <h4 class="uk-card-title">Pagos</h4>
 
-          <div class="pd-pago" *ngFor="let pago of pedido.pagos">
-            <div>
-              <strong>Pago {{ pago.orden }} · {{ pago.metodo }}</strong>
-              <div class="uk-text-meta uk-text-small">{{ pago.estado_descri }}</div>
+          <div *ngFor="let pago of pedido.pagos">
+            <div class="pd-pago">
+              <div>
+                <strong>Pago {{ pago.orden }} · {{ pago.metodo }}</strong>
+                <div class="uk-text-meta uk-text-small">{{ pago.estado_descri }}</div>
+              </div>
+              <div class="uk-text-right">
+                <div class="uk-text-bold">{{ pago.monto | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+                <button *ngIf="pago.tiene_comprobante" type="button" class="uk-button uk-button-text uk-text-small"
+                        (click)="abrirComprobante(pago.comprobante_url)">
+                  Ver comprobante
+                </button>
+              </div>
             </div>
-            <div class="uk-text-right">
-              <div class="uk-text-bold">{{ pago.monto | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
-              <button *ngIf="pago.tiene_comprobante" type="button" class="uk-button uk-button-text uk-text-small"
-                      (click)="abrirComprobante(pago.comprobante_url)">
-                Ver comprobante
-              </button>
+
+            <!-- Motivo del rechazo: se muestra siempre que el pago esté
+                 rechazado, incluso si ya no se puede corregir (plazo
+                 vencido, pedido cancelado). El cliente tiene derecho a
+                 saber por qué, aunque ya no pueda hacer nada. -->
+            <div class="pd-rechazo" *ngIf="pago.motivo_rechazo">
+              <p class="uk-margin-remove">
+                <strong>Comprobante rechazado:</strong> {{ pago.motivo_rechazo.motivo }}
+              </p>
+              <p class="uk-text-small uk-margin-remove-top" *ngIf="pago.motivo_rechazo.detalle">
+                {{ pago.motivo_rechazo.detalle }}
+              </p>
+
+              <div class="pd-rechazo-form" *ngIf="pago.reemplazable">
+                <p class="uk-text-small uk-margin-small-bottom">
+                  Subí un comprobante corregido
+                  <ng-container *ngIf="restante()"> — tenés {{ restante() }}</ng-container>
+                </p>
+
+                <input type="file" class="uk-input uk-form-small"
+                       accept=".jpg,.jpeg,.png,.pdf"
+                       (change)="archivoElegido($event, pago.ppa_id)">
+
+                <button type="button" class="uk-button uk-button-primary uk-button-small uk-margin-small-top"
+                        [disabled]="enviando === pago.ppa_id"
+                        (click)="enviarComprobante(pago.ppa_id)">
+                  {{ enviando === pago.ppa_id ? 'Enviando…' : 'Enviar comprobante' }}
+                </button>
+              </div>
+
+              <p class="uk-text-small uk-text-muted uk-margin-remove-bottom" *ngIf="!pago.reemplazable">
+                El plazo para corregir este comprobante ya no está disponible.
+              </p>
             </div>
           </div>
         </div>

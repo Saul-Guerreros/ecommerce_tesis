@@ -36,6 +36,10 @@ class PedidoIndexRequest extends FormRequest
             'tipo_entrega'  => ['nullable', 'integer', 'exists:tipo_entrega,ten_id'],
             'metodo_pago'   => ['nullable', 'integer', 'exists:metodo_pago,mpa_id'],
 
+            // Atajo de la alerta "Retiros vencidos": no es un id de catálogo,
+            // por eso es un booleano aparte y no un valor más de estado_pedido.
+            'retiro_vencido' => ['nullable', 'boolean'],
+
             // Rango de fechas sobre ped_creado
             'desde' => ['nullable', 'date_format:Y-m-d'],
             'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],

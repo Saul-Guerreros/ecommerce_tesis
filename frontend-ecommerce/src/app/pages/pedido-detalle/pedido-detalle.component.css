@@ -44,3 +44,22 @@
 .pd-pago:last-child {
   border-bottom: none;
 }
+/* Bloque de rechazo: va debajo de su pago, con fondo propio para que no
+   se lea como una fila más de la lista sino como una alerta sobre ese
+   pago puntual. */
+.pd-rechazo {
+  background: #fff5f5;
+  border-left: 3px solid #f0506e;
+  padding: 10px 12px;
+  margin: 0 0 10px;
+  border-radius: 3px;
+}
+
+.pd-rechazo-form {
+  margin-top: 10px;
+}
+
+.pd-rechazo-form input[type='file'] {
+  padding: 4px;
+  height: auto;
+}

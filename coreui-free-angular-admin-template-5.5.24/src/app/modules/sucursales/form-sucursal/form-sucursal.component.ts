@@ -1,10 +1,16 @@
 import { Component, EventEmitter, Input, Output, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, FormControl, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
 import { Sucursal, EmpresaOption, CiudadOption } from '../models/sucursal.model';
 import { SucursalesService } from '../service/sucursales.service';
+
+/** Lunes a sábado: horario real de la casa matriz, y default del backend. */
+const DIAS_LABORABLES_DEFECTO = '1111110';
+
+/** Lunes->domingo, mismo orden que la máscara suc_diaslab (dayOfWeekIso). */
+const ETIQUETAS_DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 @Component({
   selector: 'app-form-sucursal',
@@ -24,6 +30,8 @@ export class FormSucursalComponent implements OnInit, OnChanges {
 
   empresas: EmpresaOption[] = [];
   ciudades: CiudadOption[] = [];
+
+  readonly etiquetasDias = ETIQUETAS_DIAS;
 
   constructor(
     private fb: FormBuilder,
@@ -47,7 +55,32 @@ export class FormSucursalComponent implements OnInit, OnChanges {
       suc_webstk:    [true],
       suc_delivery:  [true],
       suc_horario:   ['', [Validators.maxLength(150)]],
+      // 7 checkboxes, lunes->domingo. Se convierten a la máscara
+      // suc_diaslab recién al guardar (ver diasLaborablesMascara()): un
+      // FormArray de booleanos es mucho más simple de atar a checkboxes
+      // que parsear/armar el string en cada change.
+      suc_diaslab_dias: this.fb.array(
+        DIAS_LABORABLES_DEFECTO.split('').map((v) => new FormControl(v === '1')),
+      ),
     });
+  }
+
+  get diasLaborablesArray(): FormArray {
+    return this.form.get('suc_diaslab_dias') as FormArray;
+  }
+
+  /** false si el usuario desmarcó los 7 días: no se puede guardar así. */
+  get tieneAlMenosUnDiaLaborable(): boolean {
+    return (this.diasLaborablesArray.value as boolean[]).some((v) => v);
+  }
+
+  private mascaraADias(mascara: string | undefined): boolean[] {
+    const m = mascara && mascara.length === 7 ? mascara : DIAS_LABORABLES_DEFECTO;
+    return m.split('').map((v) => v === '1');
+  }
+
+  private diasAMascara(): string {
+    return (this.diasLaborablesArray.value as boolean[]).map((v) => (v ? '1' : '0')).join('');
   }
 
   ngOnInit(): void {
@@ -99,6 +132,7 @@ export class FormSucursalComponent implements OnInit, OnChanges {
         suc_webstk:    esNueva ? true : (this.sucursal?.suc_webstk ?? true),
         suc_delivery:  esNueva ? true : (this.sucursal?.suc_delivery ?? true),
         suc_horario:   this.sucursal?.suc_horario ?? '',
+        suc_diaslab_dias: this.mascaraADias(this.sucursal?.suc_diaslab),
       });
       this.guardando = false;
     }
@@ -128,16 +162,27 @@ export class FormSucursalComponent implements OnInit, OnChanges {
       return;
     }
 
+    if (!this.tieneAlMenosUnDiaLaborable) {
+      this.toastr.error(
+        'Marque al menos un día laborable: sin eso, el plazo de retiro nunca se cumple.',
+        'Faltan días laborables'
+      );
+      return;
+    }
+
     this.guardando = true;
 
+    const { suc_diaslab_dias, ...valorFormulario } = this.form.value;
+
     const datos: Partial<Sucursal> = {
-      ...this.form.value,
+      ...valorFormulario,
       suc_establ:    this.form.value.suc_establ || null,
       suc_direccion: this.form.value.suc_direccion || null,
       suc_telef:     this.form.value.suc_telef || null,
       suc_cel:       this.form.value.suc_cel || null,
       suc_email:     this.form.value.suc_email || null,
       suc_horario:   this.form.value.suc_horario || null,
+      suc_diaslab:   this.diasAMascara(),
     };
 
     const peticion = this.esEdicion

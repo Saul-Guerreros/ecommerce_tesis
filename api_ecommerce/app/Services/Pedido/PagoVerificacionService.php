@@ -26,6 +26,8 @@ class PagoVerificacionService
     public function __construct(
         private StockPedidoService $stock,
         private PedidoEstadoService $estados,
+        private EstadoPagoPedidoService $estadoPago,
+        private \App\Services\Venta\VentaService $venta,   // ← NUEVO
     ) {}
 
     // ---------- Confirmar ----------
@@ -69,7 +71,7 @@ class PagoVerificacionService
                 EstadoPago::porCodigo(EstadoPago::CONFIRMADO)->epa_id,
             );
 
-            $quedoTotalmentePagado = $this->recalcularEstadoPago($pedido);
+            $quedoTotalmentePagado = $this->estadoPago->recalcular($pedido);
 
             if ($quedoTotalmentePagado) {
                 $this->cerrarCobro($pedido, $usuario);
@@ -99,12 +101,13 @@ class PagoVerificacionService
             'Pago confirmado — el pedido pasa a preparación automáticamente',
         );
 
-        // 3. TODO (instruccion siguiente): emision del comprobante fiscal.
-        //    VentaService::emitir($pedido, $usuario) consumira un correlativo
-        //    de timbrado, creara venta + venta_detalle y despachara el envio
-        //    al cliente por pedido_facturacion.pfa_recibe.
-        //    No se simula aca: una factura que "parece" emitida y no existe
-        //    en la base es peor que no tenerla.
+        // 3. Emisión del comprobante fiscal. Consume un correlativo del
+        //    timbrado con lock pesimista, dentro de esta misma transacción:
+        //    si la emisión falla (timbrado vencido, rango agotado), el pago
+        //    NO queda confirmado y el stock no se descuenta. Es lo correcto:
+        //    una venta cerrada sin factura es peor que un pago que hay que
+        //    reintentar después de cargar el talonario.
+        $this->venta->emitirDesdePedido($pedido->refresh(), $usuario);
     }
 
     // ---------- Rechazar ----------
@@ -148,44 +151,11 @@ class PagoVerificacionService
                 EstadoPago::porCodigo(EstadoPago::RECHAZADO)->epa_id,
             );
 
-            $this->recalcularEstadoPago($pedido);
+            $this->estadoPago->recalcular($pedido);
+            $this->estadoPago->reabrirPlazo($pedido);
 
             return $pedido->refresh();
         });
-    }
-
-    // ---------- Estado agregado del pago ----------
-
-    /**
-     * Recalcula pedido.ped_epaid a partir de los pagos individuales.
-     *
-     * Esta columna es la que lee la bandeja para filtrar y ordenar, asi
-     * que tiene que mantenerse sincronizada aca: calcularla en cada
-     * lectura impediria paginar y filtrar en servidor.
-     *
-     * @return bool true si el pedido acaba de quedar TOTALMENTE pagado
-     */
-    private function recalcularEstadoPago(Pedido $pedido): bool
-    {
-        $anterior = $pedido->estadoPago?->epa_codigo;
-
-        $pagos = $pedido->pagos()->with('estadoPago')->get();
-
-        $total       = $pagos->count();
-        $confirmados = $pagos->where('estadoPago.epa_codigo', EstadoPago::CONFIRMADO)->count();
-        $rechazados  = $pagos->where('estadoPago.epa_codigo', EstadoPago::RECHAZADO)->count();
-
-        $codigo = match (true) {
-            $total > 0 && $confirmados === $total => EstadoPago::CONFIRMADO,
-            $confirmados > 0                      => EstadoPago::PARCIAL,
-            $rechazados > 0                       => EstadoPago::RECHAZADO,
-            default                               => EstadoPago::PENDIENTE,
-        };
-
-        $pedido->update(['ped_epaid' => EstadoPago::porCodigo($codigo)->epa_id]);
-        $pedido->load('estadoPago');
-
-        return $codigo === EstadoPago::CONFIRMADO && $anterior !== EstadoPago::CONFIRMADO;
     }
 
     // ---------- Validaciones ----------

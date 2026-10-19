@@ -22,7 +22,7 @@ trait DescribeEstadoPago
     {
         $estado = $this->estadoPago;
 
-        if ($estado?->epa_codigo === EstadoPago::PENDIENTE && $this->esSoloContraentrega()) {
+        if ($estado?->epa_codigo === EstadoPago::PAGO_VERIFICAR && $this->esSoloContraentrega()) {
             return 'Pendiente de pago contra entrega';
         }
 

@@ -32,9 +32,11 @@ class PedidoClienteService
         'pagos.metodoPago',
         'pagos.estadoPago',
         'pagos.comprobante',
+        // El cliente necesita ver POR QUÉ se le rechazó un pago; sin esto
+        // sólo vería "Pago rechazado" y volvería a subir el mismo archivo.
+        'pagos.motivoRechazo',
     ];
 
-    /** Pestaña "Pendientes de pago": incluye lo que el checkout creó y lo que ya pagó pero el admin no verificó. */
     public const FILTRO_TODOS = 'todos';
     public const FILTRO_PENDIENTE_PAGO = 'pendiente_pago';
     public const FILTRO_EN_PROCESO = 'en_proceso';
@@ -55,11 +57,17 @@ class PedidoClienteService
     private function aplicarFiltro(Builder $query, string $filtro): void
     {
         match ($filtro) {
-            self::FILTRO_PENDIENTE_PAGO => $query->pendienteDePago(),
+            // conPagoExpirable() (no pendienteDePago()) a propósito: esta
+            // pestaña es donde el cliente tiene algo pendiente de SU
+            // lado — declarar el pago por primera vez, o reemplazar un
+            // comprobante rechazado. RECHAZADO queda afuera de EN_PROCESO
+            // más abajo precisamente para que no termine repartido entre
+            // las dos pestañas.
+            self::FILTRO_PENDIENTE_PAGO => $query->conPagoExpirable(),
 
             self::FILTRO_EN_PROCESO => $query
                 ->whereHas('estadoPago', fn ($q) => $q->whereIn('epa_codigo', [
-                    EstadoPago::PENDIENTE, EstadoPago::CONFIRMADO, EstadoPago::PARCIAL,
+                    EstadoPago::PAGO_VERIFICAR, EstadoPago::CONFIRMADO, EstadoPago::PARCIAL,
                 ]))
                 ->whereHas('estadoPedido', fn ($q) => $q->whereNotIn('est_codigo', [
                     EstadoPedido::ENTREGADO, EstadoPedido::CANCELADO,
@@ -100,6 +108,13 @@ class PedidoClienteService
      * dropdown. Devuelve TODOS los pendientes, no sólo el más reciente —
      * un cliente puede abandonar el checkout más de una vez.
      *
+     * conPagoExpirable() (no pendienteDePago()) a propósito: cubre tanto
+     * el checkout abandonado como el pedido con un comprobante rechazado
+     * que todavía puede reemplazar. Los dos casos tienen plazo corriendo
+     * y los dos requieren que el cliente vuelva a actuar — el aviso tiene
+     * que alcanzarlos a ambos o el barrido puede cancelar un pedido sin
+     * que el cliente se haya enterado nunca de que tenía que hacer algo.
+     *
      * Ordenado por el que vence antes primero: es el más urgente, así que
      * es el que conviene mostrar arriba de la lista.
      */
@@ -107,7 +122,7 @@ class PedidoClienteService
     {
         return Pedido::with('estadoPago', 'detalles.producto.publicacionWeb.imagenes')
             ->where('ped_cliid', $cliente->cli_id)
-            ->pendienteDePago()
+            ->conPagoExpirable()
             ->whereNotNull('ped_vence')
             ->where('ped_vence', '>', now())
             ->orderBy('ped_vence')

@@ -2,6 +2,9 @@
 
 namespace App\Http\Resources\Pedido;
 
+use App\Models\Pedido\EstadoPago;
+use App\Models\Pedido\EstadoPedido;
+use App\Models\Pedido\Pedido;
 use App\Models\Pedido\TipoEntrega;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -28,8 +31,20 @@ class PedidoClienteDetalleResource extends JsonResource
         return [
             'ped_numero' => $this->ped_numero,
             'ped_creado' => $this->ped_creado?->toIso8601String(),
-            'ped_vence'  => $this->pendienteDePago() ? $this->ped_vence?->toIso8601String() : null,
+            // El plazo se muestra en los dos casos en que la pelota está
+            // del lado del cliente: nunca declaró su pago, o tiene un
+            // comprobante rechazado que puede reemplazar. En el resto el
+            // pedido no espera nada de él y un contador sólo confundiría.
+            'ped_vence'  => in_array(
+                $this->estadoPago?->epa_codigo,
+                Pedido::ESTADOS_PAGO_EXPIRABLES,
+                true,
+            ) ? $this->ped_vence?->toIso8601String() : null,
             'pagable'    => $this->pagable(),
+
+            // Fecha límite para pasar a buscar el pedido. Sólo existe
+            // mientras está LISTO y es retiro en sucursal.
+            'ped_vencret' => $this->ped_vencret?->toIso8601String(),
 
             'estado_pedido' => [
                 'codigo'      => $this->estadoPedido?->est_codigo,
@@ -60,6 +75,7 @@ class PedidoClienteDetalleResource extends JsonResource
             'facturacion' => $this->armarFacturacion(),
 
             'pagos' => $this->pagos->values()->map(fn ($p) => [
+                'ppa_id'            => (int) $p->ppa_id,
                 'orden'             => (int) $p->ppa_orden,
                 'metodo'            => $p->metodoPago?->mpa_descri,
                 'monto'             => (float) $p->ppa_monto,
@@ -71,8 +87,50 @@ class PedidoClienteDetalleResource extends JsonResource
                 'comprobante_url'   => $p->comprobante
                     ? url("/api/tienda/pedidos/{$this->ped_numero}/pagos/{$p->ppa_id}/comprobante")
                     : null,
+
+                // Por qué se lo rechazaron. Sin esto el cliente vería
+                // "Pago rechazado" sin saber qué corregir, y volvería a
+                // subir el mismo archivo.
+                'motivo_rechazo' => $this->armarMotivoRechazo($p),
+
+                // Lo decide el backend, igual que 'pagable': el frontend
+                // no vuelve a razonar sobre estados ni plazos.
+                'reemplazable' => $this->esReemplazable($p),
             ]),
         ];
+    }
+
+    /**
+     * El motivo del catálogo más el detalle que escribió el admin. Se
+     * devuelven separados: el primero es la causa tipificada, el segundo
+     * la explicación concreta de ESTE comprobante.
+     */
+    private function armarMotivoRechazo($pago): ?array
+    {
+        if ($pago->estadoPago?->epa_codigo !== EstadoPago::RECHAZADO) {
+            return null;
+        }
+
+        return [
+            'motivo'  => $pago->motivoRechazo?->mrp_descri,
+            'detalle' => $pago->ppa_observ,
+            'fecha'   => $pago->ppa_fechver?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * El cliente puede subir un comprobante nuevo para este pago.
+     *
+     * Espeja las condiciones de PagoPedidoService::pagoRechazable(): si
+     * acá dijera true y el service lo rechazara, el cliente vería un
+     * formulario que siempre falla.
+     */
+    private function esReemplazable($pago): bool
+    {
+        return $pago->estadoPago?->epa_codigo === EstadoPago::RECHAZADO
+            && (bool) $pago->metodoPago?->mpa_requcom
+            && $this->estadoPedido?->est_codigo !== EstadoPedido::CANCELADO
+            && !$this->vencido();
     }
 
     private function armarEntrega(): ?array

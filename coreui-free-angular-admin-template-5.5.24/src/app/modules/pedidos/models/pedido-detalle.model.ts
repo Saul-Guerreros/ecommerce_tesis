@@ -143,6 +143,12 @@ export interface PedidoDetalle {
   actualizado: string | null;
   estado_pago: { codigo: string | null; descripcion: string | null };
   estado_pedido: { codigo: string | null; descripcion: string | null };
+  /** Plazo de PAGO. Nunca coincide con ped_vencret: son los dos relojes del documento, nunca corren a la vez. */
+  ped_vence: string | null;
+  /** Plazo de RETIRO en sucursal. Sólo con el pedido en LISTO y entrega RETIRO. */
+  ped_vencret: string | null;
+  /** El barrido no cancela solo un retiro vencido con pago confirmado: esta bandera es lo que lo señala acá. */
+  retiro_vencido: boolean;
   transiciones: TransicionEstado[];
   nota_interna: string | null;
   cliente: ClienteDetalle;

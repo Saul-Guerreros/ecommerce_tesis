@@ -17,10 +17,10 @@ import {
  */
 
 export type EstadoPedidoCodigo =
-  | 'PENDIENTE' | 'EN_PREPARACION' | 'LISTO' | 'ENTREGADO' | 'CANCELADO';
+  | 'PENDIENTE_PEDIDO' | 'EN_PREPARACION' | 'LISTO' | 'ENTREGADO' | 'CANCELADO';
 
 export type EstadoPagoCodigo =
-  | 'PENDIENTE_PAGO' | 'PENDIENTE' | 'CONFIRMADO' | 'RECHAZADO' | 'PARCIAL';
+  | 'PENDIENTE_PAGO' | 'PAGO_VERIFICAR' | 'CONFIRMADO' | 'RECHAZADO' | 'PARCIAL';
 
 export type FiltroPedidos =
   | 'todos' | 'pendiente_pago' | 'en_proceso' | 'entregados' | 'cancelados';
@@ -42,6 +42,8 @@ export interface PedidoListaItem {
   /** true -> mostrar el botón "Pagar ahora". Lo decide el backend. */
   pagable: boolean;
   ped_vence: string | null;
+  /** Fecha límite de retiro en sucursal. Sólo tiene valor con el pedido en LISTO y entrega RETIRO. */
+  ped_vencret: string | null;
 }
 
 export interface PedidosPaginados {
@@ -51,7 +53,15 @@ export interface PedidosPaginados {
 
 // ---------- Detalle ----------
 
+/** Por qué el admin rechazó este pago. null si no está rechazado. */
+export interface MotivoRechazoPago {
+  motivo: string | null;
+  detalle: string | null;
+  fecha: string | null;
+}
+
 export interface PagoDetalle {
+  ppa_id: number;
   orden: number;
   metodo: string | null;
   monto: number;
@@ -59,6 +69,9 @@ export interface PagoDetalle {
   estado_descri: string | null;
   tiene_comprobante: boolean;
   comprobante_url: string | null;
+  motivo_rechazo: MotivoRechazoPago | null;
+  /** true -> mostrar el formulario de comprobante nuevo. Lo decide el backend. */
+  reemplazable: boolean;
 }
 
 export interface PedidoDetalle {
@@ -66,6 +79,8 @@ export interface PedidoDetalle {
   ped_creado: string;
   ped_vence: string | null;
   pagable: boolean;
+  /** Fecha límite de retiro en sucursal. Sólo tiene valor con el pedido en LISTO y entrega RETIRO. */
+  ped_vencret: string | null;
   estado_pedido: EstadoEtiquetado;
   estado_pago: EstadoEtiquetado;
   entrega: EntregaResumenCard | null;
@@ -87,6 +102,8 @@ export interface PedidoPendienteItem {
   ped_numero: string;
   ped_total: number;
   ped_vence: string;
+  /** 'PENDIENTE_PAGO' (nunca declaró pago) o 'RECHAZADO' (comprobante a corregir). */
+  estado_pago: 'PENDIENTE_PAGO' | 'RECHAZADO';
   producto: { imagen: string | null; nombre: string; cantidad: number } | null;
   productos_adicionales: number;
 }

@@ -1,0 +1,177 @@
+<c-modal size="xl" [visible]="visible" (visibleChange)="visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>
+      Factura de Venta {{ venta?.ven_nrodoc }}
+      <c-badge color="secondary" class="ms-2" *ngIf="esAnulada">ANULADA</c-badge>
+    </h5>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="venta">
+    <!-- Empresa emisora: snapshot de la empresa dueña del timbrado -->
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Empresa emisora</legend>
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">Razón social</label>
+          <input cFormControl [value]="venta.ven_emp_razon" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">RUC</label>
+          <input cFormControl [value]="venta.ven_emp_ruc" readonly />
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Datos del comprobante -->
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Datos del comprobante</legend>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">N° de factura</label>
+          <input cFormControl [value]="venta.ven_nrodoc" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Timbrado N°</label>
+          <input cFormControl [value]="venta.ven_timbrado" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Fecha de emisión</label>
+          <input cFormControl [value]="venta.ven_fchaem" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Inicio de vigencia</label>
+          <input cFormControl [value]="venta.ven_timb_inicio" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Fin de vigencia</label>
+          <input cFormControl [value]="venta.ven_timb_venc" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Condición de venta</label>
+          <input cFormControl [value]="condicion" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Pedido de origen</label>
+          <input cFormControl [value]="venta.ped_numero || '—'" readonly />
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Adquirente</legend>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Razón social / Nombre</label>
+          <input cFormControl [value]="venta.ven_razonsocial" readonly />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Documento</label>
+          <input cFormControl [value]="identificacion" readonly />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Teléfono</label>
+          <input cFormControl [value]="venta.ven_telefono || '—'" readonly />
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Dirección</label>
+          <input cFormControl [value]="venta.ven_direccion || '—'" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Correo</label>
+          <input cFormControl [value]="venta.ven_email || '—'" readonly />
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Detalle de items -->
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Detalle de ítems</legend>
+
+      <table cTable small striped class="mb-0">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Descripción</th>
+            <th>U.M.</th>
+            <th class="text-end">Cantidad</th>
+            <th class="text-end">Precio Unitario</th>
+            <th class="text-end">Desc. Unitario</th>
+            <th class="text-end">Exentas</th>
+            <th class="text-end">5%</th>
+            <th class="text-end">10%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of detalle">
+            <td>{{ item.vnd_codigo }}</td>
+            <td>{{ item.vnd_descripcion }}</td>
+            <td>{{ item.vnd_umedida }}</td>
+            <td class="text-end">{{ item.vnd_cantidad | number:'1.0-2' }}</td>
+            <td class="text-end">{{ item.vnd_precio | number:'1.0-2' }}</td>
+            <td class="text-end">{{ item.vnd_descuento | number:'1.0-2' }}</td>
+            <td class="text-end">{{ columna(item, 0) | number:'1.0-2' }}</td>
+            <td class="text-end">{{ columna(item, 5) | number:'1.0-2' }}</td>
+            <td class="text-end">{{ columna(item, 10) | number:'1.0-2' }}</td>
+          </tr>
+          <tr *ngIf="detalle.length === 0">
+            <td colspan="9" class="text-center">Sin ítems</td>
+          </tr>
+        </tbody>
+      </table>
+    </fieldset>
+
+    <!-- Totales -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <label class="form-label">Subtotal Exentas</label>
+        <input cFormControl [value]="venta.ven_exenta | number:'1.0-2'" readonly />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Subtotal 5%</label>
+        <input cFormControl [value]="venta.ven_grav5 | number:'1.0-2'" readonly />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Subtotal 10%</label>
+        <input cFormControl [value]="venta.ven_grav10 | number:'1.0-2'" readonly />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label"><strong>TOTAL A PAGAR (Gs.)</strong></label>
+        <input cFormControl class="fw-bold" [value]="venta.ven_total | number:'1.0-2'" readonly />
+      </div>
+    </div>
+
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Liquidación del IVA</legend>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">IVA 5%</label>
+          <input cFormControl [value]="venta.ven_iva5 | number:'1.0-2'" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">IVA 10%</label>
+          <input cFormControl [value]="venta.ven_iva10 | number:'1.0-2'" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">TOTAL IVA</label>
+          <input cFormControl [value]="venta.ven_totiva | number:'1.0-2'" readonly />
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="mb-2">
+      <label class="form-label">Observaciones</label>
+      <textarea cFormControl rows="2" readonly>{{ venta.ven_obs || '' }}</textarea>
+    </div>
+
+    <div class="alert alert-secondary mb-0" *ngIf="esAnulada">
+      Anulada el {{ venta.ven_anulado }}<span *ngIf="venta.ven_motanu"> — {{ venta.ven_motanu }}</span>
+    </div>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cerrar</button>
+    <button cButton color="danger" class="text-white" *ngIf="!esAnulada" (click)="pedirAnular()">
+      Anular
+    </button>
+  </c-modal-footer>
+</c-modal>

@@ -34,7 +34,8 @@ export class MisPedidosComponent implements OnInit {
     },
     {
       valor: 'pendiente_pago', etiqueta: 'Pendientes de pago',
-      descripcion: 'Pedidos reservados que todavía no pagaste. Tenés 24 h antes de que la reserva se libere.',
+      descripcion: 'Pedidos que todavía no pagaste, o con un comprobante rechazado que podés corregir. '
+        + 'Tenés 24 h antes de que la reserva se libere.',
     },
     {
       valor: 'en_proceso', etiqueta: 'En proceso',
@@ -111,7 +112,7 @@ export class MisPedidosComponent implements OnInit {
    */
   claseEstadoPedido(codigo: string | null): string {
     return {
-      PENDIENTE: 'uk-label-warning',
+      PENDIENTE_PEDIDO: 'uk-label-warning',
       EN_PREPARACION: 'uk-label-warning',
       LISTO: 'uk-label-primary',
       ENTREGADO: 'uk-label-success',
@@ -122,7 +123,7 @@ export class MisPedidosComponent implements OnInit {
   claseEstadoPago(codigo: string | null): string {
     return {
       PENDIENTE_PAGO: 'uk-label-warning',
-      PENDIENTE: 'uk-label-primary',
+      PAGO_VERIFICAR: 'uk-label-primary',
       CONFIRMADO: 'uk-label-success',
       PARCIAL: 'uk-label-primary',
       RECHAZADO: 'uk-label-danger',
@@ -139,6 +140,33 @@ export class MisPedidosComponent implements OnInit {
     const minutos = Math.floor((faltan % 3_600_000) / 60_000);
 
     return horas > 0 ? `vence en ${horas} h` : `vence en ${minutos} min`;
+  }
+
+  /**
+   * Mismo propósito que restante(), pero en días: el plazo de retiro se
+   * mide en días hábiles, no en horas, así que "vence en 3 h" leería mal
+   * para algo que en realidad dura varios días.
+   *
+   * vencidoRetiro() se usa aparte para decidir el color del texto: acá no
+   * alcanza con "faltan <= 0" porque, a diferencia del plazo de pago, un
+   * retiro vencido NO implica que el pedido se cancele — puede seguir
+   * LISTO esperando que el admin lo resuelva, y el cliente igual necesita
+   * ver "venció hace 2 días" en vez de que el texto desaparezca.
+   */
+  restanteRetiro(vence: string | null): string {
+    if (!vence) return '';
+
+    const dias = Math.round((new Date(vence).getTime() - Date.now()) / 86_400_000);
+
+    if (dias > 0) return `vence en ${dias} día${dias === 1 ? '' : 's'}`;
+    if (dias === 0) return 'vence hoy';
+
+    const transcurridos = Math.abs(dias);
+    return `venció hace ${transcurridos} día${transcurridos === 1 ? '' : 's'}`;
+  }
+
+  vencidoRetiro(vence: string | null): boolean {
+    return !!vence && new Date(vence).getTime() < Date.now();
   }
 
   // ---------- Navegación ----------

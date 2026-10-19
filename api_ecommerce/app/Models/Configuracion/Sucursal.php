@@ -13,8 +13,11 @@ class Sucursal extends Model
     protected $fillable = [
         'suc_empid', 'suc_ciuid', 'suc_nombre', 'suc_princi', 'suc_establ',
         'suc_direccion', 'suc_telef', 'suc_cel', 'suc_email', 'suc_estado',
-        'suc_retiro', 'suc_horario', 'suc_webstk', 'suc_delivery',
+        'suc_retiro', 'suc_horario', 'suc_diaslab', 'suc_webstk', 'suc_delivery',
     ];
+
+    /** Lunes a sábado: el horario real de la casa matriz. */
+    public const DIAS_LABORABLES_DEFECTO = '1111110';
 
     protected $casts = [
         'suc_id' => 'integer', 'suc_empid' => 'integer', 'suc_ciuid' => 'integer',
@@ -35,6 +38,27 @@ class Sucursal extends Model
     public function setSucEmailAttribute($value): void
     {
         $this->attributes['suc_email'] = $value ? strtolower(trim($value)) : null;
+    }
+
+    /**
+     * ¿La sucursal atiende ese día?
+     *
+     * La máscara suc_diaslab tiene 7 caracteres '1'/'0' de lunes a
+     * domingo, alineada con dayOfWeekIso (1 = lunes ... 7 = domingo).
+     *
+     * Si la máscara está vacía o mal formada, se cae al valor por defecto
+     * en vez de devolver false: una sucursal sin ningún día laborable
+     * haría que el cálculo del plazo de retiro no termine nunca.
+     */
+    public function esDiaLaborable(\Carbon\CarbonInterface $fecha): bool
+    {
+        $mascara = $this->suc_diaslab;
+
+        if (!is_string($mascara) || strlen($mascara) !== 7 || !str_contains($mascara, '1')) {
+            $mascara = self::DIAS_LABORABLES_DEFECTO;
+        }
+
+        return $mascara[$fecha->dayOfWeekIso - 1] === '1';
     }
 
     public function scopeParaRetiro($query)

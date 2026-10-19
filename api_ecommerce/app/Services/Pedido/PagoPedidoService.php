@@ -3,6 +3,7 @@
 namespace App\Services\Pedido;
 
 use App\Models\Pedido\EstadoPago;
+use App\Models\Pedido\EstadoPedido;
 use App\Models\Pedido\MetodoPago;
 use App\Models\Pedido\PagoComprobante;
 use App\Models\Pedido\Pedido;
@@ -38,6 +39,7 @@ class PagoPedidoService
 
     public function __construct(
         private CheckoutPagoService $configuracion,
+        private EstadoPagoPedidoService $estadoPago,
     ) {}
 
     // ---------- Lectura ----------
@@ -148,6 +150,161 @@ class PagoPedidoService
         }
     }
 
+    /**
+     * El cliente sube un comprobante nuevo para un pago que el admin
+     * rechazó.
+     *
+     * Es la contraparte obligatoria del rechazo: sin esto, rechazar un
+     * pago deja el pedido muerto para el cliente (no puede corregir
+     * nada) y la reserva termina expirando aunque la intención fuera
+     * darle otra oportunidad.
+     *
+     * Opera sobre UN pago puntual, no sobre el pedido entero, porque eso
+     * es lo que se rechaza: con pago dividido, el cliente corrige sólo el
+     * comprobante inválido y el otro pago confirmado queda intacto.
+     */
+    public function reemplazarComprobante(
+        Usuario $usuario,
+        string $numero,
+        int $pagoId,
+        UploadedFile $archivo,
+    ): Pedido {
+        $rutaNueva   = null;
+        $rutaAnterior = null;
+
+        try {
+            $pedido = DB::transaction(function () use (
+                $usuario, $numero, $pagoId, $archivo, &$rutaNueva, &$rutaAnterior
+            ) {
+                $pedido = $this->pedidoDelCliente($usuario, $numero);
+                $pedido = Pedido::whereKey($pedido->ped_id)
+                    ->lockForUpdate()
+                    ->with('estadoPago', 'estadoPedido')
+                    ->firstOrFail();
+
+                $pago = $this->pagoRechazable($pedido, $pagoId);
+
+                $rutaAnterior = $pago->comprobante?->pco_archiv;
+                $rutaNueva    = $archivo->store(self::CARPETA, 'public');
+
+                $verificar = EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR);
+
+                // El pago vuelve a cero: se limpian el motivo, la
+                // observación y los datos de la verificación anterior. Si
+                // quedaran, el admin vería el rechazo viejo junto al
+                // comprobante nuevo y no sabría cuál mira.
+                $pago->update([
+                    'ppa_epaid'   => $verificar->epa_id,
+                    'ppa_mrpid'   => null,
+                    'ppa_observ'  => null,
+                    'ppa_montver' => null,
+                    'ppa_usuver'  => null,
+                    'ppa_fechver' => null,
+                ]);
+
+                if ($pago->comprobante) {
+                    $pago->comprobante->update([
+                        'pco_archiv' => $rutaNueva,
+                        'pco_verifi' => false,
+                    ]);
+                } else {
+                    PagoComprobante::create([
+                        'pco_pedid'  => $pedido->ped_id,
+                        'pco_ppaid'  => $pago->ppa_id,
+                        'pco_archiv' => $rutaNueva,
+                        'pco_verifi' => false,
+                    ]);
+                }
+
+                PedidoHistorialEstado::create([
+                    'peh_pedid'  => $pedido->ped_id,
+                    'peh_usuid'  => $usuario->usu_id,
+                    'peh_tipo'   => 'PAGO',
+                    'peh_estant' => $pedido->ped_epaid,
+                    'peh_estid'  => $verificar->epa_id,
+                    'peh_coment' => "Cliente cargó un comprobante nuevo para el Pago {$pago->ppa_orden}",
+                    'peh_ip'     => request()->ip(),
+                ]);
+
+                // El pedido vuelve a la bandeja de verificación y sale del
+                // barrido: ya no está esperando una acción del cliente.
+                $this->estadoPago->recalcular($pedido);
+                $this->estadoPago->cerrarPlazo($pedido);
+
+                return $pedido->fresh([
+                    'pagos.metodoPago', 'pagos.comprobante', 'pagos.estadoPago',
+                    'entrega.sucursal', 'tipoEntrega', 'estadoPago', 'estadoPedido',
+                ]);
+            });
+        } catch (\Throwable $e) {
+            // Storage no participa del rollback: si la transacción falló,
+            // el archivo nuevo quedaría huérfano en disco.
+            if ($rutaNueva) {
+                Storage::disk('public')->delete($rutaNueva);
+            }
+
+            throw $e;
+        }
+
+        // Recién con la transacción confirmada se borra el comprobante
+        // viejo. Hacerlo antes dejaría al cliente sin ninguno de los dos
+        // si algo fallaba después.
+        if ($rutaAnterior && $rutaAnterior !== $rutaNueva) {
+            Storage::disk('public')->delete($rutaAnterior);
+        }
+
+        return $pedido;
+    }
+
+    /**
+     * Guard del reemplazo. Son cuatro condiciones y ninguna es opcional:
+     *
+     *   - el pago pertenece a este pedido (404 si no);
+     *   - está RECHAZADO (no se puede pisar un comprobante que el admin
+     *     todavía no miró, ni uno ya confirmado);
+     *   - el pedido no está cancelado;
+     *   - el plazo reabierto por el rechazo sigue vigente. Vencido, la
+     *     reserva ya se liberó o está por liberarse: aceptar el archivo
+     *     le haría creer al cliente que su pedido sigue en pie.
+     */
+    private function pagoRechazable(Pedido $pedido, int $pagoId): PedidoPago
+    {
+        $pago = PedidoPago::where('ppa_id', $pagoId)
+            ->where('ppa_pedid', $pedido->ped_id)
+            ->lockForUpdate()
+            ->first();
+
+        abort_if(!$pago, 404, 'El pago no pertenece a este pedido.');
+
+        $pago->load(['estadoPago', 'metodoPago', 'comprobante']);
+
+        if ($pedido->estadoPedido?->est_codigo === EstadoPedido::CANCELADO) {
+            throw ValidationException::withMessages([
+                'pedido' => 'Este pedido fue cancelado: ya no admite comprobantes.',
+            ]);
+        }
+
+        if ($pago->estadoPago?->epa_codigo !== EstadoPago::RECHAZADO) {
+            throw ValidationException::withMessages([
+                'pago' => 'Sólo se puede reemplazar el comprobante de un pago rechazado.',
+            ]);
+        }
+
+        if (!$pago->metodoPago?->mpa_requcom) {
+            throw ValidationException::withMessages([
+                'pago' => 'Este método de pago no lleva comprobante.',
+            ]);
+        }
+
+        if ($pedido->vencido()) {
+            throw ValidationException::withMessages([
+                'pedido' => 'El plazo para corregir el comprobante venció y la reserva fue liberada.',
+            ]);
+        }
+
+        return $pago;
+    }
+
     // ---------- Armado de los pagos ----------
 
     private function armarUnico(array $datos, int $total, array &$archivos): array
@@ -231,7 +388,7 @@ class PagoPedidoService
      */
     private function crearPagos(Pedido $pedido, array $pagos): void
     {
-        $pendiente = EstadoPago::porCodigo(EstadoPago::PENDIENTE)->epa_id;
+        $pendiente = EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR)->epa_id;
 
         foreach ($pagos as $i => $p) {
             $pedidoPago = PedidoPago::create([
@@ -264,7 +421,7 @@ class PagoPedidoService
     private function marcarPedidoPagado(Pedido $pedido, array $pagos, Usuario $usuario): void
     {
         $esDividido = count($pagos) > 1;
-        $pendiente  = EstadoPago::porCodigo(EstadoPago::PENDIENTE);
+        $pendiente  = EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR);
 
         $pedido->update([
             // Sólo tiene sentido con un único método; con pago dividido la

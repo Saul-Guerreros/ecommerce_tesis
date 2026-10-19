@@ -182,6 +182,13 @@ export const routes: Routes = [
       },
 
       {
+        path: 'facturas-venta',
+        loadChildren: () =>
+          import('./modules/facturas-venta/facturas-venta.module').then(m => m.FacturasVentaModule),
+        data: { title: 'Facturas de Venta' },
+      },
+
+      {
         path: 'precios',
         loadChildren: () => import('./modules/precios/precios.module').then(m => m.PreciosModule),
         data: { title: 'Gestión de Precios' },

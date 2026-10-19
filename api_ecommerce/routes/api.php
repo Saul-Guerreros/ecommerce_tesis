@@ -79,6 +79,8 @@ use App\Http\Controllers\Pedido\PagoPedidoController;
 
 use App\Http\Controllers\Pedido\PedidoClienteController;
 
+use App\Http\Controllers\Admin\Venta\VentaController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -183,17 +185,23 @@ Route::group([
     Route::post('checkout/facturacion', [CheckoutController::class, 'guardarFacturacion']);
     Route::post('checkout/confirmar',   [CheckoutController::class, 'confirmar']);
 
-       // --- Mis Pedidos + Paso 3 (Pago de un pedido ya creado) ---
-    Route::prefix('pedidos')->group(function () {
-       Route::get('pendientes', [PedidoClienteController::class, 'pendientes']);
+    // línea 186
+    // --- Mis Pedidos + Paso 3 (Pago de un pedido ya creado) ---
+    Route::prefix('pedidos')->group(function () {          // 187
+    Route::get('pendientes', [PedidoClienteController::class, 'pendientes']);
         Route::get('/', [PedidoClienteController::class, 'index']);
         Route::get('{numero}', [PedidoClienteController::class, 'show']);
         Route::get('{numero}/pagos/{pago}/comprobante', [PedidoClienteController::class, 'comprobante']);
 
-        Route::get('{numero}/pago', [PagoPedidoController::class, 'config']);
-        Route::post('{numero}/pago', [PagoPedidoController::class, 'registrar']);
-        Route::get('{numero}/resultado', [PagoPedidoController::class, 'resultado']);
-    });
+        Route::get('{numero}/pago', [PagoPedidoController::class, 'config']);       // 193
+        Route::post('{numero}/pago', [PagoPedidoController::class, 'registrar']);    // 194
+        Route::get('{numero}/resultado', [PagoPedidoController::class, 'resultado']); // 195
+
+        // Reemplazo del comprobante de un pago rechazado. Misma URI que el
+        // GET del comprobante, distinto verbo: el GET lo descarga, el POST
+        // lo sustituye.
+        Route::post('{numero}/pagos/{pago}/comprobante', [PagoPedidoController::class, 'reemplazarComprobante']); // 200
+    });                                                       // 201
 
     // --- Solicitud de Crédito (continúa el flujo del Carrito a Crédito) ---
     Route::get('credito/config', [SolicitudCreditoController::class, 'config']);
@@ -551,6 +559,23 @@ Route::prefix('admin/pedidos')->middleware('auth:api')->group(function () {
 
     Route::get('/{pedido}/pagos/{pago}/comprobante', [PedidoGestionController::class, 'comprobante'])
     ->middleware('permiso:pedidos.ver');
+});
+
+
+// Facturas de Venta del Panel Admin. Sin store(): la factura la emite
+// el backend al cobrar o entregar el pedido, nunca el administrador.
+Route::prefix('admin/facturas-venta')->middleware('auth:api')->group(function () {
+    Route::get('/config', [VentaController::class, 'config'])
+        ->middleware('permiso:facturas-venta.ver');
+
+    Route::get('/', [VentaController::class, 'index'])
+        ->middleware('permiso:facturas-venta.ver');
+
+    Route::get('/{id}', [VentaController::class, 'show'])
+        ->middleware('permiso:facturas-venta.ver');
+
+    Route::patch('/{id}/anular', [VentaController::class, 'anular'])
+        ->middleware('permiso:facturas-venta.ver');
 });
 
 

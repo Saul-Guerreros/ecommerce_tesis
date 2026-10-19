@@ -75,6 +75,16 @@ class PedidoListaResource extends JsonResource
                 'codigo'      => $this->estadoPedido?->est_codigo,
                 'descripcion' => $this->estadoPedido?->est_descri,
             ],
+
+            // Plazo de retiro en sucursal. Sólo tiene valor mientras el
+            // pedido está LISTO y la entrega es RETIRO.
+            'retiro' => $this->ped_vencret ? [
+                'vence'   => $this->ped_vencret->toIso8601String(),
+                // El barrido no cancela un retiro vencido ya pagado: lo
+                // deja acá para que una persona lo resuelva. Esta bandera
+                // es lo que la bandeja usa para pintarlo en rojo.
+                'vencido' => $this->retiroVencido(),
+            ] : null,
         ];
     }
 

@@ -29,10 +29,34 @@ use App\Models\Usuario;
 class StockPedidoService
 {
     /**
+     * Si ya existe un movimiento de salida ('S') en el kardex para alguna
+     * linea de este pedido, el descuento ya se aplico: no hace falta mas
+     * que el kardex para saberlo, sin agregar una bandera nueva.
+     *
+     * Protege contra la doble ejecucion: un pedido contra entrega con
+     * tambien un pago con comprobante confirmado, o un ENTREGADO que se
+     * intenta aplicar dos veces.
+     */
+    public function yaDescontado(Pedido $pedido): bool
+    {
+        return MovimientoStock::where('mst_tipo', 'S')
+            ->whereIn('mst_dpdid', function ($query) use ($pedido) {
+                $query->select('dpd_id')
+                    ->from('detalle_pedido')
+                    ->where('dpd_pedid', $pedido->ped_id);
+            })
+            ->exists();
+    }
+
+    /**
      * @throws StockInsuficienteException si alguna linea ya no tiene stock
      */
     public function descontarDefinitivo(Pedido $pedido, ?Usuario $usuario = null): void
     {
+        if ($this->yaDescontado($pedido)) {
+            return; // idempotente: este pedido ya salio del deposito
+        }
+
         $deposito = $this->resolverDeposito($pedido);
 
         $pedido->loadMissing('detalles.producto');

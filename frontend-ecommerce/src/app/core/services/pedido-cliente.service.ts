@@ -40,6 +40,27 @@ export class PedidoClienteService {
   }
 
   /**
+   * Sube un comprobante nuevo para un pago que el admin rechazó.
+   *
+   * FormData y no JSON porque viaja un archivo. No se manda método ni
+   * monto: los fijó el pago original y el backend los ignora — acá sólo
+   * se corrige el comprobante.
+   */
+  reemplazarComprobante(
+    numero: string,
+    pagoId: number,
+    archivo: File,
+  ): Observable<{ message: string }> {
+    const datos = new FormData();
+    datos.append('comprobante', archivo);
+
+    return this.http.post<{ message: string }>(
+      `${this.URL}/${numero}/pagos/${pagoId}/comprobante`,
+      datos,
+    );
+  }
+
+  /**
    * Descarga un archivo protegido (el comprobante de pago) PASANDO por
    * HttpClient, no por window.open(url) directo.
    *

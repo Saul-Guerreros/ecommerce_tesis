@@ -58,6 +58,15 @@
           <span class="uk-text-meta uk-text-small" *ngIf="p.pagable">
             {{ restante(p.ped_vence) }}
           </span>
+
+          <!-- Plazo de retiro: nunca coincide con p.pagable (son los dos
+               relojes del documento, nunca corren a la vez), así que no
+               hace falta elegir entre uno y otro acá. -->
+          <span class="uk-text-small" *ngIf="p.ped_vencret"
+                [class.uk-text-danger]="vencidoRetiro(p.ped_vencret)"
+                [class.uk-text-meta]="!vencidoRetiro(p.ped_vencret)">
+            Retiro: {{ restanteRetiro(p.ped_vencret) }}
+          </span>
         </div>
 
         <button *ngIf="p.pagable" type="button" class="uk-button uk-button-primary uk-button-small"

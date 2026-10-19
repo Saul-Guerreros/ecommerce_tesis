@@ -10,7 +10,7 @@ class EstadoPedidoSeeder extends Seeder
     public function run(): void
     {
         $estados = [
-            ['est_codigo' => 'PENDIENTE',      'est_descri' => 'Pendiente'],
+            ['est_codigo' => 'PENDIENTE_PEDIDO', 'est_descri' => 'Pedido recibido'],
             ['est_codigo' => 'EN_PREPARACION', 'est_descri' => 'En preparación'],
             ['est_codigo' => 'LISTO',          'est_descri' => 'Listo para entrega/retiro'],
             ['est_codigo' => 'ENTREGADO',      'est_descri' => 'Entregado'],

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pedido;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Pedido\PagoPedidoRequest;
+use App\Http\Requests\Pedido\ReemplazarComprobanteRequest;
 use App\Http\Resources\Pedido\MetodoPagoResource;
 use App\Http\Resources\Pedido\ProductoResumenResource;
 use App\Http\Resources\Pedido\ResultadoPagoResource;
@@ -143,6 +144,37 @@ class PagoPedidoController extends Controller
                 : 'Pago registrado.',
             'data'    => new ResultadoPagoResource($pedido),
         ], 201);
+    }
+
+    /**
+     * POST /api/tienda/pedidos/{numero}/pagos/{pago}/comprobante
+     *
+     * Reemplaza el comprobante de un pago que el admin rechazó. Es la
+     * salida del cliente ante un rechazo: sin este endpoint, un
+     * comprobante rechazado deja el pedido sin camino posible y la
+     * reserva termina expirando sola.
+     *
+     * 200 y no 201: no se crea un recurso nuevo, se corrige un pago que
+     * ya existe.
+     */
+    public function reemplazarComprobante(
+        ReemplazarComprobanteRequest $request,
+        string $numero,
+        int $pago,
+    ): JsonResponse {
+        $usuario = $this->clienteAutenticado();
+
+        $pedido = $this->servicio->reemplazarComprobante(
+            $usuario,
+            $numero,
+            $pago,
+            $request->file('comprobante'),
+        );
+
+        return response()->json([
+            'message' => 'Comprobante enviado. Lo vamos a verificar a la brevedad.',
+            'data'    => new ResultadoPagoResource($pedido),
+        ], 200);
     }
 
     /**
