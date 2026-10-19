@@ -1,0 +1,102 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Diagnóstico</strong></c-card-header>
+  <c-card-body>
+    <form [formGroup]="form" (ngSubmit)="guardar()">
+      <!-- Fallas -->
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <label cLabel class="mb-0">Fallas encontradas <span class="text-danger">*</span></label>
+        <button cButton size="sm" color="secondary" variant="outline" type="button" (click)="agregarFalla()"
+                [disabled]="fallas.length >= 15">+ Agregar falla</button>
+      </div>
+
+      <div formArrayName="fallas">
+        <div class="row g-2 mb-2" *ngFor="let g of fallas.controls; let i = index" [formGroupName]="i">
+          <div class="col-md-5">
+            <select cSelect formControlName="fll_id" [class.is-invalid]="g.get('fll_id')?.invalid && g.get('fll_id')?.touched">
+              <option [ngValue]="null" disabled>Seleccione la falla...</option>
+              <option *ngFor="let f of config.fallas" [ngValue]="f.fll_id" [disabled]="fallaUsada(f.fll_id, i)">
+                {{ f.fll_descri }}{{ f.fll_tdiid ? '' : ' (genérica)' }}
+              </option>
+            </select>
+            <div class="text-danger small" *ngIf="g.get('fll_id')?.invalid && g.get('fll_id')?.touched">
+              {{ g.get('fll_id')?.errors?.['backend'] || 'Seleccione la falla.' }}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <input cFormControl formControlName="obs" maxlength="255" placeholder="Observación (opcional)" />
+          </div>
+          <div class="col-md-1 d-grid">
+            <button cButton size="sm" color="danger" class="text-white" type="button"
+                    (click)="quitarFalla(i)" [disabled]="fallas.length === 1" title="Quitar">&times;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-12">
+          <label cLabel for="dia_causa">Causa / conclusión técnica <span class="text-danger">*</span></label>
+          <textarea cFormControl id="dia_causa" rows="3" maxlength="500" formControlName="dia_causa"
+                    placeholder="Ej: Cortocircuito en el conector de carga por ingreso de líquido"></textarea>
+          <div class="text-danger small" *ngIf="campoInvalido('dia_causa')">
+            {{ errorBackend('dia_causa') || 'Indique la causa (entre 5 y 500 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel>¿Es reparable? <span class="text-danger">*</span></label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="reparaSi" formControlName="dia_repara" [value]="true" />
+              <label class="form-check-label" for="reparaSi">Sí</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="reparaNo" formControlName="dia_repara" [value]="false" />
+              <label class="form-check-label" for="reparaNo">No</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel>&nbsp;</label>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="dia_reqrep" formControlName="dia_reqrep" />
+            <label class="form-check-label" for="dia_reqrep">Requiere repuestos</label>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label cLabel for="dia_tiempo">Días estimados <span class="text-danger" *ngIf="repara">*</span></label>
+          <input cFormControl id="dia_tiempo" type="number" min="1" max="365" formControlName="dia_tiempo" />
+          <div class="text-danger small" *ngIf="campoInvalido('dia_tiempo')">
+            {{ errorBackend('dia_tiempo') || 'Entre 1 y 365 días.' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="fotosDia">Fotos del diagnóstico</label>
+          <input cFormControl id="fotosDia" type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onFotos($event)" />
+          <div class="text-muted small">Opcional. Placa, componentes dañados, mensajes de error, etc.</div>
+          <div class="text-danger small" *ngIf="errorFotos">{{ errorFotos }}</div>
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <div class="position-relative" *ngFor="let f of fotos; let i = index">
+              <img [src]="f.preview" alt="Foto {{ i + 1 }}" class="rounded border" style="width: 90px; height: 90px; object-fit: cover;" />
+              <button type="button" class="btn btn-sm btn-danger text-white position-absolute top-0 end-0 py-0 px-1"
+                      (click)="quitarFoto(i)">&times;</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-warning small mt-3 mb-0" *ngIf="!repara">
+        Al guardar como <strong>no reparable</strong>, podrá cerrar la orden y la solicitud quedará lista para devolver al cliente.
+      </div>
+
+      <div class="text-end mt-3">
+        <button cButton color="primary" type="submit" [disabled]="guardando">
+          <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+          {{ guardando ? 'Guardando...' : (orden.diagnostico ? 'Actualizar diagnóstico' : 'Guardar diagnóstico') }}
+        </button>
+      </div>
+    </form>
+  </c-card-body>
+</c-card>

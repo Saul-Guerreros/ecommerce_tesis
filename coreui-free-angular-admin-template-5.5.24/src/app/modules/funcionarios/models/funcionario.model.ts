@@ -8,17 +8,20 @@ export interface Cargo {
   crg_descr: string;
 }
 
+// En Funcionario, agregar rol_id y rol (igual que en Usuario):
 export interface Funcionario {
   fun_id: number;
   fun_fecing: string;
   fun_fecegr: string | null;
   fun_estado: number;
+  rol_id?: number | null;
+  rol?: string | null;
   persona: Persona;
   cargo?: Cargo;
   contactos: Contacto[];
 }
 
-/** Payload plano que espera StoreFuncionarioRequest */
+// En FuncionarioPayload, agregar rol_id después de fun_crgid:
 export interface FuncionarioPayload {
   per_id?: number;
   per_tpdid: number | null;
@@ -30,15 +33,22 @@ export interface FuncionarioPayload {
   per_estciv: string | null;
   per_fechna: string | null;
   fun_crgid: number | null;
+  rol_id: number | null;
   fun_fecing: string;
   fun_fecegr: string | null;
   fun_estado: number;
   contactos: Contacto[];
 }
 
+export interface RolOpcion {
+  rol_id: number;
+  rol_descri: string;
+}
+
 export interface FuncionarioConfig {
   tipos_documento: TipoDocumento[];
   cargos: Cargo[];
+  roles: RolOpcion[];
   estados_civiles: string[];
   tipos_contacto: TipoContacto[];
 }

@@ -1,0 +1,53 @@
+<main>
+  <section class="uk-section uk-section-muted st-hero">
+    <div class="uk-container uk-text-center">
+      <h1 class="uk-heading-small">Servicio técnico</h1>
+      <p class="uk-text-lead uk-margin-small-top">
+        Reparación y garantía de notebooks, PCs, impresoras y más. Seguí el estado de tu equipo desde tu perfil.
+      </p>
+      <button class="uk-button uk-button-primary uk-button-large uk-margin-top" (click)="solicitar()">
+        Solicitar servicio
+      </button>
+      <p class="uk-text-meta uk-margin-small-top">Necesitás iniciar sesión para registrar la solicitud.</p>
+    </div>
+  </section>
+
+  <section class="uk-section">
+    <div class="uk-container">
+      <h3 class="uk-text-center">¿Cómo funciona?</h3>
+      <div class="uk-grid-match uk-child-width-1-2@s uk-child-width-1-4@m uk-margin-medium-top" uk-grid>
+        @for (p of pasos; track p.titulo; let i = $index) {
+          <div>
+            <div class="uk-card uk-card-default uk-card-body uk-text-center">
+              <span class="st-numero">{{ i + 1 }}</span>
+              <span [attr.uk-icon]="'icon: ' + p.icono + '; ratio: 1.6'" class="uk-display-block uk-margin-small"></span>
+              <h4 class="uk-margin-small">{{ p.titulo }}</h4>
+              <p class="uk-text-small uk-margin-remove">{{ p.texto }}</p>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="uk-grid-small uk-child-width-1-2@m uk-margin-large-top" uk-grid>
+        <div>
+          <div class="uk-card uk-card-default uk-card-body">
+            <h4><span uk-icon="icon: home"></span> Lo traés a la sucursal</h4>
+            <p class="uk-text-small">Elegís la sucursal y la fecha en que lo vas a acercar. Sin costo adicional.</p>
+          </div>
+        </div>
+        <div>
+          <div class="uk-card uk-card-default uk-card-body">
+            <h4><span uk-icon="icon: location"></span> Lo retiramos de tu casa</h4>
+            <p class="uk-text-small">Coordinamos el retiro en tu dirección. El costo depende de tu ciudad.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="uk-text-center uk-margin-large-top">
+        <a routerLink="/perfil-del-cliente" [queryParams]="{ tab: 'servicios' }" class="uk-button uk-button-default">
+          Ver mis servicios
+        </a>
+      </div>
+    </div>
+  </section>
+</main>

@@ -111,6 +111,18 @@
           {{ errors.fun_crgid[0] }}
         </div>
       </c-col>
+	  
+	  <c-col md="6" class="mb-3">
+        <label cLabel>Rol <span class="text-danger">*</span></label>
+        <select cSelect [(ngModel)]="form.rol_id" name="rol_id"
+                [class.is-invalid]="errors.rol_id">
+          <option [ngValue]="null">Selecciona un rol</option>
+            <option *ngFor="let r of config.roles" [ngValue]="r.rol_id">{{ r.rol_descri }}</option>
+        </select>
+        <div class="invalid-feedback d-block" *ngIf="errors.rol_id">
+          {{ errors.rol_id[0] }}
+        </div>
+      </c-col>
 
       <c-col md="6" class="mb-3">
         <label cLabel>Estado</label>

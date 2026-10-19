@@ -12,7 +12,7 @@ export class ProductosService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(filtros: { search?: string; marca?: number | null; estado?: string } = {},page = 1,perPage = 10): Observable<Paginado<Producto>> {
+  getAll(filtros: { search?: string; marca?: number | null; estado?: string; repuesto?: string } = {},page = 1,perPage = 10): Observable<Paginado<Producto>> {
   let params = new HttpParams()
     .set('page', String(page))
     .set('per_page', String(perPage));
@@ -20,6 +20,7 @@ export class ProductosService {
   if (filtros.search) params = params.set('search', filtros.search);
   if (filtros.marca)  params = params.set('marca', String(filtros.marca));
   if (filtros.estado !== undefined && filtros.estado !== '') params = params.set('estado', filtros.estado);
+  if (filtros.repuesto !== undefined && filtros.repuesto !== '') params = params.set('repuesto', filtros.repuesto);
 
   // Ya no se hace map(res => res.data): se necesita también "meta".
   return this.http.get<Paginado<Producto>>(this.apiUrl, { params });

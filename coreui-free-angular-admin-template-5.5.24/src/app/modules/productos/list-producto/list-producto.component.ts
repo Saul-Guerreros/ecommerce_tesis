@@ -39,6 +39,7 @@ export class ListProductoComponent implements OnInit {
   search = '';
   filtroMarca: number | null = null;
   filtroEstado = '';
+  filtroTipo = '';   // '' todos · '0' productos de venta · '1' repuestos de taller
 
   private searchSubject = new Subject<string>();
 
@@ -80,7 +81,7 @@ export class ListProductoComponent implements OnInit {
     this.filasExpandidas.clear();
     this.variantesPorFila.clear();
 
-    this.service.getAll({ search: this.search, marca: this.filtroMarca, estado: this.filtroEstado }, page, this.perPage)
+    this.service.getAll({ search: this.search, marca: this.filtroMarca, estado: this.filtroEstado, repuesto: this.filtroTipo }, page, this.perPage)
      .subscribe({
       next: (res) => {
         // Si se eliminó el último registro de la última página, retrocede una.
@@ -109,6 +110,7 @@ export class ListProductoComponent implements OnInit {
   this.search = '';
   this.filtroMarca = null;
   this.filtroEstado = '';
+  this.filtroTipo = '';
   this.cargar(1);
  }
 

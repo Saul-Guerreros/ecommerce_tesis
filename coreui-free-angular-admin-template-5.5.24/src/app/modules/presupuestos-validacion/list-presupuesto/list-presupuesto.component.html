@@ -1,0 +1,59 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Validación de presupuestos de servicio</strong></c-card-header>
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-5">
+        <input cFormControl placeholder="Buscar por N.º de presupuesto, OT o solicitud..." [(ngModel)]="buscar" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-4">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option *ngFor="let e of estados" [value]="e.codigo">{{ e.descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ presupuestos.length }} resultado(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <div class="table-responsive" *ngIf="!cargando">
+      <table cTable striped hover>
+        <thead>
+          <tr>
+            <th>Presupuesto</th>
+            <th>Solicitud / OT</th>
+            <th>Cliente y equipo</th>
+            <th>Técnico</th>
+            <th class="text-end">Total (Gs.)</th>
+            <th class="text-center">Estado</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of presupuestos">
+            <td class="text-nowrap"><strong>{{ p.pse_numero }}</strong> <span class="text-muted small">v{{ p.pse_versio }}</span>
+              <div class="small text-muted">{{ p.pse_creado | date:'dd/MM/yyyy HH:mm' }}</div></td>
+            <td class="small">{{ p.sse_numero }}<br />{{ p.ose_numero }}</td>
+            <td>{{ p.cliente }}<div class="small text-muted">{{ p.equipo }}</div></td>
+            <td class="small">{{ p.tecnico }}</td>
+            <td class="text-end">{{ p.pse_total | number:'1.0-0' }}</td>
+            <td class="text-center"><c-badge [color]="color(p.estado.codigo)">{{ p.estado.descri }}</c-badge></td>
+            <td class="text-end text-nowrap">
+              <button cButton size="sm" [color]="p.estado.codigo === 'EN_REVISION' ? 'warning' : 'info'" class="me-2 text-white" (click)="revisar(p)">
+                {{ p.estado.codigo === 'EN_REVISION' ? 'Revisar' : 'Ver' }}
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="presupuestos.length === 0">
+            <td colspan="7" class="text-center">No hay presupuestos para el filtro seleccionado</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </c-card-body>
+</c-card>
+
+<app-revisar-presupuesto [visible]="modalVisible" [presupuestoId]="seleccionadoId"
+  (visibleChange)="modalVisible = $event" (procesado)="cargar()"></app-revisar-presupuesto>

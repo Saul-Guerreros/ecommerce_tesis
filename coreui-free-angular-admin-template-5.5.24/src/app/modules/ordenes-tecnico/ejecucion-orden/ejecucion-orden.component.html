@@ -1,0 +1,108 @@
+<form [formGroup]="form">
+  <!-- Bloque 1: repuestos usados -->
+  <c-card class="mb-3">
+    <c-card-header class="d-flex justify-content-between align-items-center">
+      <strong>Repuestos usados</strong>
+      <c-badge color="warning" *ngIf="orden.ose_ajuste">Con ajuste (complementario)</c-badge>
+    </c-card-header>
+    <c-card-body>
+      <p class="small text-muted" *ngIf="orden.repuestos.length === 0">La reparación no lleva repuestos aprobados.</p>
+
+      <div class="table-responsive" *ngIf="orden.repuestos.length" formArrayName="repuestos">
+        <table cTable small class="align-middle">
+          <thead>
+            <tr><th>Repuesto</th><th class="text-end">Aprobado</th><th style="width: 120px;">Usado</th><th class="text-end">Precio</th><th class="text-end">Total</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of orden.repuestos; let i = index" [formGroupName]="i">
+              <td>
+                <span class="text-muted small">{{ r.prd_codinv }}</span> {{ r.descri }}
+                <c-badge color="warning" class="ms-1" *ngIf="!r.osr_presup">Complementario</c-badge>
+                <div class="small text-danger" *ngIf="repuestos.at(i).get('cantid')?.errors?.['backend']">
+                  {{ repuestos.at(i).get('cantid')?.errors?.['backend'] }}
+                </div>
+              </td>
+              <td class="text-end">{{ r.osr_cantap | number:'1.0-2' }}</td>
+              <td>
+                <input cFormControl sizing="sm" type="number" min="0" [max]="r.osr_cantap" formControlName="cantid"
+                       [class.is-invalid]="repuestos.at(i).get('cantid')?.invalid && repuestos.at(i).get('cantid')?.touched" />
+              </td>
+              <td class="text-end">{{ r.osr_precio | number:'1.0-0' }}</td>
+              <td class="text-end">{{ (repuestos.at(i).value.cantid || 0) * r.osr_precio | number:'1.0-0' }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr><td colspan="4" class="text-end"><strong>Total repuestos</strong></td><td class="text-end"><strong>{{ totalRepuestos | number:'1.0-0' }}</strong></td></tr>
+          </tfoot>
+        </table>
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="small text-muted">Si usó menos, baje la cantidad. Para usar MÁS o un repuesto nuevo, abra un presupuesto complementario.</span>
+          <button cButton size="sm" color="secondary" variant="outline" type="button" (click)="guardarCantidades()" [disabled]="guardandoCant">
+            <c-spinner size="sm" *ngIf="guardandoCant" class="me-1"></c-spinner>Guardar cantidades
+          </button>
+        </div>
+      </div>
+    </c-card-body>
+  </c-card>
+
+  <!-- Bloque 2: cierre -->
+  <c-card class="mb-3 border-success">
+    <c-card-header><strong>Cierre de la orden</strong></c-card-header>
+    <c-card-body>
+      <div class="row g-3">
+        <div class="col-12">
+          <label cLabel for="ose_proced">Procedimientos y pruebas realizadas <span class="text-danger">*</span></label>
+          <textarea cFormControl id="ose_proced" rows="5" maxlength="5000" formControlName="ose_proced"
+                    placeholder="Ej: Se reemplazó el conector de carga. Prueba de carga 2 h OK, encendido y arranque del SO OK."></textarea>
+          <div class="text-danger small" *ngIf="campoInvalido('ose_proced')">
+            {{ errorBackend('ose_proced') || 'Describa lo realizado (mínimo 10 caracteres).' }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel>Resultado <span class="text-danger">*</span></label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="resRep" formControlName="ose_result" value="REPARADO" />
+              <label class="form-check-label" for="resRep">Reparado</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="resPar" formControlName="ose_result" value="PARCIAL" />
+              <label class="form-check-label" for="resPar">Reparación parcial</label>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel for="ose_gardia">Garantía del trabajo (días) <span class="text-danger">*</span></label>
+          <input cFormControl id="ose_gardia" type="number" min="0" max="730" formControlName="ose_gardia" />
+          <div class="text-danger small" *ngIf="campoInvalido('ose_gardia')">
+            {{ errorBackend('ose_gardia') || 'Entre 0 y 730 días.' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="text-end mt-3">
+        <button cButton color="success" class="text-white" type="button" (click)="pedirConfirmacion()" [disabled]="finalizando">
+          Finalizar y marcar como listo
+        </button>
+      </div>
+    </c-card-body>
+  </c-card>
+</form>
+
+<c-modal [visible]="confirmarVisible" (visibleChange)="confirmarVisible = $event" backdrop="static">
+  <c-modal-header><h5 cModalTitle>Finalizar {{ orden.orden?.ose_numero }}</h5></c-modal-header>
+  <c-modal-body class="small">
+    <p>Al finalizar, en una sola operación:</p>
+    <ul>
+      <li>Se descuentan del stock los repuestos usados y se liberan las reservas.</li>
+      <li>Se calcula el total a cobrar y la solicitud pasa a <strong>Lista</strong>.</li>
+    </ul>
+    <p class="mb-0 text-danger">La orden no podrá modificarse después.</p>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="confirmarVisible = false" [disabled]="finalizando">Cancelar</button>
+    <button cButton color="success" class="text-white" (click)="finalizar()" [disabled]="finalizando">
+      <c-spinner size="sm" *ngIf="finalizando" class="me-2"></c-spinner>Confirmar
+    </button>
+  </c-modal-footer>
+</c-modal>

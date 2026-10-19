@@ -41,6 +41,10 @@
                   <span uk-icon="icon: user; ratio: .9"></span>
                   <span>Datos personales</span>
                 </li>
+				<li [class.activo]="tabActiva === 'servicios'" (click)="tabActiva = 'servicios'">
+				  <span uk-icon="icon: cog; ratio: .9"></span>
+				  <span>Mis servicios</span>
+				</li>
                 <li [class.activo]="tabActiva === 'direcciones'" (click)="tabActiva = 'direcciones'">
                   <span uk-icon="icon: location; ratio: .9"></span>
                   <span>Mis direcciones</span>
@@ -60,6 +64,9 @@
                 (actualizado)="onPerfilActualizado($event)"
               ></app-datos-personales>
             }
+			@if (tabActiva === 'servicios') {
+			  <app-mis-servicios></app-mis-servicios>
+			}
             @if (tabActiva === 'direcciones') {
               <app-direcciones></app-direcciones>
             }

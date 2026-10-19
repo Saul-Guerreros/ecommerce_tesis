@@ -185,6 +185,7 @@ class UsuarioController extends Controller
                 Funcionario::create([
                     'fun_perid' => $persona->per_id,
                     'fun_crgid' => $request->cargo_id,
+                    'fun_rolid' => $rol->rol_id,
                     'fun_fecing' => now()->toDateString(),
                     'fun_estado' => 1,
                 ]);
@@ -248,13 +249,15 @@ class UsuarioController extends Controller
             ]);
 
             if ($usuario->persona->funcionario) {
-                $usuario->persona->funcionario->update([
-                    'fun_crgid' => $request->cargo_id
+                 $usuario->persona->funcionario->update([
+                    'fun_crgid' => $request->cargo_id,
+                    'fun_rolid' => $rol->rol_id,
                 ]);
             } else {
-                Funcionario::create([
+                 Funcionario::create([
                     'fun_perid' => $usuario->persona->per_id,
                     'fun_crgid' => $request->cargo_id,
+                    'fun_rolid' => $rol->rol_id,
                     'fun_fecing' => now()->toDateString(),
                     'fun_estado' => 1,
                 ]);

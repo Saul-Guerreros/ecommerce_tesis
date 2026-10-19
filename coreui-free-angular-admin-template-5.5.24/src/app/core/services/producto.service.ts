@@ -11,6 +11,8 @@ export interface ProductoFiltros {
   estado?: number | null;
   estado_publicacion?: string | null;
   incluir_variantes?: boolean;
+  // 0 = solo productos de venta · 1 = solo repuestos de taller (Servicio Técnico).
+  repuesto?: number | null;
   // Lista solo las variantes de este producto (filas hijas al expandir).
   padre?: number | null;
   page?: number;

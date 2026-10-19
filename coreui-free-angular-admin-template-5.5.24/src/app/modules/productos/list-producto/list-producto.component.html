@@ -6,21 +6,28 @@
 
   <c-card-body>
     <div class="row g-2 mb-3">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <input cFormControl placeholder="Buscar por nombre o código..."
                [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <select cSelect [(ngModel)]="filtroMarca" (ngModelChange)="filtrar()">
           <option [ngValue]="null">Todas las marcas</option>
           <option *ngFor="let m of marcas" [ngValue]="m.mar_id">{{ m.mar_descri }}</option>
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="filtrar()">
           <option value="">Todos los estados</option>
           <option value="1">Activo</option>
           <option value="0">Inactivo</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroTipo" (ngModelChange)="filtrar()">
+          <option value="">Todos los tipos</option>
+          <option value="0">Productos de venta</option>
+          <option value="1">Repuestos de taller</option>
         </select>
       </div>
       <div class="col-md-2">
@@ -58,6 +65,7 @@
             <td>
               {{ p.prd_descri }}
               <c-badge color="secondary" class="ms-1" *ngIf="p.variantes_count">{{ p.variantes_count }} variante(s)</c-badge>
+              <c-badge color="warning" class="ms-1 text-white" *ngIf="p.prd_repues === 1">Repuesto</c-badge>
             </td>
             <td>{{ p.mar_descri }}</td>
             <td>{{ p.umd_codigo }}</td>

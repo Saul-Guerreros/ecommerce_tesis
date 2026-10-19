@@ -108,6 +108,24 @@
           </select>
         </div>
 
+        <!-- Repuesto de taller (Servicio Técnico) -->
+        <div class="col-12">
+          <div class="form-check form-switch">
+            <input cFormCheckInput type="checkbox" id="prd_repues"
+                   [checked]="esRepuesto"
+                   [disabled]="soloLectura || esVariante"
+                   (change)="onToggleRepuesto($any($event.target).checked)" />
+            <label cFormCheckLabel for="prd_repues">Es repuesto de taller (Servicio Técnico)</label>
+          </div>
+          <div class="text-muted small">
+            Lo ofrece el buscador de repuestos del técnico en los presupuestos y
+            <strong>no se puede publicar en la tienda</strong>. No admite variantes.
+          </div>
+          <div class="text-danger small" *ngIf="form.get('prd_repues')?.errors?.['backend']">
+            {{ form.get('prd_repues')?.errors?.['backend'] }}
+          </div>
+        </div>
+
       </div>
 
       <!-- Este producto ES una variante de otro (informativo, no editable). -->

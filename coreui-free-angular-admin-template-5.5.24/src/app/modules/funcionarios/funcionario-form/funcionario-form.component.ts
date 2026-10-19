@@ -5,9 +5,7 @@ import { ToastrService } from 'ngx-toastr';
 import { AlertModule, ButtonModule, FormModule, GridModule, ModalModule, SpinnerModule } from '@coreui/angular';
 import { FuncionarioService } from '../service/funcionario.service';
 import { BusquedaPersona, Funcionario, FuncionarioConfig, FuncionarioPayload } from '../models/funcionario.model';
-import {
-  FECHA_NACIMIENTO_MIN, errorFechaNacimiento, fechaNacimientoMax, hoyIso,
-} from '../../../core/validators/fecha-nacimiento';
+import {FECHA_NACIMIENTO_MIN, errorFechaNacimiento, fechaNacimientoMax, hoyIso,} from '../../../core/validators/fecha-nacimiento';
 
 @Component({
   selector: 'app-funcionario-form',
@@ -33,8 +31,10 @@ export class FuncionarioFormComponent implements OnChanges {
   readonly fechaMax = fechaNacimientoMax();
 
   config: FuncionarioConfig = {
-    tipos_documento: [], cargos: [], estados_civiles: [], tipos_contacto: [],
-  };
+  tipos_documento: [], cargos: [], roles: [], estados_civiles: [], tipos_contacto: [],
+	};
+
+
 
   constructor(
     private service: FuncionarioService,
@@ -54,19 +54,21 @@ export class FuncionarioFormComponent implements OnChanges {
       if (this.isEdit) {
         this.cargarFuncionario();
         this.asegurarCargoActual();
+		 this.asegurarRolActual();
       }
     }
   }
 
-  private cargarConfig(): void {
-    this.service.config().subscribe({
-      next: (c: FuncionarioConfig) => {
-        this.config = c;
-        this.asegurarCargoActual();
-      },
-      error: () => this.toastr.error('No se pudieron cargar los datos del formulario'),
-    });
-  }
+ private cargarConfig(): void {
+  this.service.config().subscribe({
+    next: (c: FuncionarioConfig) => {
+      this.config = c;
+      this.asegurarCargoActual();
+      this.asegurarRolActual();
+    },
+    error: () => this.toastr.error('No se pudieron cargar los datos del formulario'),
+  });
+}
 
   /** El catálogo solo trae cargos activos: si el funcionario tiene uno inactivo, se agrega para no perderlo al editar. */
   private asegurarCargoActual(): void {
@@ -76,11 +78,22 @@ export class FuncionarioFormComponent implements OnChanges {
     }
   }
 
+/** El catálogo solo trae roles activos: si el funcionario tiene uno inactivo, se agrega para no perderlo al editar. */
+private asegurarRolActual(): void {
+  const f = this.funcionario;
+  if (f?.rol_id && !this.config.roles.some(r => r.rol_id === f.rol_id)) {
+    this.config = {
+      ...this.config,
+      roles: [...this.config.roles, { rol_id: f.rol_id, rol_descri: f.rol ?? `Rol #${f.rol_id}` }],
+    };
+  }
+}
+
   reset(): void {
     this.form = {
       per_tpdid: null, per_cedula: '', per_nombr1: '', per_nombr2: null,
       per_apell1: '', per_apell2: null, per_estciv: null, per_fechna: null,
-      fun_crgid: null, fun_fecing: hoyIso(), fun_fecegr: null, fun_estado: 1,
+	  fun_crgid: null, rol_id: null, fun_fecing: hoyIso(), fun_fecegr: null, fun_estado: 1,
       contactos: [{ con_tipo: 'CELULAR', con_valor: '' }],
     };
     this.errors = {};
@@ -101,6 +114,7 @@ export class FuncionarioFormComponent implements OnChanges {
       per_estciv: f.persona.per_estciv,
       per_fechna: f.persona.per_fechna,
       fun_crgid: f.cargo?.crg_id ?? null,
+	  rol_id: f.rol_id ?? null,
       fun_fecing: f.fun_fecing,
       fun_fecegr: f.fun_fecegr,
       fun_estado: f.fun_estado,
@@ -202,6 +216,10 @@ export class FuncionarioFormComponent implements OnChanges {
       this.errors = { fun_fecegr: ['La fecha de egreso no puede ser anterior a la de ingreso.'] };
       return;
     }
+	if (!this.form.rol_id) {
+	  this.errors = { rol_id: ['Debe seleccionar el rol.'] };
+	  return;
+	}
 
     this.submitting = true;
     this.errors = {};

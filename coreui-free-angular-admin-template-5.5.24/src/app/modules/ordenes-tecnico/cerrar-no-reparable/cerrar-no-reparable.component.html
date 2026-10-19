@@ -1,0 +1,38 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Cerrar orden — equipo no reparable</h5>
+  </c-modal-header>
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="alert alert-warning py-2 small">
+        La orden <strong>{{ orden?.orden?.ose_numero }}</strong> se cerrará como <strong>NO REPARABLE</strong>
+        y la solicitud pasará a <strong>Lista</strong> para devolver el equipo. Esta acción no se puede deshacer.
+      </div>
+
+      <div class="form-check mb-1">
+        <input class="form-check-input" type="checkbox" id="cobrar_revision" formControlName="cobrar_revision" />
+        <label class="form-check-label" for="cobrar_revision">
+          Cobrar la revisión
+          <span *ngIf="precioRevision !== null">(Gs. {{ precioRevision | number:'1.0-0' }})</span>
+        </label>
+      </div>
+      <div class="small text-muted mb-3" *ngIf="orden?.sse_garant">Servicio en garantía: no se cobra la revisión.</div>
+      <div class="small text-danger mb-3" *ngIf="precioRevision === null && !orden?.sse_garant">
+        No hay un trabajo «REVISION» activo en el catálogo: no se puede cobrar.
+      </div>
+      <div class="small text-muted mb-3" *ngIf="(orden?.totales?.sse_cosret ?? 0) > 0 && !orden?.sse_garant">
+        Se suma el costo de retiro a domicilio: Gs. {{ orden?.totales?.sse_cosret | number:'1.0-0' }}.
+      </div>
+
+      <label cLabel for="ose_proced">Detalle para el cliente</label>
+      <textarea cFormControl id="ose_proced" rows="4" maxlength="2000" formControlName="ose_proced"></textarea>
+    </c-modal-body>
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="danger" class="text-white" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Cerrando...' : 'Cerrar orden' }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

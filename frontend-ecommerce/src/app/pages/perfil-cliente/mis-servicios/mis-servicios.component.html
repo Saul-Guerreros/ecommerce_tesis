@@ -1,0 +1,41 @@
+<div class="uk-card uk-card-default uk-card-body">
+  <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-bottom">
+    <h3 class="uk-card-title uk-margin-remove">Mis servicios técnicos</h3>
+    <a routerLink="/servicio-tecnico/solicitar" class="uk-button uk-button-primary uk-button-small">Nueva solicitud</a>
+  </div>
+
+  @if (cargando) {
+    <div class="uk-text-center uk-margin"><div uk-spinner></div></div>
+  } @else if (error) {
+    <div class="uk-alert-danger" uk-alert><p>No se pudieron cargar tus servicios.</p></div>
+  } @else if (servicios.length === 0) {
+    <p class="uk-text-meta">Todavía no solicitaste ningún servicio técnico.</p>
+  } @else {
+    <div class="uk-overflow-auto">
+      <table class="uk-table uk-table-divider uk-table-middle uk-table-small">
+        <thead>
+          <tr><th>N.º</th><th>Equipo</th><th>Estado</th><th>Acción pendiente</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (s of servicios; track s.sse_numero) {
+            <tr>
+              <td class="uk-text-nowrap">
+                <strong>{{ s.sse_numero }}</strong>
+                <div class="uk-text-meta">{{ s.sse_creado | date:'dd/MM/yyyy' }}</div>
+              </td>
+              <td>
+                {{ s.equipo }}
+                @if (s.sse_garant) { <span class="uk-label uk-label-warning uk-margin-small-left">Garantía</span> }
+              </td>
+              <td><span class="ms-estado" [ngClass]="claseEstado(s)">{{ s.estado }}</span></td>
+              <td class="uk-text-small">{{ s.accion_pendiente || '—' }}</td>
+              <td class="uk-text-right">
+                <a [routerLink]="['/mis-servicios', s.sse_numero]" class="uk-button uk-button-default uk-button-small">Ver</a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

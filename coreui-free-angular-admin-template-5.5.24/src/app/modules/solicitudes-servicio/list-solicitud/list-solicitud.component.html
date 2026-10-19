@@ -1,0 +1,127 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Bandeja de solicitudes de servicio</strong>
+  </c-card-header>
+  <c-card-body>
+    <!-- Filtros -->
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar por N.º, cliente, C.I., marca o modelo..."
+               [(ngModel)]="filtros.buscar" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtros.ets_id" (ngModelChange)="cargar()" [disabled]="!!filtros.solo_pendientes">
+          <option value="">Estado del servicio</option>
+          <option *ngFor="let e of config.estados_servicio" [value]="e.ets_id">{{ e.ets_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtros.elg_id" (ngModelChange)="cargar()">
+          <option value="">Estado de ingreso</option>
+          <option *ngFor="let e of config.estados_ingreso" [value]="e.elg_id">{{ e.elg_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtros.garantia" (ngModelChange)="cargar()">
+          <option value="">Reparación y garantía</option>
+          <option value="0">Solo reparación</option>
+          <option value="1">Solo garantía</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="soloPendientes"
+             [(ngModel)]="filtros.solo_pendientes" (ngModelChange)="cargar()" />
+      <label class="form-check-label" for="soloPendientes">Solo pendientes de recepción</label>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ total }} resultado(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <div class="table-responsive" *ngIf="!cargando">
+      <table cTable striped hover>
+        <thead>
+          <tr>
+            <th>N.º</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Equipo</th>
+            <th>Ingreso</th>
+            <th class="text-center">Estado</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of solicitudes">
+            <td class="text-nowrap">
+              <strong>{{ s.sse_numero }}</strong>
+              <c-badge color="warning" class="ms-1" *ngIf="s.sse_garant">Garantía</c-badge>
+            </td>
+            <td class="text-nowrap">{{ s.sse_creado | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td>{{ s.cliente }}<div class="small text-muted">C.I. {{ s.cedula || '—' }}</div></td>
+            <td>{{ s.equipo }}</td>
+            <td>
+              <div class="small">{{ s.a_domicilio ? 'Retiro a domicilio' : 'Trae a sucursal' }}</div>
+              <div class="small text-muted">
+                {{ s.estado_ingreso.descri }}
+                <span *ngIf="s.sse_fecing"> · {{ s.sse_fecing | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </td>
+            <td class="text-center">
+              <c-badge [color]="colorServicio(s.estado_servicio.codigo)">{{ s.estado_servicio.descri }}</c-badge>
+              <div class="small text-muted" *ngIf="s.tecnico">{{ s.tecnico }}</div>
+            </td>
+            <td class="text-end text-nowrap">
+              <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrir('detalle', s)">Ver</button>
+              <button cButton size="sm" color="warning" class="me-2 text-white" *ngIf="puedeAgendar(s)"
+                      (click)="abrir('agendar', s)">
+                {{ s.estado_ingreso.codigo === 'RETIRO_AGENDADO' ? 'Reprogramar' : 'Agendar retiro' }}
+              </button>
+              <button cButton size="sm" color="primary" class="me-2 text-white" *ngIf="puedeTransito(s)"
+                      [disabled]="procesandoId === s.sse_id" (click)="marcarEnTransito(s)">En tránsito</button>
+              <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="puedeRecibir(s)"
+                      (click)="abrir('recepcion', s)">Recibir</button>
+              <button cButton size="sm" color="danger" class="me-2 text-white" *ngIf="esSolicitada(s)"
+                      (click)="abrir('rechazar', s)">Rechazar</button>
+            </td>
+          </tr>
+          <tr *ngIf="solicitudes.length === 0">
+            <td colspan="7" class="text-center">No hay solicitudes para los filtros aplicados</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" *ngIf="!cargando && total > 0">
+      <div class="text-muted small">Mostrando {{ rangoDesde }}-{{ rangoHasta }} de {{ total }}</div>
+      <nav *ngIf="lastPage > 1">
+        <ul cPagination class="mb-0">
+          <li cPageItem [disabled]="currentPage === 1">
+            <a cPageLink role="button" (click)="cambiarPagina(currentPage - 1)">&#9664;</a>
+          </li>
+          <li cPageItem *ngFor="let p of pagesArray" [active]="p === currentPage">
+            <a cPageLink role="button" (click)="cambiarPagina(p)">{{ p }}</a>
+          </li>
+          <li cPageItem [disabled]="currentPage === lastPage">
+            <a cPageLink role="button" (click)="cambiarPagina(currentPage + 1)">&#9654;</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </c-card-body>
+</c-card>
+
+<app-detalle-solicitud [visible]="detalleVisible" [solicitudId]="seleccionada?.sse_id ?? null"
+  (visibleChange)="detalleVisible = $event"></app-detalle-solicitud>
+
+<app-agendar-retiro [visible]="agendarVisible" [solicitud]="seleccionada"
+  (visibleChange)="agendarVisible = $event" (guardado)="onGuardado()"></app-agendar-retiro>
+
+<app-rechazar-solicitud [visible]="rechazarVisible" [solicitud]="seleccionada"
+  (visibleChange)="rechazarVisible = $event" (guardado)="onGuardado()"></app-rechazar-solicitud>
+
+<app-confirmar-recepcion [visible]="recepcionVisible" [solicitud]="seleccionada" [tecnicos]="config.tecnicos"
+  (visibleChange)="recepcionVisible = $event" (guardado)="onGuardado()"></app-confirmar-recepcion>

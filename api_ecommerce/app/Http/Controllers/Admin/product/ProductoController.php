@@ -222,6 +222,12 @@ class ProductoController extends Controller
             $query->where('prd_marid', $request->marca);
         }
 
+        // ?repuesto=1 solo repuestos de taller · ?repuesto=0 solo productos de venta
+        // (Publicación Web manda 0: un repuesto no se publica en la tienda).
+        if ($request->has('repuesto') && $request->repuesto !== '' && $request->repuesto !== null) {
+            $query->where('prd_repues', $request->boolean('repuesto') ? 1 : 0);
+        }
+
         if ($request->filled('estado') && $request->estado !== '') {
             $query->where('prd_estado', $request->estado);
         }
@@ -351,6 +357,7 @@ class ProductoController extends Controller
         $datos = $request->validated();
         $datos['prd_estado'] = $datos['prd_estado'] ?? 1;
         $datos['prd_afestk'] = $datos['prd_afestk'] ?? 1;
+        $datos['prd_repues'] = (int) ($datos['prd_repues'] ?? 0);
 
         // No son columnas de "producto" -- se usan aparte para la
         // equivalencia inicial y no deben llegar a Producto::create()
@@ -409,6 +416,9 @@ class ProductoController extends Controller
         // desvincularía silenciosamente una variante existente de su padre.
         $datos = $request->validated();
         $variantes = $datos['variantes'] ?? [];
+        if (array_key_exists('prd_repues', $datos)) {
+            $datos['prd_repues'] = (int) $datos['prd_repues'];
+        }
         unset(
             $datos['variantes'], $datos['tiene_equiv_compra'], $datos['peq_umdid'], $datos['peq_factor'],
             $datos['prd_padre_id']

@@ -1,0 +1,105 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg" backdrop="static" scrollable>
+  <c-modal-header><h5 cModalTitle>Registrar entrega — {{ fila?.sse_numero }}</h5></c-modal-header>
+  <c-modal-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <!-- Entregado: solo queda imprimir -->
+    <div class="text-center py-4" *ngIf="entregado">
+      <h5 class="text-success">Entrega registrada</h5>
+      <p class="text-muted">Imprima la constancia y hágala firmar por quien retira.</p>
+      <button cButton color="primary" (click)="imprimirConstancia()">Imprimir constancia de retiro</button>
+    </div>
+
+    <ng-container *ngIf="cfg && !entregado">
+      <p class="small mb-2"><strong>{{ cfg.cliente }}</strong> · {{ cfg.equipo }}</p>
+
+      <div class="alert alert-danger small" *ngIf="!cfg.cobro.habilitado">
+        {{ cfg.cobro.motivo }} Total: Gs. {{ cfg.cobro.total | number:'1.0-0' }}.
+      </div>
+
+      <form [formGroup]="form" *ngIf="cfg.cobro.habilitado">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label cLabel>Modalidad <span class="text-danger">*</span></label>
+            <select cSelect formControlName="modalidad">
+              <option value="retiro">Retira en sucursal</option>
+              <option value="envio">Envío al domicilio del cliente</option>
+            </select>
+          </div>
+          <div class="col-md-6" *ngIf="!esEnvio">
+            <label cLabel>Sucursal <span class="text-danger">*</span></label>
+            <select cSelect formControlName="ese_sucid">
+              <option *ngFor="let s of cfg.sucursales" [ngValue]="s.suc_id">{{ s.suc_nombre }}</option>
+            </select>
+            <div class="text-danger small" *ngIf="campoInvalido('ese_sucid')">{{ errorBackend('ese_sucid') || 'Seleccione la sucursal.' }}</div>
+          </div>
+          <div class="col-md-6" *ngIf="esEnvio">
+            <label cLabel>Dirección <span class="text-danger">*</span></label>
+            <select cSelect formControlName="ese_dirid">
+              <option *ngFor="let d of cfg.direcciones" [ngValue]="d.dir_id">{{ d.resumen }}</option>
+            </select>
+            <div class="text-danger small" *ngIf="campoInvalido('ese_dirid')">{{ errorBackend('ese_dirid') || 'Seleccione la dirección.' }}</div>
+          </div>
+
+          <div class="col-12">
+            <label cLabel>¿Quién recibe? <span class="text-danger">*</span></label>
+            <div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" id="recTit" formControlName="receptor" value="titular" />
+                <label class="form-check-label" for="recTit">El titular ({{ cfg.cliente }})</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" id="recTer" formControlName="receptor" value="tercero" />
+                <label class="form-check-label" for="recTer">Un tercero autorizado</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4" *ngIf="esTercero || !cfg.titular.nrodoc">
+            <label cLabel>C.I. <span class="text-danger">*</span></label>
+            <input cFormControl formControlName="ese_nrodoc" maxlength="15" />
+            <div class="text-danger small" *ngIf="campoInvalido('ese_nrodoc')">{{ errorBackend('ese_nrodoc') || 'Solo números (5 a 15).' }}</div>
+          </div>
+          <ng-container *ngIf="esTercero">
+            <div class="col-md-4">
+              <label cLabel>Nombre <span class="text-danger">*</span></label>
+              <input cFormControl formControlName="ese_nombre" maxlength="100" />
+              <div class="text-danger small" *ngIf="campoInvalido('ese_nombre')">{{ errorBackend('ese_nombre') || 'Obligatorio.' }}</div>
+            </div>
+            <div class="col-md-4">
+              <label cLabel>Apellido <span class="text-danger">*</span></label>
+              <input cFormControl formControlName="ese_apelli" maxlength="100" />
+              <div class="text-danger small" *ngIf="campoInvalido('ese_apelli')">{{ errorBackend('ese_apelli') || 'Obligatorio.' }}</div>
+            </div>
+          </ng-container>
+          <div class="col-md-4">
+            <label cLabel>Teléfono</label>
+            <input cFormControl formControlName="ese_telef" maxlength="45" />
+          </div>
+
+          <div class="col-12">
+            <label cLabel>Accesorios devueltos</label>
+            <div class="small text-muted" *ngIf="cfg.accesorios.length === 0">El equipo ingresó sin accesorios.</div>
+            <div class="form-check" *ngFor="let a of cfg.accesorios">
+              <input class="form-check-input" type="checkbox" [id]="'acc' + a.rac_id"
+                     [checked]="devueltos.has(a.rac_id)" (change)="alternarAccesorio(a.rac_id)" />
+              <label class="form-check-label" [for]="'acc' + a.rac_id">{{ a.rac_descri }}</label>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label cLabel for="ese_obs">Observaciones <span class="text-danger" *ngIf="faltanAccesorios">*</span></label>
+            <textarea cFormControl id="ese_obs" rows="2" maxlength="255" formControlName="ese_obs"></textarea>
+            <div class="text-danger small" *ngIf="campoInvalido('ese_obs') || errorBackend('ese_obs')">{{ errorBackend('ese_obs') || 'Máximo 255 caracteres.' }}</div>
+          </div>
+        </div>
+      </form>
+    </ng-container>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()" [disabled]="guardando">{{ entregado ? 'Cerrar' : 'Cancelar' }}</button>
+    <button cButton color="success" class="text-white" *ngIf="cfg?.cobro?.habilitado && !entregado" (click)="guardar()" [disabled]="guardando">
+      <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>Registrar entrega
+    </button>
+  </c-modal-footer>
+</c-modal>

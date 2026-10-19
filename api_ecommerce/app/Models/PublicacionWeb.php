@@ -139,7 +139,10 @@ public function ordenEnSeccion(string $seccion): ?int
  
 public function scopePublicadas(Builder $query): Builder
 {
-    return $query->where('pub_estado', self::ESTADO_PUBLICADO);
+    // Un repuesto de taller nunca se muestra en la tienda, aunque la fila
+    // de publicación existiera (defensa en profundidad).
+    return $query->where('pub_estado', self::ESTADO_PUBLICADO)
+        ->whereHas('producto', fn (Builder $p) => $p->where('prd_repues', 0));
 }
  
 public function scopeDestacadas(Builder $query): Builder

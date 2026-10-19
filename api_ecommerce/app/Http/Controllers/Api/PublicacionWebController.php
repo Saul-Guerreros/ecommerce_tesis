@@ -77,6 +77,13 @@ class PublicacionWebController extends Controller
         FichaTecnicaService $fichaTecnica
     ): JsonResponse
 {
+    // Los repuestos de taller (Servicio Técnico) no se publican en la tienda.
+    if ((int) $producto->prd_repues === 1) {
+        return response()->json([
+            'message' => 'Este producto está marcado como repuesto de taller y no se puede publicar en la tienda.',
+        ], 422);
+    }
+
     $esNueva = ! $producto->publicacionWeb()->exists();
  
     $publicacion = DB::transaction(function () use ($request, $producto, $fichaTecnica) {

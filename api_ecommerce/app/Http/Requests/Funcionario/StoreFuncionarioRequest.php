@@ -6,6 +6,7 @@ use App\Models\Funcionario;
 use App\Rules\FechaNacimiento;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\Rol;
 
 class StoreFuncionarioRequest extends FormRequest
 {
@@ -39,6 +40,7 @@ class StoreFuncionarioRequest extends FormRequest
 
             // --- Datos de funcionario ---
             'fun_crgid'  => ['required', 'integer', 'exists:cargo,crg_id'],
+			'rol_id'     => ['required', 'integer', 'exists:rol,rol_id'],
             'fun_fecing' => ['required', 'date_format:Y-m-d'],
             'fun_fecegr' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:fun_fecing'],
             'fun_estado' => ['required', 'integer', Rule::in([0, 1])],
@@ -54,6 +56,10 @@ class StoreFuncionarioRequest extends FormRequest
     {
         $validator->after(function ($v) {
             $contactos = $this->input('contactos', []);
+			$rolId = $this->input('rol_id');
+            if ($rolId && Rol::whereKey($rolId)->where('rol_descri', 'Cliente')->exists()) {
+                $v->errors()->add('rol_id', 'El rol Cliente no se asigna a funcionarios.');
+            }
 
             // Formato según el tipo
             foreach ($contactos as $i => $c) {
@@ -88,6 +94,8 @@ class StoreFuncionarioRequest extends FormRequest
             'per_apell1.required' => 'El primer apellido es obligatorio.',
             'fun_crgid.required'  => 'Debe seleccionar el cargo.',
             'fun_crgid.exists'    => 'El cargo seleccionado no es válido.',
+			'rol_id.required'     => 'Debe seleccionar el rol.',
+            'rol_id.exists'       => 'El rol seleccionado no es válido.',
             'fun_fecing.required'    => 'La fecha de ingreso es obligatoria.',
             'fun_fecing.date_format' => 'La fecha de ingreso no es válida.',
             'fun_fecegr.date_format' => 'La fecha de egreso no es válida.',

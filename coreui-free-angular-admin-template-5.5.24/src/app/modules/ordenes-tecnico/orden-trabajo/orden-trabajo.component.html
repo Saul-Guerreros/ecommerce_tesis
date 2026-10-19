@@ -1,0 +1,205 @@
+<div class="text-center py-5" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+<ng-container *ngIf="!cargando && orden as o">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <a routerLink="/servicios/mis-ordenes" class="small">&larr; Volver al tablero</a>
+      <h4 class="mb-0 mt-1">
+        {{ o.orden?.ose_numero || 'Sin orden de trabajo' }}
+        <small class="text-muted fs-6">· {{ o.sse_numero }}</small>
+      </h4>
+    </div>
+    <div class="d-flex gap-2">
+      <c-badge color="warning" *ngIf="o.sse_garant">Garantía</c-badge>
+      <c-badge color="primary">{{ o.estado.descri }}</c-badge>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- ===== Columna izquierda: datos del equipo ===== -->
+    <div class="col-lg-4">
+      <c-card class="mb-3">
+        <c-card-header><strong>Equipo</strong></c-card-header>
+        <c-card-body>
+          <div><strong>{{ o.equipo.tipo }}</strong> {{ o.equipo.sse_marca }} {{ o.equipo.sse_modelo }}</div>
+          <div class="small text-muted">S/N: {{ o.equipo.sse_nroser || '—' }} · Cliente: {{ o.cliente }}</div>
+          <hr />
+          <div class="small text-muted text-uppercase">Problema reportado</div>
+          <p class="mb-0">{{ o.sse_proble }}</p>
+        </c-card-body>
+      </c-card>
+
+      <c-card class="mb-3" *ngIf="o.recepcion as r">
+        <c-card-header><strong>Recepción</strong></c-card-header>
+        <c-card-body class="small">
+          <div>{{ r.rse_fecha | date:'dd/MM/yyyy HH:mm' }} · Técnico: {{ r.tecnico }}</div>
+          <div class="mt-2"><strong>Estado físico:</strong> {{ r.rse_estfis }}</div>
+          <div class="mt-1" *ngIf="r.rse_obs"><strong>Obs.:</strong> {{ r.rse_obs }}</div>
+          <div class="mt-1"><strong>Accesorios:</strong> {{ r.accesorios.length ? r.accesorios.join(', ') : 'ninguno' }}</div>
+
+          <div class="mt-2" *ngIf="r.tiene_clave">
+            <button cButton size="sm" color="secondary" variant="outline" (click)="verClave()" [disabled]="cargandoClave">
+              {{ clave !== null ? 'Ocultar clave' : 'Ver clave del equipo' }}
+            </button>
+            <code class="ms-2" *ngIf="clave !== null">{{ clave }}</code>
+            <div class="text-muted mt-1">La consulta queda registrada en el historial.</div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <a *ngFor="let f of fotosDe('INGRESO')" [href]="f.url" target="_blank" rel="noopener">
+              <img [src]="f.url" alt="Ingreso" class="rounded border" style="width: 70px; height: 70px; object-fit: cover;" />
+            </a>
+            <a *ngFor="let f of fotosDe('CLIENTE')" [href]="f.url" target="_blank" rel="noopener" title="Foto del cliente">
+              <img [src]="f.url" alt="Cliente" class="rounded border border-info" style="width: 70px; height: 70px; object-fit: cover;" />
+            </a>
+          </div>
+        </c-card-body>
+      </c-card>
+    </div>
+
+    <!-- ===== Columna derecha: trabajo del técnico ===== -->
+    <div class="col-lg-8">
+      <!-- Iniciar OT -->
+      <c-card class="mb-3" *ngIf="o.acciones.iniciar">
+        <c-card-body class="text-center py-4">
+          <p class="mb-3">El equipo está en el taller. Inicie la orden de trabajo para registrar el diagnóstico.</p>
+          <button cButton color="primary" (click)="iniciar()" [disabled]="iniciando">
+            <c-spinner size="sm" *ngIf="iniciando" class="me-2"></c-spinner>
+            Iniciar orden de trabajo
+          </button>
+        </c-card-body>
+      </c-card>
+
+      <!-- T2: diagnóstico editable -->
+      <app-form-diagnostico *ngIf="o.acciones.diagnosticar && config"
+        [orden]="o" [config]="config" (guardado)="onActualizada($event)"></app-form-diagnostico>
+
+      <!-- Diagnóstico en solo lectura -->
+      <c-card class="mb-3" *ngIf="!o.acciones.diagnosticar && o.diagnostico as d">
+        <c-card-header><strong>Diagnóstico</strong> <span class="small text-muted">· {{ d.dia_fecha | date:'dd/MM/yyyy HH:mm' }}</span></c-card-header>
+        <c-card-body>
+          <ul class="mb-2">
+            <li *ngFor="let f of d.fallas">{{ f.fll_descri }}<span class="text-muted" *ngIf="f.obs"> — {{ f.obs }}</span></li>
+          </ul>
+          <div><strong>Causa:</strong> {{ d.dia_causa }}</div>
+          <div class="small mt-1">
+            {{ d.dia_repara ? 'Reparable' : 'No reparable' }}
+            <span *ngIf="d.dia_repara"> · {{ d.dia_reqrep ? 'Requiere repuestos' : 'Sin repuestos' }} · {{ d.dia_tiempo }} día(s)</span>
+          </div>
+        </c-card-body>
+      </c-card>
+
+      <!-- Siguientes acciones -->
+      <c-card class="mb-3 border-danger" *ngIf="o.acciones.cerrar_no_repara">
+        <c-card-body class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span>El equipo fue diagnosticado como <strong>no reparable</strong>.</span>
+          <button cButton color="danger" class="text-white" (click)="modalNoReparable = true">Cerrar como no reparable</button>
+        </c-card-body>
+      </c-card>
+
+      <!-- T3: presupuesto editable (sin presupuesto o en BORRADOR) -->
+      <app-form-presupuesto *ngIf="o.acciones.presupuestar && config"
+        [orden]="o" [config]="config" (actualizada)="onActualizada($event)"></app-form-presupuesto>
+
+      <!-- Presupuesto en solo lectura (en validación, enviado o respondido) -->
+      <c-card class="mb-3" *ngIf="!o.acciones.presupuestar && o.presupuesto as p">
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <strong>Presupuesto {{ p.pse_numero }} <span class="text-muted small">v{{ p.pse_versio }}</span></strong>
+          <c-badge [color]="colorPresupuesto(p.estado.codigo)">{{ p.estado.descri }}</c-badge>
+        </c-card-header>
+        <c-card-body>
+          <div class="small text-muted mb-2">
+            <span *ngIf="p.pse_enviad">Enviado: {{ p.pse_enviad | date:'dd/MM/yyyy HH:mm' }}</span>
+            <span *ngIf="p.pse_fecven"> · Vence: {{ p.pse_fecven | date:'dd/MM/yyyy' }}</span>
+            <span *ngIf="p.pse_respon"> · Respuesta: {{ p.pse_respon | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+          <div class="alert alert-danger py-2 small" *ngIf="p.pse_motrec">Motivo: {{ p.pse_motrec }}</div>
+          <table class="table table-sm mb-2">
+            <thead><tr><th>Descripción</th><th class="text-end">Cant.</th><th class="text-end">Precio</th><th class="text-end">Total</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let l of p.detalles">
+                <td>
+                  {{ l.psd_descri }}
+                  <c-badge color="success" class="ms-1" *ngIf="l.psd_reserv">Reservado</c-badge>
+                  <c-badge color="warning" class="ms-1"
+                           *ngIf="l.psd_tipo === 'REPUESTO' && p.estado.codigo === 'APROBADO' && !l.psd_reserv">Pendiente de compra</c-badge>
+                </td>
+                <td class="text-end">{{ l.psd_cantid | number:'1.0-2' }}</td>
+                <td class="text-end">{{ l.psd_precio | number:'1.0-0' }}</td>
+                <td class="text-end">{{ l.psd_total | number:'1.0-0' }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr><td colspan="3" class="text-end"><strong>Total</strong></td><td class="text-end"><strong>Gs. {{ p.pse_total | number:'1.0-0' }}</strong></td></tr>
+            </tfoot>
+          </table>
+          <div class="small" *ngIf="p.pse_obs">Nota: {{ p.pse_obs }}</div>
+        </c-card-body>
+      </c-card>
+
+      <!-- Versiones de presupuesto (cuando hay complementario) -->
+      <c-card class="mb-3" *ngIf="o.versiones.length > 1">
+        <c-card-header><strong>Versiones del presupuesto</strong></c-card-header>
+        <c-card-body class="small">
+          <div class="d-flex justify-content-between border-bottom py-1" *ngFor="let v of o.versiones">
+            <span>{{ v.pse_numero }} · v{{ v.pse_versio }} {{ v.pse_versio > 1 ? '(complementario)' : '(original)' }}</span>
+            <span><c-badge [color]="colorPresupuesto(v.codigo)">{{ v.estado }}</c-badge> Gs. {{ v.pse_total | number:'1.0-0' }}</span>
+          </div>
+        </c-card-body>
+      </c-card>
+
+      <!-- T4: iniciar / reanudar reparación -->
+      <c-card class="mb-3 border-primary" *ngIf="o.acciones.iniciar_reparacion">
+        <c-card-body class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span>Presupuesto aprobado por el cliente. {{ o.repuestos.length ? 'Puede reanudar la reparación.' : 'Puede comenzar la reparación.' }}</span>
+          <button cButton color="primary" (click)="ejecutar('reparar')" [disabled]="procesando">
+            <c-spinner size="sm" *ngIf="procesando" class="me-2"></c-spinner>
+            {{ o.repuestos.length ? 'Reanudar reparación' : 'Iniciar reparación' }}
+          </button>
+        </c-card-body>
+      </c-card>
+
+      <!-- Complementario: abrir / descartar / pendiente -->
+      <div class="d-flex justify-content-end gap-2 mb-3" *ngIf="o.acciones.solicitar_complementario || o.acciones.descartar_complementario">
+        <button cButton size="sm" color="warning" class="text-white" *ngIf="o.acciones.solicitar_complementario"
+                (click)="ejecutar('complementario')" [disabled]="procesando">+ Repuesto o trabajo no presupuestado</button>
+        <button cButton size="sm" color="danger" class="text-white" *ngIf="o.acciones.descartar_complementario"
+                (click)="ejecutar('descartar')" [disabled]="procesando">Descartar complementario</button>
+      </div>
+      <div class="alert alert-warning small" *ngIf="complementarioPendiente">
+        El presupuesto complementario <strong>{{ o.presupuesto?.pse_numero }}</strong> está
+        <strong>{{ o.presupuesto?.estado?.descri }}</strong>. La orden no puede cerrarse hasta que se resuelva.
+      </div>
+
+      <!-- T4: ejecución y cierre -->
+      <app-ejecucion-orden *ngIf="o.acciones.ejecutar" [orden]="o" (actualizada)="onActualizada($event)"></app-ejecucion-orden>
+
+      <!-- Orden cerrada -->
+      <c-card class="mb-3" *ngIf="o.orden?.ose_result">
+        <c-card-header><strong>Cierre de la orden</strong></c-card-header>
+        <c-card-body class="small">
+          <div>Resultado: <c-badge color="dark">{{ o.orden?.ose_result }}</c-badge> · {{ o.orden?.ose_fecfin | date:'dd/MM/yyyy HH:mm' }}</div>
+          <div class="mt-2" *ngIf="o.orden?.ose_proced">{{ o.orden?.ose_proced }}</div>
+          <div class="mt-1" *ngIf="o.ose_gardia">Garantía del trabajo: {{ o.ose_gardia }} días</div>
+          <div class="mt-2" *ngIf="o.repuestos.length">
+            Repuestos usados:
+            <span *ngFor="let r of o.repuestos; let last = last">{{ r.descri }} ×{{ r.osr_cantid | number:'1.0-2' }}{{ last ? '' : ', ' }}</span>
+          </div>
+          <div class="mt-2">Total a cobrar: <strong>Gs. {{ o.totales.sse_total | number:'1.0-0' }}</strong></div>
+        </c-card-body>
+      </c-card>
+
+      <c-card *ngIf="fotosDe('DIAGNOSTICO').length">
+        <c-card-header><strong>Fotos del diagnóstico</strong></c-card-header>
+        <c-card-body class="d-flex flex-wrap gap-2">
+          <a *ngFor="let f of fotosDe('DIAGNOSTICO')" [href]="f.url" target="_blank" rel="noopener">
+            <img [src]="f.url" alt="Diagnóstico" class="rounded border" style="width: 90px; height: 90px; object-fit: cover;" />
+          </a>
+        </c-card-body>
+      </c-card>
+    </div>
+  </div>
+
+  <app-cerrar-no-reparable [visible]="modalNoReparable" [orden]="o" [precioRevision]="config?.precio_revision ?? null"
+    (visibleChange)="modalNoReparable = $event" (guardado)="onActualizada($event)"></app-cerrar-no-reparable>
+</ng-container>

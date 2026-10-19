@@ -324,11 +324,42 @@ export const routes: Routes = [
         data: { title: 'Pedidos' },
       },
 
-	 
+	  {
+        path: 'servicios/tipos-dispositivo',
+        loadChildren: () => import('./modules/tipos-dispositivo/tipos-dispositivo.module').then(m => m.TiposDispositivoModule),
+        data: { title: 'Tipos de Dispositivo' },
+      },
+      {
+        path: 'servicios/fallas',
+        loadChildren: () => import('./modules/fallas/fallas.module').then(m => m.FallasModule),
+        data: { title: 'Fallas' },
+      },
+      {
+        path: 'servicios/trabajos',
+        loadChildren: () => import('./modules/trabajos/trabajos.module').then(m => m.TrabajosModule),
+        data: { title: 'Trabajos' },
+      },
    
-   
-   
-   
+      {
+        path: 'servicios/solicitudes',
+        loadChildren: () => import('./modules/solicitudes-servicio/solicitudes-servicio.module').then(m => m.SolicitudesServicioModule),
+        data: { title: 'Bandeja de solicitudes' },
+      },
+      {
+        path: 'servicios/mis-ordenes',
+        loadChildren: () => import('./modules/ordenes-tecnico/ordenes-tecnico.module').then(m => m.OrdenesTecnicoModule),
+        data: { title: 'Mis órdenes' },
+      },
+      {
+        path: 'servicios/presupuestos',
+        loadChildren: () => import('./modules/presupuestos-validacion/presupuestos-validacion.module').then(m => m.PresupuestosValidacionModule),
+        data: { title: 'Validación de presupuestos' },
+      },
+	  {
+        path: 'servicios/panel',
+        loadChildren: () => import('./modules/panel-servicios/panel-servicios.module').then(m => m.PanelServiciosModule),
+        data: { title: 'Panel general de servicios' },
+      },
     {
       //Fuera del FrontEnd
       path: 'discounts',

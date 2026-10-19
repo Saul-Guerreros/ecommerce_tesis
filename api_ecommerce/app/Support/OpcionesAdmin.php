@@ -108,6 +108,18 @@ class OpcionesAdmin
                     ['permiso' => 'ciudades.ver', 'nombre' => 'Ciudades', 'urls' => ['/ciudades'], 'fijo' => false],
                 ],
             ],
+			[
+				'nombre' => 'Servicio Técnico',
+				'opciones' => [
+					['permiso' => 'servicios.solicitudes.ver', 'nombre' => 'Bandeja de solicitudes',     'urls' => ['/servicios/solicitudes'], 'fijo' => false],
+					['permiso' => 'servicios.panel.ver',       'nombre' => 'Panel general de servicios', 'urls' => ['/servicios/panel'], 'fijo' => false],
+					['permiso' => 'servicios.tecnico.ver',     'nombre' => 'Mis órdenes (técnico)',      'urls' => ['/servicios/mis-ordenes'], 'fijo' => false],
+					['permiso' => 'tipos-dispositivo.ver',     'nombre' => 'Tipos de dispositivo',       'urls' => ['/servicios/tipos-dispositivo'], 'fijo' => false],
+					['permiso' => 'fallas.ver',                'nombre' => 'Fallas',                     'urls' => ['/servicios/fallas'], 'fijo' => false],
+					['permiso' => 'trabajos.ver',              'nombre' => 'Trabajos (mano de obra)',    'urls' => ['/servicios/trabajos'], 'fijo' => false],
+				    ['permiso' => 'servicios.presupuestos.ver', 'nombre' => 'Validación de presupuestos', 'urls' => ['/servicios/presupuestos'], 'fijo' => false],
+				],
+			],
         ];
     }
 

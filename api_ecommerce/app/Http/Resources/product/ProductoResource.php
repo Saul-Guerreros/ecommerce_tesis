@@ -19,6 +19,7 @@ class ProductoResource extends JsonResource
             // (float) quita los ceros de la cast decimal:4: "5.0000" -> 5, "5.2500" -> 5.25
             'prd_stkmin'  => $this->prd_stkmin !== null ? (float) $this->prd_stkmin : null,
             'prd_afestk'  => $this->prd_afestk,
+            'prd_repues'  => (int) $this->prd_repues,
             'prd_estado'  => $this->prd_estado,
             'prd_creado'  => $this->prd_creado,
             'prd_padre_id' => $this->prd_padre_id,

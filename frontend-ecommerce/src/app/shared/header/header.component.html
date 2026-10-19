@@ -144,6 +144,7 @@
             <li><a href="#" onclick="return false;">Blog</a></li>
             <li><a href="#" onclick="return false;">Nosotros</a></li>
             <li><a href="#" onclick="return false;">Contactos</a></li>
+			<li><a routerLink="/servicio-tecnico">Servicio técnico</a></li>
           </ul>
         </nav>
       </div>
@@ -190,6 +191,9 @@
                   Mis pedidos <span class="tm-pronto">Pronto</span>
                 </a>
               </li>
+			  <li>
+			     <a routerLink="/perfil-del-cliente" [queryParams]="{ tab: 'servicios' }" (click)="cerrarMenuCuenta(menuCuenta)">Servicio técnico</a>
+			  </li>
               <li class="uk-disabled">
                 <li>
                 <a routerLink="/favoritos" (click)="cerrarMenuCuenta(menuCuenta)">Favoritos</a>
@@ -264,6 +268,7 @@
           <li><a routerLink="/favoritos">Favoritos</a></li>
          <li><a routerLink="/comparar-productos">Comparar</a></li>
           <li><a href="#" onclick="return false;">Marcas</a></li>
+		  <li><a routerLink="/servicio-tecnico">Servicio técnico</a></li>
           <li><a href="#" onclick="return false;">Blog</a></li>
           <li><a href="#" onclick="return false;">Nosotros</a></li>
           <li><a href="#" onclick="return false;">Contactos</a></li>

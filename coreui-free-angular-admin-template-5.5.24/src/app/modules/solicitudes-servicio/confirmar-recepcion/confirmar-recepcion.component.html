@@ -1,0 +1,102 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)"
+         backdrop="static" size="lg" scrollable>
+  <c-modal-header>
+    <h5 cModalTitle>Confirmar recepción — {{ solicitud?.sse_numero }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="d-flex flex-column flex-grow-1 overflow-hidden" style="min-height: 0;">
+    <c-modal-body>
+      <div class="text-center py-3" *ngIf="cargandoDetalle"><c-spinner color="primary"></c-spinner></div>
+
+      <div *ngIf="detalle" class="alert alert-light border small mb-3">
+        <strong>{{ detalle.cliente.nombre }}</strong> (C.I. {{ detalle.cliente.cedula || '—' }}) ·
+        {{ detalle.equipo.tipo }} {{ detalle.equipo.sse_marca }} {{ detalle.equipo.sse_modelo }}
+        <span *ngIf="detalle.equipo.sse_nroser"> · S/N {{ detalle.equipo.sse_nroser }}</span>
+        <div class="mt-1 text-muted">Problema declarado: {{ detalle.sse_proble }}</div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label cLabel for="rse_tecid">Técnico asignado <span class="text-danger">*</span></label>
+          <select cSelect id="rse_tecid" formControlName="rse_tecid">
+            <option [ngValue]="null" disabled>Seleccione...</option>
+            <option *ngFor="let t of tecnicos" [ngValue]="t.usu_id">{{ t.nombre }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('rse_tecid')">
+            {{ errorBackend('rse_tecid') || 'Asigne un técnico.' }}
+          </div>
+          <div class="text-warning small" *ngIf="tecnicos.length === 0">
+            No hay usuarios activos con rol Técnico.
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="rse_clave">Clave / PIN del equipo</label>
+          <div class="input-group">
+            <input cFormControl id="rse_clave" [type]="verClave ? 'text' : 'password'" maxlength="100"
+                   formControlName="rse_clave" autocomplete="off" />
+            <button cButton color="secondary" variant="outline" type="button" (click)="verClave = !verClave">
+              {{ verClave ? 'Ocultar' : 'Ver' }}
+            </button>
+          </div>
+          <div class="text-muted small">Opcional. Se guarda cifrada.</div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="rse_estfis">Estado físico del equipo <span class="text-danger">*</span></label>
+          <textarea cFormControl id="rse_estfis" rows="3" maxlength="500" formControlName="rse_estfis"
+                    placeholder="Ej: rayones en la tapa, esquina inferior derecha golpeada, pantalla sin fisuras"></textarea>
+          <div class="text-danger small" *ngIf="campoInvalido('rse_estfis')">
+            {{ errorBackend('rse_estfis') || 'Describa el estado físico (mín. 5 caracteres).' }}
+          </div>
+        </div>
+
+        <!-- Checklist de accesorios -->
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <label cLabel class="mb-0">Accesorios recibidos</label>
+            <button cButton size="sm" color="secondary" variant="outline" type="button" (click)="agregarAccesorio()">
+              + Agregar accesorio
+            </button>
+          </div>
+          <div class="text-muted small mb-2" *ngIf="accesorios.length === 0">Sin accesorios (solo el equipo).</div>
+          <div class="d-flex gap-2 mb-2" *ngFor="let ctrl of accesorios.controls; let i = index">
+            <input cFormControl [formControl]="ctrl" maxlength="100" placeholder="Ej: Cargador original" />
+            <button cButton size="sm" color="danger" class="text-white" type="button" (click)="quitarAccesorio(i)">Quitar</button>
+          </div>
+        </div>
+
+        <!-- Fotos de ingreso -->
+        <div class="col-12">
+          <label cLabel for="fotos">Fotos de ingreso <span class="text-danger">*</span></label>
+          <input cFormControl id="fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple
+                 (change)="onFotos($event)" [disabled]="fotos.length >= MAX_FOTOS" />
+          <div class="text-muted small">Hasta {{ MAX_FOTOS }} fotos de {{ MAX_MB }} MB. Fotografíe todas las caras del equipo.</div>
+          <div class="text-danger small" *ngIf="errorFotos">{{ errorFotos }}</div>
+
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <div class="position-relative" *ngFor="let f of fotos; let i = index">
+              <img [src]="f.preview" alt="Foto {{ i + 1 }}" class="rounded border"
+                   style="width: 96px; height: 96px; object-fit: cover;" />
+              <button type="button" class="btn btn-sm btn-danger text-white position-absolute top-0 end-0 py-0 px-1"
+                      (click)="quitarFoto(i)" title="Quitar">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="rse_obs">Observaciones</label>
+          <textarea cFormControl id="rse_obs" rows="2" maxlength="500" formControlName="rse_obs"></textarea>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="success" class="text-white" type="submit" [disabled]="guardando || cargandoDetalle">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Registrando...' : 'Confirmar recepción' }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

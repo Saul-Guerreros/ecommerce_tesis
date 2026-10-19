@@ -1,0 +1,220 @@
+<main>
+  <section class="uk-section uk-section-small">
+    <div class="uk-container uk-container-small">
+      <ul class="uk-breadcrumb">
+        <li><a routerLink="/">Home</a></li>
+        <li><a routerLink="/perfil-del-cliente" [queryParams]="{ tab: 'servicios' }">Mis servicios</a></li>
+        <li><span>{{ servicio?.sse_numero }}</span></li>
+      </ul>
+
+      @if (cargando) {
+        <div class="uk-text-center uk-margin-large"><div uk-spinner="ratio: 1.5"></div></div>
+      }
+
+      @if (noEncontrado) {
+        <div class="uk-alert-warning uk-margin-top" uk-alert><p>No encontramos ese servicio en tu cuenta.</p></div>
+      }
+
+      @if (servicio; as s) {
+        <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap uk-margin-top">
+          <div>
+            <h2 class="uk-margin-remove">{{ s.sse_numero }}</h2>
+            <div class="uk-text-meta">Solicitado el {{ s.sse_creado | date:'dd/MM/yyyy HH:mm' }}</div>
+          </div>
+          @if (s.reclamo_de) {
+            <span class="uk-label uk-label-warning">Reclamo de garantía de {{ s.reclamo_de }}</span>
+          } @else if (s.sse_garant) {
+            <span class="uk-label uk-label-warning">Garantía · {{ s.pedido }}</span>
+          }
+        </div>
+
+        @if (s.accion_pendiente) {
+          <div class="uk-alert-primary uk-margin-top" uk-alert><p class="uk-margin-remove"><strong>{{ s.accion_pendiente }}</strong></p></div>
+        }
+
+        <!-- Timeline -->
+        <div class="uk-card uk-card-default uk-card-body uk-margin">
+          @if (s.cancelado) {
+            <div class="uk-alert-danger uk-margin-remove" uk-alert><p class="uk-margin-remove">Esta solicitud fue cancelada.</p></div>
+          } @else if (!s.paso_actual) {
+            <p class="uk-margin-remove">Registramos tu solicitud. El seguimiento comienza cuando el equipo llega al taller.</p>
+          } @else {
+            <ol class="ds-timeline">
+              @for (p of pasos; track p; let i = $index) {
+                <li [class]="'ds-paso ds-paso--' + estadoPaso(i)">
+                  <span class="ds-punto">
+                    @if (estadoPaso(i) === 'hecho') { <span uk-icon="icon: check; ratio: 0.8"></span> } @else { {{ i + 1 }} }
+                  </span>
+                  <span class="ds-texto">{{ p }}</span>
+                </li>
+              }
+            </ol>
+          }
+        </div>
+
+        <!-- Resultado, entrega y garantía (Paso 6) -->
+        @if (s.resultado; as r) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <h4 class="uk-card-title">Resultado del servicio</h4>
+            <p class="uk-margin-small"><strong>{{ r.resultado }}</strong></p>
+            @if (r.detalle) { <p class="uk-text-small">{{ r.detalle }}</p> }
+            @if (r.total > 0) { <p class="uk-margin-remove">Total: <strong>{{ r.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong></p> }
+            @if (s.entrega; as e) {
+              <p class="uk-text-meta uk-margin-small-top">Entregado el {{ e.fecha | date:'dd/MM/yyyy HH:mm' }} a {{ e.receptor }}.</p>
+            }
+          </div>
+        }
+
+        @if (s.garantia; as g) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap" style="gap: 10px;">
+              <div>
+                <h4 class="uk-card-title uk-margin-remove">Garantía del trabajo</h4>
+                <p class="uk-margin-remove uk-text-small">
+                  {{ g.dias }} días · {{ g.vigente ? 'vigente hasta el' : 'venció el' }} {{ g.vence | date:'dd/MM/yyyy' }}
+                </p>
+                @if (g.reclamo_abierto) { <p class="uk-text-meta uk-margin-remove">Ya tenés un reclamo en curso.</p> }
+              </div>
+              @if (g.puede_reclamar) {
+                <button class="uk-button uk-button-primary" (click)="reclamarGarantia()">Reclamar garantía</button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (s.constancias?.recepcion || s.constancias?.retiro) {
+          <div class="uk-margin uk-flex uk-flex-wrap" style="gap: 10px;">
+            @if (s.constancias?.recepcion) {
+              <button class="uk-button uk-button-default uk-button-small" (click)="descargarConstancia('recepcion')">
+                <span uk-icon="icon: download; ratio: 0.8"></span> Constancia de recepción
+              </button>
+            }
+            @if (s.constancias?.retiro) {
+              <button class="uk-button uk-button-default uk-button-small" (click)="descargarConstancia('retiro')">
+                <span uk-icon="icon: download; ratio: 0.8"></span> Constancia de retiro
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Presupuesto (Fase 4) -->
+        @if (s.presupuesto; as p) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin ds-presupuesto" [class.ds-presupuesto--pendiente]="p.puede_responder">
+            <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+              <h4 class="uk-card-title uk-margin-remove">Presupuesto {{ p.pse_numero }}</h4>
+              <span class="uk-label" [class.uk-label-success]="p.codigo === 'APROBADO'"
+                    [class.uk-label-danger]="p.codigo === 'RECHAZADO' || p.codigo === 'VENCIDO'">{{ p.estado }}</span>
+            </div>
+            @if (p.puede_responder && p.pse_fecven) {
+              <p class="uk-text-meta uk-margin-small">Respondé antes del {{ p.pse_fecven | date:'dd/MM/yyyy' }}. Si no respondés, el equipo se devuelve sin reparar.</p>
+            }
+
+            <table class="uk-table uk-table-small uk-table-divider uk-margin-small">
+              <thead><tr><th>Detalle</th><th class="uk-text-right">Cant.</th><th class="uk-text-right">Precio</th><th class="uk-text-right">Total</th></tr></thead>
+              <tbody>
+                @if (manoDeObra.length) { <tr><td colspan="4" class="uk-text-meta uk-text-uppercase">Mano de obra</td></tr> }
+                @for (l of manoDeObra; track $index) {
+                  <tr><td>{{ l.descri }}</td><td class="uk-text-right">{{ l.cantid | number:'1.0-2' }}</td>
+                    <td class="uk-text-right">{{ l.precio | currency:'PYG':'symbol-narrow':'1.0-0' }}</td>
+                    <td class="uk-text-right">{{ l.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</td></tr>
+                }
+                @if (repuestos.length) { <tr><td colspan="4" class="uk-text-meta uk-text-uppercase">Repuestos</td></tr> }
+                @for (l of repuestos; track $index) {
+                  <tr><td>{{ l.descri }}</td><td class="uk-text-right">{{ l.cantid | number:'1.0-2' }}</td>
+                    <td class="uk-text-right">{{ l.precio | currency:'PYG':'symbol-narrow':'1.0-0' }}</td>
+                    <td class="uk-text-right">{{ l.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</td></tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr><td colspan="3" class="uk-text-right uk-text-meta">IVA incluido</td>
+                  <td class="uk-text-right uk-text-meta">{{ p.pse_impues | currency:'PYG':'symbol-narrow':'1.0-0' }}</td></tr>
+                <tr><td colspan="3" class="uk-text-right"><strong>Total del servicio</strong></td>
+                  <td class="uk-text-right"><strong>{{ p.pse_total | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong></td></tr>
+                @if (p.costo_retiro > 0) {
+                  <tr><td colspan="3" class="uk-text-right uk-text-meta">+ Retiro a domicilio</td>
+                    <td class="uk-text-right uk-text-meta">{{ p.costo_retiro | currency:'PYG':'symbol-narrow':'1.0-0' }}</td></tr>
+                }
+              </tfoot>
+            </table>
+            @if (p.pse_obs) { <p class="uk-text-small">{{ p.pse_obs }}</p> }
+            @if (p.pse_motrec) { <p class="uk-text-small uk-text-danger">Motivo: {{ p.pse_motrec }}</p> }
+
+            @if (p.puede_responder) {
+              @if (!confirmando) {
+                <div class="uk-flex uk-flex-right uk-margin-top" style="gap: 10px;">
+                  <button class="uk-button uk-button-default" (click)="pedirConfirmacion('rechazar')">Rechazar</button>
+                  <button class="uk-button uk-button-primary" (click)="pedirConfirmacion('aprobar')">Aprobar presupuesto</button>
+                </div>
+              } @else {
+                <div class="uk-alert uk-margin-top" [class.uk-alert-primary]="confirmando === 'aprobar'" [class.uk-alert-warning]="confirmando === 'rechazar'">
+                  @if (confirmando === 'aprobar') {
+                    <p>Al aprobar, autorizás la reparación por <strong>{{ p.pse_total | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>. El pago se realiza al retirar el equipo.</p>
+                  } @else {
+                    <p class="uk-margin-small">Contanos por qué lo rechazás. El equipo se devuelve sin reparar.</p>
+                    <textarea class="uk-textarea" rows="2" maxlength="255" [formControl]="motivo"
+                              [class.uk-form-danger]="motivo.invalid && motivo.touched"></textarea>
+                    @if (motivo.invalid && motivo.touched) {
+                      <div class="uk-text-danger uk-text-small">{{ motivo.errors?.['backend'] ?? 'Indicá el motivo (mínimo 3 caracteres).' }}</div>
+                    }
+                  }
+                  <div class="uk-flex uk-flex-right uk-margin-small-top" style="gap: 10px;">
+                    <button class="uk-button uk-button-default uk-button-small" (click)="confirmando = null" [disabled]="respondiendo">Volver</button>
+                    <button class="uk-button uk-button-small" [class.uk-button-primary]="confirmando === 'aprobar'"
+                            [class.uk-button-danger]="confirmando === 'rechazar'" (click)="responder()" [disabled]="respondiendo">
+                      @if (respondiendo) { <span uk-spinner="ratio: 0.5"></span> }
+                      {{ confirmando === 'aprobar' ? 'Confirmar aprobación' : 'Confirmar rechazo' }}
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        }
+
+        <div class="uk-card uk-card-default uk-card-body uk-margin">
+          <h4 class="uk-card-title">Equipo</h4>
+          <dl class="uk-description-list">
+            <dt>Equipo</dt><dd>{{ s.equipo }}@if (s.sse_nroser) { · S/N {{ s.sse_nroser }} }</dd>
+            <dt>Problema reportado</dt><dd>{{ s.sse_proble }}</dd>
+            <dt>Accesorios declarados</dt><dd>{{ s.sse_acceso || 'Ninguno' }}</dd>
+          </dl>
+          @if (s.fotos?.length) {
+            <div class="ds-fotos">
+              @for (url of s.fotos; track url) {
+                <a [href]="url" target="_blank" rel="noopener"><img [src]="url" alt="Foto del equipo"></a>
+              }
+            </div>
+          }
+        </div>
+
+        @if (s.ingreso; as ing) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <h4 class="uk-card-title">Ingreso del equipo</h4>
+            <p class="uk-margin-remove">
+              @if (ing.a_domicilio) {
+                Retiro en {{ ing.direccion }}
+                @if (ing.costo > 0) { · Costo {{ ing.costo | currency:'PYG':'symbol-narrow':'1.0-0' }} }
+              } @else {
+                Lo llevás a la sucursal {{ ing.sucursal }}
+              }
+            </p>
+            <div class="uk-text-meta">
+              Fecha: {{ ing.fecha ? (ing.fecha | date:'dd/MM/yyyy') : '—' }} · Estado: {{ ing.estado }}
+            </div>
+          </div>
+        }
+
+        @if (s.historial?.length) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <h4 class="uk-card-title">Novedades</h4>
+            <ul class="uk-list uk-list-divider uk-text-small">
+              @for (h of s.historial; track $index) {
+                <li><span class="uk-text-meta">{{ h.fecha | date:'dd/MM/yyyy HH:mm' }}</span> — {{ h.coment || 'Actualización de estado' }}</li>
+              }
+            </ul>
+          </div>
+        }
+      }
+    </div>
+  </section>
+</main>

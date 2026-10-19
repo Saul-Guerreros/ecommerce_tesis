@@ -1,0 +1,17 @@
+.st-hero {
+  padding-top: 60px;
+  padding-bottom: 60px;
+}
+
+.st-numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--uk-global-primary-background, #1e87f0);
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.85rem;
+}

@@ -12,6 +12,7 @@ use App\Models\TipoDocumento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\Rol;
 
 class FuncionarioController extends Controller
 {
@@ -28,6 +29,10 @@ class FuncionarioController extends Controller
             'cargos'          => Cargo::where('crg_estado', 1)
                                     ->select('crg_id', 'crg_descr')
                                     ->orderBy('crg_descr')->get(),
+			 'roles'           => Rol::conAccesoPanel()
+                                    ->where('rol_estado', 1)
+                                    ->orderBy('rol_descri')
+                                    ->get(['rol_id', 'rol_descri']),						
             'estados_civiles' => self::ESTADOS_CIVILES,
             'tipos_contacto'  => self::TIPOS_CONTACTO,
         ], 200);
@@ -39,6 +44,7 @@ class FuncionarioController extends Controller
                 'persona',
                 'persona.contactos:con_id,con_perid,con_tipo,con_valor',
                 'cargo:crg_id,crg_descr',
+				'rol:rol_id,rol_descri',
             ])
             ->when($request->search, function ($q, $search) {
                 $q->where(function ($sub) use ($search) {
@@ -130,6 +136,7 @@ class FuncionarioController extends Controller
             $funcionario = Funcionario::create([
                 'fun_perid'  => $persona->per_id,
                 'fun_crgid'  => $data['fun_crgid'],
+				'fun_rolid'  => $data['rol_id'],
                 'fun_fecing' => $data['fun_fecing'],
                 'fun_fecegr' => $data['fun_fecegr'] ?? null,
                 'fun_estado' => $data['fun_estado'],
@@ -141,7 +148,7 @@ class FuncionarioController extends Controller
         });
 
         return response()->json([
-            'data' => FuncionarioResource::make($funcionario->load('persona.contactos', 'cargo')),
+			'data' => FuncionarioResource::make($funcionario->load('persona.contactos', 'cargo', 'rol')),
         ], 201);
     }
 
@@ -166,6 +173,7 @@ class FuncionarioController extends Controller
             $funcionario->update([
                 'fun_crgid'  => $data['fun_crgid'],
                 'fun_fecing' => $data['fun_fecing'],
+				'fun_rolid'  => $data['rol_id'],
                 'fun_fecegr' => $data['fun_fecegr'] ?? null,
                 'fun_estado' => $data['fun_estado'],
             ]);
@@ -174,7 +182,7 @@ class FuncionarioController extends Controller
         });
 
         return response()->json([
-            'data' => FuncionarioResource::make($funcionario->fresh()->load('persona.contactos', 'cargo')),
+			'data' => FuncionarioResource::make($funcionario->fresh()->load('persona.contactos', 'cargo', 'rol')),
         ], 200);
     }
 

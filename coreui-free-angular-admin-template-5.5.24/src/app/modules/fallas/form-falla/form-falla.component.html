@@ -1,0 +1,55 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar falla' : 'Nueva falla' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+        <div class="col-md-5">
+          <label cLabel for="fll_codigo">Código <span class="text-danger">*</span></label>
+          <input cFormControl id="fll_codigo" formControlName="fll_codigo"
+                 placeholder="Ej: NB_PANTALLA" maxlength="20" (input)="mayusculas()" />
+          <div class="text-danger small" *ngIf="campoInvalido('fll_codigo')">
+            {{ errorBackend('fll_codigo') || 'Obligatorio (máx. 20; letras, números y guion bajo).' }}
+          </div>
+        </div>
+
+        <div class="col-md-7">
+          <label cLabel for="fll_tdiid">Tipo de dispositivo</label>
+          <select cSelect id="fll_tdiid" formControlName="fll_tdiid">
+            <option [ngValue]="null">— Genérica (cualquier equipo) —</option>
+            <option *ngFor="let t of tiposDispositivo" [ngValue]="t.tdi_id">{{ t.tdi_descri }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="errorBackend('fll_tdiid')">{{ errorBackend('fll_tdiid') }}</div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="fll_descri">Descripción <span class="text-danger">*</span></label>
+          <input cFormControl id="fll_descri" formControlName="fll_descri"
+                 placeholder="Ej: Pantalla rota o con líneas" maxlength="100" />
+          <div class="text-danger small" *ngIf="campoInvalido('fll_descri')">
+            {{ errorBackend('fll_descri') || 'La descripción es obligatoria (máx. 100 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="fll_estado">Estado</label>
+          <select cSelect id="fll_estado" formControlName="fll_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+          <div class="text-muted small mt-1">Solo las fallas activas aparecen en el formulario de diagnóstico.</div>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

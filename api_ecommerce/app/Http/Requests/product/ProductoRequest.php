@@ -43,6 +43,8 @@ class ProductoRequest extends FormRequest
             'prd_descri' => ['required', 'string', 'max:150'],
             'prd_stkmin' => ['required', 'numeric', 'min:0', 'decimal:0,4'],
             'prd_afestk' => ['nullable', 'boolean'],
+            // Repuesto de taller (Servicio Técnico): no se publica en la tienda.
+            'prd_repues' => ['nullable', 'boolean'],
             'prd_estado' => ['nullable', 'boolean'],
 
             // Solo se acepta un padre que no sea, a su vez, variante.
@@ -78,6 +80,8 @@ class ProductoRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            $this->validarRepuesto($validator);
+
             $variantes = $this->input('variantes', []);
             if (empty($variantes) || ! is_array($variantes)) {
                 return;
@@ -113,6 +117,37 @@ class ProductoRequest extends FormRequest
                 }
             }
         });
+    }
+
+    /**
+     * Un repuesto de taller no se vende en la tienda, así que no puede tener
+     * variantes, ser variante de otro producto ni estar publicado.
+     */
+    private function validarRepuesto(Validator $validator): void
+    {
+        if (! $this->boolean('prd_repues')) {
+            return;
+        }
+
+        if (! empty($this->input('variantes'))) {
+            $validator->errors()->add('prd_repues', 'Un repuesto de taller no puede tener variantes.');
+        }
+
+        $id = $this->productoId();
+        $producto = $id ? Producto::with('publicacionWeb')->find($id) : null;
+        if (! $producto) {
+            return;
+        }
+
+        if ($producto->prd_padre_id) {
+            $validator->errors()->add('prd_repues', 'Una variante no puede marcarse como repuesto de taller.');
+        } elseif ($producto->variantes()->exists()) {
+            $validator->errors()->add('prd_repues', 'Este producto tiene variantes: no puede marcarse como repuesto de taller.');
+        }
+
+        if ($producto->publicacionWeb && $producto->publicacionWeb->estaPublicada()) {
+            $validator->errors()->add('prd_repues', 'Este producto está publicado en la tienda. Despublíquelo (borrador o archivado) antes de marcarlo como repuesto.');
+        }
     }
 
     public function messages(): array

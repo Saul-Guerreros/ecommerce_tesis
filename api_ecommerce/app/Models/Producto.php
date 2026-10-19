@@ -38,6 +38,7 @@ class Producto extends Model
         'prd_descri',
         'prd_stkmin',
         'prd_afestk',
+        'prd_repues',
         'prd_estado',
     ];
 
@@ -55,6 +56,7 @@ class Producto extends Model
         'prd_canminmaj'   => 'decimal:4',
         'prd_stkmin'      => 'decimal:4',
         'prd_afestk'      => 'integer',
+        'prd_repues'      => 'integer',
         'prd_estado'      => 'integer',
         'prd_creado'      => 'datetime',
     ];
@@ -78,6 +80,12 @@ class Producto extends Model
     // viven en publicacion_web (img_pubid), no en producto: accedé a ellas
     // vía $producto->publicacionWeb?->imagenes (puede ser null si el
     // producto todavía no tiene ficha web).
+
+    /** Repuestos de taller (Servicio Técnico): no se publican en la tienda. */
+    public function scopeRepuestos($query)
+    {
+        return $query->where('prd_repues', 1);
+    }
 
     public function stock(): HasMany
     {

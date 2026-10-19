@@ -63,6 +63,7 @@ export class FormProductoComponent implements OnInit, OnChanges {
       prd_descri: ['', [Validators.required, Validators.maxLength(150)]],
       prd_stkmin: [null, [Validators.required, Validators.min(0)]],
       prd_afestk: [1],
+      prd_repues: [0],   // 1 = repuesto de taller (no se publica en la tienda)
       prd_estado: [1],
 
       // Equivalencia inicial: solo se usa en modo creación (ver template).
@@ -134,8 +135,21 @@ export class FormProductoComponent implements OnInit, OnChanges {
 
   // Un producto que ya es (o va a ser) variante de otro no puede, a su
   // vez, tener variantes propias -- por eso la sección ni se muestra.
+  // Un repuesto de taller tampoco admite variantes (no se vende en la tienda).
   get puedeTenerVariantes(): boolean {
-    return !this.esVariante;
+    return !this.esVariante && !this.esRepuesto;
+  }
+
+  get esRepuesto(): boolean {
+    return this.form.get('prd_repues')?.value === 1;
+  }
+
+  onToggleRepuesto(activo: boolean): void {
+    this.form.patchValue({ prd_repues: activo ? 1 : 0 });
+    if (activo) {
+      this.seccionVariantesAbierta = false;
+      this.variantesArray().clear();
+    }
   }
 
   variantesArray(): FormArray {
@@ -312,6 +326,7 @@ export class FormProductoComponent implements OnInit, OnChanges {
         prd_descri: this.producto?.prd_descri ?? '',
         prd_stkmin: this.producto?.prd_stkmin ?? null,
         prd_afestk: this.producto?.prd_afestk ?? 1,
+        prd_repues: this.producto?.prd_repues ?? 0,
         prd_estado: this.producto?.prd_estado ?? 1,
 
         // Solo aplica al crear: siempre arranca en "No" (requisito 2),

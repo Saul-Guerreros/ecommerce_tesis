@@ -1,0 +1,46 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar tipo de dispositivo' : 'Nuevo tipo de dispositivo' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+        <div class="col-md-5">
+          <label cLabel for="tdi_codigo">Código <span class="text-danger">*</span></label>
+          <input cFormControl id="tdi_codigo" formControlName="tdi_codigo"
+                 placeholder="Ej: NOTEBOOK" maxlength="20" (input)="mayusculas()" />
+          <div class="text-danger small" *ngIf="campoInvalido('tdi_codigo')">
+            {{ errorBackend('tdi_codigo') || 'Obligatorio (máx. 20; letras, números y guion bajo).' }}
+          </div>
+        </div>
+
+        <div class="col-md-7">
+          <label cLabel for="tdi_descri">Descripción <span class="text-danger">*</span></label>
+          <input cFormControl id="tdi_descri" formControlName="tdi_descri"
+                 placeholder="Ej: Notebook / Laptop" maxlength="50" />
+          <div class="text-danger small" *ngIf="campoInvalido('tdi_descri')">
+            {{ errorBackend('tdi_descri') || 'La descripción es obligatoria (máx. 50 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="tdi_estado">Estado</label>
+          <select cSelect id="tdi_estado" formControlName="tdi_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+          <div class="text-muted small mt-1">Solo los tipos activos aparecen en la solicitud de servicio de la tienda.</div>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

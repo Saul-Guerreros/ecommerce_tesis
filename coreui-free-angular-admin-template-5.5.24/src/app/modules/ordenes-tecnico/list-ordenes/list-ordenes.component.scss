@@ -1,0 +1,39 @@
+.tablero {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(200px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+}
+
+.columna {
+  background: var(--cui-tertiary-bg, #f3f4f7);
+  border-radius: 6px;
+  padding: 10px;
+  min-height: 220px;
+}
+
+.columna-titulo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.tarjeta {
+  display: block;
+  background: var(--cui-body-bg, #fff);
+  border: 1px solid var(--cui-border-color, #dbdfe6);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--cui-primary, #5856d6);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+}

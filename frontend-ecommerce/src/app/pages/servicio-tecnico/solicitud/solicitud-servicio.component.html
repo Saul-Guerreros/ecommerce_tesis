@@ -1,0 +1,320 @@
+<main>
+  <section class="uk-section uk-section-small">
+    <div class="uk-container uk-container-small">
+      <ul class="uk-breadcrumb">
+        <li><a routerLink="/">Home</a></li>
+        <li><a routerLink="/servicio-tecnico">Servicio técnico</a></li>
+        <li><span>Solicitar</span></li>
+      </ul>
+
+      <h2 class="uk-margin-small-top">Solicitar servicio técnico</h2>
+
+      <!-- Indicador de pasos -->
+      <div class="st-pasos uk-flex uk-flex-middle uk-flex-center uk-margin-medium-bottom">
+        <div class="st-paso" [class.st-paso--activo]="paso === 1" [class.st-paso--hecho]="paso > 1"><span>1</span> Equipo</div>
+        <div class="st-linea"></div>
+        <div class="st-paso" [class.st-paso--activo]="paso === 2" [class.st-paso--hecho]="paso > 2"><span>2</span> Ingreso</div>
+        <div class="st-linea"></div>
+        <div class="st-paso" [class.st-paso--activo]="paso === 3"><span>3</span> Confirmación</div>
+      </div>
+
+      @if (cargando) {
+        <div class="uk-text-center uk-margin-large"><div uk-spinner="ratio: 1.5"></div></div>
+      }
+
+      @if (!cargando && config) {
+        <!-- ===================== PASO 1: EQUIPO ===================== -->
+        @if (paso === 1) {
+          <div [formGroup]="equipo">
+            @if (reclamoDe) {
+              <div class="uk-alert-warning uk-margin" uk-alert>
+                <p class="uk-margin-remove">
+                  <strong>Reclamo de garantía</strong> del servicio {{ reclamoDe }}. Los datos del equipo se toman de ese servicio;
+                  describí qué volvió a fallar.
+                </p>
+              </div>
+            }
+            <div class="uk-card uk-card-default uk-card-body uk-margin" [hidden]="reclamoDe">
+              <h4 class="uk-card-title">¿Qué tipo de servicio necesitás?</h4>
+              <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+                <div>
+                  <button type="button" class="st-opcion" [class.st-opcion--activa]="!esGarantia" (click)="elegirTipoServicio(false)">
+                    <span uk-icon="icon: cog"></span>
+                    <strong>Reparación</strong>
+                    <small>Diagnóstico y presupuesto antes de reparar</small>
+                  </button>
+                </div>
+                <div>
+                  <button type="button" class="st-opcion" [class.st-opcion--activa]="esGarantia" (click)="elegirTipoServicio(true)">
+                    <span uk-icon="icon: bookmark"></span>
+                    <strong>Garantía</strong>
+                    <small>Equipo comprado en Z Informática (hasta {{ config.garantia_dias }} días)</small>
+                  </button>
+                </div>
+              </div>
+
+              @if (esGarantia) {
+                <div class="uk-margin-top">
+                  <label class="uk-form-label">¿En qué compra lo adquiriste? <span class="uk-text-danger">*</span></label>
+                  @if (config.pedidos_garantia.length === 0) {
+                    <div class="uk-alert-warning uk-margin-small" uk-alert>
+                      <p class="uk-margin-remove">No tenés compras entregadas dentro del plazo de garantía. Podés solicitarlo como reparación.</p>
+                    </div>
+                  }
+                  @for (p of config.pedidos_garantia; track p.ped_id) {
+                    <label class="st-radio" [class.st-radio--activa]="equipo.value.sse_pedid === p.ped_id">
+                      <input type="radio" class="uk-radio" formControlName="sse_pedid" [value]="p.ped_id">
+                      <div>
+                        <strong>{{ p.ped_numero }}</strong>
+                        <span class="uk-text-meta"> · {{ p.fecha | date:'dd/MM/yyyy' }}</span>
+                        <div class="uk-text-meta uk-text-truncate">{{ p.productos.join(', ') }}</div>
+                      </div>
+                    </label>
+                  }
+                  @if (invalido(equipo, 'sse_pedid')) {
+                    <div class="uk-text-danger uk-text-small">{{ errorBackend(equipo, 'sse_pedid') ?? 'Seleccioná la compra.' }}</div>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="uk-card uk-card-default uk-card-body uk-margin">
+              <h4 class="uk-card-title">Datos del equipo</h4>
+              <div class="uk-grid-small" uk-grid>
+                <div class="uk-width-1-2@s">
+                  <label class="uk-form-label">Tipo de equipo <span class="uk-text-danger">*</span></label>
+                  <select class="uk-select" formControlName="sse_tdiid" [class.uk-form-danger]="invalido(equipo, 'sse_tdiid')">
+                    <option [ngValue]="null" disabled>Seleccioná...</option>
+                    @for (t of config.tipos_dispositivo; track t.tdi_id) {
+                      <option [ngValue]="t.tdi_id">{{ t.tdi_descri }}</option>
+                    }
+                  </select>
+                  @if (invalido(equipo, 'sse_tdiid')) {
+                    <div class="uk-text-danger uk-text-small">{{ errorBackend(equipo, 'sse_tdiid') ?? 'Seleccioná el tipo de equipo.' }}</div>
+                  }
+                </div>
+                <div class="uk-width-1-2@s">
+                  <label class="uk-form-label">Marca <span class="uk-text-danger">*</span></label>
+                  <input class="uk-input" formControlName="sse_marca" maxlength="50" placeholder="Ej: Lenovo"
+                         [class.uk-form-danger]="invalido(equipo, 'sse_marca')">
+                  @if (invalido(equipo, 'sse_marca')) {
+                    <div class="uk-text-danger uk-text-small">{{ errorBackend(equipo, 'sse_marca') ?? 'Indicá la marca.' }}</div>
+                  }
+                </div>
+                <div class="uk-width-1-2@s">
+                  <label class="uk-form-label">Modelo <span class="uk-text-danger">*</span></label>
+                  <input class="uk-input" formControlName="sse_modelo" maxlength="80" placeholder="Ej: IdeaPad 3 15ITL6"
+                         [class.uk-form-danger]="invalido(equipo, 'sse_modelo')">
+                  @if (invalido(equipo, 'sse_modelo')) {
+                    <div class="uk-text-danger uk-text-small">{{ errorBackend(equipo, 'sse_modelo') ?? 'Indicá el modelo.' }}</div>
+                  }
+                </div>
+                <div class="uk-width-1-2@s">
+                  <label class="uk-form-label">N.º de serie</label>
+                  <input class="uk-input" formControlName="sse_nroser" maxlength="80" placeholder="Opcional">
+                </div>
+                <div class="uk-width-1-1">
+                  <label class="uk-form-label">¿Qué problema tiene? <span class="uk-text-danger">*</span></label>
+                  <textarea class="uk-textarea" rows="4" formControlName="sse_proble" maxlength="500"
+                            placeholder="Contanos qué pasa, desde cuándo y si hubo algún golpe o derrame"
+                            [class.uk-form-danger]="invalido(equipo, 'sse_proble')"></textarea>
+                  <div class="uk-flex uk-flex-between">
+                    <span class="uk-text-danger uk-text-small">
+                      @if (invalido(equipo, 'sse_proble')) {
+                        {{ errorBackend(equipo, 'sse_proble') ?? 'Describí el problema (mínimo 10 caracteres).' }}
+                      }
+                    </span>
+                    <span class="uk-text-meta">{{ equipo.value.sse_proble?.length || 0 }}/500</span>
+                  </div>
+                </div>
+                <div class="uk-width-1-1">
+                  <label class="uk-form-label">Accesorios que vas a entregar</label>
+                  <input class="uk-input" formControlName="sse_acceso" maxlength="255"
+                         placeholder="Separados por coma. Ej: cargador, funda, mouse">
+                </div>
+              </div>
+            </div>
+
+            <div class="uk-card uk-card-default uk-card-body uk-margin">
+              <h4 class="uk-card-title">Fotos <span class="uk-text-meta uk-text-small">(opcional)</span></h4>
+              <p class="uk-text-small uk-margin-small">Ayudan al técnico a entender el problema antes de recibir el equipo.</p>
+              <div uk-form-custom>
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onFotos($event)">
+                <button class="uk-button uk-button-default" type="button" [disabled]="fotos.length >= config.max_fotos">
+                  <span uk-icon="icon: camera"></span> Agregar fotos
+                </button>
+              </div>
+              <span class="uk-text-meta uk-margin-small-left">{{ fotos.length }}/{{ config.max_fotos }} · máx. {{ MAX_MB }} MB c/u</span>
+              @if (errorFotos) { <div class="uk-text-danger uk-text-small uk-margin-small-top">{{ errorFotos }}</div> }
+
+              <div class="st-fotos uk-margin-small-top">
+                @for (f of fotos; track f.preview; let i = $index) {
+                  <div class="st-foto">
+                    <img [src]="f.preview" alt="Foto {{ i + 1 }}">
+                    <button type="button" class="uk-icon-button" uk-icon="icon: close; ratio: 0.7" (click)="quitarFoto(i)" title="Quitar"></button>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ===================== PASO 2: INGRESO ===================== -->
+        @if (paso === 2) {
+          <div [formGroup]="ingreso">
+            <div class="uk-card uk-card-default uk-card-body uk-margin">
+              <h4 class="uk-card-title">¿Cómo nos hacés llegar el equipo?</h4>
+              <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+                <div>
+                  <button type="button" class="st-opcion" [class.st-opcion--activa]="!esDomicilio" (click)="elegirModalidad('sucursal')">
+                    <span uk-icon="icon: home"></span>
+                    <strong>Lo llevo a una sucursal</strong>
+                    <small>Sin costo adicional</small>
+                  </button>
+                </div>
+                <div>
+                  <button type="button" class="st-opcion" [class.st-opcion--activa]="esDomicilio" (click)="elegirModalidad('domicilio')">
+                    <span uk-icon="icon: location"></span>
+                    <strong>Retírenlo de mi domicilio</strong>
+                    <small>El costo depende de tu ciudad</small>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            @if (!esDomicilio) {
+              <div class="uk-card uk-card-default uk-card-body uk-margin">
+                <h4 class="uk-card-title">Elegí la sucursal</h4>
+                @for (s of config.sucursales; track s.suc_id) {
+                  <label class="st-radio" [class.st-radio--activa]="ingreso.value.sse_sucid === s.suc_id">
+                    <input type="radio" class="uk-radio" [checked]="ingreso.value.sse_sucid === s.suc_id" (change)="elegirSucursal(s.suc_id)">
+                    <div>
+                      <strong>{{ s.suc_nombre }}</strong>
+                      <div class="uk-text-meta">{{ s.suc_direccion }}@if (s.ciudad) { — {{ s.ciudad }} }</div>
+                      @if (s.suc_horario) {
+                        <div class="uk-text-meta"><span uk-icon="icon: clock; ratio: 0.8"></span> {{ s.suc_horario }}</div>
+                      }
+                    </div>
+                  </label>
+                }
+                @if (invalido(ingreso, 'sse_sucid')) {
+                  <div class="uk-text-danger uk-text-small">{{ errorBackend(ingreso, 'sse_sucid') ?? 'Seleccioná una sucursal.' }}</div>
+                }
+              </div>
+            } @else {
+              <div class="uk-card uk-card-default uk-card-body uk-margin">
+                <h4 class="uk-card-title">¿Dónde lo retiramos?</h4>
+                @for (d of config.direcciones; track d.dir_id) {
+                  <label class="st-radio" [class.st-radio--activa]="ingreso.value.sse_dirid === d.dir_id">
+                    <input type="radio" class="uk-radio" [checked]="ingreso.value.sse_dirid === d.dir_id" (change)="elegirDireccion(d.dir_id)">
+                    <div>
+                      <strong>{{ d.dir_alias }}</strong>
+                      <div class="uk-text-meta">{{ d.resumen }}</div>
+                    </div>
+                  </label>
+                }
+                @if (config.direcciones.length === 0) {
+                  <p class="uk-text-meta">Todavía no tenés direcciones guardadas.</p>
+                }
+                <button type="button" class="uk-button uk-button-text" (click)="modalDireccion = true">
+                  <span uk-icon="icon: plus; ratio: 0.8"></span> Agregar nueva dirección
+                </button>
+                @if (invalido(ingreso, 'sse_dirid')) {
+                  <div class="uk-text-danger uk-text-small">{{ errorBackend(ingreso, 'sse_dirid') ?? 'Seleccioná o agregá una dirección.' }}</div>
+                }
+                @if (ingreso.value.sse_dirid) {
+                  <div class="uk-alert-primary uk-margin-small-top" uk-alert>
+                    <p class="uk-margin-remove">
+                      @if (calculandoCosto) { Calculando costo de retiro... }
+                      @else if (costoRetiro !== null) {
+                        Costo de retiro: <strong>{{ costoRetiro | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+                        <span class="uk-text-meta">(se suma al cierre del servicio)</span>
+                      }
+                    </p>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="uk-card uk-card-default uk-card-body uk-margin">
+              <h4 class="uk-card-title">{{ esDomicilio ? '¿Qué día te queda bien el retiro?' : '¿Qué día lo vas a llevar?' }}</h4>
+              <input class="uk-input uk-form-width-medium" type="date" formControlName="sse_fecing" [min]="hoy"
+                     [class.uk-form-danger]="invalido(ingreso, 'sse_fecing')">
+              @if (esDomicilio) {
+                <p class="uk-text-meta uk-margin-small">Es una fecha tentativa: te confirmamos el día del retiro.</p>
+              }
+              @if (invalido(ingreso, 'sse_fecing')) {
+                <div class="uk-text-danger uk-text-small">{{ errorBackend(ingreso, 'sse_fecing') ?? 'Indicá una fecha desde hoy.' }}</div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- ===================== PASO 3: CONFIRMACIÓN ===================== -->
+        @if (paso === 3) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <h4 class="uk-card-title">Revisá tu solicitud</h4>
+            <dl class="uk-description-list uk-description-list-divider">
+              <dt>Servicio</dt>
+              <dd>{{ reclamoDe ? 'Reclamo de garantía del servicio ' + reclamoDe : (esGarantia ? 'Garantía · Compra ' + pedidoElegido : 'Reparación') }}</dd>
+              <dt>Equipo</dt>
+              <dd>{{ tipoDispositivo }} {{ equipo.getRawValue().sse_marca }} {{ equipo.getRawValue().sse_modelo }}
+                @if (equipo.getRawValue().sse_nroser) { · S/N {{ equipo.getRawValue().sse_nroser }} }</dd>
+              <dt>Problema</dt>
+              <dd>{{ equipo.value.sse_proble }}</dd>
+              <dt>Accesorios</dt>
+              <dd>{{ equipo.value.sse_acceso || 'Ninguno' }}</dd>
+              <dt>Ingreso</dt>
+              <dd>
+                {{ esDomicilio ? 'Retiro en ' : 'Lo llevás a ' }}{{ lugarIngreso }} · {{ ingreso.value.sse_fecing | date:'dd/MM/yyyy' }}
+                @if (esDomicilio && costoRetiro !== null) { · Costo {{ costoRetiro | currency:'PYG':'symbol-narrow':'1.0-0' }} }
+              </dd>
+              <dt>Fotos</dt>
+              <dd>{{ fotos.length }} adjunta(s)</dd>
+            </dl>
+          </div>
+
+          <div class="uk-card uk-card-default uk-card-body uk-margin" [formGroup]="confirmacion">
+            <h4 class="uk-card-title">Condiciones del servicio</h4>
+            <ul class="uk-list uk-list-bullet uk-text-small">
+              <li>El diagnóstico se realiza en el taller. Antes de reparar te enviamos un presupuesto para que lo apruebes.</li>
+              <li>El presupuesto vence a los 7 días. Si no respondés, se devuelve el equipo sin reparar.</li>
+              <li>No nos hacemos responsables por la información almacenada: hacé un respaldo antes de entregarlo.</li>
+              <li>El trabajo realizado tiene garantía; el plazo se indica al entregar el equipo.</li>
+            </ul>
+            <label>
+              <input class="uk-checkbox" type="checkbox" formControlName="acepta_condiciones">
+              Leí y acepto las condiciones del servicio y los
+              <a routerLink="/terminos-y-condiciones" target="_blank">términos y condiciones</a>.
+            </label>
+            @if (invalido(confirmacion, 'acepta_condiciones')) {
+              <div class="uk-text-danger uk-text-small">{{ errorBackend(confirmacion, 'acepta_condiciones') ?? 'Tenés que aceptar las condiciones.' }}</div>
+            }
+          </div>
+        }
+
+        <!-- Navegación -->
+        <div class="uk-flex uk-flex-between uk-margin-medium-top">
+          @if (paso > 1) {
+            <button type="button" class="uk-button uk-button-default" (click)="anterior()" [disabled]="enviando">Atrás</button>
+          } @else {
+            <a routerLink="/servicio-tecnico" class="uk-button uk-button-default">Cancelar</a>
+          }
+          @if (paso < 3) {
+            <button type="button" class="uk-button uk-button-primary" (click)="siguiente()">Siguiente</button>
+          } @else {
+            <button type="button" class="uk-button uk-button-primary" (click)="enviar()" [disabled]="enviando">
+              @if (enviando) { <span uk-spinner="ratio: 0.6"></span> Enviando... } @else { Enviar solicitud }
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </section>
+</main>
+
+@if (config) {
+  <app-form-direccion [visible]="modalDireccion" [direccion]="null" [direcciones]="config.direcciones"
+                      (visibleChange)="modalDireccion = $event" (guardado)="onDireccionGuardada($event)">
+  </app-form-direccion>
+}

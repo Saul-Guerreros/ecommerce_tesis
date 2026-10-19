@@ -1,0 +1,98 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="xl" scrollable>
+  <c-modal-header>
+    <h5 cModalTitle>Solicitud {{ detalle?.sse_numero }}</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <ng-container *ngIf="detalle as d">
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <c-badge color="primary">Servicio: {{ d.estado_servicio.descri }}</c-badge>
+        <c-badge color="info">Ingreso: {{ d.estado_ingreso.descri }}</c-badge>
+        <c-badge color="warning" *ngIf="d.sse_garant">Garantía · Pedido {{ d.pedido }}</c-badge>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <h6 class="text-muted text-uppercase small">Cliente</h6>
+          <div><strong>{{ d.cliente.nombre }}</strong></div>
+          <div class="small">C.I.: {{ d.cliente.cedula || '—' }}</div>
+          <div class="small">Teléfono: {{ d.cliente.telefono || '—' }}</div>
+          <div class="small">Correo: {{ d.cliente.correo || '—' }}</div>
+        </div>
+        <div class="col-md-6">
+          <h6 class="text-muted text-uppercase small">Equipo</h6>
+          <div><strong>{{ d.equipo.tipo }}</strong> {{ d.equipo.sse_marca }} {{ d.equipo.sse_modelo }}</div>
+          <div class="small">N.º de serie: {{ d.equipo.sse_nroser || '—' }}</div>
+          <div class="small">Accesorios declarados: {{ d.sse_acceso || '—' }}</div>
+        </div>
+        <div class="col-12">
+          <h6 class="text-muted text-uppercase small">Problema reportado</h6>
+          <p class="mb-0">{{ d.sse_proble }}</p>
+        </div>
+        <div class="col-12">
+          <h6 class="text-muted text-uppercase small">Ingreso del equipo</h6>
+          <div>{{ d.ingreso.modalidad }} · Fecha: {{ d.ingreso.sse_fecing ? (d.ingreso.sse_fecing | date:'dd/MM/yyyy') : '—' }}</div>
+          <div class="small" *ngIf="d.ingreso.a_domicilio">
+            Dirección: {{ d.ingreso.direccion }}<span *ngIf="d.ingreso.referencia"> (Ref.: {{ d.ingreso.referencia }})</span>
+            · Costo de retiro: Gs. {{ d.ingreso.sse_cosret | number:'1.0-0' }}
+          </div>
+          <div class="small">Sucursal: {{ d.ingreso.sucursal || '—' }}</div>
+        </div>
+      </div>
+
+      <ng-container *ngIf="fotosDe('CLIENTE').length">
+        <h6 class="text-muted text-uppercase small mt-4">Fotos enviadas por el cliente</h6>
+        <div class="d-flex flex-wrap gap-2">
+          <a *ngFor="let f of fotosDe('CLIENTE')" [href]="f.url" target="_blank" rel="noopener">
+            <img [src]="f.url" [alt]="f.sad_nombre" class="rounded border" style="width: 110px; height: 110px; object-fit: cover;" />
+          </a>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="d.recepcion as r">
+        <hr />
+        <h6 class="text-muted text-uppercase small">Recepción</h6>
+        <div class="small">
+          {{ r.rse_fecha | date:'dd/MM/yyyy HH:mm' }} · Recibió: {{ r.recibido_por || '—' }} ·
+          Técnico: <strong>{{ r.tecnico?.nombre }}</strong>
+          <c-badge color="secondary" class="ms-2" *ngIf="r.tiene_clave">Clave registrada</c-badge>
+        </div>
+        <div class="mt-2"><strong>Estado físico:</strong> {{ r.rse_estfis }}</div>
+        <div class="mt-1" *ngIf="r.rse_obs"><strong>Observaciones:</strong> {{ r.rse_obs }}</div>
+        <div class="mt-1"><strong>Accesorios:</strong>
+          <span *ngIf="!r.accesorios?.length"> ninguno</span>
+          <span *ngFor="let a of r.accesorios; let last = last"> {{ a.rac_descri }}{{ last ? '' : ',' }}</span>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          <a *ngFor="let f of fotosDe('INGRESO')" [href]="f.url" target="_blank" rel="noopener">
+            <img [src]="f.url" [alt]="f.sad_nombre" class="rounded border" style="width: 110px; height: 110px; object-fit: cover;" />
+          </a>
+        </div>
+      </ng-container>
+
+      <hr />
+      <h6 class="text-muted text-uppercase small">Historial</h6>
+      <table cTable small striped>
+        <thead>
+          <tr><th>Fecha</th><th>Eje</th><th>Cambio</th><th>Comentario</th><th>Usuario</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let h of d.historial">
+            <td class="text-nowrap">{{ h.she_fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td><c-badge color="light" textColor="dark">{{ h.she_tipo }}</c-badge></td>
+            <td>
+              <span *ngIf="h.estado_ant">{{ h.estado_ant }} → </span>{{ h.estado_nuevo || '—' }}
+            </td>
+            <td>{{ h.she_coment || '—' }}</td>
+            <td>{{ h.usuario || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </ng-container>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="primary" *ngIf="detalle?.recepcion" (click)="imprimirRecepcion()">Constancia de recepción (PDF)</button>
+    <button cButton color="secondary" (click)="cerrar()">Cerrar</button>
+  </c-modal-footer>
+</c-modal>

@@ -71,7 +71,14 @@ use App\Http\Controllers\Api\DatoFiscalClienteController;
 use App\Http\Controllers\Admin\Pedido\PedidoController;
 
 use App\Http\Controllers\Admin\Pedido\PedidoGestionController;
-
+use App\Http\Controllers\Admin\Servicio\TipoDispositivoController;
+use App\Http\Controllers\Admin\Servicio\FallaController;
+use App\Http\Controllers\Admin\Servicio\TrabajoController;
+use App\Http\Controllers\Servicio\ServicioClienteController;
+use App\Http\Controllers\Admin\Servicio\SolicitudServicioController;
+use App\Http\Controllers\Admin\Servicio\OrdenTecnicoController;
+use App\Http\Controllers\Admin\Servicio\PresupuestoValidacionController;
+use App\Http\Controllers\Admin\Servicio\PanelServicioController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -176,7 +183,39 @@ Route::group([
     Route::get('checkout/confirmacion', [CheckoutController::class, 'configConfirmacion']);   // <-- nuevo
     Route::post('checkout/confirmar',   [CheckoutController::class, 'confirmar']);            // <-- nuevo
    
+	// --- Servicio técnico (M5) ---
+    Route::get('servicios/config', [ServicioClienteController::class, 'config']);
+    Route::get('servicios/costo-retiro/{dirId}', [ServicioClienteController::class, 'costoRetiro'])->whereNumber('dirId');
+    Route::get('servicios', [ServicioClienteController::class, 'index']);
+    Route::post('servicios', [ServicioClienteController::class, 'store'])->middleware('throttle:10,1');
+	Route::get('servicios/{numero}/constancia/{tipo}', [ServicioClienteController::class, 'constancia'])
+        ->where('numero', 'SS-[0-9]{4}-[0-9]+')->whereIn('tipo', ['recepcion', 'retiro']);
+    Route::get('servicios/{numero}', [ServicioClienteController::class, 'show'])->where('numero', 'SS-[0-9]{4}-[0-9]+');
+	
+	Route::post('servicios/{numero}/presupuesto/aprobar', [ServicioClienteController::class, 'aprobarPresupuesto'])
+        ->where('numero', 'SS-[0-9]{4}-[0-9]+');
+    Route::post('servicios/{numero}/presupuesto/rechazar', [ServicioClienteController::class, 'rechazarPresupuesto'])
+        ->where('numero', 'SS-[0-9]{4}-[0-9]+');
  });
+ 
+ // Servicio técnico - Bandeja de solicitudes (A1) y recepción (A2)
+Route::prefix('admin/servicios/solicitudes')->middleware('auth:api')->group(function () {
+    // Detalle: lo pueden ver la bandeja (solicitudes.ver) y el panel general (panel.ver).
+    // Va fuera del grupo con 'permiso:servicios.solicitudes.ver' porque los middleware
+    // de un grupo se acumulan (AND) y bloquearían a quien solo tiene panel.ver.
+    Route::get('/{id}', [SolicitudServicioController::class, 'show'])
+        ->whereNumber('id')
+        ->middleware('permiso:servicios.solicitudes.ver,servicios.panel.ver');
+
+    Route::middleware('permiso:servicios.solicitudes.ver')->group(function () {
+        Route::get('/config', [SolicitudServicioController::class, 'config']);
+        Route::get('/', [SolicitudServicioController::class, 'index']);
+        Route::post('/{id}/agendar-retiro', [SolicitudServicioController::class, 'agendarRetiro'])->whereNumber('id');
+        Route::post('/{id}/en-transito', [SolicitudServicioController::class, 'enTransito'])->whereNumber('id');
+        Route::post('/{id}/rechazar', [SolicitudServicioController::class, 'rechazar'])->whereNumber('id');
+        Route::post('/{id}/recepcion', [SolicitudServicioController::class, 'confirmarRecepcion'])->whereNumber('id');
+    });
+});
 
 Route::group([
     'middleware'=> ['auth:api', 'permiso:dashboard.ver'],   // <- solo agregar esta línea
@@ -434,6 +473,81 @@ Route::group([
     Route::get('faq-tienda/config', [FaqTiendaController::class, 'config']);
     Route::patch('faq-tienda/{id}/estado', [FaqTiendaController::class, 'toggleEstado']);
     Route::apiResource('faq-tienda', FaqTiendaController::class)->except(['show'])->parameters(['faq-tienda' => 'id']);
+    });
+	
+	
+	// ===== Servicio Técnico - Catálogos =====
+    Route::middleware('permiso:tipos-dispositivo.ver')->group(function () {
+        Route::get('tipos-dispositivo/select', [TipoDispositivoController::class, 'select']);
+        Route::patch('tipos-dispositivo/{id}/estado', [TipoDispositivoController::class, 'toggleEstado']);
+        Route::apiResource('tipos-dispositivo', TipoDispositivoController::class)->parameters(['tipos-dispositivo' => 'id']);
+    });
+
+    // select también lo usa el técnico en el diagnóstico (T2)
+    Route::get('fallas/select', [FallaController::class, 'select'])
+        ->middleware('permiso:fallas.ver,servicios.tecnico.ver');
+    Route::middleware('permiso:fallas.ver')->group(function () {
+        Route::get('fallas/config', [FallaController::class, 'config']);
+        Route::patch('fallas/{id}/estado', [FallaController::class, 'toggleEstado']);
+        Route::apiResource('fallas', FallaController::class)->parameters(['fallas' => 'id']);
+    });
+
+    // select también lo usa el técnico en el presupuesto (T3)
+    Route::get('trabajos/select', [TrabajoController::class, 'select'])
+        ->middleware('permiso:trabajos.ver,servicios.tecnico.ver');
+    Route::middleware('permiso:trabajos.ver')->group(function () {
+        Route::get('trabajos/config', [TrabajoController::class, 'config']);
+        Route::patch('trabajos/{id}/estado', [TrabajoController::class, 'toggleEstado']);
+        Route::apiResource('trabajos', TrabajoController::class)->parameters(['trabajos' => 'id']);
+    });
+});
+
+// Servicio técnico - Ruta exclusiva del técnico (T1, T2)
+Route::prefix('admin/servicios/tecnico/ordenes')
+    ->middleware(['auth:api', 'permiso:servicios.tecnico.ver'])
+    ->group(function () {
+        Route::get('/', [OrdenTecnicoController::class, 'index']);
+        Route::get('/{sseId}', [OrdenTecnicoController::class, 'show'])->whereNumber('sseId');
+        Route::get('/{sseId}/config', [OrdenTecnicoController::class, 'config'])->whereNumber('sseId');
+        Route::get('/{sseId}/clave', [OrdenTecnicoController::class, 'clave'])->whereNumber('sseId');
+        Route::post('/{sseId}/iniciar', [OrdenTecnicoController::class, 'iniciar'])->whereNumber('sseId');
+        Route::post('/{sseId}/diagnostico', [OrdenTecnicoController::class, 'diagnostico'])->whereNumber('sseId');
+        Route::post('/{sseId}/no-reparable', [OrdenTecnicoController::class, 'noReparable'])->whereNumber('sseId');
+		
+		Route::get('/{sseId}/productos', [OrdenTecnicoController::class, 'productos'])->whereNumber('sseId');
+        Route::put('/{sseId}/presupuesto', [OrdenTecnicoController::class, 'guardarPresupuesto'])->whereNumber('sseId');
+        Route::post('/{sseId}/presupuesto/enviar', [OrdenTecnicoController::class, 'enviarPresupuesto'])->whereNumber('sseId');
+		
+		Route::post('/{sseId}/reparacion/iniciar', [OrdenTecnicoController::class, 'iniciarReparacion'])->whereNumber('sseId');
+        Route::put('/{sseId}/repuestos', [OrdenTecnicoController::class, 'guardarRepuestos'])->whereNumber('sseId');
+        Route::post('/{sseId}/finalizar', [OrdenTecnicoController::class, 'finalizar'])->whereNumber('sseId');
+        Route::post('/{sseId}/presupuesto/complementario', [OrdenTecnicoController::class, 'abrirComplementario'])->whereNumber('sseId');
+        Route::delete('/{sseId}/presupuesto/complementario', [OrdenTecnicoController::class, 'descartarComplementario'])->whereNumber('sseId');
+    });
+
+// Servicio técnico - Validación de presupuestos (control de precios)
+Route::prefix('admin/servicios/presupuestos')
+    ->middleware(['auth:api', 'permiso:servicios.presupuestos.ver'])
+    ->group(function () {
+        Route::get('/', [PresupuestoValidacionController::class, 'index']);
+        Route::get('/{id}', [PresupuestoValidacionController::class, 'show'])->whereNumber('id');
+        Route::post('/{id}/validar', [PresupuestoValidacionController::class, 'validar'])->whereNumber('id');
+        Route::post('/{id}/devolver', [PresupuestoValidacionController::class, 'devolver'])->whereNumber('id');
+    });
+	
+	// Servicio técnico - Panel general (A3), entrega (A5) y constancias
+Route::prefix('admin/servicios/panel')->middleware('auth:api')->group(function () {
+    Route::get('/{id}/constancia/{tipo}', [PanelServicioController::class, 'constancia'])
+        ->whereNumber('id')->whereIn('tipo', ['recepcion', 'retiro'])
+        ->middleware('permiso:servicios.solicitudes.ver,servicios.panel.ver');
+
+    Route::middleware('permiso:servicios.panel.ver')->group(function () {
+        Route::get('/resumen', [PanelServicioController::class, 'resumen']);
+        Route::get('/config', [PanelServicioController::class, 'config']);
+        Route::get('/', [PanelServicioController::class, 'index']);
+        Route::post('/{id}/reasignar', [PanelServicioController::class, 'reasignar'])->whereNumber('id');
+        Route::get('/{id}/entrega', [PanelServicioController::class, 'entregaConfig'])->whereNumber('id');
+        Route::post('/{id}/entrega', [PanelServicioController::class, 'entregar'])->whereNumber('id');
     });
 });
 

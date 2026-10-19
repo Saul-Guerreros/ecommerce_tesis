@@ -69,6 +69,7 @@ export class PublicacionListComponent implements OnInit {
         categoria: this.categoriaFiltro,
         estado_publicacion: this.estadoPublicacionFiltro,
         incluir_variantes: this.modoPlano,
+        repuesto: 0, // los repuestos de taller no se publican en la tienda
         page: this.page,
         per_page: this.perPage,
       })

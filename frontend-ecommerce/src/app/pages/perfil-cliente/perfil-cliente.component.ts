@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { PerfilCliente } from '../../core/models/perfil-cliente.model';
 import { PerfilClienteService } from '../../core/services/perfil-cliente.service';
 import { AuthService } from '../auth/service/auth.service';
 import { CambiarPasswordComponent } from './cambiar-password/cambiar-password.component';
 import { DatosPersonalesComponent } from './datos-personales/datos-personales.component';
 import { DireccionesComponent } from './direcciones/direcciones.component';
+import { MisServiciosComponent } from './mis-servicios/mis-servicios.component';
 
 @Component({
   selector: 'app-perfil-cliente',
@@ -17,6 +18,7 @@ import { DireccionesComponent } from './direcciones/direcciones.component';
     DatosPersonalesComponent,
     DireccionesComponent,
     CambiarPasswordComponent,
+    MisServiciosComponent,   // <-- faltaba
   ],
   templateUrl: './perfil-cliente.component.html',
   styleUrl: './perfil-cliente.component.css',
@@ -24,12 +26,14 @@ import { DireccionesComponent } from './direcciones/direcciones.component';
 export class PerfilClienteComponent {
   cargando = true;
   perfil: PerfilCliente | null = null;
-  tabActiva: 'datos' | 'direcciones' | 'password' = 'datos';
+  tabActiva: 'datos' | 'direcciones' | 'password' | 'servicios' = 'datos';
   
   constructor(
     private perfilClienteService: PerfilClienteService,
     private authService: AuthService,
+	private route: ActivatedRoute
   ) {
+  if (this.route.snapshot.queryParamMap.get('tab') === 'servicios') this.tabActiva = 'servicios';
     effect(() => {
       if (this.authService.sesion()) {
         this.cargarPerfil();

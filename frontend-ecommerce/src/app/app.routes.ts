@@ -100,4 +100,20 @@ export const routes: Routes = [
         component: PedidoConfirmadoComponent,
         canActivate: [suthGuard],
     },
+	    {
+        path: 'servicio-tecnico',
+        loadComponent: () => import('./pages/servicio-tecnico/landing/servicio-landing.component').then(m => m.ServicioLandingComponent),
+        title: 'Servicio técnico | Z Informática',
+    },
+    {
+        path: 'servicio-tecnico/solicitar',
+        loadComponent: () => import('./pages/servicio-tecnico/solicitud/solicitud-servicio.component').then(m => m.SolicitudServicioComponent),
+        canActivate: [suthGuard],
+        title: 'Solicitar servicio técnico | Z Informática',
+    },
+    {
+        path: 'mis-servicios/:numero',
+        loadComponent: () => import('./pages/servicio-tecnico/detalle/detalle-servicio.component').then(m => m.DetalleServicioComponent),
+        canActivate: [suthGuard],
+    },
 ];

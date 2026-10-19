@@ -1,0 +1,91 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="lg" scrollable backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Presupuesto {{ datos?.presupuesto?.pse_numero }}</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <ng-container *ngIf="datos as d">
+      <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+        <div class="small">
+          <strong>{{ d.sse_numero }}</strong> · {{ d.ose_numero }} · v{{ d.presupuesto.pse_versio }}<br />
+          Cliente: {{ d.cliente }} · Equipo: {{ d.equipo }}<br />
+          Técnico: {{ d.tecnico }}
+        </div>
+        <c-badge color="warning" class="align-self-start">{{ d.presupuesto.estado.descri }}</c-badge>
+      </div>
+
+      <div class="alert alert-light border small" *ngIf="d.diagnostico as dia">
+        <strong>Diagnóstico:</strong> {{ dia.causa }}
+        <div class="text-muted">Fallas: {{ dia.fallas.join(', ') }} · Estimado: {{ dia.tiempo }} día(s)</div>
+      </div>
+
+      <div class="alert alert-warning py-2 small" *ngIf="lineasConDiferencia > 0">
+        {{ lineasConDiferencia }} línea(s) con precio distinto al de lista.
+      </div>
+
+      <table cTable small class="align-middle">
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th class="text-end">Cant.</th>
+            <th class="text-end">Precio</th>
+            <th class="text-end">Lista</th>
+            <th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let l of d.presupuesto.detalles" [class.table-warning]="difiere(l)">
+            <td>
+              <c-badge [color]="l.psd_tipo === 'REPUESTO' ? 'info' : 'primary'" class="me-1">
+                {{ l.psd_tipo === 'REPUESTO' ? 'R' : 'MO' }}
+              </c-badge>
+              {{ l.psd_descri }}
+              <div class="small text-muted" *ngIf="l.psd_tipo === 'REPUESTO'">
+                Disponible: {{ (l.disponible ?? 0) | number:'1.0-0' }}
+                <span class="text-danger" *ngIf="(l.disponible ?? 0) < l.psd_cantid"> (insuficiente)</span>
+              </div>
+            </td>
+            <td class="text-end">{{ l.psd_cantid | number:'1.0-2' }}</td>
+            <td class="text-end">{{ l.psd_precio | number:'1.0-0' }}</td>
+            <td class="text-end text-muted">{{ l.precio_lista !== null && l.precio_lista !== undefined ? (l.precio_lista | number:'1.0-0') : '—' }}</td>
+            <td class="text-end">{{ l.psd_total | number:'1.0-0' }}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" class="text-end small text-muted">IVA incluido</td>
+            <td class="text-end small text-muted">{{ d.presupuesto.pse_impues | number:'1.0-0' }}</td>
+          </tr>
+          <tr>
+            <td colspan="4" class="text-end"><strong>Total</strong></td>
+            <td class="text-end"><strong>Gs. {{ d.presupuesto.pse_total | number:'1.0-0' }}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+      <div class="small" *ngIf="d.presupuesto.pse_obs">Nota para el cliente: {{ d.presupuesto.pse_obs }}</div>
+
+      <div class="mt-3" *ngIf="modoDevolver">
+        <label cLabel for="obs">¿Qué debe corregir el técnico? <span class="text-danger">*</span></label>
+        <textarea cFormControl id="obs" rows="2" maxlength="255" [formControl]="obs"></textarea>
+        <div class="text-danger small" *ngIf="obs.invalid && obs.touched">
+          {{ obs.errors?.['backend'] || 'Indique la observación (entre 5 y 255 caracteres).' }}
+        </div>
+      </div>
+    </ng-container>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()" [disabled]="procesando">Cerrar</button>
+    <ng-container *ngIf="enRevision">
+      <button cButton color="warning" class="text-white" *ngIf="!modoDevolver" (click)="modoDevolver = true" [disabled]="procesando">
+        Devolver al técnico
+      </button>
+      <button cButton color="warning" class="text-white" *ngIf="modoDevolver" (click)="devolver()" [disabled]="procesando">
+        <c-spinner size="sm" *ngIf="procesando" class="me-2"></c-spinner>Confirmar devolución
+      </button>
+      <button cButton color="success" class="text-white" *ngIf="!modoDevolver" (click)="validar()" [disabled]="procesando">
+        <c-spinner size="sm" *ngIf="procesando" class="me-2"></c-spinner>Validar y enviar al cliente
+      </button>
+    </ng-container>
+  </c-modal-footer>
+</c-modal>

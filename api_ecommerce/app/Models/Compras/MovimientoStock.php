@@ -13,7 +13,7 @@ class MovimientoStock extends Model
     public    $timestamps = false;
 
     protected $fillable = [
-        'mst_aidid', 'mst_cmdid', 'mst_dncid', 'mst_usuid', 'mst_revid', 'mst_fecha', 'mst_tipo',
+        'mst_aidid', 'mst_cmdid', 'mst_dncid', 'mst_dpdid', 'mst_osrid', 'mst_usuid', 'mst_revid', 'mst_fecha', 'mst_tipo',
         'mst_cantid', 'mst_cosuni', 'mst_salcan', 'mst_salcos', 'mst_obs',
         'mst_stprid', 'mst_stdeid',
     ];

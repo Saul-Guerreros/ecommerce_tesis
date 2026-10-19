@@ -1,0 +1,28 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header><h5 cModalTitle>Reasignar técnico — {{ fila?.sse_numero }}</h5></c-modal-header>
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <p class="small text-muted">Técnico actual: <strong>{{ fila?.tecnico?.nombre || '—' }}</strong></p>
+      <div class="mb-3">
+        <label cLabel for="rse_tecid">Nuevo técnico <span class="text-danger">*</span></label>
+        <select cSelect id="rse_tecid" formControlName="rse_tecid">
+          <option [ngValue]="null" disabled>Seleccione...</option>
+          <option *ngFor="let t of tecnicos" [ngValue]="t.usu_id" [disabled]="t.usu_id === fila?.tecnico?.usu_id">
+            {{ t.nombre }}{{ t.abiertas !== undefined ? " (" + t.abiertas + " abiertas)" : "" }}
+          </option>
+        </select>
+        <div class="text-danger small" *ngIf="campoInvalido('rse_tecid')">{{ errorBackend('rse_tecid') || 'Seleccione el técnico.' }}</div>
+      </div>
+      <label cLabel for="motivo">Motivo <span class="text-danger">*</span></label>
+      <textarea cFormControl id="motivo" rows="2" maxlength="200" formControlName="motivo"
+                placeholder="Ej: equilibrar carga de trabajo / ausencia del técnico"></textarea>
+      <div class="text-danger small" *ngIf="campoInvalido('motivo')">{{ errorBackend('motivo') || 'Entre 5 y 200 caracteres.' }}</div>
+    </c-modal-body>
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>Reasignar
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

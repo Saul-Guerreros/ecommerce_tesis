@@ -1,0 +1,32 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Agendar retiro — {{ solicitud?.sse_numero }}</h5>
+  </c-modal-header>
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <p class="small text-muted mb-3">
+        Cliente: <strong>{{ solicitud?.cliente }}</strong> · Equipo: {{ solicitud?.equipo }}
+      </p>
+      <div class="mb-3">
+        <label cLabel for="sse_fecing">Fecha de retiro <span class="text-danger">*</span></label>
+        <input cFormControl id="sse_fecing" type="date" formControlName="sse_fecing" [min]="hoy" />
+        <div class="text-danger small" *ngIf="campoInvalido('sse_fecing')">
+          {{ errorBackend('sse_fecing') || 'Indique la fecha de retiro.' }}
+        </div>
+      </div>
+      <div>
+        <label cLabel for="coment">Comentario (franja horaria, indicaciones)</label>
+        <textarea cFormControl id="coment" rows="2" maxlength="255" formControlName="coment"
+                  placeholder="Ej: entre 14:00 y 17:00"></textarea>
+        <div class="text-danger small" *ngIf="errorBackend('coment')">{{ errorBackend('coment') }}</div>
+      </div>
+    </c-modal-body>
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : 'Agendar' }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

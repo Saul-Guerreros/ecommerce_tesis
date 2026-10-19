@@ -1,0 +1,47 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>{{ esAdmin ? 'Órdenes de trabajo' : 'Mis órdenes' }}</strong>
+    <button cButton color="secondary" variant="outline" size="sm" (click)="cargar()" [disabled]="cargando">Actualizar</button>
+  </c-card-header>
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-5">
+        <input cFormControl placeholder="Buscar por SS, OT, marca o modelo..." [(ngModel)]="buscar" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-4" *ngIf="esAdmin">
+        <select cSelect [(ngModel)]="filtroTecnico" (ngModelChange)="cargar()">
+          <option value="">Todos los técnicos</option>
+          <option *ngFor="let t of tecnicos" [value]="t.usu_id">{{ t.nombre }}</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ ordenes.length }} orden(es) encontrada(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <div class="tablero" *ngIf="!cargando">
+      <div class="columna" *ngFor="let col of columnas">
+        <div class="columna-titulo">
+          <span>{{ col.titulo }}</span>
+          <c-badge [color]="col.color">{{ de(col).length }}</c-badge>
+        </div>
+
+        <a class="tarjeta" *ngFor="let o of de(col)" [routerLink]="['/servicios/mis-ordenes', o.sse_id]">
+          <div class="d-flex justify-content-between">
+            <strong>{{ o.ose_numero || o.sse_numero }}</strong>
+            <c-badge color="warning" *ngIf="o.sse_garant">Garantía</c-badge>
+          </div>
+          <div class="small text-muted" *ngIf="o.ose_numero">{{ o.sse_numero }}</div>
+          <div class="small mt-1">{{ o.equipo }}</div>
+          <div class="small text-muted mt-1">Recibido: {{ o.recibido | date:'dd/MM HH:mm' }}</div>
+          <div class="small text-muted" *ngIf="esAdmin && o.tecnico">Técnico: {{ o.tecnico }}</div>
+        </a>
+
+        <div class="text-muted small text-center py-3" *ngIf="de(col).length === 0">Sin órdenes</div>
+      </div>
+    </div>
+  </c-card-body>
+</c-card>

@@ -9,6 +9,7 @@ export interface Producto {
   prd_descri: string;
   prd_stkmin: number | null;
   prd_afestk?: number;    // 1 = afecta stock al venderse, 0 = no (ej. servicios)
+  prd_repues?: number;    // 1 = repuesto de taller (Servicio Técnico): no se publica en la tienda
   prd_estado?: number;
   prd_creado?: string;
 

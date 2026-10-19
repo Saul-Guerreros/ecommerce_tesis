@@ -1,0 +1,67 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esEdicion ? 'Editar trabajo' : 'Nuevo trabajo' }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+        <div class="col-md-5">
+          <label cLabel for="trb_codigo">Código <span class="text-danger">*</span></label>
+          <input cFormControl id="trb_codigo" formControlName="trb_codigo"
+                 placeholder="Ej: FORMATEO" maxlength="20" (input)="mayusculas()" />
+          <div class="text-danger small" *ngIf="campoInvalido('trb_codigo')">
+            {{ errorBackend('trb_codigo') || 'Obligatorio (máx. 20; letras, números y guion bajo).' }}
+          </div>
+        </div>
+
+        <div class="col-md-7">
+          <label cLabel for="trb_descri">Descripción <span class="text-danger">*</span></label>
+          <input cFormControl id="trb_descri" formControlName="trb_descri"
+                 placeholder="Ej: Formateo e instalación de sistema" maxlength="100" />
+          <div class="text-danger small" *ngIf="campoInvalido('trb_descri')">
+            {{ errorBackend('trb_descri') || 'La descripción es obligatoria (máx. 100 caracteres).' }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="trb_precio">Precio sugerido (Gs.) <span class="text-danger">*</span></label>
+          <input cFormControl id="trb_precio" type="number" min="0" step="1" formControlName="trb_precio" />
+          <div class="text-danger small" *ngIf="campoInvalido('trb_precio')">
+            {{ errorBackend('trb_precio') || 'Ingrese un precio mayor o igual a 0.' }}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="trb_tivid">Tipo de IVA <span class="text-danger">*</span></label>
+          <select cSelect id="trb_tivid" formControlName="trb_tivid">
+            <option [ngValue]="null" disabled>Seleccione...</option>
+            <option *ngFor="let t of tiposIva" [ngValue]="t.tiv_id">{{ t.tiv_descri }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('trb_tivid')">
+            {{ errorBackend('trb_tivid') || 'Seleccione el tipo de IVA.' }}
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="trb_estado">Estado</label>
+          <select cSelect id="trb_estado" formControlName="trb_estado">
+            <option [ngValue]="1">Activo</option>
+            <option [ngValue]="0">Inactivo</option>
+          </select>
+          <div class="text-muted small mt-1">
+            El precio es una sugerencia: modificarlo no cambia los presupuestos ya emitidos.
+          </div>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Actualizar' : 'Registrar') }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

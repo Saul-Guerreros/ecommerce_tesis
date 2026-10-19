@@ -1,0 +1,129 @@
+<c-card class="mb-3">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Presupuesto {{ orden.presupuesto?.pse_numero || '(nuevo)' }}</strong>
+    <c-badge color="secondary" *ngIf="orden.presupuesto">{{ orden.presupuesto.estado.descri }}</c-badge>
+  </c-card-header>
+  <c-card-body>
+    <div class="alert alert-danger py-2 small" *ngIf="orden.presupuesto?.pse_obsval">
+      <strong>Devuelto por el administrador:</strong> {{ orden.presupuesto?.pse_obsval }}
+    </div>
+    <div class="alert alert-warning py-2 small" *ngIf="esGarantia">
+      <strong>Garantía:</strong> los precios quedan en 0 y el presupuesto se aprueba al enviarlo, sin pasar por el cliente.
+    </div>
+
+    <!-- Agregar líneas -->
+    <div class="row g-2 mb-3">
+      <div class="col-md-6">
+        <label cLabel class="small">Mano de obra</label>
+        <div class="input-group">
+          <select cSelect [(ngModel)]="trabajoElegido" [ngModelOptions]="{ standalone: true }">
+            <option [ngValue]="null">Seleccione un trabajo...</option>
+            <option *ngFor="let t of config.trabajos" [ngValue]="t.trb_id">
+              {{ t.trb_descri }} — Gs. {{ t.trb_precio | number:'1.0-0' }}
+            </option>
+          </select>
+          <button cButton color="secondary" type="button" (click)="agregarTrabajo()" [disabled]="!trabajoElegido">Agregar</button>
+        </div>
+      </div>
+      <div class="col-md-6 position-relative">
+        <label cLabel class="small">
+          Repuesto <span class="text-muted" *ngIf="deposito">(stock de {{ deposito }})</span>
+        </label>
+        <input cFormControl [formControl]="buscar" placeholder="Haga clic para ver el stock o escriba código/descripción (mín. 2 letras)"
+               (focus)="abrirLista()" (blur)="cerrarLista()" autocomplete="off" />
+        <div class="list-group position-absolute w-100 shadow-sm" style="z-index: 10; max-height: 260px; overflow-y: auto;"
+             *ngIf="listaAbierta && resultados.length">
+          <button type="button" class="list-group-item list-group-item-action small"
+                  *ngFor="let p of resultados" (click)="agregarProducto(p)">
+            <div class="d-flex justify-content-between">
+              <span><strong>{{ p.prd_codinv }}</strong> · {{ p.descri }}</span>
+              <span class="text-nowrap ms-2">Gs. {{ p.precio !== null ? (p.precio | number:'1.0-0') : '—' }}</span>
+            </div>
+            <span class="text-muted" *ngIf="p.controla">Disponible: {{ p.disponible | number:'1.0-0' }}</span>
+            <span class="text-muted" *ngIf="!p.controla">No controla stock</span>
+          </button>
+        </div>
+        <div class="small text-muted" *ngIf="buscando">Buscando...</div>
+        <div class="small text-muted" *ngIf="listaAbierta && !buscando && buscado && !resultados.length">
+          {{ buscar.value.trim() ? 'Sin resultados para esa búsqueda.' : 'No hay repuestos con stock en el depósito del taller. Escriba para buscar en todo el catálogo.' }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Líneas -->
+    <form [formGroup]="form">
+      <div class="table-responsive" formArrayName="lineas">
+        <table cTable small hover class="align-middle">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th style="min-width: 220px;">Descripción</th>
+              <th style="width: 90px;">Cant.</th>
+              <th style="width: 140px;">Precio (Gs.)</th>
+              <th class="text-end">Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let g of lineas.controls; let i = index" [formGroupName]="i">
+              <td>
+                <c-badge [color]="g.value.tipo === 'REPUESTO' ? 'info' : 'primary'">
+                  {{ g.value.tipo === 'REPUESTO' ? 'Repuesto' : 'Mano de obra' }}
+                </c-badge>
+              </td>
+              <td>
+                <input cFormControl sizing="sm" formControlName="descri" maxlength="150" />
+                <div class="small text-warning" *ngIf="sinStock(g)">
+                  Disponible: {{ g.value.disponible | number:'1.0-0' }} — se pedirá compra si el cliente aprueba.
+                </div>
+                <div class="small text-danger" *ngIf="g.get('descri')?.errors?.['backend']">{{ g.get('descri')?.errors?.['backend'] }}</div>
+              </td>
+              <td>
+                <input cFormControl sizing="sm" type="number" min="1" formControlName="cantid" />
+              </td>
+              <td>
+                <input cFormControl sizing="sm" type="number" min="0" step="1" formControlName="precio"
+                       [class.is-invalid]="g.get('precio')?.invalid && g.get('precio')?.touched" />
+                <div class="small text-muted" *ngIf="difiereDeLista(g)">Lista: {{ g.value.precio_lista | number:'1.0-0' }}</div>
+              </td>
+              <td class="text-end text-nowrap">{{ totalLinea(g) | number:'1.0-0' }}</td>
+              <td class="text-end">
+                <button cButton size="sm" color="danger" class="text-white" type="button" (click)="quitarLinea(i)">&times;</button>
+              </td>
+            </tr>
+            <tr *ngIf="lineas.length === 0">
+              <td colspan="6" class="text-center text-muted small">Agregue mano de obra y/o repuestos.</td>
+            </tr>
+          </tbody>
+          <tfoot *ngIf="lineas.length">
+            <tr>
+              <td colspan="4" class="text-end small text-muted">IVA incluido</td>
+              <td class="text-end small text-muted">{{ iva | number:'1.0-0' }}</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td colspan="4" class="text-end"><strong>Total</strong></td>
+              <td class="text-end"><strong>Gs. {{ total | number:'1.0-0' }}</strong></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <label cLabel for="pse_obs" class="small">Nota para el cliente</label>
+      <textarea cFormControl id="pse_obs" rows="2" maxlength="500" formControlName="pse_obs"
+                placeholder="Ej: incluye garantía de 90 días sobre la pantalla"></textarea>
+    </form>
+
+    <div class="d-flex justify-content-end gap-2 mt-3">
+      <button cButton color="secondary" variant="outline" (click)="guardar()" [disabled]="guardando || enviando">
+        <c-spinner size="sm" *ngIf="guardando && !enviando" class="me-2"></c-spinner>
+        Guardar borrador
+      </button>
+      <button cButton color="primary" (click)="enviar()" [disabled]="guardando || enviando || lineas.length === 0">
+        <c-spinner size="sm" *ngIf="enviando" class="me-2"></c-spinner>
+        {{ esGarantia ? 'Aprobar (garantía)' : 'Enviar a validación' }}
+      </button>
+    </div>
+  </c-card-body>
+</c-card>

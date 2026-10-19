@@ -56,6 +56,14 @@ export const PERMISO_POR_RUTA: Record<string, string> = {
   '/ciudades': 'ciudades.ver',
   '/categories/new': 'categorias.gestionar',
   '/brands/new': 'marcas.gestionar',
+  
+  '/servicios/solicitudes': 'servicios.solicitudes.ver',
+  '/servicios/panel': 'servicios.panel.ver',
+  '/servicios/mis-ordenes': 'servicios.tecnico.ver',
+  '/servicios/tipos-dispositivo': 'tipos-dispositivo.ver',
+  '/servicios/fallas': 'fallas.ver',
+  '/servicios/trabajos': 'trabajos.ver',
+  '/servicios/presupuestos': 'servicios.presupuestos.ver',
 };
 
 // Claves más largas primero: '/categories/new' gana sobre '/categories'.

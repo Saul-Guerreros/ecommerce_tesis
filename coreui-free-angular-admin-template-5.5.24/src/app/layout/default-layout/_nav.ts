@@ -76,6 +76,44 @@ export const navItems: INavData[] = [
     url: '/facturas-venta',
     iconComponent: { name: 'cil-description' }
   },
+  
+  // ==========================================
+  // SERVICIO TÉCNICO
+  // ==========================================
+  {
+    title: true,
+    name: 'Servicio Técnico'
+  },
+  {
+    name: 'Panel general',
+    url: '/servicios/panel',
+    iconComponent: { name: 'cil-speedometer' }
+  },
+  {
+    name: 'Bandeja de solicitudes',
+    url: '/servicios/solicitudes',
+    iconComponent: { name: 'cil-inbox' }
+  },
+  {
+    name: 'Mis órdenes',
+    url: '/servicios/mis-ordenes',
+    iconComponent: { name: 'cil-task' }
+  },
+  {
+    name: 'Validar presupuestos',
+    url: '/servicios/presupuestos',
+    iconComponent: { name: 'cil-calculator' }
+  },
+  {
+    name: 'Catálogos de servicio',
+    url: '/servicios',
+    iconComponent: { name: 'cil-settings' },
+    children: [
+      { name: 'Tipos de dispositivo', url: '/servicios/tipos-dispositivo', icon: 'nav-icon-bullet' },
+      { name: 'Fallas', url: '/servicios/fallas', icon: 'nav-icon-bullet' },
+      { name: 'Trabajos', url: '/servicios/trabajos', icon: 'nav-icon-bullet' },
+    ]
+  },
 
   // ==========================================
   // 3. COMPRAS

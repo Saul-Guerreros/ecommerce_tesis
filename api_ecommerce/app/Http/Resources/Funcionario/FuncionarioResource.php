@@ -20,6 +20,8 @@ class FuncionarioResource extends JsonResource
             'fun_fecing' => $this->fecha($this->fun_fecing),
             'fun_fecegr' => $this->fecha($this->fun_fecegr),
             'fun_estado' => (int) $this->fun_estado,
+			'rol_id'     => $this->fun_rolid,
+            'rol'        => $this->whenLoaded('rol', fn() => $this->rol?->rol_descri),
 
             'persona' => [
                 'per_id'          => $this->persona->per_id,

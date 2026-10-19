@@ -50,6 +50,7 @@ export interface Producto {
   prd_margen?: number | null;
   prd_stkmin: number;
   prd_estado: number; // 1 activo, 0 inactivo (estado de INVENTARIO, no de publicación)
+  prd_repues?: number; // 1 = repuesto de taller: no se publica en la tienda
   prd_afestk: boolean; // si el producto afecta stock (ej. un servicio no afecta)
   prd_creado?: string;
   marca?: Marca;

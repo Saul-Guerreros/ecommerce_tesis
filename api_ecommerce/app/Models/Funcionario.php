@@ -13,6 +13,7 @@ class Funcionario extends Model
     protected $fillable = [
         'fun_perid',
         'fun_crgid',
+        'fun_rolid',
         'fun_fecing',
         'fun_fecegr',
         'fun_estado',
@@ -26,5 +27,10 @@ class Funcionario extends Model
     public function cargo()
     {
         return $this->belongsTo(Cargo::class, 'fun_crgid', 'crg_id');
+    }
+	 // ... (agregar junto a la relación cargo())
+    public function rol()
+    {
+        return $this->belongsTo(Rol::class, 'fun_rolid', 'rol_id');
     }
 }

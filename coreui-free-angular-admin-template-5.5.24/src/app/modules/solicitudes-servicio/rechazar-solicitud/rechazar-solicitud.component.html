@@ -1,0 +1,25 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Rechazar solicitud — {{ solicitud?.sse_numero }}</h5>
+  </c-modal-header>
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="alert alert-warning py-2 small">
+        La solicitud pasará a <strong>Cancelada</strong> y el cliente verá el motivo en su perfil.
+      </div>
+      <label cLabel for="motivo">Motivo <span class="text-danger">*</span></label>
+      <textarea cFormControl id="motivo" rows="3" maxlength="255" formControlName="motivo"
+                placeholder="Ej: No trabajamos con ese tipo de equipo"></textarea>
+      <div class="text-danger small" *ngIf="campoInvalido()">
+        {{ errorBackend() || 'Indique el motivo (entre 5 y 255 caracteres).' }}
+      </div>
+    </c-modal-body>
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="danger" class="text-white" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Rechazando...' : 'Rechazar solicitud' }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>
