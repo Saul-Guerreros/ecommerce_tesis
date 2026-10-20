@@ -20,6 +20,9 @@ class ConfiguracionTiendaResource extends JsonResource
         'ctn_pago_tigo_numero'      => $this->ctn_pago_tigo_numero,
         'ctn_pago_tigo_referencia'  => $this->ctn_pago_tigo_referencia,
         'ctn_pago_efectivo_mensaje' => $this->ctn_pago_efectivo_mensaje,
+        'ctn_retactivo'             => $this->ctn_retactivo,
+        'ctn_retdias'               => $this->ctn_retdias,
+        'ctn_retaviso'              => $this->ctn_retaviso,
     ];
 }
 }

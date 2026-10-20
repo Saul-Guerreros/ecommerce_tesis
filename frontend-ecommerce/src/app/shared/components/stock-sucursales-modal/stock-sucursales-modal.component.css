@@ -1,0 +1,264 @@
+/* =====================================================================
+   Modal "Ver Stock en Tiendas"
+   Paleta alineada con producto-detalle.component.css para que el modal
+   no se vea como una pieza ajena al detalle.
+   ===================================================================== */
+
+:host {
+  --ss-black: #16181b;
+  --ss-text: #55585b;
+  --ss-muted: #90969b;
+  --ss-border: #e6e7e8;
+  --ss-bg-soft: #f5f7f9;
+  --ss-primary: #1e87f0;
+  --ss-primary-soft: #e6f2fe;
+  --ss-success: #32d296;
+  --ss-danger: #f0506e;
+}
+
+.ss-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1030;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(16, 18, 21, 0.55);
+}
+
+.ss-panel {
+  width: 100%;
+  max-width: 640px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+/* ---------- Encabezado ---------- */
+.ss-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--ss-border);
+}
+.ss-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ss-black);
+}
+.ss-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ss-muted);
+}
+.ss-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--ss-muted);
+  cursor: pointer;
+}
+.ss-close:hover {
+  color: var(--ss-black);
+}
+
+/* ---------- Cuerpo ---------- */
+.ss-body {
+  padding: 14px 20px;
+  overflow-y: auto;
+}
+
+.ss-state {
+  padding: 28px 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ss-muted);
+}
+.ss-retry {
+  margin-top: 10px;
+  padding: 8px 16px;
+  border: 1px solid var(--ss-primary);
+  background: #fff;
+  color: var(--ss-primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.ss-spinner {
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 10px;
+  border: 2px solid var(--ss-border);
+  border-top-color: var(--ss-primary);
+  border-radius: 50%;
+  animation: ss-spin 0.7s linear infinite;
+}
+@keyframes ss-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Tarjeta por sucursal ---------- */
+.ss-card {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--ss-border);
+  border-radius: 4px;
+  background: #fff;
+}
+.ss-card.is-out {
+  background: var(--ss-bg-soft);
+}
+
+.ss-card-info {
+  min-width: 0;
+}
+.ss-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ss-black);
+  margin-bottom: 6px;
+}
+.ss-card-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ss-text);
+}
+.ss-card-line a {
+  color: var(--ss-text);
+}
+.ss-card-line a:hover {
+  color: var(--ss-primary);
+}
+.ss-ico {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ss-muted);
+}
+
+.ss-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ss-tag {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--ss-bg-soft);
+  font-size: 11px;
+  color: var(--ss-text);
+}
+.ss-tag--main {
+  margin-left: 6px;
+  background: var(--ss-primary-soft);
+  color: var(--ss-primary);
+  font-weight: 500;
+}
+
+/* ---------- Existencia ---------- */
+.ss-card-stock {
+  flex: none;
+  width: 108px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px;
+  border-left: 1px solid var(--ss-border);
+  text-align: center;
+}
+.ss-stock-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ss-muted);
+}
+.ss-stock-value {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ss-black);
+}
+.ss-stock-value.is-zero {
+  color: var(--ss-muted);
+}
+.ss-stock-state {
+  font-size: 12px;
+  color: var(--ss-success);
+}
+.ss-card.is-out .ss-stock-state {
+  color: var(--ss-danger);
+}
+
+/* ---------- Pie ---------- */
+.ss-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--ss-border);
+  background: var(--ss-bg-soft);
+}
+.ss-foot-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ss-muted);
+}
+.ss-btn {
+  flex: none;
+  padding: 8px 18px;
+  border: 0;
+  background: var(--ss-primary);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ss-btn:hover {
+  background: #0f7ae5;
+}
+
+/* ---------- Móvil ---------- */
+@media (max-width: 575px) {
+  .ss-panel {
+    max-height: 92vh;
+  }
+  .ss-card {
+    flex-direction: column;
+  }
+  .ss-card-stock {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 8px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--ss-border);
+    text-align: left;
+  }
+  .ss-stock-value {
+    font-size: 18px;
+  }
+}

@@ -1,0 +1,193 @@
+<div *ngIf="cargando" class="uk-text-center uk-margin-large">
+  <div uk-spinner="ratio: 1.5"></div>
+</div>
+
+<!-- ============ VISTA: RESUMEN Y CONFIRMACIÓN ============ -->
+<div *ngIf="!cargando">
+
+  <div class="ck-encabezado uk-text-center uk-margin-medium-bottom">
+    <h3 class="uk-margin-remove-bottom">Confirmá tu solicitud</h3>
+    <p class="uk-text-meta uk-margin-remove-top">Revisá los datos antes de enviarla.</p>
+  </div>
+
+  <div class="ck-layout">
+
+    <div class="ck-col-principal">
+
+      <!-- 1. CRÉDITO SOLICITADO -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <h4 class="uk-card-title">Crédito solicitado</h4>
+
+        <div class="ck-conf-row ck-conf-header uk-visible@s">
+          <div class="ck-conf-img-col"></div>
+          <div class="ck-conf-col-nombre">Producto</div>
+          <div class="ck-conf-col-precio">Precio<br>Contado</div>
+          <div class="ck-conf-col-cant">Cantidad</div>
+          <div class="ck-conf-col-plan">Plan de cuotas</div>
+          <div class="ck-conf-col-cuota">Cuota Mensual</div>
+        </div>
+
+        <ul class="uk-list uk-list-divider uk-margin-remove-top">
+          <li *ngFor="let item of items">
+            <div class="ck-conf-row">
+
+              <div class="ck-conf-img-col">
+                <img class="ck-conf-img" [src]="resolverImagen(item.publicacion_web?.imagen)" [alt]="titulo(item)">
+              </div>
+
+              <div class="ck-conf-col-nombre">
+                <div class="uk-text-bold">{{ titulo(item) }}</div>
+
+                <!-- Solo en mobile: todos los datos apilados -->
+                <div class="uk-hidden@s uk-text-small uk-margin-xsmall-top">
+                  <div>Precio contado: {{ item.car_precio | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+                  <div>Cantidad: {{ item.car_cantid }}</div>
+                  <div>Plan: {{ item.car_numcuo }} x {{ item.car_montocuo | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+                  <div>Cuota mensual: <strong>{{ cuotaMensualLinea(item) | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong></div>
+                </div>
+              </div>
+
+              <div class="ck-conf-col-precio uk-visible@s">
+                {{ item.car_precio | currency:'PYG':'symbol-narrow':'1.0-0' }}
+              </div>
+
+              <div class="ck-conf-col-cant uk-visible@s">{{ item.car_cantid }}</div>
+
+              <div class="ck-conf-col-plan uk-visible@s">
+                {{ item.car_numcuo }} x {{ item.car_montocuo | currency:'PYG':'symbol-narrow':'1.0-0' }}
+              </div>
+
+              <div class="ck-conf-col-cuota uk-visible@s uk-text-bold">
+                {{ cuotaMensualLinea(item) | currency:'PYG':'symbol-narrow':'1.0-0' }}
+              </div>
+
+            </div>
+          </li>
+        </ul>
+
+        <p class="uk-text-meta uk-text-small uk-margin-small-top" *ngIf="resumen.planes_mixtos">
+          <span uk-icon="icon: info; ratio: 0.8"></span>
+          La cuota mensual del resumen corresponde a los primeros {{ resumen.plazo }} meses: tus productos tienen planes distintos.
+        </p>
+      </div>
+
+      <!-- 2. DATOS PERSONALES -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <div class="uk-flex uk-flex-between uk-flex-middle">
+          <h4 class="uk-card-title uk-margin-remove">Datos personales</h4>
+          <a class="ck-editar" (click)="editarPersonal()">Editar</a>
+        </div>
+
+        <p class="uk-margin-small-top uk-margin-remove-bottom uk-text-bold">
+          {{ personal.scr_nombre }} {{ personal.scr_apelli }}
+        </p>
+        <p class="uk-margin-remove">C.I.: {{ personal.scr_cedula }}</p>
+        <p class="uk-margin-remove">{{ personal.scr_celula }} · {{ personal.scr_email }}</p>
+        <p class="uk-margin-remove">{{ personal.scr_barrio }} - {{ personal.scr_calle }}</p>
+        <p class="uk-margin-remove">{{ personal.ciudad }}, {{ personal.departamento }}</p>
+        <p class="uk-margin-remove uk-text-meta uk-margin-small-top">
+          {{ etiquetaEstadoCivil(personal.scr_estciv) }} · {{ personal.tipo_profesion }} · {{ personal.profesion }}
+        </p>
+        <p class="uk-margin-remove uk-text-meta">
+          Vivienda: {{ etiquetaTipoVivienda(personal.scr_tipviv) }}
+          <span *ngIf="personal.scr_sertit"> · Servicio a nombre de {{ personal.scr_sertit }}</span>
+        </p>
+      </div>
+
+      <!-- 3. DATOS LABORALES -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <div class="uk-flex uk-flex-between uk-flex-middle">
+          <h4 class="uk-card-title uk-margin-remove">Datos laborales</h4>
+          <a class="ck-editar" (click)="editarLaboral()">Editar</a>
+        </div>
+
+        <p class="uk-margin-small-top uk-margin-remove-bottom uk-text-bold">{{ laboral.scr_empres }}</p>
+        <p class="uk-margin-remove">{{ laboral.scr_cargo }}</p>
+        <p class="uk-margin-remove">{{ laboral.scr_dirlab }}</p>
+        <p class="uk-margin-remove">{{ laboral.scr_tellab }}</p>
+        <p class="uk-margin-remove uk-text-meta uk-margin-small-top">
+          Ingreso mensual: {{ laboral.scr_ingres | currency:'PYG':'symbol-narrow':'1.0-0' }}
+          <span *ngIf="laboral.antiguedad"> · Antigüedad: {{ laboral.antiguedad.texto }}</span>
+        </p>
+      </div>
+
+      <!-- 4. REFERENCIAS PERSONALES -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <div class="uk-flex uk-flex-between uk-flex-middle">
+          <h4 class="uk-card-title uk-margin-remove">Referencias personales</h4>
+          <a class="ck-editar" (click)="editarReferencias()">Editar</a>
+        </div>
+
+        <div *ngFor="let r of referencias; let last = last"
+             [class.uk-margin-small-bottom]="!last">
+          <p class="uk-margin-small-top uk-margin-remove-bottom uk-text-bold">{{ r.scf_nombre }}</p>
+          <p class="uk-margin-remove">{{ r.scf_celula }} · {{ r.relacion }}</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="ck-col-lateral">
+      <div class="uk-card uk-card-default uk-card-body ck-resumen uk-margin">
+        <h4 class="uk-card-title">Crédito solicitado</h4>
+
+        <div class="uk-flex uk-flex-between">
+          <span>Precio al contado</span>
+          <strong>{{ resumen.total_contado | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Recargo</span>
+          <strong>{{ resumen.recargo | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Impuestos</span>
+          <strong>{{ resumen.impuestos | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <hr>
+
+        <div class="uk-flex uk-flex-between">
+          <span class="uk-text-large">Total</span>
+          <span class="uk-text-large uk-text-bold">{{ resumen.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Plazo</span>
+          <strong>{{ resumen.plazo }} meses</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Cuota mensual</span>
+          <strong>{{ resumen.cuota_mensual | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ AVISO + DECLARACIÓN DE VERACIDAD ============ -->
+  <!-- Fuera del grid de dos columnas, a todo el ancho, justo antes de la
+       barra de botones: es la última cosa que el cliente ve/confirma
+       antes de [GENERAR SOLICITUD]. -->
+  <div class="ck-declaracion uk-text-center uk-margin-medium-top">
+    <p class="uk-text-meta uk-text-small uk-margin-remove-bottom">
+      <span uk-icon="icon: info; ratio: 0.8"></span>
+      El cronograma se confirma al aprobarse el crédito.
+    </p>
+
+    <label class="uk-margin-small-top uk-display-block">
+      <input class="uk-checkbox" type="checkbox" [(ngModel)]="declaracion">
+      Declaro que los datos proporcionados son veraces
+    </label>
+  </div>
+
+  <div class="ck-barra-botones uk-margin-medium-top">
+    <button type="button" class="uk-button ck-btn-volver" [disabled]="generando" (click)="volver()">Volver</button>
+    <button type="button" class="uk-button uk-button-primary ck-btn-continuar"
+            [disabled]="generando || !declaracion" (click)="generar()">
+      <span *ngIf="!generando">Generar Solicitud</span>
+      <span *ngIf="generando"><span uk-spinner="ratio: 0.6"></span> Generando...</span>
+    </button>
+  </div>
+</div>

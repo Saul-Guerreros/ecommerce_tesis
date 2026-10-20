@@ -52,6 +52,7 @@ export class ListPedidoComponent implements OnInit {
   filtroMetodoPago: number | null = null;
   desde = '';
   hasta = '';
+  filtroRetiroVencido = false;
 
   // Paginación
   currentPage = 1;
@@ -62,6 +63,7 @@ export class ListPedidoComponent implements OnInit {
   rangoHasta = 0;
 
   pagosPendientes = 0;
+  retirosVencidos = 0;
 
   private busquedaSubject = new Subject<void>();
 
@@ -135,6 +137,7 @@ export class ListPedidoComponent implements OnInit {
       metodo_pago: this.filtroMetodoPago,
       desde: this.desde || undefined,
       hasta: this.hasta || undefined,
+      retiro_vencido: this.filtroRetiroVencido || undefined,
       page: page ?? this.currentPage,
       per_page: this.perPage,
     };
@@ -158,6 +161,7 @@ export class ListPedidoComponent implements OnInit {
         this.rangoDesde = res.meta.desde;
         this.rangoHasta = res.meta.hasta;
         this.pagosPendientes = res.meta.pagos_pendientes;
+        this.retirosVencidos = res.meta.retiros_vencidos;
         this.cargando = false;
       },
       error: (err) => {
@@ -186,15 +190,29 @@ export class ListPedidoComponent implements OnInit {
     this.filtroMetodoPago = null;
     this.desde = '';
     this.hasta = '';
+    this.filtroRetiroVencido = false;
     this.cargar(1);
   }
 
   /** Clic en la alerta: filtra por los pagos que esperan verificación. */
   verPagosPendientes(): void {
-    const pendiente = this.estadosPago.find((e) => e.epa_codigo === 'PENDIENTE');
+    const pendiente = this.estadosPago.find((e) => e.epa_codigo === 'PAGO_VERIFICAR');
     if (!pendiente) return;
 
+    this.filtroRetiroVencido = false;
     this.filtroEstadoPago = pendiente.epa_id;
+    this.filtrosVisibles = true;
+    this.cargar(1);
+  }
+
+  /**
+   * Clic en la alerta de retiros vencidos: estos pedidos ya tienen pago
+   * confirmado (si no, el barrido ya los habría cancelado), así que no
+   * hace falta combinar con ningún otro filtro de estado.
+   */
+  verRetirosVencidos(): void {
+    this.filtroEstadoPago = null;
+    this.filtroRetiroVencido = true;
     this.filtrosVisibles = true;
     this.cargar(1);
   }
@@ -264,8 +282,8 @@ export class ListPedidoComponent implements OnInit {
     switch (codigo) {
       case 'CONFIRMADO': return 'success';
       case 'PARCIAL':    return 'info';
-      case 'RECHAZADO':  return 'danger';
-      case 'PENDIENTE':  return 'warning';
+      case 'RECHAZADO':     return 'danger';
+      case 'PAGO_VERIFICAR': return 'warning';
       default:           return 'secondary';
     }
   }
@@ -276,9 +294,22 @@ export class ListPedidoComponent implements OnInit {
       case 'LISTO':          return 'primary';
       case 'EN_PREPARACION': return 'info';
       case 'CANCELADO':      return 'danger';
-      case 'PENDIENTE':      return 'warning';
+      case 'PENDIENTE_PEDIDO': return 'warning';
       default:               return 'secondary';
     }
+  }
+
+  /**
+   * Texto de la columna de retiro. Reutiliza Intl.RelativeTimeFormat para
+   * no reinventar el cálculo de "hace X días" / "en X días" a mano.
+   */
+  private readonly formatoRelativo = new Intl.RelativeTimeFormat('es-PY', { numeric: 'auto' });
+
+  textoRetiro(vence: string): string {
+    const diffMs = new Date(vence).getTime() - Date.now();
+    const dias = Math.round(diffMs / 86_400_000);
+
+    return this.formatoRelativo.format(dias, 'day');
   }
 
   /** Guaraníes: separador de miles y sin decimales. */

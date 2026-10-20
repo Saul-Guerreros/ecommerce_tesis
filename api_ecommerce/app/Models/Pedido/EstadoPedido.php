@@ -11,7 +11,7 @@ class EstadoPedido extends Model
     public $timestamps = false;
     const CREATED_AT = 'est_creado';
 
-    public const PENDIENTE = 'PENDIENTE';
+    public const PENDIENTE_PEDIDO = 'PENDIENTE_PEDIDO';
     public const EN_PREPARACION = 'EN_PREPARACION';
     public const LISTO = 'LISTO';
     public const ENTREGADO = 'ENTREGADO';

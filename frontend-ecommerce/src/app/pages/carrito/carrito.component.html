@@ -230,8 +230,9 @@
                 <div class="cc-item-img-col"></div>
                 <div class="cc-col-nombre">Producto</div>
                 <div class="cc-datos">
-                  <div class="cc-col-precio">Precio</div>
+                  <div class="cc-col-precio">Precio<br>Contado</div>
                   <div class="cc-col-cantidad">Cantidad</div>
+                  <div class="cc-col-plan">Plan de cuotas</div>
                   <div class="cc-col-cuota">Cuota Mensual</div>
                   <div class="cc-col-eliminar"></div>
                 </div>
@@ -277,13 +278,10 @@
                         </div>
 
                         <div class="cc-datos">
-                          <!-- Precio (financiacion): la "foto" que se tomo al agregar
-                               (car_montocuo), no un calculo nuevo en el frontend. -->
-                          <div class="cc-col-precio" data-label="Precio">
-                            <div class="cc-badge cc-badge--credito">
-                              {{ item.car_numcuo }} cuotas x
-                              {{ item.car_montocuo | currency:'PYG':'symbol-narrow':'1.0-0' }}
-                            </div>
+                          <!-- Precio al contado: car_precio es el precio unitario SIN
+                               financiar, la "foto" que se tomó al agregar al carrito. -->
+                          <div class="cc-col-precio" data-label="Precio Contado">
+                            {{ item.car_precio | currency:'PYG':'symbol-narrow':'1.0-0' }}
                           </div>
 
                           <!-- Cantidad -->
@@ -301,12 +299,18 @@
                             </div>
                           </div>
 
+                          <!-- Plan de cuotas: la financiación elegida (car_numcuo x
+                               car_montocuo), separada del precio contado. -->
+                          <div class="cc-col-plan" data-label="Plan de cuotas">
+                            <div class="cc-badge cc-badge--credito">
+                              {{ item.car_numcuo }} x
+                              {{ item.car_montocuo | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                            </div>
+                          </div>
+
                           <!-- Cuota mensual de la línea (punto 3) -->
                           <div class="cc-col-cuota" data-label="Cuota mensual">
-                            <div class="uk-text-bolder">
-                              {{ cuotaMensualLinea(item) | currency:'PYG':'symbol-narrow':'1.0-0' }}
-                            </div>
-                            <div class="uk-text-xsmall uk-text-meta">cuota mensual</div>
+                            {{ cuotaMensualLinea(item) | currency:'PYG':'symbol-narrow':'1.0-0' }}
                           </div>
 
                           <div class="cc-col-eliminar">
@@ -359,25 +363,49 @@
           </p>
         </div>
 
-        <!-- Resumen de compra a crédito (punto 13) -->
+        <!-- Resumen de compra a crédito (punto 13 + esquema de 6 líneas) -->
         <div class="uk-width-1-4@m">
           <div class="uk-card uk-card-default uk-card-small">
             <div class="uk-card-header">
-              <h3 class="uk-card-title uk-margin-remove">Resumen de Compra a Cuotas</h3>
+              <h3 class="uk-card-title uk-margin-remove">Resumen de Compra a Crédito</h3>
             </div>
             <div class="uk-card-body">
+
               <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
-                <div class="uk-width-expand uk-text-muted">Subtotal</div>
-                <div>{{ subtotalCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+                <div class="uk-width-expand uk-text-muted">Precio al contado</div>
+                <div>{{ precioContadoCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
               </div>
+
+              <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
+                <div class="uk-width-expand uk-text-muted">Recargo por financiación</div>
+                <div>{{ recargoFinanciacionCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+              </div>
+
+              <hr class="uk-margin-small">
+
+              <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
+                <div class="uk-width-expand uk-text-bolder">TOTAL A PAGAR</div>
+                <div class="uk-text-bolder">{{ totalCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+              </div>
+
               <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
                 <div class="uk-width-expand uk-text-muted">Impuestos</div>
                 <div>{{ impuestosCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
               </div>
-              <hr class="uk-margin-small">
+
+              <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
+                <div class="uk-width-expand uk-text-muted">Plazo</div>
+                <div>{{ plazoCredito }} meses</div>
+              </div>
+
               <div class="uk-grid-small" uk-grid>
-                <div class="uk-width-expand uk-text-bolder">Total del Pedido</div>
-                <div class="uk-text-bolder">{{ totalCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+                <div class="uk-width-expand uk-text-muted">
+                  Cuota mensual
+                  <span *ngIf="hayPlanesMixtos" class="uk-text-xsmall uk-display-block">
+                    (primeros {{ plazoCredito }} meses, con planes mixtos)
+                  </span>
+                </div>
+                <div>{{ cuotaMensualCredito | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
               </div>
 
               <!-- Código de descuento: solo estructura visual (punto 17) -->

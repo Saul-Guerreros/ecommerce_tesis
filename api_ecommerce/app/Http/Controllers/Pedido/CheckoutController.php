@@ -5,31 +5,44 @@ namespace App\Http\Controllers\Pedido;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Pedido\CheckoutEntregaRequest;
 use App\Http\Requests\Pedido\CheckoutFacturacionRequest;
-use App\Http\Requests\Pedido\CheckoutPagoRequest;
+use App\Http\Resources\Carrito\CarritoResource; // también se usa en configEntrega()
 use App\Http\Resources\Cliente\DatoFiscalClienteResource;
 use App\Http\Resources\Cliente\DireccionClienteResource;
 use App\Http\Resources\Pedido\EntregaResource;
 use App\Http\Resources\Pedido\FacturacionResource;
-use App\Http\Resources\Pedido\MetodoPagoResource;
-use App\Http\Resources\Pedido\PagoResource;
 use App\Http\Resources\Pedido\SucursalRetiroResource;
 use App\Models\Usuario;
 use App\Services\Pedido\CheckoutEntregaService;
 use App\Services\Pedido\CheckoutFacturacionService;
-use App\Services\Pedido\CheckoutPagoService;
+use App\Services\Pedido\CheckoutResumenService;
 use App\Services\Pedido\PedidoService;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * Checkout de la tienda web, lado cliente.
+ *
+ *   Paso 1  Entrega        -> configEntrega / guardarEntrega
+ *   Paso 2  Facturación    -> configFacturacion / guardarFacturacion
+ *                             + confirmar()  <-- crea el pedido y reserva stock
+ *   Paso 3  Pago           -> PagoPedidoController (Etapa 3), ya contra un
+ *                             pedido existente
+ *
+ * El Paso 3 anterior ("Confirmación") desaparece: su resumen pasa al Paso 2,
+ * porque confirmar el pedido ahora compromete stock y el cliente tiene que
+ * ver qué está por confirmar antes de hacerlo.
+ */
 class CheckoutController extends Controller
 {
     public function __construct(
         private CheckoutEntregaService $servicio,
         private CheckoutFacturacionService $servicioFacturacion,
-        private CheckoutPagoService $servicioPago,
+        private CheckoutResumenService $servicioResumen,
         private PedidoService $servicioPedido,
     ) {
         $this->middleware('auth:api');
     }
+
+    // ---------- Paso 1: Entrega ----------
 
     public function configEntrega(): JsonResponse
     {
@@ -42,6 +55,10 @@ class CheckoutController extends Controller
             'direcciones' => DireccionClienteResource::collection($datos['direcciones']),
             'titular'     => $datos['titular'],
             'envio'       => $datos['envio'],
+
+            // Alimenta la tarjeta "Productos en Carrito" del Paso 1.
+            'items'       => CarritoResource::collection($this->servicioResumen->itemsOpcionales($usuario)),
+
             'entrega'     => $guardado ? new EntregaResource($guardado) : null,
         ], 200);
     }
@@ -57,6 +74,13 @@ class CheckoutController extends Controller
         ], 200);
     }
 
+    // ---------- Paso 2: Facturación ----------
+
+    /**
+     * 'items' se agrega con el rediseño: el Paso 2 es ahora el último punto
+     * antes de comprometer stock, así que el cliente tiene que poder revisar
+     * los productos acá y no en una pantalla posterior que ya no existe.
+     */
     public function configFacturacion(): JsonResponse
     {
         $usuario  = $this->clienteAutenticado();
@@ -67,6 +91,7 @@ class CheckoutController extends Controller
             'titular'        => $datos['titular'],
             'datos_fiscales' => DatoFiscalClienteResource::collection($datos['datos_fiscales']),
             'entrega'        => $datos['entrega'] ? new EntregaResource($datos['entrega']) : null,
+            'items'          => CarritoResource::collection($this->servicioResumen->itemsOpcionales($usuario)),
             'resumen'        => $datos['resumen'],
             'facturacion'    => $guardado ? new FacturacionResource($guardado) : null,
         ], 200);
@@ -84,68 +109,34 @@ class CheckoutController extends Controller
     }
 
     /**
-     * total_pedido se agrega para el pago dividido: es el valor contra el
-     * que el cliente reparte los montos. Se calcula en el backend, nunca en
-     * Angular, porque es el mismo numero que despues valida el guardado.
+     * Botón [CONFIRMAR PEDIDO] del Paso 2.
+     *
+     * Crea el pedido y toma la reserva de stock. Si no hay stock, falla acá
+     * (422) y el cliente no pagó nada todavía: ése es el objetivo de todo
+     * el rediseño.
+     *
+     * Devuelve ped_vence para que la pantalla de pago pueda mostrar el plazo
+     * ("vence en 24 h") sin tener que calcularlo por su cuenta.
      */
-    public function configPago(): JsonResponse
-    {
-        $usuario  = $this->clienteAutenticado();
-        $datos    = $this->servicioPago->datosIniciales();
-        $guardado = $this->servicioPago->borrador($usuario);
-
-        return response()->json([
-            'metodos'             => MetodoPagoResource::collection($datos['metodos']),
-            'datos_transferencia' => $datos['datos_transferencia'],
-            'datos_billetera'     => $datos['datos_billetera'],
-            'mensaje_efectivo'    => $datos['mensaje_efectivo'],
-            'total_pedido'        => $this->servicioPago->totalExigible($usuario),
-            'pago'                => $guardado ? new PagoResource($guardado) : null,
-        ], 200);
-    }
-
-    public function guardarPago(CheckoutPagoRequest $request): JsonResponse
-    {
-        $usuario = $this->clienteAutenticado();
-        $pago    = $this->servicioPago->guardar($usuario, $request->validated());
-
-        return response()->json([
-            'message' => $request->esDividido()
-                ? 'Pagos registrados.'
-                : 'Método de pago guardado.',
-            'data'    => new PagoResource($pago),
-        ], 200);
-    }
-
-    public function configConfirmacion(): JsonResponse
-    {
-        $usuario = $this->clienteAutenticado();
-        $datos   = $this->servicioPedido->datosConfirmacion($usuario);
-
-        return response()->json([
-            'items'       => $datos['items'],
-            'entrega'     => new EntregaResource($datos['entrega']),
-            'facturacion' => new FacturacionResource($datos['facturacion']),
-            'pago'        => new PagoResource($datos['pago']),
-            'resumen'     => $datos['resumen'],
-        ], 200);
-    }
-
     public function confirmar(): JsonResponse
     {
         $usuario = $this->clienteAutenticado();
         $pedido  = $this->servicioPedido->confirmar($usuario);
 
         return response()->json([
-            'message' => 'Pedido realizado con éxito.',
-            'data' => [
+            'message' => 'Pedido creado. Ya reservamos tu stock.',
+            'data'    => [
                 'ped_id'     => $pedido->ped_id,
                 'ped_numero' => $pedido->ped_numero,
                 'ped_total'  => (float) $pedido->ped_total,
                 'ped_creado' => $pedido->ped_creado,
+                'ped_vence'  => $pedido->ped_vence,
+                'estado_pago' => $pedido->estadoPago?->epa_codigo,
             ],
         ], 201);
     }
+
+    // ---------- Helpers ----------
 
     private function clienteAutenticado(): Usuario
     {

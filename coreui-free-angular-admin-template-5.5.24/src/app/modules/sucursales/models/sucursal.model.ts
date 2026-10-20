@@ -11,8 +11,11 @@ export interface Sucursal {
   suc_email?: string | null;
   suc_estado?: number;
   suc_creado?: string;
-    suc_retiro?: boolean;        // <-- nuevo
-  suc_horario?: string | null; // <-- nuevo
+  suc_retiro?: boolean;         // habilitada para retiro de pedidos web
+  suc_horario?: string | null;  // horario de atencion mostrado al cliente
+  suc_diaslab?: string;         // mascara de 7 '1'/'0', lunes->domingo: dias habiles para el plazo de retiro
+  suc_webstk?: boolean;         // visible en "Ver Stock en Tiendas" (detalle de producto)
+  suc_delivery?: boolean;       // despacha envios a domicilio
 
   // campos calculados que llegan del backend
   emp_razonsocial?: string;

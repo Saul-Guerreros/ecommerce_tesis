@@ -4,6 +4,16 @@
 
 <div *ngIf="!cargando">
 
+  <!-- Aviso de stock agotado: el motivo por el que este paso existe antes
+       del pago. Se muestra fijo, no sólo como toast. -->
+  <div class="uk-alert-danger uk-margin" uk-alert *ngIf="errorStock">
+    <h4 class="uk-margin-remove-bottom">No pudimos reservar tu pedido</h4>
+    <p class="uk-margin-remove-top">{{ errorStock }}</p>
+    <button type="button" class="uk-button uk-button-default uk-button-small" (click)="irAlCarrito()">
+      Revisar mi carrito
+    </button>
+  </div>
+
   <div class="ck-layout">
 
     <div class="ck-col-principal">
@@ -106,130 +116,6 @@
         </p>
       </div>
 
-      <div class="uk-card uk-card-default uk-card-body uk-margin">
-        <h4 class="uk-card-title">¿Cómo deseas pagar?</h4>
-
-        <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
-          <div>
-            <button type="button" class="ck-opcion ck-opcion--chica"
-                    [class.ck-opcion--activa]="modoPago === 'unico'"
-                    (click)="elegirModo('unico')">
-              <span uk-icon="icon: credit-card"></span> Un solo método de pago
-            </button>
-          </div>
-          <div>
-            <button type="button" class="ck-opcion ck-opcion--chica"
-                    [class.ck-opcion--activa]="modoPago === 'dividido'"
-                    (click)="elegirModo('dividido')">
-              <span uk-icon="icon: git-branch"></span> Dividir el pago entre varios métodos
-            </button>
-          </div>
-        </div>
-
-        <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="modoInvalido">
-          Elegí cómo vas a pagar tu pedido.
-        </p>
-      </div>
-
-      <div class="uk-card uk-card-default uk-card-body uk-margin" *ngIf="modoPago">
-  <h4 class="uk-card-title">Método de Pago</h4>
-
-    <p class="uk-text-meta uk-margin-remove-top" *ngIf="esDividido">
-      Esta tarjeta muestra los datos del método seleccionado en el pago que estés editando.
-    </p>
-
-    <div class="uk-grid-small uk-child-width-1-3@s" uk-grid>
-      <div>
-        <button type="button" class="ck-opcion ck-opcion--centrada"
-                [class.ck-opcion--activa]="metodoParaDatos === 'TRANSFERENCIA'"
-                [class.ck-opcion--informativa]="esDividido"
-                [disabled]="esDividido"
-                (click)="elegirMetodo('TRANSFERENCIA')">
-          <span uk-icon="icon: credit-card; ratio: 1.3"></span>
-          <strong>Transferencia Bancaria</strong>
-          <small>Realizá una transferencia a nuestra cuenta bancaria.</small>
-        </button>
-      </div>
-      <div>
-        <button type="button" class="ck-opcion ck-opcion--centrada"
-                [class.ck-opcion--activa]="metodoParaDatos === 'BILLETERA_MOVIL'"
-                [class.ck-opcion--informativa]="esDividido"
-                [disabled]="esDividido"
-                (click)="elegirMetodo('BILLETERA_MOVIL')">
-          <span uk-icon="icon: mobile; ratio: 1.3"></span>
-          <strong>Tigo Money</strong>
-          <small>Enviá el pago al número de Tigo Money indicado.</small>
-        </button>
-      </div>
-      <div>
-        <button type="button" class="ck-opcion ck-opcion--centrada"
-                [class.ck-opcion--activa]="metodoParaDatos === 'CONTRAENTREGA'"
-                [class.ck-opcion--informativa]="esDividido"
-                [disabled]="esDividido"
-                (click)="elegirMetodo('CONTRAENTREGA')">
-          <span uk-icon="icon: cart; ratio: 1.3"></span>
-          <strong>Efectivo</strong>
-          <small>Pagá en efectivo al retirar tu pedido o recibirlo.</small>
-        </button>
-      </div>
-    </div>
-
-    <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="metodoInvalido">
-      Seleccione un Método de Pago
-    </p>
-
-  <div class="uk-margin-top" *ngIf="metodoParaDatos">
-    <h5 class="uk-text-bold uk-margin-remove-bottom">Datos del Método de Pago</h5>
-
-    <div *ngIf="metodoParaDatos === 'TRANSFERENCIA'" class="uk-margin-small-top">
-      <div class="ck-dato-pago"><span>Banco</span><strong>{{ datosTransferencia.banco }}</strong></div>
-      <div class="ck-dato-pago"><span>Titular</span><strong>{{ datosTransferencia.titular }}</strong></div>
-      <div class="ck-dato-pago"><span>Cuenta</span><strong>{{ datosTransferencia.cuenta }}</strong></div>
-    </div>
-
-    <div *ngIf="metodoParaDatos === 'BILLETERA_MOVIL'" class="uk-margin-small-top">
-      <div class="ck-dato-pago"><span>Titular</span><strong>{{ datosBilletera.titular }}</strong></div>
-      <div class="ck-dato-pago"><span>Número</span><strong>{{ datosBilletera.numero }}</strong></div>
-      <div class="ck-dato-pago"><span>Referencia</span><strong>{{ datosBilletera.referencia }}</strong></div>
-    </div>
-
-    <p *ngIf="metodoParaDatos === 'CONTRAENTREGA'" class="uk-text-meta uk-margin-small-top">
-      {{ mensajeEfectivo }}
-    </p>
-
-    <div *ngIf="!esDividido && metodoRequiereComprobante" class="uk-margin-top">
-      <label class="uk-form-label">Adjuntar comprobante <span class="uk-text-danger">*</span></label>
-
-      <div class="ck-upload">
-        <button type="button" class="uk-button uk-button-default" (click)="inputComprobante.click()">
-          <span uk-icon="icon: upload"></span> Seleccionar archivo
-        </button>
-        <span class="ck-upload-nombre" [class.ck-upload-nombre--vacio]="!comprobanteArchivo && !comprobanteNombreGuardado">
-          {{ comprobanteArchivo?.name || comprobanteNombreGuardado || 'Ningún archivo seleccionado' }}
-        </span>
-        <input #inputComprobante type="file" hidden accept=".jpg,.jpeg,.png,.pdf" (change)="onArchivoSeleccionado($event)">
-      </div>
-
-      <p class="uk-text-meta uk-margin-small-top">JPG, PNG o PDF. Máximo 5 MB.</p>
-
-      <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="comprobanteInvalido">
-        Adjuntá el comprobante de pago.
-      </p>
-    </div>
-
-  </div>
-</div>
-
-      <app-pago-dividido
-        *ngIf="esDividido"
-        [total]="totalPedido"
-        [metodos]="metodos"
-        [pagosGuardados]="pagosGuardados"
-        [intentoContinuar]="intentoContinuar"
-        (metodoActivoChange)="metodoActivo = $event"
-        (cambio)="onCambioPagos($event)">
-      </app-pago-dividido>
-
     </div>
 
     <div class="ck-col-lateral">
@@ -259,41 +145,26 @@
           <span class="uk-text-large">Total</span>
           <span class="uk-text-large uk-text-bold">{{ total | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
         </div>
+
+        <p class="uk-text-meta uk-text-small uk-margin-small-top uk-margin-remove-bottom">
+          Al confirmar, reservamos tu pedido y te damos 24 horas para pagarlo.
+        </p>
       </div>
 
-      <!-- Resumen de lo elegido en el Paso 1 -->
-      <div class="uk-card uk-card-default uk-card-body" *ngIf="entrega">
-        <div class="uk-flex uk-flex-between uk-flex-middle">
-          <h4 class="uk-card-title uk-margin-remove">{{ esRetiro ? 'Retirás en:' : 'Enviar a:' }}</h4>
-          <button type="button" class="uk-icon-link" uk-icon="icon: cog" (click)="volver()" title="Editar"></button>
-        </div>
+      <app-productos-carrito-card class="uk-margin" [items]="productos"></app-productos-carrito-card>
 
-        <ng-container *ngIf="!esRetiro">
-          <p class="uk-margin-remove uk-text-bold">{{ entrega.rec_nombre }} {{ entrega.rec_apelli }}</p>
-          <p class="uk-margin-remove">{{ entrega.barrio }} - {{ entrega.calle }}</p>
-          <p class="uk-margin-remove">{{ entrega.ciudad }}, {{ entrega.departamento }}</p>
-          <p class="uk-margin-remove">Paraguay</p>
-          <p class="uk-margin-remove">{{ entrega.rec_telef }}</p>
-          <p class="uk-margin-remove">C.I. / R.U.C.: {{ entrega.rec_nrodoc }}</p>
-        </ng-container>
-
-        <ng-container *ngIf="esRetiro">
-          <p class="uk-margin-remove uk-text-bold">{{ entrega.suc_nombre }}</p>
-          <p class="uk-margin-remove">{{ entrega.suc_direccion }}</p>
-          <p class="uk-margin-remove" *ngIf="entrega.suc_horario">{{ entrega.suc_horario }}</p>
-          <p class="uk-margin-remove uk-margin-small-top">Retira: {{ entrega.rec_nombre }} {{ entrega.rec_apelli }}</p>
-          <p class="uk-margin-remove">C.I.: {{ entrega.rec_nrodoc }}</p>
-        </ng-container>
-      </div>
+      <app-datos-entrega-card class="uk-margin"
+        [entrega]="entregaResumen" [editable]="true" (editar)="volver()">
+      </app-datos-entrega-card>
     </div>
   </div>
 
   <div class="ck-barra-botones uk-margin-medium-top">
-    <button type="button" class="uk-button ck-btn-volver" (click)="volver()">Volver</button>
+    <button type="button" class="uk-button ck-btn-volver" [disabled]="confirmando" (click)="volver()">Volver</button>
     <button type="button" class="uk-button uk-button-primary ck-btn-continuar"
-            [disabled]="guardando" (click)="continuar()">
-      <span *ngIf="!guardando">Continuar</span>
-      <span *ngIf="guardando"><span uk-spinner="ratio: 0.6"></span> Guardando...</span>
+            [disabled]="confirmando" (click)="confirmar()">
+      <span *ngIf="!confirmando">Confirmar Pedido</span>
+      <span *ngIf="confirmando"><span uk-spinner="ratio: 0.6"></span> Confirmando...</span>
     </button>
   </div>
 </div>

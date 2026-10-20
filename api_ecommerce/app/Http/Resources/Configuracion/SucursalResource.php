@@ -22,8 +22,13 @@ class SucursalResource extends JsonResource
             'suc_email'     => $this->suc_email,
             'suc_estado'    => $this->suc_estado,
             'suc_creado'    => $this->suc_creado,
-            'suc_retiro'    => (bool) $this->suc_retiro,   // <-- nuevo
-            'suc_horario'   => $this->suc_horario,          // <-- nuevo
+            'suc_retiro'    => (bool) $this->suc_retiro,
+            'suc_horario'   => $this->suc_horario,
+            // Máscara lunes→domingo. suc_horario es el texto que ve el
+            // cliente; esta es la que usa el cálculo del plazo de retiro.
+            'suc_diaslab'   => $this->suc_diaslab ?? \App\Models\Configuracion\Sucursal::DIAS_LABORABLES_DEFECTO,
+            'suc_webstk'    => (bool) $this->suc_webstk,     // <-- nuevo
+            'suc_delivery'  => (bool) $this->suc_delivery,   // <-- nuevo
 
             'emp_razonsocial' => $this->whenLoaded('empresa', fn () => $this->empresa->emp_razonsocial),
             'ciu_descri'      => $this->whenLoaded('ciudad', fn () => $this->ciudad->ciu_descri),

@@ -1,0 +1,213 @@
+<div *ngIf="cargando" class="uk-text-center uk-margin-large">
+  <div uk-spinner="ratio: 1.5"></div>
+</div>
+
+<div *ngIf="!cargando">
+
+  <div class="ck-layout">
+    <div class="ck-col-principal">
+
+      <!-- Cabecera y advertencia van DENTRO de la columna principal, no
+           por encima del layout: así la barra lateral arranca a la misma
+           altura que la cabecera y las dos columnas quedan alineadas. -->
+      <div class="pg-cabecera uk-card uk-card-default uk-card-body uk-margin">
+        <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+          <div>
+            <h4 class="uk-margin-remove-bottom">Pedido Nº {{ pedido.ped_numero }}</h4>
+            <p class="uk-text-meta uk-margin-remove-top">
+              Pendiente de pago · tu stock está reservado
+            </p>
+          </div>
+          <div class="uk-text-right">
+            <div class="uk-text-large uk-text-bold">
+              {{ pedido.ped_total | currency:'PYG':'symbol-narrow':'1.0-0' }}
+            </div>
+            <div class="uk-text-meta">Vence en {{ restante }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aviso del plazo: antes vivía dentro de la tarjeta Resumen de
+           Compra. Es texto suelto entre tarjetas, sin recuadro propio. -->
+      <p class="pg-advertencia uk-margin">
+        <strong>Advertencia:</strong> Tu pedido ya está reservado. Si no registrás
+        el pago antes de que venza el plazo, la reserva se libera y el pedido se cancela.
+      </p>
+
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <h4 class="uk-card-title">¿Cómo deseas pagar?</h4>
+
+        <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+          <div>
+            <button type="button" class="ck-opcion ck-opcion--chica"
+                    [class.ck-opcion--activa]="modoPago === 'unico'"
+                    (click)="elegirModo('unico')">
+              <span uk-icon="icon: credit-card"></span> Un solo método de pago
+            </button>
+          </div>
+          <div>
+            <button type="button" class="ck-opcion ck-opcion--chica"
+                    [class.ck-opcion--activa]="modoPago === 'dividido'"
+                    (click)="elegirModo('dividido')">
+              <span uk-icon="icon: git-branch"></span> Dividir el pago entre varios métodos
+            </button>
+          </div>
+        </div>
+
+        <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="modoInvalido">
+          Elegí cómo vas a pagar tu pedido.
+        </p>
+      </div>
+
+      <div class="uk-card uk-card-default uk-card-body uk-margin" *ngIf="modoPago">
+        <h4 class="uk-card-title">Método de Pago</h4>
+
+        <p class="uk-text-meta uk-margin-remove-top" *ngIf="esDividido">
+          Esta tarjeta muestra los datos del método seleccionado en el pago que estés editando.
+        </p>
+
+        <div class="uk-grid-small uk-child-width-1-3@s" uk-grid>
+          <div>
+            <button type="button" class="ck-opcion ck-opcion--centrada"
+                    [class.ck-opcion--activa]="metodoParaDatos === 'TRANSFERENCIA'"
+                    [class.ck-opcion--informativa]="esDividido"
+                    [disabled]="esDividido"
+                    (click)="elegirMetodo('TRANSFERENCIA')">
+              <span uk-icon="icon: credit-card; ratio: 1.3"></span>
+              <strong>Transferencia Bancaria</strong>
+              <small>Realizá una transferencia a nuestra cuenta bancaria.</small>
+            </button>
+          </div>
+          <div>
+            <button type="button" class="ck-opcion ck-opcion--centrada"
+                    [class.ck-opcion--activa]="metodoParaDatos === 'BILLETERA_MOVIL'"
+                    [class.ck-opcion--informativa]="esDividido"
+                    [disabled]="esDividido"
+                    (click)="elegirMetodo('BILLETERA_MOVIL')">
+              <span uk-icon="icon: mobile; ratio: 1.3"></span>
+              <strong>Tigo Money</strong>
+              <small>Enviá el pago al número de Tigo Money indicado.</small>
+            </button>
+          </div>
+          <div>
+            <button type="button" class="ck-opcion ck-opcion--centrada"
+                    [class.ck-opcion--activa]="metodoParaDatos === 'CONTRAENTREGA'"
+                    [class.ck-opcion--informativa]="esDividido"
+                    [disabled]="esDividido"
+                    (click)="elegirMetodo('CONTRAENTREGA')">
+              <span uk-icon="icon: cart; ratio: 1.3"></span>
+              <strong>Efectivo</strong>
+              <small>Pagá en efectivo al retirar tu pedido o recibirlo.</small>
+            </button>
+          </div>
+        </div>
+
+        <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="metodoInvalido">
+          Seleccioná un método de pago.
+        </p>
+
+        <div class="uk-margin-top" *ngIf="metodoParaDatos">
+          <h5 class="uk-text-bold uk-margin-remove-bottom">Datos del Método de Pago</h5>
+
+          <div *ngIf="metodoParaDatos === 'TRANSFERENCIA'" class="uk-margin-small-top">
+            <div class="ck-dato-pago"><span>Banco</span><strong>{{ datosTransferencia.banco }}</strong></div>
+            <div class="ck-dato-pago"><span>Titular</span><strong>{{ datosTransferencia.titular }}</strong></div>
+            <div class="ck-dato-pago"><span>Cuenta</span><strong>{{ datosTransferencia.cuenta }}</strong></div>
+          </div>
+
+          <div *ngIf="metodoParaDatos === 'BILLETERA_MOVIL'" class="uk-margin-small-top">
+            <div class="ck-dato-pago"><span>Titular</span><strong>{{ datosBilletera.titular }}</strong></div>
+            <div class="ck-dato-pago"><span>Número</span><strong>{{ datosBilletera.numero }}</strong></div>
+            <div class="ck-dato-pago"><span>Referencia</span><strong>{{ datosBilletera.referencia }}</strong></div>
+          </div>
+
+          <p *ngIf="metodoParaDatos === 'CONTRAENTREGA'" class="uk-text-meta uk-margin-small-top">
+            {{ mensajeEfectivo }}
+          </p>
+
+          <div *ngIf="!esDividido && metodoRequiereComprobante" class="uk-margin-top">
+            <label class="uk-form-label">Adjuntar comprobante <span class="uk-text-danger">*</span></label>
+
+            <div class="ck-upload">
+              <button type="button" class="uk-button uk-button-default" (click)="inputComprobante.click()">
+                <span uk-icon="icon: upload"></span> Seleccionar archivo
+              </button>
+              <span class="ck-upload-nombre" [class.ck-upload-nombre--vacio]="!comprobanteArchivo">
+                {{ comprobanteArchivo?.name || 'Ningún archivo seleccionado' }}
+              </span>
+              <input #inputComprobante type="file" hidden accept=".jpg,.jpeg,.png,.pdf"
+                     (change)="onArchivoSeleccionado($event)">
+            </div>
+
+            <p class="uk-text-meta uk-margin-small-top">JPG, PNG o PDF. Máximo 5 MB.</p>
+
+            <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="comprobanteInvalido">
+              Adjuntá el comprobante de pago.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <app-pago-dividido
+        *ngIf="esDividido"
+        [total]="pedido.ped_total"
+        [metodos]="metodos"
+        [pagosGuardados]="null"
+        [intentoContinuar]="intentoEnviar"
+        (metodoActivoChange)="metodoActivo = $event"
+        (cambio)="onCambioPagos($event)">
+      </app-pago-dividido>
+
+    </div>
+
+    <div class="ck-col-lateral">
+      <div class="uk-card uk-card-default uk-card-body ck-resumen uk-margin">
+        <h4 class="uk-card-title">Resumen de Compra</h4>
+
+        <div class="uk-flex uk-flex-between">
+          <span>Subtotal</span>
+          <strong>{{ resumen.subtotal | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Impuestos</span>
+          <strong>{{ resumen.impuestos | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Envío</span>
+          <strong *ngIf="entrega?.modalidad === 'retiro'" class="uk-text-success">Retiro en sucursal</strong>
+          <strong *ngIf="entrega?.modalidad === 'envio' && resumen.costo_envio > 0">
+            {{ resumen.costo_envio | currency:'PYG':'symbol-narrow':'1.0-0' }}
+          </strong>
+          <strong *ngIf="entrega?.modalidad === 'envio' && resumen.costo_envio === 0" class="uk-text-success">
+            Sin cargo
+          </strong>
+        </div>
+
+        <hr>
+
+        <div class="uk-flex uk-flex-between">
+          <span class="uk-text-large">Total</span>
+          <span class="uk-text-large uk-text-bold">
+            {{ resumen.total | currency:'PYG':'symbol-narrow':'1.0-0' }}
+          </span>
+        </div>
+      </div>
+
+      <app-productos-carrito-card class="uk-margin" [items]="productos"></app-productos-carrito-card>
+
+      <app-datos-entrega-card class="uk-margin" [entrega]="entrega"></app-datos-entrega-card>
+
+      <app-datos-facturacion-card class="uk-margin" [facturacion]="facturacion"></app-datos-facturacion-card>
+    </div>
+  </div>
+
+  <div class="ck-barra-botones uk-margin-medium-top">
+    <button type="button" class="uk-button uk-button-primary ck-btn-continuar"
+            [disabled]="enviando || !puedeEnviar" (click)="enviar()">
+      <span *ngIf="!enviando">{{ textoBoton }}</span>
+      <span *ngIf="enviando"><span uk-spinner="ratio: 0.6"></span> Enviando...</span>
+    </button>
+  </div>
+</div>

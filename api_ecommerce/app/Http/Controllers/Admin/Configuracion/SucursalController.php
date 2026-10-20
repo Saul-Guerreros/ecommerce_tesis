@@ -123,7 +123,12 @@ class SucursalController extends Controller
         $datos = $request->validated();
         $datos['suc_estado'] = $datos['suc_estado'] ?? 1;
         $datos['suc_princi'] = $datos['suc_princi'] ?? 0;
-        $datos['suc_retiro'] = $datos['suc_retiro'] ?? false;   // <-- nuevo
+        // Visibilidad en la tienda web: activa por defecto. El formulario
+        // siempre manda estos valores; el ?? cubre altas por API o seeders
+        // que omitan los campos.
+        $datos['suc_retiro']   = $datos['suc_retiro']   ?? true;
+        $datos['suc_webstk']   = $datos['suc_webstk']   ?? true;
+        $datos['suc_delivery'] = $datos['suc_delivery'] ?? true;
 
         $sucursal = Sucursal::create($datos);
         $sucursal->load(['empresa', 'ciudad']);

@@ -35,7 +35,52 @@
           </div>
         </div>
       </div>
- 
+
+      <hr class="my-4" />
+
+      <h6 class="mb-1">Plazo de retiro en sucursal</h6>
+      <p class="text-body-secondary small mb-4">
+        Días hábiles que tiene el cliente para pasar a buscar un pedido desde que queda
+        "Listo para entrega/retiro". Se cuentan según los días laborables que cada sucursal
+        tiene marcados en su ficha, así que dos sucursales pueden dar plazos distintos aunque
+        este número sea el mismo para toda la tienda.
+      </p>
+
+      <div class="form-check form-switch mb-3">
+        <input cFormCheckInput type="checkbox" role="switch" id="ctn_retactivo"
+               formControlName="ctn_retactivo" />
+        <label cFormCheckLabel for="ctn_retactivo">Controlar el plazo de retiro</label>
+      </div>
+
+      <!-- Apagado: los pedidos quedan en LISTO sin fecha límite de retiro,
+           igual que antes de que esta funcionalidad existiera. No borra el
+           plazo de los pedidos que ya lo tenían calculado. -->
+      <div [class.opacity-50]="!form.value.ctn_retactivo">
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <label cLabel for="ctn_retdias">Días hábiles de plazo</label>
+            <input cFormControl type="number" id="ctn_retdias" formControlName="ctn_retdias"
+                   min="1" max="60" step="1" />
+            <div class="text-danger small" *ngIf="campoInvalido('ctn_retdias')">
+              {{ errorBackend('ctn_retdias') || 'Obligatorio, número entero entre 1 y 60.' }}
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <label cLabel for="ctn_retaviso">Avisar con cuántos días de anticipación</label>
+            <input cFormControl type="number" id="ctn_retaviso" formControlName="ctn_retaviso"
+                   min="0" max="30" step="1" />
+            <div class="text-danger small" *ngIf="campoInvalido('ctn_retaviso')">
+              {{ errorBackend('ctn_retaviso') || 'Número entero entre 0 y 30.' }}
+            </div>
+            <div class="small text-body-secondary mt-2">
+              0 = sin aviso. Depende de que las notificaciones estén configuradas; por ahora
+              este valor queda guardado pero el envío todavía no está implementado.
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="mt-4">
         <button cButton color="primary" type="submit" [disabled]="guardando">
           <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>

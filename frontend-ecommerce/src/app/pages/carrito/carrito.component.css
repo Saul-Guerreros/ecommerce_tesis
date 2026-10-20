@@ -35,9 +35,19 @@
   width: 100%;
 }
 
+/* La fila a crédito tiene UNA COLUMNA MÁS que la de contado: Precio
+   Contado y Plan de cuotas van separados (antes compartían una sola
+   celda). Por eso define su propia grilla completa, de 7 columnas, en
+   vez de solo ajustar --cc-precio-w como hacía antes. */
 .cc-row--credito {
-  /* No baja mas: el badge "N cuotas x G 00.000" va en nowrap. */
-  --cc-precio-w: 150px;
+  grid-template-columns:
+    60px                  /* foto                                    */
+    minmax(0, 1fr)        /* PRODUCTO: se queda con todo el sobrante */
+    125px                 /* precio contado                         */
+    118px                 /* cantidad  (el control -n+ mide 104px)  */
+    172px                 /* plan de cuotas: "N x G 000.000" nowrap */
+    125px                 /* cuota mensual                           */
+    40px;                 /* eliminar  (el boton mide 30px)         */
 }
 
 /* ---------- Aire dentro de la tarjeta de productos ----------
@@ -85,6 +95,11 @@
   justify-content: center;
 }
 
+.cc-col-plan {
+  display: flex;
+  justify-content: flex-start;
+}
+
 .cc-col-subtotal,
 .cc-col-cuota {
   text-align: right;
@@ -115,6 +130,7 @@
 .cc-header .cc-col-cantidad { justify-content: center; }
 .cc-header .cc-col-subtotal,
 .cc-header .cc-col-cuota    { text-align: right; }
+.cc-header .cc-col-precio   { line-height: 1.25; }
 
 /* Rotulos inline (solo modo apilado; ocultos en escritorio). */
 .cc-datos > [data-label]::before {
@@ -138,7 +154,12 @@
     column-gap: 12px;
     grid-template-columns: 56px minmax(0, 1fr) var(--cc-precio-w) 112px 118px 38px;
   }
-  .cc-row--credito { --cc-precio-w: 146px; }
+  /* 7 columnas propias (ver regla base de .cc-row--credito): acá solo se
+     angostan un poco, nunca se vuelve a las 6 de .cc-row de arriba. */
+  .cc-row--credito {
+    column-gap: 10px;
+    grid-template-columns: 56px minmax(0, 1fr) 108px 112px 150px 112px 36px;
+  }
   :host ::ng-deep .cc-lista .uk-card-body { padding: 20px 22px; }
   .cc-item-img,
   .cc-item-img-col { width: 56px; height: 56px; }

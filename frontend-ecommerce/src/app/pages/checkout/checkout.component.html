@@ -8,9 +8,9 @@
   <div class="ck-pasos uk-flex uk-flex-middle uk-flex-center uk-margin-large-bottom">
     <div class="ck-paso" [class.ck-paso--activo]="pasoActual === 'entrega'"><span>1</span> Entrega</div>
     <div class="ck-linea"></div>
-    <div class="ck-paso" [class.ck-paso--activo]="pasoActual === 'facturacion'"><span>2</span> Facturación y pago</div>
+    <div class="ck-paso" [class.ck-paso--activo]="pasoActual === 'facturacion'"><span>2</span> Facturación</div>
     <div class="ck-linea"></div>
-    <div class="ck-paso" [class.ck-paso--activo]="pasoActual === 'confirmacion'"><span>3</span> Confirmación</div>
+    <div class="ck-paso" [class.ck-paso--activo]="pasoActual === 'pago'"><span>3</span> Pago</div>
   </div>
 
   <router-outlet></router-outlet>

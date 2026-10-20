@@ -65,8 +65,26 @@ class PedidoConsultaService
     public function pagosPendientes(): int
     {
         return PedidoPago::query()
-            ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', EstadoPago::PENDIENTE))
+            ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', EstadoPago::PAGO_VERIFICAR))
             ->whereHas('pedido.estadoPedido', fn ($q) => $q->where('est_codigo', '!=', EstadoPedido::CANCELADO))
+            ->count();
+    }
+
+    /**
+     * Pedidos LISTO cuyo plazo de retiro ya venció.
+     *
+     * Son, por definición, los que el barrido NO pudo cerrar solo (ya
+     * tienen un pago confirmado): si no lo tuvieran, el cron ya los habría
+     * cancelado. Por eso este contador es, en la práctica, "retiros
+     * vencidos que esperan una decisión del admin" sin necesidad de
+     * filtrar por pago acá también.
+     */
+    public function retirosVencidos(): int
+    {
+        return Pedido::query()
+            ->whereNotNull('ped_vencret')
+            ->where('ped_vencret', '<', now())
+            ->whereHas('estadoPedido', fn ($q) => $q->where('est_codigo', EstadoPedido::LISTO))
             ->count();
     }
 
@@ -126,6 +144,15 @@ class PedidoConsultaService
         if (!empty($f['metodo_pago'])) {
             $query->whereHas('pagos', fn ($p) => $p->where('ppa_mpaid', (int) $f['metodo_pago']));
         }
+
+        // Atajo de la alerta de retiros vencidos: no es un filtro de catálogo
+        // (no hay un "estado" de retiro vencido), así que se resuelve con
+        // un booleano aparte en vez de forzar la idea dentro de estado_pedido.
+        if (!empty($f['retiro_vencido'])) {
+            $query->whereNotNull('ped_vencret')
+                ->where('ped_vencret', '<', now())
+                ->whereHas('estadoPedido', fn ($q) => $q->where('est_codigo', EstadoPedido::LISTO));
+        }
     }
 
     // ---------- Rango de fechas ----------
@@ -159,7 +186,7 @@ class PedidoConsultaService
                 SELECT CASE WHEN ep.epa_codigo IN (?, ?, ?) THEN 0 ELSE 1 END
                 FROM estado_pago ep
                 WHERE ep.epa_id = pedido.ped_epaid
-            ) ASC", [EstadoPago::PENDIENTE, EstadoPago::PARCIAL, EstadoPago::RECHAZADO])
+            ) ASC", [EstadoPago::PAGO_VERIFICAR, EstadoPago::PARCIAL, EstadoPago::RECHAZADO])
             ->orderByDesc('ped_creado');
     }
 

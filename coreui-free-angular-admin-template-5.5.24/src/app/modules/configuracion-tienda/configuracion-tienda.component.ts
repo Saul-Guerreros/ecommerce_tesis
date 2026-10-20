@@ -36,6 +36,9 @@ export class ConfiguracionTiendaComponent implements OnInit {
     this.form = this.fb.group({
       ctn_pocstk_activo: [true],
       ctn_pocstk_umbral: [5, [Validators.required, Validators.min(1), Validators.max(1000), entero]],
+      ctn_retactivo: [true],
+      ctn_retdias:  [5, [Validators.required, Validators.min(1), Validators.max(60), entero]],
+      ctn_retaviso: [1, [Validators.required, Validators.min(0), Validators.max(30), entero]],
     });
   }
 

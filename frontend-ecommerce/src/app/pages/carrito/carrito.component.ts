@@ -81,6 +81,53 @@ export class CarritoComponent implements OnInit {
     return this.subtotalCredito;
   }
 
+  // ---------- Resumen "Compra a Crédito" (esquema de 6 líneas) ----------
+  // Precio al contado / Recargo por financiación / TOTAL A PAGAR /
+  // Impuestos / Plazo / Cuota mensual. subtotalCredito y totalCredito ya
+  // existen arriba (punto 13 original); esto agrega lo que faltaba sin
+  // tocar nada de lo ya implementado.
+
+  /** Suma de lo que cada línea costaría SIN financiar (car_precio, no car_total). */
+  get precioContadoCredito(): number {
+    return this.itemsCredito.reduce(
+      (suma, i) => suma + Number(i.car_precio) * Number(i.car_cantid), 0
+    );
+  }
+
+  /** Lo que el cliente paga de más por financiar: TOTAL - contado. */
+  get recargoFinanciacionCredito(): number {
+    return this.subtotalCredito - this.precioContadoCredito;
+  }
+
+  /**
+   * Plazo en meses: el plan MÁS LARGO del carrito a crédito. Con un
+   * único producto es simplemente su cfc_cantidad elegida; con varios
+   * productos en planes distintos, el que llega más lejos en el tiempo.
+   */
+  get plazoCredito(): number {
+    if (this.itemsCredito.length === 0) return 0;
+    return Math.max(...this.itemsCredito.map((i) => Number(i.car_numcuo ?? 0)));
+  }
+
+  /**
+   * Cuota mensual del PRIMER TRAMO: suma de la cuota de cada línea
+   * (car_montocuo × cantidad). Con planes mixtos (ej. 6x y 12x) esto NO
+   * es una cuota constante durante todo el plazo -- del mes 7 al 12 la
+   * cuota real baja porque el producto de 6 cuotas ya se pagó. Por eso
+   * el HTML cambia la etiqueta cuando hayPlanesMixtos.
+   */
+  get cuotaMensualCredito(): number {
+    return this.itemsCredito.reduce(
+      (suma, i) => suma + Number(i.car_montocuo ?? 0) * Number(i.car_cantid), 0
+    );
+  }
+
+  /** true si el carrito a crédito mezcla más de un plan de cuotas. */
+  get hayPlanesMixtos(): boolean {
+    const planes = new Set(this.itemsCredito.map((i) => i.car_numcuo ?? 0));
+    return planes.size > 1;
+  }
+
   get carritoVacio(): boolean {
     return this.itemsContado.length === 0 && this.itemsCredito.length === 0;
   }

@@ -158,8 +158,8 @@ constructor(
     switch (codigo) {
       case 'CONFIRMADO': return 'success';
       case 'PARCIAL':    return 'info';
-      case 'RECHAZADO':  return 'danger';
-      case 'PENDIENTE':  return 'warning';
+      case 'RECHAZADO':     return 'danger';
+      case 'PAGO_VERIFICAR': return 'warning';
       default:           return 'secondary';
     }
   }
@@ -170,7 +170,7 @@ constructor(
       case 'LISTO':          return 'primary';
       case 'EN_PREPARACION': return 'info';
       case 'CANCELADO':      return 'danger';
-      case 'PENDIENTE':      return 'warning';
+      case 'PENDIENTE_PEDIDO': return 'warning';
       default:               return 'secondary';
     }
   }

@@ -13,8 +13,9 @@ import { ConfirmacionCarritoComponent } from '../components/confirmacion-carrito
 import { BuscadorSugerenciasComponent } from '../components/buscador-sugerencias/buscador-sugerencias.component';
 import { CategoriaIconoComponent } from '../components/categoria-icono/categoria-icono.component';
 import { FavoritoService } from '../../core/services/favorito.service';
-
 declare const UIkit: any;
+import { PedidosPendientesPopoverComponent } from '../components/pedidos-pendientes-popover/pedidos-pendientes-popover.component';
+
 
 @Component({
   selector: 'app-header',
@@ -27,6 +28,7 @@ declare const UIkit: any;
     ConfirmacionCarritoComponent,
     BuscadorSugerenciasComponent,
     CategoriaIconoComponent,
+    PedidosPendientesPopoverComponent,
   ],  templateUrl: './header.component.html',
   styleUrl: './header.component.css',
 })
@@ -155,6 +157,10 @@ export class HeaderComponent {
     // (si esa página es privada, el guard correspondiente la intercepta
     // solo y manda a /login -- ver el comentario en AuthService.logout()).
     this.authService.logout(this.router.url);
+  }
+
+  get esHome(): boolean {
+    return this.router.url === '/';
   }
 
   // changeCurrency(val:string){

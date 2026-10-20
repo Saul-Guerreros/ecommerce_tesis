@@ -13,16 +13,20 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     public function up(): void
-    {
-        DB::statement('ALTER TABLE configuracion_tienda DROP CONSTRAINT IF EXISTS ck_ctn_envio_fijo_costo');
-        DB::statement('ALTER TABLE configuracion_tienda DROP CONSTRAINT IF EXISTS ck_ctn_envio_gratis_desde');
-        DB::statement('ALTER TABLE configuracion_tienda DROP CONSTRAINT IF EXISTS ck_ctn_envio_costo');
-        DB::statement('ALTER TABLE configuracion_tienda DROP CONSTRAINT IF EXISTS ck_ctn_envio_modo');
+{
+    DB::statement('ALTER TABLE configuracion_tienda DROP CONSTRAINT IF EXISTS ck_ctn_envio_fijo_costo');
+    DB::statement('ALTER TABLE configuracion_tienda DROP CONSTRAINT IF EXISTS ck_ctn_envio_gratis_desde');
+    DB::statement('ALTER TABLE configuracion_tienda DROP CONSTRAINT IF EXISTS ck_ctn_envio_costo');
+    DB::statement('ALTER TABLE configuracion_tienda DROP CONSTRAINT IF EXISTS ck_ctn_envio_modo');
 
-        Schema::table('configuracion_tienda', function (Blueprint $table) {
-            $table->dropColumn(['ctn_envio_modo', 'ctn_envio_costo', 'ctn_envio_gratis_desde']);
-        });
-    }
+    Schema::table('configuracion_tienda', function (Blueprint $table) {
+        foreach (['ctn_envio_modo', 'ctn_envio_costo', 'ctn_envio_gratis_desde'] as $col) {
+            if (Schema::hasColumn('configuracion_tienda', $col)) {
+                $table->dropColumn($col);
+            }
+        }
+    });
+}
 
     public function down(): void
     {

@@ -1,0 +1,6 @@
+/* Sin esto, el navegador trata <app-datos-entrega-card> como un elemento
+   inline (es un custom element desconocido) y uk-margin no logra
+   separarla de la tarjeta siguiente: quedan encimadas. */
+:host {
+  display: block;
+}

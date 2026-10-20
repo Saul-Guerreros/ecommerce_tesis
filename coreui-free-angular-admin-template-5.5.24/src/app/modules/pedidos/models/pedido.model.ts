@@ -25,6 +25,17 @@ export interface EstadoResumen {
   detalle?: string | null;    // '1/2 verificados', '1 comprob.', etc.
 }
 
+/** Plazo de retiro en sucursal. Sólo tiene valor con el pedido en LISTO y entrega RETIRO. */
+export interface RetiroResumen {
+  vence: string;
+  /**
+   * El barrido no cancela automáticamente un retiro vencido con pago
+   * confirmado: lo deja así, en rojo, para que el admin lo resuelva a
+   * mano (extender el plazo, mandarlo a domicilio, o devolver el dinero).
+   */
+  vencido: boolean;
+}
+
 export interface PedidoLista {
   ped_id: number;
   numero: string | null;
@@ -36,6 +47,7 @@ export interface PedidoLista {
   metodo_pago: MetodoPagoResumen;
   verificacion_pago: EstadoResumen;
   estado_pedido: EstadoResumen;
+  retiro: RetiroResumen | null;
 }
 
 /** Parámetros que acepta GET /admin/pedidos y /admin/pedidos/exportar. */
@@ -49,6 +61,7 @@ export interface PedidoFiltros {
   metodo_pago?: number | null;
   desde?: string;      // YYYY-MM-DD
   hasta?: string;      // YYYY-MM-DD
+  retiro_vencido?: boolean;
   page?: number;
   per_page?: number;
 }
@@ -63,6 +76,7 @@ export interface PedidosPaginados {
     desde: number;
     hasta: number;
     pagos_pendientes: number;
+    retiros_vencidos: number;
   };
 }
 

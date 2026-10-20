@@ -9,6 +9,9 @@ export interface ConfiguracionTienda {
   ctn_pago_tigo_numero: string | null;
   ctn_pago_tigo_referencia: string | null;
   ctn_pago_efectivo_mensaje: string | null;
+  ctn_retactivo: boolean;
+  ctn_retdias: number;
+  ctn_retaviso: number;
 }
 
 export type ActualizarConfiguracionTiendaPayload = Omit<ConfiguracionTienda, 'ctn_id'>;

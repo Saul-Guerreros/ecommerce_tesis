@@ -1,0 +1,189 @@
+<div class="uk-container uk-margin-large-top uk-margin-large-bottom">
+
+  <div *ngIf="cargando" class="uk-text-center uk-margin-large">
+    <div uk-spinner="ratio: 1.5"></div>
+  </div>
+
+  <div *ngIf="!cargando">
+    <button type="button" class="uk-button uk-button-text uk-margin-small-bottom" (click)="volver()">
+      <span uk-icon="icon: chevron-left"></span> Volver a Mis Pedidos
+    </button>
+
+    <!-- Aviso de pago pendiente -->
+    <div class="uk-alert-warning uk-margin" uk-alert *ngIf="pedido.pagable">
+      <p class="uk-margin-remove">
+        Este pedido está reservado y pendiente de pago · vence en {{ restante() }}.
+      </p>
+      <button type="button" class="uk-button uk-button-primary uk-button-small uk-margin-small-top"
+              (click)="pagarAhora()">
+        Pagar ahora
+      </button>
+    </div>
+
+    <!-- Plazo de retiro en sucursal. No es excluyente con el aviso de
+         pago de arriba por construcción (los dos relojes del documento
+         nunca corren a la vez), pero el color sí depende de si ya venció:
+         un retiro vencido no cancela el pedido solo, así que el cliente
+         necesita verlo igual para saber que debe acercarse o contactar
+         a la tienda. -->
+    <div class="uk-alert uk-margin" uk-alert
+         [ngClass]="retiroVencido() ? 'uk-alert-danger' : 'uk-alert-primary'"
+         *ngIf="pedido.ped_vencret">
+      <p class="uk-margin-remove">
+        <ng-container *ngIf="!retiroVencido()">
+          Tenés hasta {{ pedido.ped_vencret | date:'dd/MM/yyyy' }} para retirar tu pedido en sucursal.
+        </ng-container>
+        <ng-container *ngIf="retiroVencido()">
+          El plazo para retirar tu pedido venció el {{ pedido.ped_vencret | date:'dd/MM/yyyy' }}.
+          Contactá a la tienda para coordinar el retiro.
+        </ng-container>
+      </p>
+    </div>
+
+    <div class="pd-layout">
+      <div class="pd-col-principal">
+
+        <div class="uk-card uk-card-default uk-card-body uk-margin">
+          <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+            <div>
+              <h3 class="uk-margin-remove-bottom">Pedido Nº {{ pedido.ped_numero }}</h3>
+              <p class="uk-text-meta uk-margin-remove-top">
+                {{ pedido.ped_creado | date:'dd/MM/yyyy HH:mm' }}
+              </p>
+            </div>
+            <div class="pd-badges">
+              <!-- Son dos cosas distintas: el estado del PEDIDO (dónde va
+                   en la preparación/entrega) y el estado del PAGO (si el
+                   admin ya verificó la transferencia). Se etiquetan para
+                   que no se lean como si fuera lo mismo repetido. -->
+              <span class="pd-badge-grupo">
+                <span class="pd-badge-etiqueta">Estado:</span>
+                <span class="uk-label">{{ pedido.estado_pedido.descripcion }}</span>
+              </span>
+              <span class="pd-badge-grupo">
+                <span class="pd-badge-etiqueta">Pago:</span>
+                <span class="uk-label uk-label-warning">{{ pedido.estado_pago.descripcion }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="uk-card uk-card-default uk-card-body uk-margin">
+          <h4 class="uk-card-title">Productos</h4>
+
+          <table class="uk-table uk-table-divider uk-table-small">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th class="uk-text-center">Cant.</th>
+                <th class="uk-text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of pedido.productos">
+                <td>{{ p.nombre }}</td>
+                <td class="uk-text-center">{{ p.cantidad }}</td>
+                <td class="uk-text-right">{{ p.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mismo componente que usa el Paso 3 del checkout: así esta
+             tarjeta queda sincronizada para siempre con esa pantalla, sin
+             tener que mantener el mismo HTML copiado en dos lugares. -->
+        <app-datos-entrega-card class="uk-margin" [entrega]="pedido.entrega"></app-datos-entrega-card>
+
+        <div class="uk-card uk-card-default uk-card-body uk-margin" *ngIf="pedido.pagos.length > 0">
+          <h4 class="uk-card-title">Pagos</h4>
+
+          <div *ngFor="let pago of pedido.pagos">
+            <div class="pd-pago">
+              <div>
+                <strong>Pago {{ pago.orden }} · {{ pago.metodo }}</strong>
+                <div class="uk-text-meta uk-text-small">{{ pago.estado_descri }}</div>
+              </div>
+              <div class="uk-text-right">
+                <div class="uk-text-bold">{{ pago.monto | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+                <button *ngIf="pago.tiene_comprobante" type="button" class="uk-button uk-button-text uk-text-small"
+                        (click)="abrirComprobante(pago.comprobante_url)">
+                  Ver comprobante
+                </button>
+              </div>
+            </div>
+
+            <!-- Motivo del rechazo: se muestra siempre que el pago esté
+                 rechazado, incluso si ya no se puede corregir (plazo
+                 vencido, pedido cancelado). El cliente tiene derecho a
+                 saber por qué, aunque ya no pueda hacer nada. -->
+            <div class="pd-rechazo" *ngIf="pago.motivo_rechazo">
+              <p class="uk-margin-remove">
+                <strong>Comprobante rechazado:</strong> {{ pago.motivo_rechazo.motivo }}
+              </p>
+              <p class="uk-text-small uk-margin-remove-top" *ngIf="pago.motivo_rechazo.detalle">
+                {{ pago.motivo_rechazo.detalle }}
+              </p>
+
+              <div class="pd-rechazo-form" *ngIf="pago.reemplazable">
+                <p class="uk-text-small uk-margin-small-bottom">
+                  Subí un comprobante corregido
+                  <ng-container *ngIf="restante()"> — tenés {{ restante() }}</ng-container>
+                </p>
+
+                <input type="file" class="uk-input uk-form-small"
+                       accept=".jpg,.jpeg,.png,.pdf"
+                       (change)="archivoElegido($event, pago.ppa_id)">
+
+                <button type="button" class="uk-button uk-button-primary uk-button-small uk-margin-small-top"
+                        [disabled]="enviando === pago.ppa_id"
+                        (click)="enviarComprobante(pago.ppa_id)">
+                  {{ enviando === pago.ppa_id ? 'Enviando…' : 'Enviar comprobante' }}
+                </button>
+              </div>
+
+              <p class="uk-text-small uk-text-muted uk-margin-remove-bottom" *ngIf="!pago.reemplazable">
+                El plazo para corregir este comprobante ya no está disponible.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pd-col-lateral">
+        <div class="uk-card uk-card-default uk-card-body ck-resumen">
+          <h4 class="uk-card-title">Resumen</h4>
+
+          <div class="uk-flex uk-flex-between">
+            <span>Subtotal</span>
+            <strong>{{ pedido.totales.subtotal | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+          </div>
+          <div class="uk-flex uk-flex-between uk-margin-small-top">
+            <span>Impuestos</span>
+            <strong>{{ pedido.totales.impuestos | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+          </div>
+          <div class="uk-flex uk-flex-between uk-margin-small-top">
+            <span>Envío</span>
+            <strong>{{ pedido.totales.costo_envio | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+          </div>
+
+          <hr>
+
+          <div class="uk-flex uk-flex-between">
+            <span class="uk-text-large">Total</span>
+            <span class="uk-text-large uk-text-bold">
+              {{ pedido.totales.total | currency:'PYG':'symbol-narrow':'1.0-0' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="uk-card uk-card-default uk-card-body uk-margin" *ngIf="pedido.facturacion">
+          <h4 class="uk-card-title uk-margin-remove-bottom">Facturación</h4>
+          <p class="uk-margin-small-top uk-margin-remove-bottom">{{ pedido.facturacion.razon_social }}</p>
+          <p class="uk-margin-remove uk-text-meta">
+            {{ pedido.facturacion.tipo_documento }} {{ pedido.facturacion.nro_documento }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

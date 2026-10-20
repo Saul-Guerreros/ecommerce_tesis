@@ -61,7 +61,10 @@ use App\Http\Controllers\Admin\Chat\FaqTiendaController;
 use App\Http\Controllers\Admin\Perfil\PerfilController as PerfilAdminController;
 use App\Http\Controllers\Admin\Auth\PermisoController;
 use App\Http\Controllers\Pedido\CheckoutController;
+
+use App\Http\Controllers\Credito\SolicitudCreditoController;
 use App\Http\Controllers\Api\FavoritoController;
+
 use App\Http\Controllers\Admin\Configuracion\ConfiguracionEnvioController;
 use App\Http\Controllers\Admin\Configuracion\TipoDocumentoController;
 use App\Http\Controllers\Admin\Configuracion\TarifaEnvioController;
@@ -71,6 +74,7 @@ use App\Http\Controllers\Api\DatoFiscalClienteController;
 use App\Http\Controllers\Admin\Pedido\PedidoController;
 
 use App\Http\Controllers\Admin\Pedido\PedidoGestionController;
+
 use App\Http\Controllers\Admin\Servicio\TipoDispositivoController;
 use App\Http\Controllers\Admin\Servicio\FallaController;
 use App\Http\Controllers\Admin\Servicio\TrabajoController;
@@ -79,6 +83,13 @@ use App\Http\Controllers\Admin\Servicio\SolicitudServicioController;
 use App\Http\Controllers\Admin\Servicio\OrdenTecnicoController;
 use App\Http\Controllers\Admin\Servicio\PresupuestoValidacionController;
 use App\Http\Controllers\Admin\Servicio\PanelServicioController;
+
+use App\Http\Controllers\Pedido\PagoPedidoController;
+
+use App\Http\Controllers\Pedido\PedidoClienteController;
+
+use App\Http\Controllers\Admin\Venta\VentaController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -124,6 +135,7 @@ Route::group([
     Route::get('home', [VitrinaController::class, 'home']);
     Route::get('sliders', [VitrinaController::class, 'sliders']);
     Route::get('producto/{slug}', [VitrinaController::class, 'detalle']);
+    Route::get('producto/{slug}/stock-sucursales', [VitrinaController::class, 'stockSucursales']);   // <-- nueva
 
      // NUEVO — filtro avanzado / catálogo con búsqueda:
     Route::get('productos/filtros', [VitrinaController::class, 'configFiltros']);
@@ -145,12 +157,9 @@ Route::group([
     Route::post('chat/mensajes', [ChatController::class, 'enviar'])->middleware('throttle:chat');
     Route::get('chat/{token}', [ChatController::class, 'historial'])->whereUuid('token')->middleware('throttle:60,1');
 
-    Route::get('checkout/facturacion',  [CheckoutController::class, 'configFacturacion']);
-    Route::post('checkout/facturacion', [CheckoutController::class, 'guardarFacturacion']);
-
-    Route::get('checkout/pago',  [CheckoutController::class, 'configPago']);
-    Route::post('checkout/pago', [CheckoutController::class, 'guardarPago']);
-
+    // Catálogo de estados de Solicitud de Crédito (público: se usa para
+    // leyendas antes de loguear, ej. en "Mis Solicitudes").
+    Route::get('credito/estados', [SolicitudCreditoController::class, 'estados']);
 
 });
 
@@ -175,11 +184,13 @@ Route::group([
     Route::apiResource('carrito', CarritoController::class)
         ->only(['index', 'store', 'update', 'destroy']);
 
-     // --- Checkout (modulo transaccional M3) ---
+    // --- Checkout (módulo transaccional M3) ---
+    // Paso 1: Entrega
     Route::get('checkout/entrega',  [CheckoutController::class, 'configEntrega']);
     Route::post('checkout/entrega', [CheckoutController::class, 'guardarEntrega']);
 
-        // --- Paso 3: Confirmación ---
+    
+    // --- Paso 3: Confirmación ---
     Route::get('checkout/confirmacion', [CheckoutController::class, 'configConfirmacion']);   // <-- nuevo
     Route::post('checkout/confirmar',   [CheckoutController::class, 'confirmar']);            // <-- nuevo
    
@@ -196,6 +207,43 @@ Route::group([
         ->where('numero', 'SS-[0-9]{4}-[0-9]+');
     Route::post('servicios/{numero}/presupuesto/rechazar', [ServicioClienteController::class, 'rechazarPresupuesto'])
         ->where('numero', 'SS-[0-9]{4}-[0-9]+');
+
+    // Paso 2: Facturación + Confirmar Pedido (crea el pedido y reserva stock)
+    Route::get('checkout/facturacion',  [CheckoutController::class, 'configFacturacion']);
+    Route::post('checkout/facturacion', [CheckoutController::class, 'guardarFacturacion']);
+    Route::post('checkout/confirmar',   [CheckoutController::class, 'confirmar']);
+
+    // línea 186
+    // --- Mis Pedidos + Paso 3 (Pago de un pedido ya creado) ---
+    Route::prefix('pedidos')->group(function () {          // 187
+    Route::get('pendientes', [PedidoClienteController::class, 'pendientes']);
+        Route::get('/', [PedidoClienteController::class, 'index']);
+        Route::get('{numero}', [PedidoClienteController::class, 'show']);
+        Route::get('{numero}/pagos/{pago}/comprobante', [PedidoClienteController::class, 'comprobante']);
+
+        Route::get('{numero}/pago', [PagoPedidoController::class, 'config']);       // 193
+        Route::post('{numero}/pago', [PagoPedidoController::class, 'registrar']);    // 194
+        Route::get('{numero}/resultado', [PagoPedidoController::class, 'resultado']); // 195
+
+        // Reemplazo del comprobante de un pago rechazado. Misma URI que el
+        // GET del comprobante, distinto verbo: el GET lo descarga, el POST
+        // lo sustituye.
+        Route::post('{numero}/pagos/{pago}/comprobante', [PagoPedidoController::class, 'reemplazarComprobante']); // 200
+    });                                                       // 201
+
+    // --- Solicitud de Crédito (continúa el flujo del Carrito a Crédito) ---
+    Route::get('credito/config', [SolicitudCreditoController::class, 'config']);
+
+    Route::post('credito/personal',    [SolicitudCreditoController::class, 'guardarPersonal']);
+    Route::post('credito/laboral',     [SolicitudCreditoController::class, 'guardarLaboral']);
+    Route::post('credito/referencias', [SolicitudCreditoController::class, 'guardarReferencias']);
+
+    Route::get('credito/confirmacion', [SolicitudCreditoController::class, 'configConfirmacion']);
+    Route::post('credito/generar',     [SolicitudCreditoController::class, 'generar']);
+
+    Route::get('credito/solicitudes',      [SolicitudCreditoController::class, 'index']);
+    Route::get('credito/solicitudes/{id}', [SolicitudCreditoController::class, 'show']);
+
  });
  
  // Servicio técnico - Bandeja de solicitudes (A1) y recepción (A2)
@@ -633,8 +681,25 @@ Route::prefix('admin/pedidos')->middleware('auth:api')->group(function () {
 
     Route::get('/{pedido}/pagos/{pago}/comprobante', [PedidoGestionController::class, 'comprobante'])
     ->middleware('permiso:pedidos.ver');
+});
 
-        });
+
+// Facturas de Venta del Panel Admin. Sin store(): la factura la emite
+// el backend al cobrar o entregar el pedido, nunca el administrador.
+Route::prefix('admin/facturas-venta')->middleware('auth:api')->group(function () {
+    Route::get('/config', [VentaController::class, 'config'])
+        ->middleware('permiso:facturas-venta.ver');
+
+    Route::get('/', [VentaController::class, 'index'])
+        ->middleware('permiso:facturas-venta.ver');
+
+    Route::get('/{id}', [VentaController::class, 'show'])
+        ->middleware('permiso:facturas-venta.ver');
+
+    Route::patch('/{id}/anular', [VentaController::class, 'anular'])
+        ->middleware('permiso:facturas-venta.ver');
+});
+
 
 Route::get('publicaciones', [PublicacionWebController::class, 'index']);
 

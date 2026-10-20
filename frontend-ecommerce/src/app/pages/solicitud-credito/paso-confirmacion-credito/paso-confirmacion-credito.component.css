@@ -1,0 +1,157 @@
+/* ---------- Base compartida con los otros 3 pasos del wizard ---------- */
+
+:host {
+  display: block;
+  --ck-ancho: min(1350px, calc(100vw - 80px));
+  width: var(--ck-ancho);
+  margin-left: calc(50% - var(--ck-ancho) / 2);
+}
+
+.ck-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  align-items: start;
+  gap: 30px;
+  margin-top: 10px;
+}
+
+.ck-col-lateral {
+  margin-top: 0;
+}
+
+.ck-resumen {
+  text-align: center;
+  position: sticky;
+  top: 20px;
+}
+
+.ck-resumen .uk-flex-between {
+  text-align: left;
+}
+
+@media (max-width: 959px) {
+  .ck-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .ck-resumen {
+    position: static;
+  }
+}
+
+.ck-barra-botones {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.ck-barra-botones .uk-button {
+  min-width: 305px;
+}
+
+.ck-btn-volver {
+  background-color: var(--uk-global-primary-background, #1e87f0);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.ck-btn-volver:hover,
+.ck-btn-volver:focus {
+  background-color: #0f7ae8;
+  color: #fff;
+}
+
+@media (max-width: 639px) {
+  .ck-barra-botones {
+    gap: 12px;
+  }
+  .ck-barra-botones .uk-button {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
+
+/* ---------- Específico de Confirmación ---------- */
+
+.ck-editar {
+  font-size: 0.85rem;
+  color: var(--uk-global-primary-background, #1e87f0);
+  cursor: pointer;
+}
+
+/* 6 columnas, igual que el carrito (cc-row--credito): foto, producto,
+   precio contado, cantidad, plan de cuotas, cuota mensual. */
+.ck-conf-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 110px 90px 160px 130px;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+}
+
+.ck-conf-header {
+  font-size: 0.8rem;
+  color: var(--uk-global-muted-color, #999);
+  text-transform: uppercase;
+  background-color: rgba(0, 0, 0, 0.025);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 0 -12px 4px;
+}
+
+.ck-conf-col-precio,
+.ck-conf-col-cant,
+.ck-conf-col-cuota {
+  text-align: right;
+}
+
+.ck-conf-col-plan {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ck-conf-img-col {
+  width: 64px;
+  height: 64px;
+}
+
+.ck-conf-img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--uk-global-border, #e5e5e5);
+}
+
+@media (max-width: 639px) {
+  .ck-conf-row {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+  .ck-conf-col-precio,
+  .ck-conf-col-cant,
+  .ck-conf-col-plan,
+  .ck-conf-col-cuota {
+    display: none;
+  }
+  .ck-conf-img,
+  .ck-conf-img-col {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+/* ---------- Aviso + declaración de veracidad ---------- */
+
+.ck-declaracion {
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ck-declaracion label {
+  text-align: left;
+  font-size: 0.9rem;
+}

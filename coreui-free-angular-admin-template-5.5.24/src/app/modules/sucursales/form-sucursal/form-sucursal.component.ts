@@ -1,10 +1,16 @@
 import { Component, EventEmitter, Input, Output, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, FormControl, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
 import { Sucursal, EmpresaOption, CiudadOption } from '../models/sucursal.model';
 import { SucursalesService } from '../service/sucursales.service';
+
+/** Lunes a sábado: horario real de la casa matriz, y default del backend. */
+const DIAS_LABORABLES_DEFECTO = '1111110';
+
+/** Lunes->domingo, mismo orden que la máscara suc_diaslab (dayOfWeekIso). */
+const ETIQUETAS_DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 @Component({
   selector: 'app-form-sucursal',
@@ -25,6 +31,8 @@ export class FormSucursalComponent implements OnInit, OnChanges {
   empresas: EmpresaOption[] = [];
   ciudades: CiudadOption[] = [];
 
+  readonly etiquetasDias = ETIQUETAS_DIAS;
+
   constructor(
     private fb: FormBuilder,
     private sucursalesService: SucursalesService,
@@ -41,10 +49,38 @@ export class FormSucursalComponent implements OnInit, OnChanges {
       suc_cel:       ['', [Validators.maxLength(20)]],
       suc_email:     ['', [Validators.email, Validators.maxLength(60)]],
       suc_estado:    [1],
-      suc_retiro:    [false],                              // <-- nuevo
-      suc_horario:   ['', [Validators.maxLength(150)]],     // <-- nuevo
-
+      // Visibilidad en la tienda web: los tres nacen activos y el
+      // administrador los restringe cuando hace falta.
+      suc_retiro:    [true],
+      suc_webstk:    [true],
+      suc_delivery:  [true],
+      suc_horario:   ['', [Validators.maxLength(150)]],
+      // 7 checkboxes, lunes->domingo. Se convierten a la máscara
+      // suc_diaslab recién al guardar (ver diasLaborablesMascara()): un
+      // FormArray de booleanos es mucho más simple de atar a checkboxes
+      // que parsear/armar el string en cada change.
+      suc_diaslab_dias: this.fb.array(
+        DIAS_LABORABLES_DEFECTO.split('').map((v) => new FormControl(v === '1')),
+      ),
     });
+  }
+
+  get diasLaborablesArray(): FormArray {
+    return this.form.get('suc_diaslab_dias') as FormArray;
+  }
+
+  /** false si el usuario desmarcó los 7 días: no se puede guardar así. */
+  get tieneAlMenosUnDiaLaborable(): boolean {
+    return (this.diasLaborablesArray.value as boolean[]).some((v) => v);
+  }
+
+  private mascaraADias(mascara: string | undefined): boolean[] {
+    const m = mascara && mascara.length === 7 ? mascara : DIAS_LABORABLES_DEFECTO;
+    return m.split('').map((v) => v === '1');
+  }
+
+  private diasAMascara(): string {
+    return (this.diasLaborablesArray.value as boolean[]).map((v) => (v ? '1' : '0')).join('');
   }
 
   ngOnInit(): void {
@@ -61,9 +97,24 @@ export class FormSucursalComponent implements OnInit, OnChanges {
     return !!this.sucursal?.suc_id;
   }
 
+  /**
+   * El backend exige dirección cuando la sucursal se publica en la tienda
+   * (retiro o consulta de stock). Se avisa en el formulario para no
+   * depender del 422 y que el usuario corrija antes de enviar.
+   */
+  get requiereDireccion(): boolean {
+    return !!(this.form.value.suc_retiro || this.form.value.suc_webstk);
+  }
+
+  get faltaDireccion(): boolean {
+    return this.requiereDireccion && !String(this.form.value.suc_direccion ?? '').trim();
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible) {
-        this.form.reset({
+      const esNueva = !this.sucursal?.suc_id;
+
+      this.form.reset({
         suc_empid:     this.sucursal?.suc_empid ?? (this.empresas.length === 1 ? this.empresas[0].emp_id : null),
         suc_ciuid:     this.sucursal?.suc_ciuid ?? null,
         suc_nombre:    this.sucursal?.suc_nombre ?? '',
@@ -74,8 +125,14 @@ export class FormSucursalComponent implements OnInit, OnChanges {
         suc_cel:       this.sucursal?.suc_cel ?? '',
         suc_email:     this.sucursal?.suc_email ?? '',
         suc_estado:    this.sucursal?.suc_estado ?? 1,
-        suc_retiro:    this.sucursal?.suc_retiro ?? false,      // <-- nuevo
-        suc_horario:   this.sucursal?.suc_horario ?? '',        // <-- nuevo
+        // En alta: activos por defecto. En edición: lo que ya tiene
+        // guardado la sucursal (?? true solo cubre registros viejos que
+        // llegaran sin el campo).
+        suc_retiro:    esNueva ? true : (this.sucursal?.suc_retiro ?? true),
+        suc_webstk:    esNueva ? true : (this.sucursal?.suc_webstk ?? true),
+        suc_delivery:  esNueva ? true : (this.sucursal?.suc_delivery ?? true),
+        suc_horario:   this.sucursal?.suc_horario ?? '',
+        suc_diaslab_dias: this.mascaraADias(this.sucursal?.suc_diaslab),
       });
       this.guardando = false;
     }
@@ -96,16 +153,36 @@ export class FormSucursalComponent implements OnInit, OnChanges {
       return;
     }
 
+    if (this.faltaDireccion) {
+      this.form.get('suc_direccion')?.markAsTouched();
+      this.toastr.error(
+        'Cargue la dirección o desactive la publicación en la tienda web',
+        'Falta la dirección'
+      );
+      return;
+    }
+
+    if (!this.tieneAlMenosUnDiaLaborable) {
+      this.toastr.error(
+        'Marque al menos un día laborable: sin eso, el plazo de retiro nunca se cumple.',
+        'Faltan días laborables'
+      );
+      return;
+    }
+
     this.guardando = true;
 
-        const datos: Partial<Sucursal> = {
-      ...this.form.value,
+    const { suc_diaslab_dias, ...valorFormulario } = this.form.value;
+
+    const datos: Partial<Sucursal> = {
+      ...valorFormulario,
       suc_establ:    this.form.value.suc_establ || null,
       suc_direccion: this.form.value.suc_direccion || null,
       suc_telef:     this.form.value.suc_telef || null,
       suc_cel:       this.form.value.suc_cel || null,
       suc_email:     this.form.value.suc_email || null,
-      suc_horario:   this.form.value.suc_horario || null,   // <-- nuevo
+      suc_horario:   this.form.value.suc_horario || null,
+      suc_diaslab:   this.diasAMascara(),
     };
 
     const peticion = this.esEdicion

@@ -1,5 +1,9 @@
 import { Direccion } from './direccion.model';
 import { DatoFiscal } from './dato-fiscal.model';
+import { CarritoItem } from './carrito.model';
+import {
+  EntregaResumenCard, FacturacionResumenCard, ProductoResumenCardItem,
+} from './resumen-compra.model';
 
 export type ModalidadEntrega = 'retiro' | 'envio';
 export type TipoReceptor = 'titular' | 'tercero';
@@ -61,6 +65,8 @@ export interface ConfigEntregaResponse {
   titular: TitularCheckout;
   carrito_vacio: boolean;
   envio: ConfigEnvio;
+  // Alimenta la tarjeta "Productos en Carrito" del Paso 1.
+  items: CarritoItem[];
   entrega: EntregaCheckout | null;
 }
 
@@ -75,7 +81,7 @@ export interface GuardarEntregaRequest {
   rec_telef?: string | null;
 }
 
-// ---------- Paso 2 — Sección 1: Facturación ----------
+// ---------- Paso 2: Facturación + Confirmar Pedido ----------
 
 export type TipoDocumentoFacturacion = 'CI' | 'RUC';
 export type MedioRecepcion = 'CORREO' | 'WHATSAPP';
@@ -102,14 +108,20 @@ export interface ResumenCompra {
   subtotal: number;
   impuestos: number;
   costo_envio: number;
-  /** Lo envia el backend desde el Paso 2; es el total que se debe cubrir. */
   total?: number;
 }
 
+/**
+ * 'items' llega desde el rediseño del checkout: el Paso 2 es ahora el
+ * último punto antes de comprometer stock, así que el cliente tiene que
+ * poder revisar los productos acá. La pantalla de confirmación que los
+ * mostraba antes ya no existe.
+ */
 export interface ConfigFacturacionResponse {
   titular: TitularFacturacion;
   datos_fiscales: DatoFiscal[];
   entrega: EntregaCheckout | null;
+  items: CarritoItem[];
   resumen: ResumenCompra;
   facturacion: FacturacionCheckout | null;
 }
@@ -124,7 +136,21 @@ export interface GuardarFacturacionRequest {
   pfa_recibe: MedioRecepcion;
 }
 
-// ---------- Paso 2 — Sección 2: Método de Pago ----------
+/**
+ * Respuesta de [CONFIRMAR PEDIDO]. A partir de acá el pedido existe y
+ * tiene el stock reservado: ped_vence es el plazo que tiene el cliente
+ * para declarar su pago antes de que esa reserva se libere.
+ */
+export interface PedidoConfirmado {
+  ped_id: number;
+  ped_numero: string;
+  ped_total: number;
+  ped_creado: string;
+  ped_vence: string;
+  estado_pago: string;
+}
+
+// ---------- Paso 3: Pago de un pedido ya creado ----------
 
 export type MetodoPagoCodigo = 'TRANSFERENCIA' | 'BILLETERA_MOVIL' | 'CONTRAENTREGA';
 
@@ -150,7 +176,49 @@ export interface DatosBilletera {
 /** Forma en la que el cliente decide cubrir el total del pedido. */
 export type ModoPago = 'unico' | 'dividido';
 
-/** Un pago ya guardado en el borrador (lo que devuelve el backend). */
+/** Pedido que se está por pagar, tal como lo informa el backend. */
+export interface PedidoAPagar {
+  ped_numero: string;
+  ped_total: number;
+  ped_creado: string;
+  ped_vence: string;
+}
+
+export interface ConfigPagoPedidoResponse {
+  pedido: PedidoAPagar;
+  metodos: MetodoPagoOpcion[];
+  datos_transferencia: DatosTransferencia;
+  datos_billetera: DatosBilletera;
+  mensaje_efectivo: string | null;
+
+  // Tarjetas de resumen del Paso 3 (Resumen de Compra, Productos en
+  // Carrito, Datos de Entrega, Datos de Facturación). 'entrega' y
+  // 'facturacion' ya vienen en la forma de resumen-compra.model.ts: no
+  // hace falta adaptarlos.
+  resumen: ResumenCompra;
+  productos: ProductoResumenCardItem[];
+  entrega: EntregaResumenCard | null;
+  facturacion: FacturacionResumenCard | null;
+}
+
+/** Un bloque de pago tal como lo arma el formulario del Paso 3. */
+export interface PagoDividRequest {
+  mpa_codigo: MetodoPagoCodigo;
+  monto: number;
+  comprobante: File | null;
+  /**
+   * @deprecated Sin uso desde que el pago dejó de guardarse como borrador:
+   * ahora se declara una sola vez y el archivo siempre viaja completo.
+   * Se mantiene para no romper la firma del componente pago-dividido.
+   */
+  conservar?: boolean;
+}
+
+/**
+ * @deprecated Sin uso real desde que el pago dejó de tener borrador: el
+ * Paso 3 le pasa siempre null. Se mantiene para no reescribir el
+ * componente pago-dividido, que lo usa en su @Input.
+ */
 export interface PagoItemCheckout {
   orden: number;
   mpa_codigo: MetodoPagoCodigo;
@@ -159,62 +227,54 @@ export interface PagoItemCheckout {
   tiene_comprobante: boolean;
 }
 
-/**
- * mpa_codigo / mpa_descri / tiene_comprobante solo traen valor cuando
- * modo === 'unico'. Con pago dividido la informacion real esta en pagos[].
- */
-export interface PagoCheckout {
-  modo: ModoPago;
-  pagos: PagoItemCheckout[];
-  total_asignado: number;
-  mpa_codigo: MetodoPagoCodigo | null;
-  mpa_descri: string | null;
-  tiene_comprobante: boolean;
-}
-
-export interface ConfigPagoResponse {
-  metodos: MetodoPagoOpcion[];
-  datos_transferencia: DatosTransferencia;
-  datos_billetera: DatosBilletera;
-  mensaje_efectivo: string | null;
-  /** Total exigible calculado por el backend. Nunca se recalcula en Angular. */
-  total_pedido: number;
-  pago: PagoCheckout | null;
-}
-
-/** Un bloque de pago tal como lo arma el formulario del Paso 2. */
-export interface PagoDividRequest {
-  mpa_codigo: MetodoPagoCodigo;
-  monto: number;
-  comprobante: File | null;
-  /** true = el pago ya tenia comprobante cargado y el cliente no lo cambio. */
-  conservar: boolean;
-}
-
-export interface GuardarPagoRequest {
+export interface RegistrarPagoRequest {
   modo: ModoPago;
   mpa_codigo?: MetodoPagoCodigo;
   comprobante?: File | null;
   pagos?: PagoDividRequest[];
 }
 
-// ---------- Paso 3 — Confirmación ----------
+// ---------- Pantalla final (los 3 casos) ----------
 
-export interface ResumenConfirmacion extends ResumenCompra {
-  total: number;
+/**
+ * REVISION      -> todo el pago lleva comprobante. "Pago en revisión".
+ * PARCIAL       -> comprobante + efectivo. Queda saldo contra entrega.
+ * CONTRAENTREGA -> sólo efectivo. "Pedido confirmado".
+ *
+ * Lo decide el backend a partir del catálogo metodo_pago, no esta pantalla.
+ */
+export type CasoResultadoPago = 'REVISION' | 'PARCIAL' | 'CONTRAENTREGA';
+
+export interface PagoResultadoItem {
+  orden: number;
+  mpa_codigo: MetodoPagoCodigo;
+  mpa_descri: string;
+  monto: number;
+  tiene_comprobante: boolean;
 }
 
-export interface ConfigConfirmacionResponse {
-  items: import('./carrito.model').CarritoItem[];
-  entrega: EntregaCheckout;
-  facturacion: FacturacionCheckout;
-  pago: PagoCheckout;
-  resumen: ResumenConfirmacion;
+export interface EntregaResultado {
+  modalidad: ModalidadEntrega;
+  receptor: string;
+
+  suc_nombre?: string | null;
+  suc_direccion?: string | null;
+  suc_horario?: string | null;
+
+  direccion?: string | null;
+  ciudad?: string | null;
+  departamento?: string | null;
+  referencia?: string | null;
 }
 
-export interface PedidoConfirmado {
-  ped_id: number;
+export interface ResultadoPago {
   ped_numero: string;
   ped_total: number;
   ped_creado: string;
+  caso: CasoResultadoPago;
+  estado_pago: string;
+  pagos: PagoResultadoItem[];
+  monto_en_revision: number;
+  monto_contraentrega: number;
+  entrega: EntregaResultado;
 }

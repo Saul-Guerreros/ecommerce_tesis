@@ -56,7 +56,8 @@ class PedidoController extends Controller
                 // Contador global de la alerta: NO depende de los filtros
                 // aplicados, porque mide trabajo pendiente total, y viaja
                 // junto al listado para que se refresque en cada carga.
-                'pagos_pendientes' => $this->consulta->pagosPendientes(),
+                'pagos_pendientes'   => $this->consulta->pagosPendientes(),
+                'retiros_vencidos'   => $this->consulta->retirosVencidos(),
             ],
         ]);
     }

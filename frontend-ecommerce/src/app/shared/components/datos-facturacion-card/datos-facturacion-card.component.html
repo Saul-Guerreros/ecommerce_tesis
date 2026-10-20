@@ -1,0 +1,13 @@
+<div class="uk-card uk-card-default uk-card-body" *ngIf="facturacion">
+  <h4 class="uk-card-title uk-margin-remove-bottom">Datos de Facturación</h4>
+
+  <p class="uk-margin-small-top uk-margin-remove-bottom uk-text-bold">
+    {{ facturacion.razon_social }}
+  </p>
+  <p class="uk-margin-remove uk-text-meta">
+    {{ facturacion.tipo_documento }} {{ facturacion.nro_documento }}
+  </p>
+  <p class="uk-margin-remove uk-text-meta">
+    Comprobante por {{ facturacion.recibe_por === 'WHATSAPP' ? 'WhatsApp' : 'correo electrónico' }}
+  </p>
+</div>

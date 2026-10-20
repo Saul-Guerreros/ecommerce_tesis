@@ -1,0 +1,31 @@
+<div class="uk-card uk-card-default uk-card-body" *ngIf="entrega">
+  <div class="uk-flex uk-flex-between uk-flex-middle">
+    <h4 class="uk-card-title uk-margin-remove">{{ esRetiro ? 'Retirás en:' : 'Enviar a:' }}</h4>
+    <button *ngIf="editable" type="button" class="uk-icon-link" uk-icon="icon: cog"
+            (click)="editar.emit()" title="Editar"></button>
+  </div>
+
+  <ng-container *ngIf="!esRetiro">
+    <p class="uk-margin-remove uk-text-bold">{{ entrega.receptor_nombre }}</p>
+    <p class="uk-margin-remove">{{ entrega.barrio }} - {{ entrega.calle }} {{ entrega.nrocasa }}</p>
+    <p class="uk-margin-remove">{{ entrega.ciudad }}, {{ entrega.departamento }}</p>
+    <p class="uk-margin-remove">Paraguay</p>
+    <p class="uk-margin-remove" *ngIf="entrega.receptor_telefono">{{ entrega.receptor_telefono }}</p>
+    <p class="uk-margin-remove" *ngIf="entrega.receptor_documento">
+      C.I. / R.U.C.: {{ entrega.receptor_documento }}
+    </p>
+    <p class="uk-margin-remove uk-text-meta" *ngIf="entrega.referencia">
+      Ref.: {{ entrega.referencia }}
+    </p>
+  </ng-container>
+
+  <ng-container *ngIf="esRetiro">
+    <p class="uk-margin-remove uk-text-bold">{{ entrega.suc_nombre }}</p>
+    <p class="uk-margin-remove">{{ entrega.suc_direccion }}</p>
+    <p class="uk-margin-remove" *ngIf="entrega.suc_horario">{{ entrega.suc_horario }}</p>
+    <p class="uk-margin-remove uk-margin-small-top">Retira: {{ entrega.receptor_nombre }}</p>
+    <p class="uk-margin-remove" *ngIf="entrega.receptor_documento">
+      C.I.: {{ entrega.receptor_documento }}
+    </p>
+  </ng-container>
+</div>

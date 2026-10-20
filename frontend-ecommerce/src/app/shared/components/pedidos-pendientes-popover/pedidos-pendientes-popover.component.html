@@ -1,0 +1,53 @@
+<ng-container *ngIf="activo">
+
+  <!-- Punto rojo permanente, con un "ping" (anillo que se expande y se
+       desvanece) para llamar la atención sin ser invasivo. -->
+  <span class="ppp-dot-wrap" *ngIf="cantidad > 0" (click)="abrir()" title="Pedidos pendientes de pago">
+    <span class="ppp-dot-ping"></span>
+    <span class="ppp-dot"></span>
+  </span>
+
+  <!-- Fondo invisible: clic afuera de la tarjeta la cierra. -->
+  <div class="ppp-backdrop" *ngIf="abierto" (click)="cerrar()"></div>
+
+  <div class="ppp-panel" *ngIf="abierto" [style.top.px]="panelTop">
+    <!-- Cabecera fija: no se va con el scroll de la lista. -->
+    <div class="ppp-header">
+      <span>Pedidos pendientes de pago</span>
+      <button type="button" class="ppp-cerrar" (click)="cerrar()" aria-label="Cerrar">
+        <span uk-icon="icon: close; ratio: 0.8"></span>
+      </button>
+    </div>
+
+    <hr class="ppp-divider">
+
+    <!-- Sólo esta parte se desplaza; la cabecera de arriba queda fija. -->
+    <div class="ppp-lista">
+      <div class="ppp-fila" *ngFor="let p of pendientes">
+        <div class="ppp-img-wrap">
+          <img *ngIf="resolverImagen(p.producto?.imagen) as src" class="ppp-img" [src]="src"
+               [alt]="p.producto?.nombre ?? p.ped_numero">
+          <span *ngIf="!resolverImagen(p.producto?.imagen)" class="ppp-img-fallback"
+                uk-icon="icon: image; ratio: 1"></span>
+        </div>
+
+        <div class="ppp-info">
+          <div class="ppp-numero">{{ p.ped_numero }}</div>
+          <div class="ppp-nombre" *ngIf="p.producto">
+            {{ p.producto.nombre }}
+            <span class="ppp-mas" *ngIf="p.productos_adicionales > 0">+{{ p.productos_adicionales }}</span>
+          </div>
+          <div class="ppp-cantidad" *ngIf="p.producto">Cantidad: {{ p.producto.cantidad }}</div>
+        </div>
+
+        <div class="ppp-monto">{{ p.ped_total | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+        <div class="ppp-vence">
+          <span *ngIf="p.estado_pago === 'RECHAZADO'" class="ppp-rechazado">Comprobante rechazado · </span>
+          Vence en {{ restante(p.ped_vence) }}
+        </div>
+
+        <button type="button" class="ppp-pagar" (click)="accion(p)">{{ etiquetaAccion(p) }}</button>
+      </div>
+    </div>
+  </div>
+</ng-container>

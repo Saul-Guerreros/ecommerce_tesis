@@ -1,0 +1,124 @@
+<div class="uk-container uk-margin-large-top uk-margin-large-bottom">
+
+  <div *ngIf="cargando" class="uk-text-center uk-margin-large">
+    <div uk-spinner="ratio: 1.5"></div>
+  </div>
+
+  <div *ngIf="!cargando" class="pr-caja uk-card uk-card-default uk-card-body uk-margin-auto">
+
+    <!-- Encabezado: cambia según el caso -->
+    <div class="uk-text-center">
+      <span class="pr-check" uk-icon="icon: check; ratio: 1.6"></span>
+
+      <h3 class="uk-margin-small-top uk-margin-remove-bottom">
+        <ng-container *ngIf="resultado.caso !== 'CONTRAENTREGA'">Comprobante enviado</ng-container>
+        <ng-container *ngIf="resultado.caso === 'CONTRAENTREGA'">Pedido confirmado</ng-container>
+      </h3>
+
+      <p class="uk-text-meta uk-margin-remove-top">
+        Pedido Nº {{ resultado.ped_numero }} ·
+        <ng-container *ngIf="resultado.caso === 'REVISION'">Pago en revisión</ng-container>
+        <ng-container *ngIf="resultado.caso === 'PARCIAL'">Pago parcial en revisión</ng-container>
+        <ng-container *ngIf="resultado.caso === 'CONTRAENTREGA'">Pendiente de pago contra entrega</ng-container>
+      </p>
+    </div>
+
+    <hr>
+
+    <!-- CASO 1: sólo transferencia / billetera -->
+    <ng-container *ngIf="resultado.caso === 'REVISION'">
+      <p *ngIf="!variosComprobantes">
+        Estamos verificando tu transferencia de
+        <strong>{{ resultado.monto_en_revision | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>.
+        Te notificaremos por correo o al WhatsApp apenas se confirme el pago.
+      </p>
+
+      <ng-container *ngIf="variosComprobantes">
+        <p>
+          Estamos verificando tus transferencias. Te notificaremos por correo
+          o al WhatsApp apenas se confirme el pago.
+        </p>
+        <ul class="uk-list uk-list-divider pr-pagos">
+          <li *ngFor="let pago of pagosConComprobante" class="uk-flex uk-flex-between">
+            <span class="uk-text-capitalize">{{ ordinal(pago.orden) }} pago · {{ pago.mpa_descri }}</span>
+            <strong>{{ pago.monto | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+          </li>
+        </ul>
+      </ng-container>
+
+      <p class="uk-text-success uk-text-bold">Tu pedido ya está reservado.</p>
+    </ng-container>
+
+    <!-- CASO 2: transferencia + efectivo -->
+    <ng-container *ngIf="resultado.caso === 'PARCIAL'">
+      <p>
+        Estamos verificando tu transferencia de
+        <strong>{{ resultado.monto_en_revision | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>.
+        Te notificaremos por correo o al WhatsApp apenas se confirme el pago.
+      </p>
+
+      <ul class="uk-list uk-list-divider pr-pagos" *ngIf="variosComprobantes">
+        <li *ngFor="let pago of pagosConComprobante" class="uk-flex uk-flex-between">
+          <span class="uk-text-capitalize">{{ ordinal(pago.orden) }} pago · {{ pago.mpa_descri }}</span>
+          <strong>{{ pago.monto | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </li>
+      </ul>
+
+      <p>
+        El saldo pendiente de
+        <strong>{{ resultado.monto_contraentrega | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        lo abonás contra entrega.
+      </p>
+    </ng-container>
+
+    <!-- CASO 3: sólo efectivo -->
+    <ng-container *ngIf="resultado.caso === 'CONTRAENTREGA'">
+      <div class="uk-flex uk-flex-between uk-margin-small-bottom">
+        <span class="uk-text-large">Monto a abonar</span>
+        <span class="uk-text-large uk-text-bold">
+          {{ resultado.monto_contraentrega | currency:'PYG':'symbol-narrow':'1.0-0' }}
+        </span>
+      </div>
+
+      <p *ngIf="esRetiro">Te esperamos para completar el pago y retirar tu compra.</p>
+      <p *ngIf="!esRetiro">Te llevamos el pedido hasta tu dirección y abonás al recibirlo.</p>
+    </ng-container>
+
+    <!-- Dónde recibe: aplica a los casos 2 y 3 -->
+    <div class="pr-entrega uk-margin-top" *ngIf="resultado.caso !== 'REVISION'">
+      <ng-container *ngIf="esRetiro">
+        <p class="uk-margin-remove uk-text-bold">
+          <span uk-icon="icon: home; ratio: 0.9"></span>
+          Retirás en {{ resultado.entrega.suc_nombre }}
+        </p>
+        <p class="uk-margin-remove">{{ resultado.entrega.suc_direccion }}</p>
+        <p class="uk-margin-remove uk-text-meta" *ngIf="resultado.entrega.suc_horario">
+          {{ resultado.entrega.suc_horario }}
+        </p>
+      </ng-container>
+
+      <ng-container *ngIf="!esRetiro">
+        <p class="uk-margin-remove uk-text-bold">
+          <span uk-icon="icon: location; ratio: 0.9"></span>
+          Entrega en tu dirección
+        </p>
+        <p class="uk-margin-remove">{{ resultado.entrega.direccion }}</p>
+        <p class="uk-margin-remove uk-text-meta" *ngIf="resultado.entrega.referencia">
+          Referencia: {{ resultado.entrega.referencia }}
+        </p>
+      </ng-container>
+    </div>
+
+    <div class="pr-botones uk-margin-medium-top">
+      <button type="button" class="uk-button uk-button-primary" (click)="verMisPedidos()">
+        Ver mis pedidos
+      </button>
+      <button type="button" class="uk-button uk-button-default" (click)="volverAlCarrito()">
+        Volver al carrito
+      </button>
+      <button type="button" class="uk-button uk-button-default" (click)="volverATienda()">
+        Regresar a la tienda
+      </button>
+    </div>
+  </div>
+</div>

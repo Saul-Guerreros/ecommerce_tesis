@@ -1,0 +1,293 @@
+<div *ngIf="cargando" class="uk-text-center uk-margin-large">
+  <div uk-spinner="ratio: 1.5"></div>
+</div>
+
+<form *ngIf="!cargando" [formGroup]="form" (ngSubmit)="modoEdicion ? actualizarDatos() : siguiente()">
+
+  <div class="ck-layout">
+
+    <div class="ck-col-principal">
+
+      <!-- ============ 1/3 IDENTIFICACIÓN ============ -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin"
+           *ngIf="modoEdicion || subPaso === 1">
+        <h4 class="uk-card-title">
+          Datos personales
+          <span class="uk-text-meta uk-text-small" *ngIf="!modoEdicion">— Identificación (1 de 3)</span>
+          <span class="uk-text-meta uk-text-small" *ngIf="modoEdicion">— Editando 1 de 4</span>
+        </h4>
+
+        <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+          <div>
+            <label class="uk-form-label">Número de cédula <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" formControlName="scr_cedula" maxlength="15" autocomplete="off"
+                   placeholder="4567890"
+                   [class.uk-form-danger]="campoInvalido('scr_cedula')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_cedula')">
+              Ingresá entre 5 y 15 dígitos, sin puntos.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Fecha de nacimiento <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" type="date" formControlName="scr_fechna"
+                   [class.uk-form-danger]="campoInvalido('scr_fechna')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_fechna')">
+              Tenés que ser mayor de 18 años para solicitar un crédito.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Nombres <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" formControlName="scr_nombre" maxlength="95" autocomplete="off"
+                   [class.uk-form-danger]="campoInvalido('scr_nombre')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_nombre')">
+              El nombre es obligatorio.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Apellidos <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" formControlName="scr_apelli" maxlength="100" autocomplete="off"
+                   [class.uk-form-danger]="campoInvalido('scr_apelli')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_apelli')">
+              El apellido es obligatorio.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Número de celular <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" formControlName="scr_celula" maxlength="20" autocomplete="off"
+                   placeholder="0981 123 456"
+                   [class.uk-form-danger]="campoInvalido('scr_celula')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_celula')">
+              Solo números, espacios y guiones.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Correo electrónico <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" type="email" formControlName="scr_email" maxlength="100" autocomplete="off"
+                   [class.uk-form-danger]="campoInvalido('scr_email')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_email')">
+              Ingresá un correo electrónico válido.
+            </div>
+          </div>
+        </div>
+
+        <div class="uk-alert-primary uk-margin-small" uk-alert *ngIf="!modoEdicion">
+          <p class="uk-margin-remove">
+            Estos datos vienen de tu perfil. Podés modificarlos: los cambios quedan solo en esta solicitud.
+          </p>
+        </div>
+      </div>
+
+      <!-- ============ 2/3 DOMICILIO ============ -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin"
+           *ngIf="modoEdicion || subPaso === 2">
+        <h4 class="uk-card-title">
+          Domicilio
+          <span class="uk-text-meta uk-text-small" *ngIf="!modoEdicion">— 2 de 3</span>
+        </h4>
+
+        <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+          <div>
+            <label class="uk-form-label">Departamento <span class="uk-text-danger">*</span></label>
+            <select class="uk-select" formControlName="dep_id" (change)="cambiarDepartamento()"
+                    [class.uk-form-danger]="campoInvalido('dep_id')">
+              <option [ngValue]="null" disabled>Seleccioná...</option>
+              <option *ngFor="let d of departamentos" [ngValue]="d.dep_id">{{ d.dep_descri }}</option>
+            </select>
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('dep_id')">
+              Seleccioná tu departamento.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Ciudad <span class="uk-text-danger">*</span></label>
+            <select class="uk-select" formControlName="scr_ciuid"
+                    [class.uk-form-danger]="campoInvalido('scr_ciuid')">
+              <option [ngValue]="null" disabled>Seleccioná...</option>
+              <option *ngFor="let c of ciudadesFiltradas" [ngValue]="c.ciu_id">{{ c.ciu_descri }}</option>
+            </select>
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_ciuid')">
+              Seleccioná tu ciudad.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Barrio <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" formControlName="scr_barrio" maxlength="60" autocomplete="off"
+                   [class.uk-form-danger]="campoInvalido('scr_barrio')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_barrio')">
+              El barrio es obligatorio.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Calle <span class="uk-text-danger">*</span></label>
+            <input class="uk-input" formControlName="scr_calle" maxlength="100" autocomplete="off"
+                   [class.uk-form-danger]="campoInvalido('scr_calle')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_calle')">
+              La calle es obligatoria.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Número de casa</label>
+            <input class="uk-input" formControlName="scr_nrocasa" maxlength="45" autocomplete="off">
+          </div>
+
+          <div class="uk-width-1-1">
+            <label class="uk-form-label">Referencias para llegar</label>
+            <textarea class="uk-textarea" rows="2" formControlName="scr_referen" maxlength="250"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 3/3 SITUACIÓN PERSONAL ============ -->
+      <div class="uk-card uk-card-default uk-card-body uk-margin"
+           *ngIf="modoEdicion || subPaso === 3">
+        <h4 class="uk-card-title">
+          Situación personal
+          <span class="uk-text-meta uk-text-small" *ngIf="!modoEdicion">— 3 de 3</span>
+        </h4>
+
+        <div class="uk-grid-small uk-child-width-1-2@s uk-margin-small-bottom" uk-grid>
+          <div>
+            <label class="uk-form-label">Estado civil <span class="uk-text-danger">*</span></label>
+            <select class="uk-select" formControlName="scr_estciv"
+                    [class.uk-form-danger]="campoInvalido('scr_estciv')">
+              <option value="" disabled>Seleccioná...</option>
+              <option *ngFor="let e of estadosCiviles" [value]="e.valor">{{ e.etiqueta }}</option>
+            </select>
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_estciv')">
+              Seleccioná tu estado civil.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Tipo de profesión <span class="uk-text-danger">*</span></label>
+            <select class="uk-select" formControlName="scr_tprid"
+                    [class.uk-form-danger]="campoInvalido('scr_tprid')">
+              <option [ngValue]="null" disabled>Seleccioná...</option>
+              <option *ngFor="let t of tiposProfesion" [ngValue]="t.tpr_id">{{ t.tpr_descri }}</option>
+            </select>
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_tprid')">
+              Seleccioná tu tipo de profesión.
+            </div>
+          </div>
+
+          <div>
+            <label class="uk-form-label">Profesión <span class="uk-text-danger">*</span></label>
+            <select class="uk-select" formControlName="scr_proid"
+                    [class.uk-form-danger]="campoInvalido('scr_proid')">
+              <option [ngValue]="null" disabled>Seleccioná...</option>
+              <option *ngFor="let p of profesiones" [ngValue]="p.pro_id">{{ p.pro_descri }}</option>
+            </select>
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_proid')">
+              Seleccioná tu profesión.
+            </div>
+          </div>
+        </div>
+
+        <label class="uk-form-label">Tipo de vivienda <span class="uk-text-danger">*</span></label>
+        <div class="uk-grid-small uk-child-width-1-2@s uk-margin-small-bottom" uk-grid>
+          <div *ngFor="let t of tiposVivienda">
+            <button type="button" class="ck-opcion ck-opcion--chica"
+                    [class.ck-opcion--activa]="form.value.scr_tipviv === t.valor"
+                    (click)="elegirVivienda(t.valor)">
+              {{ t.etiqueta }}
+            </button>
+          </div>
+        </div>
+        <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_tipviv')">
+          Seleccioná el tipo de vivienda.
+        </div>
+
+        <!-- Solo con Casa propia -->
+        <div class="uk-grid-small uk-child-width-1-2@s uk-margin-small-top" uk-grid
+             *ngIf="esViviendaPropia">
+          <div>
+            <label class="uk-form-label">Servicio ANDE/ESSAP a nombre de</label>
+            <input class="uk-input" formControlName="scr_sertit" maxlength="150" autocomplete="off">
+          </div>
+          <div>
+            <label class="uk-form-label">Relación con el titular</label>
+            <input class="uk-input" formControlName="scr_relsti" maxlength="100" autocomplete="off"
+                   [class.uk-form-danger]="campoInvalido('scr_relsti')">
+            <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('scr_relsti')">
+              Indicá qué relación tenés con el titular del servicio.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ RESUMEN LATERAL ============ -->
+    <div class="ck-col-lateral">
+      <div class="uk-card uk-card-default uk-card-body ck-resumen" *ngIf="resumen">
+        <h4 class="uk-card-title">Crédito solicitado</h4>
+
+        <div class="uk-flex uk-flex-between">
+          <span>Precio al contado</span>
+          <strong>{{ resumen.total_contado | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Recargo</span>
+          <strong>{{ resumen.recargo | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Impuestos</span>
+          <strong>{{ resumen.impuestos | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <hr>
+
+        <div class="uk-flex uk-flex-between">
+          <span class="uk-text-large">Total</span>
+          <span class="uk-text-large uk-text-bold">{{ resumen.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Plazo</span>
+          <strong>{{ resumen.plazo }} meses</strong>
+        </div>
+
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Cuota mensual</span>
+          <strong>{{ resumen.cuota_mensual | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <p class="uk-text-meta uk-text-small uk-margin-small-top" *ngIf="resumen.planes_mixtos">
+          Corresponde a los primeros {{ resumen.plazo }} meses: tus productos tienen planes distintos.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de acciones: fuera del grid, ocupa todo el ancho -->
+  <div class="ck-barra-botones uk-margin-medium-top">
+    <ng-container *ngIf="!modoEdicion">
+      <button type="button" class="uk-button ck-btn-volver" (click)="atras()" [disabled]="guardando">
+        Volver
+      </button>
+      <button type="submit" class="uk-button uk-button-primary" [disabled]="guardando">
+        <span *ngIf="!guardando">Continuar</span>
+        <span *ngIf="guardando"><span uk-spinner="ratio: 0.6"></span> Guardando...</span>
+      </button>
+    </ng-container>
+
+    <ng-container *ngIf="modoEdicion">
+      <button type="button" class="uk-button ck-btn-volver" (click)="cancelarEdicion()" [disabled]="guardando">
+        Cancelar
+      </button>
+      <button type="submit" class="uk-button uk-button-primary" [disabled]="guardando">
+        <span *ngIf="!guardando">Actualizar datos</span>
+        <span *ngIf="guardando"><span uk-spinner="ratio: 0.6"></span> Guardando...</span>
+      </button>
+    </ng-container>
+  </div>
+</form>
