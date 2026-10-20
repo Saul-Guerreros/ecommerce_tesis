@@ -13,6 +13,21 @@ class FuncionarioResource extends JsonResource
         return $valor ? substr((string) $valor, 0, 10) : null;
     }
 
+    /**
+     * Cuenta de acceso al panel (nunca se devuelve la contraseña). Una cuenta de
+     * Cliente de la tienda no cuenta como acceso del funcionario.
+     */
+    private function acceso(): ?array
+    {
+        $u = $this->persona->relationLoaded('usuario') ? $this->persona->usuario : null;
+
+        if (!$u || $u->rol?->rol_descri === 'Cliente') {
+            return null;
+        }
+
+        return ['usu_id' => $u->usu_id, 'email' => $u->usu_login, 'estado' => $u->usu_estado];
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -40,6 +55,8 @@ class FuncionarioResource extends JsonResource
                 'crg_id'    => $this->cargo->crg_id,
                 'crg_descr' => $this->cargo->crg_descr,
             ]),
+
+            'usuario' => $this->acceso(),
 
             'contactos' => $this->persona->contactos->map(fn($c) => [
                 'con_id'    => $c->con_id,

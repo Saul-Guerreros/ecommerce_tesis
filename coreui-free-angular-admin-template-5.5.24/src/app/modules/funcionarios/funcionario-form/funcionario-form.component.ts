@@ -25,6 +25,7 @@ export class FuncionarioFormComponent implements OnChanges {
   submitting = false;
   buscando = false;
   personaEncontrada = false;
+  verPassword = false;
 
   /** Límites del input de fecha de nacimiento (desde 1940 hasta ayer). */
   readonly fechaMin = FECHA_NACIMIENTO_MIN;
@@ -46,6 +47,11 @@ export class FuncionarioFormComponent implements OnChanges {
 
   get isEdit(): boolean {
     return !!this.funcionario?.fun_id;
+  }
+
+  /** El funcionario que se edita ya tiene cuenta de acceso al panel. */
+  get tieneAcceso(): boolean {
+    return this.isEdit && !!this.funcionario?.usuario;
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -95,7 +101,9 @@ private asegurarRolActual(): void {
       per_apell1: '', per_apell2: null, per_estciv: null, per_fechna: null,
 	  fun_crgid: null, rol_id: null, fun_fecing: hoyIso(), fun_fecegr: null, fun_estado: 1,
       contactos: [{ con_tipo: 'CELULAR', con_valor: '' }],
+      usu_email: '', usu_password: '',
     };
+    this.verPassword = false;
     this.errors = {};
     this.personaEncontrada = false;
     this.submitting = false;
@@ -121,6 +129,8 @@ private asegurarRolActual(): void {
       contactos: f.contactos?.length
         ? f.contactos.map(x => ({ con_tipo: x.con_tipo, con_valor: x.con_valor }))
         : [{ con_tipo: 'CELULAR', con_valor: '' }],
+      usu_email: f.usuario?.email ?? '',
+      usu_password: '',   // nunca viene del backend
     };
   }
 
@@ -200,6 +210,8 @@ private asegurarRolActual(): void {
       per_apell2: this.form.per_apell2 || null,
       per_fechna: this.form.per_fechna || null,
       fun_fecegr: this.form.fun_fecegr || null,
+      usu_email: this.form.usu_email?.trim() || null,
+      usu_password: this.form.usu_password || null,
     };
   }
 
@@ -220,6 +232,18 @@ private asegurarRolActual(): void {
 	  this.errors = { rol_id: ['Debe seleccionar el rol.'] };
 	  return;
 	}
+
+    // Acceso al sistema: si todavía no tiene cuenta, correo y contraseña van juntos.
+    if (!this.tieneAcceso) {
+      const email = !!this.form.usu_email?.trim();
+      const pass  = !!this.form.usu_password;
+      if (email && !pass) { this.errors = { usu_password: ['Ingrese una contraseña para crear el acceso.'] }; return; }
+      if (pass && !email) { this.errors = { usu_email: ['Ingrese el correo de acceso.'] }; return; }
+    }
+    if (this.form.usu_password && this.form.usu_password.length < 8) {
+      this.errors = { usu_password: ['La contraseña debe tener al menos 8 caracteres.'] };
+      return;
+    }
 
     this.submitting = true;
     this.errors = {};

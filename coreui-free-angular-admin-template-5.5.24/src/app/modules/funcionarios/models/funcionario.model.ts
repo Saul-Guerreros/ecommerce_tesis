@@ -19,6 +19,8 @@ export interface Funcionario {
   persona: Persona;
   cargo?: Cargo;
   contactos: Contacto[];
+  /** Cuenta de acceso al panel (null si todavía no tiene). Nunca incluye la contraseña. */
+  usuario?: { usu_id: number; email: string; estado: string } | null;
 }
 
 // En FuncionarioPayload, agregar rol_id después de fun_crgid:
@@ -38,6 +40,9 @@ export interface FuncionarioPayload {
   fun_fecegr: string | null;
   fun_estado: number;
   contactos: Contacto[];
+  /** Acceso al sistema (opcional). En edición, contraseña vacía = no cambiarla. */
+  usu_email?: string | null;
+  usu_password?: string | null;
 }
 
 export interface RolOpcion {

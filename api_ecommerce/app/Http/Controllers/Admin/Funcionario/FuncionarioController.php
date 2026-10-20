@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Funcionario\StoreFuncionarioRequest;
 use App\Http\Resources\Funcionario\FuncionarioResource;
 use App\Models\Cargo;
+use App\Models\Configuracion\Sucursal;
 use App\Models\Funcionario;
+use App\Models\HistorialPassword;
 use App\Models\Persona;
 use App\Models\TipoDocumento;
+use App\Models\Usuario;
+use App\Models\UsuarioSucursal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -43,6 +47,8 @@ class FuncionarioController extends Controller
         $funcionarios = Funcionario::with([
                 'persona',
                 'persona.contactos:con_id,con_perid,con_tipo,con_valor',
+                'persona.usuario:usu_id,usu_perid,usu_login,usu_estado,usu_rolid',
+                'persona.usuario.rol:rol_id,rol_descri',
                 'cargo:crg_id,crg_descr',
 				'rol:rol_id,rol_descri',
             ])
@@ -111,7 +117,7 @@ class FuncionarioController extends Controller
     {
         $data = $request->validated();
 
-        $funcionario = DB::transaction(function () use ($data) {
+        $funcionario = DB::transaction(function () use ($data, $request) {
 
             $persona = Persona::updateOrCreate(
                 ['per_tpdid' => $data['per_tpdid'], 'per_cedula' => $data['per_cedula']],
@@ -143,12 +149,13 @@ class FuncionarioController extends Controller
             ]);
 
             $this->sincronizarContactos($persona, $data['contactos']);
+            $this->sincronizarAcceso($persona, (int) $data['rol_id'], $data, $request->ip());
 
             return $funcionario;
         });
 
         return response()->json([
-			'data' => FuncionarioResource::make($funcionario->load('persona.contactos', 'cargo', 'rol')),
+			'data' => FuncionarioResource::make($funcionario->load('persona.contactos', 'persona.usuario.rol', 'cargo', 'rol')),
         ], 201);
     }
 
@@ -157,7 +164,7 @@ class FuncionarioController extends Controller
         $data        = $request->validated();
         $funcionario = Funcionario::with('persona')->findOrFail($id);
 
-        DB::transaction(function () use ($funcionario, $data) {
+        DB::transaction(function () use ($funcionario, $data, $request) {
 
             $funcionario->persona->update([
                 'per_tpdid'  => $data['per_tpdid'],
@@ -179,11 +186,90 @@ class FuncionarioController extends Controller
             ]);
 
             $this->sincronizarContactos($funcionario->persona, $data['contactos']);
+            $this->sincronizarAcceso($funcionario->persona, (int) $data['rol_id'], $data, $request->ip());
         });
 
         return response()->json([
-			'data' => FuncionarioResource::make($funcionario->fresh()->load('persona.contactos', 'cargo', 'rol')),
+			'data' => FuncionarioResource::make($funcionario->fresh()->load('persona.contactos', 'persona.usuario.rol', 'cargo', 'rol')),
         ], 200);
+    }
+
+    /**
+     * Acceso al panel (cuenta de usuario) del funcionario. Es opcional.
+     *
+     *  - Sin cuenta: si vienen correo y contraseña, la crea ACTIVA con el rol del
+     *    funcionario y la asigna a la sucursal principal (como hace Usuarios).
+     *  - Con cuenta: actualiza correo y/o contraseña si vienen, y mantiene el rol de la
+     *    cuenta igual al del funcionario (antes solo se cambiaba fun_rolid).
+     *  - Una persona con cuenta de Cliente (tienda) no recibe acceso al panel desde aquí.
+     */
+    private function sincronizarAcceso(Persona $persona, int $rolId, array $data, ?string $ip): void
+    {
+        $email    = trim((string) ($data['usu_email'] ?? ''));
+        $password = (string) ($data['usu_password'] ?? '');
+        $usuario  = $persona->usuario()->with('rol')->first();
+
+        if ($usuario && $usuario->rol?->rol_descri === 'Cliente') {
+            if ($email !== '' || $password !== '') {
+                throw ValidationException::withMessages([
+                    'usu_email' => ['Esta persona tiene una cuenta de cliente de la tienda: no se le puede dar acceso al panel desde aquí.'],
+                ]);
+            }
+
+            return;
+        }
+
+        if (!$usuario) {
+            if ($email === '' && $password === '') {
+                return;
+            }
+
+            $usuario = Usuario::create([
+                'usu_perid'  => $persona->per_id,
+                'usu_rolid'  => $rolId,
+                'usu_login'  => $email,
+                'usu_passwd' => bcrypt($password),
+                'usu_estado' => Usuario::ESTADO_ACTIVO,
+            ]);
+
+            $this->asignarSucursalPrincipal($usuario);
+
+            return;
+        }
+
+        $cambios = ['usu_rolid' => $rolId];
+
+        if ($email !== '') {
+            $cambios['usu_login'] = $email;
+        }
+
+        if ($password !== '') {
+            HistorialPassword::create([
+                'hpa_usuid'  => $usuario->usu_id,
+                'hpa_pasant' => $usuario->usu_passwd,
+                'hpa_iporig' => $ip,
+            ]);
+
+            $cambios['usu_passwd'] = bcrypt($password);
+        }
+
+        $usuario->update($cambios);
+    }
+
+    /** Toda cuenta del panel debe tener al menos una sucursal (regla de Usuarios). */
+    private function asignarSucursalPrincipal(Usuario $usuario): void
+    {
+        $sucId = Sucursal::where('suc_estado', 1)
+            ->orderByDesc('suc_princi')->orderBy('suc_id')->value('suc_id');
+
+        if ($sucId) {
+            UsuarioSucursal::create([
+                'uss_usuid'  => $usuario->usu_id,
+                'uss_sucid'  => $sucId,
+                'uss_princi' => 1,
+                'uss_estado' => 1,
+            ]);
+        }
     }
 
     /** Reemplaza el set completo de contactos de la persona */

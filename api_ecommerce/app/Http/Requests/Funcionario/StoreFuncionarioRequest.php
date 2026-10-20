@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Funcionario;
 
 use App\Models\Funcionario;
+use App\Models\Usuario;
 use App\Rules\FechaNacimiento;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -22,6 +23,8 @@ class StoreFuncionarioRequest extends FormRequest
         $perId = $funId
             ? Funcionario::whereKey($funId)->value('fun_perid')
             : $this->input('per_id');
+
+        $usuId = $this->usuarioId($perId);
 
         return [
             // --- Datos de persona ---
@@ -49,7 +52,19 @@ class StoreFuncionarioRequest extends FormRequest
             'contactos'             => ['required', 'array', 'min:1'],
             'contactos.*.con_tipo'  => ['required', Rule::in(['CELULAR', 'TELEFONO', 'WHATSAPP', 'EMAIL'])],
             'contactos.*.con_valor' => ['required', 'string', 'max:100'],
+
+            // --- Acceso al sistema (opcional) ---
+            // usu_login es varchar(30) en la base: sin max:30 un correo largo daría error 500.
+            'usu_email'    => ['nullable', 'email', 'max:30',
+                                Rule::unique('usuario', 'usu_login')->ignore($usuId, 'usu_id')],
+            'usu_password' => ['nullable', 'string', 'min:8', 'max:72'],
         ];
+    }
+
+    /** Cuenta de usuario ya existente de la persona (null si todavía no tiene). */
+    private function usuarioId($perId): ?int
+    {
+        return $perId ? Usuario::where('usu_perid', $perId)->value('usu_id') : null;
     }
 
     public function withValidator($validator): void
@@ -75,6 +90,21 @@ class StoreFuncionarioRequest extends FormRequest
                 }
             }
 
+            // Acceso: si la persona todavía no tiene cuenta, correo y contraseña van juntos.
+            $perId = $this->route('id')
+                ? Funcionario::whereKey($this->route('id'))->value('fun_perid')
+                : $this->input('per_id');
+            if (!$this->usuarioId($perId)) {
+                $email = trim((string) $this->input('usu_email'));
+                $pass  = (string) $this->input('usu_password');
+                if ($email !== '' && $pass === '') {
+                    $v->errors()->add('usu_password', 'Ingrese una contraseña para crear el acceso.');
+                }
+                if ($pass !== '' && $email === '') {
+                    $v->errors()->add('usu_email', 'Ingrese el correo de acceso.');
+                }
+            }
+
             // Duplicados dentro del mismo envío
             $dup = collect($contactos)->map(fn($c) => ($c['con_tipo'] ?? '') . '|' . ($c['con_valor'] ?? ''));
             if ($dup->count() !== $dup->unique()->count()) {
@@ -96,6 +126,11 @@ class StoreFuncionarioRequest extends FormRequest
             'fun_crgid.exists'    => 'El cargo seleccionado no es válido.',
 			'rol_id.required'     => 'Debe seleccionar el rol.',
             'rol_id.exists'       => 'El rol seleccionado no es válido.',
+            'usu_email.email'     => 'El correo de acceso no tiene un formato válido.',
+            'usu_email.max'       => 'El correo de acceso no puede superar los 30 caracteres.',
+            'usu_email.unique'    => 'Ya existe una cuenta con ese correo.',
+            'usu_password.min'    => 'La contraseña debe tener al menos 8 caracteres.',
+            'usu_password.max'    => 'La contraseña no puede superar los 72 caracteres.',
             'fun_fecing.required'    => 'La fecha de ingreso es obligatoria.',
             'fun_fecing.date_format' => 'La fecha de ingreso no es válida.',
             'fun_fecegr.date_format' => 'La fecha de egreso no es válida.',

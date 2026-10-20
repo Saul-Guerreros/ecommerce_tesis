@@ -157,6 +157,46 @@
     </c-row>
 
     <hr class="my-3">
+    <h6 class="mb-1">Acceso al sistema </h6>
+    <small class="text-muted d-block mb-3">
+    
+      <ng-container *ngIf="tieneAcceso">
+        Este funcionario ya tiene acceso. Deje la contraseña vacía para no cambiarla.
+      </ng-container>
+    </small>
+    <c-row>
+
+      <c-col md="6" class="mb-3">
+        <label cLabel>Correo de acceso</label>
+        <input cFormControl type="email" [(ngModel)]="form.usu_email" name="usu_email"
+               autocomplete="off" maxlength="30" placeholder="correo@ejemplo.com"
+               [class.is-invalid]="errors.usu_email">
+        <div class="invalid-feedback d-block" *ngIf="errors.usu_email">
+          {{ errors.usu_email[0] }}
+        </div>
+      </c-col>
+
+      <c-col md="6" class="mb-3">
+        <label cLabel>Contraseña</label>
+        <div class="input-group">
+          <input cFormControl [type]="verPassword ? 'text' : 'password'"
+                 [(ngModel)]="form.usu_password" name="usu_password"
+                 autocomplete="new-password" minlength="8"
+                 [placeholder]="tieneAcceso ? 'Dejar vacía para no cambiarla' : 'Mínimo 8 caracteres'"
+                 [class.is-invalid]="errors.usu_password">
+          <button cButton color="secondary" variant="outline" type="button"
+                  (click)="verPassword = !verPassword">
+            {{ verPassword ? 'Ocultar' : 'Ver' }}
+          </button>
+        </div>
+        <div class="invalid-feedback d-block" *ngIf="errors.usu_password">
+          {{ errors.usu_password[0] }}
+        </div>
+      </c-col>
+
+    </c-row>
+
+    <hr class="my-3">
 
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h6 class="mb-0">Contactos <span class="text-danger">*</span></h6>

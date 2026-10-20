@@ -2,34 +2,54 @@ import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
-import { PedidoDetalle } from '../../core/models/pedido-cliente.model';
+import { URL_BACKEND } from '../../config/config';
+import { PagoDetalle, PedidoDetalle } from '../../core/models/pedido-cliente.model';
 import { PedidoClienteService } from '../../core/services/pedido-cliente.service';
 import { DatosEntregaCardComponent } from '../../shared/components/datos-entrega-card/datos-entrega-card.component';
+import { DatosFacturacionCardComponent } from '../../shared/components/datos-facturacion-card/datos-facturacion-card.component';
+import { ProductosCarritoCardComponent } from '../../shared/components/productos-carrito-card/productos-carrito-card.component';
+
+/** Mismo límite y formatos que el comprobante del Paso 3 del checkout. */
+const TIPOS_COMPROBANTE = ['image/jpeg', 'image/png', 'application/pdf'];
+const MAX_COMPROBANTE_BYTES = 5 * 1024 * 1024;
 
 /**
- * Detalle de un pedido dentro de "Mis Pedidos".
+ * Detalle de un pedido ya existente (ruta /mis-pedidos/:numero).
  *
- * Distinto de pedido-resultado (la pantalla que sigue justo después de
- * pagar): éste es de consulta general, para cualquier pedido en cualquier
- * estado, y se llega acá sólo desde el listado — no es parte del flujo
- * del checkout.
+ * Es de sólo lectura salvo por dos acciones que decide el backend:
+ *  - "Pagar ahora" (pedido.pagable)
+ *  - subir un comprobante nuevo en un pago rechazado (pago.reemplazable)
+ *
+ * La pantalla no deduce ninguna de las dos: sólo obedece los flags.
  */
 @Component({
   selector: 'app-pedido-detalle',
   standalone: true,
-  imports: [CommonModule, CurrencyPipe, DatePipe, RouterModule, DatosEntregaCardComponent],
+  imports: [
+    CommonModule,
+    CurrencyPipe,
+    DatePipe,
+    RouterModule,
+    ProductosCarritoCardComponent,
+    DatosEntregaCardComponent,
+    DatosFacturacionCardComponent,
+  ],
   templateUrl: './pedido-detalle.component.html',
   styleUrl: './pedido-detalle.component.css',
 })
 export class PedidoDetalleComponent implements OnInit {
   numero = '';
-  pedido!: PedidoDetalle;
+  pedido: PedidoDetalle | null = null;
   cargando = true;
 
-  /** Archivo elegido por pago (ppa_id -> File), antes de enviarlo. */
+  /** Comprobante nuevo elegido por pago (clave: ppa_id). */
   archivos: Record<number, File | null> = {};
-  /** ppa_id del pago que se está enviando, para bloquear sólo ese botón. */
-  enviando: number | null = null;
+  /** Mensaje de validación del archivo por pago. */
+  erroresArchivo: Record<number, string> = {};
+  /** ppa_id del pago que se está subiendo (bloquea su botón). */
+  subiendoId: number | null = null;
+  /** ppa_id del pago cuyo comprobante se está abriendo. */
+  abriendoId: number | null = null;
 
   constructor(
     private servicio: PedidoClienteService,
@@ -59,106 +79,143 @@ export class PedidoDetalleComponent implements OnInit {
     });
   }
 
-  restante(): string {
-    if (!this.pedido?.ped_vence) return '';
+  get esRetiro(): boolean {
+    return this.pedido?.entrega?.modalidad === 'retiro';
+  }
 
-    const faltan = new Date(this.pedido.ped_vence).getTime() - Date.now();
+  // ---------- Presentación (mismos criterios que Mis Pedidos) ----------
+
+  claseEstadoPedido(codigo: string | null): string {
+    return {
+      PENDIENTE_PEDIDO: 'uk-label-warning',
+      EN_PREPARACION: 'uk-label-warning',
+      LISTO: 'uk-label-primary',
+      ENTREGADO: 'uk-label-success',
+      CANCELADO: 'uk-label-danger',
+    }[codigo ?? ''] ?? 'uk-label';
+  }
+
+  claseEstadoPago(codigo: string | null): string {
+    return {
+      PENDIENTE_PAGO: 'uk-label-warning',
+      PAGO_VERIFICAR: 'uk-label-primary',
+      CONFIRMADO: 'uk-label-success',
+      PARCIAL: 'uk-label-primary',
+      RECHAZADO: 'uk-label-danger',
+    }[codigo ?? ''] ?? 'uk-label';
+  }
+
+  restante(vence: string | null): string {
+    if (!vence) return '';
+
+    const faltan = new Date(vence).getTime() - Date.now();
     if (faltan <= 0) return 'vencido';
 
     const horas = Math.floor(faltan / 3_600_000);
     const minutos = Math.floor((faltan % 3_600_000) / 60_000);
 
-    return horas > 0 ? `${horas} h ${minutos} min` : `${minutos} min`;
+    return horas > 0 ? `vence en ${horas} h` : `vence en ${minutos} min`;
   }
+
+  restanteRetiro(vence: string | null): string {
+    if (!vence) return '';
+
+    const dias = Math.round((new Date(vence).getTime() - Date.now()) / 86_400_000);
+
+    if (dias > 0) return `vence en ${dias} día${dias === 1 ? '' : 's'}`;
+    if (dias === 0) return 'vence hoy';
+
+    const transcurridos = Math.abs(dias);
+    return `venció hace ${transcurridos} día${transcurridos === 1 ? '' : 's'}`;
+  }
+
+  vencidoRetiro(vence: string | null): boolean {
+    return !!vence && new Date(vence).getTime() < Date.now();
+  }
+
+  // ---------- Acciones ----------
 
   pagarAhora(): void {
     this.router.navigate(['/proceso-de-pago/pago', this.numero]);
   }
 
-  retiroVencido(): boolean {
-    return !!this.pedido?.ped_vencret && new Date(this.pedido.ped_vencret).getTime() < Date.now();
-  }
-
-  // ---------- Comprobante rechazado ----------
-
-  archivoElegido(evento: Event, pagoId: number): void {
-    const input = evento.target as HTMLInputElement;
-    this.archivos[pagoId] = input.files?.[0] ?? null;
-  }
-
   /**
-   * Envía el comprobante corregido de un pago rechazado.
-   *
-   * Tras el envío se recarga el detalle completo en vez de parchear el
-   * objeto en memoria: el estado del pago, el del pedido y el plazo
-   * cambian todos a la vez en el backend, y recalcularlos acá a mano
-   * sería duplicar esa lógica en el frontend.
+   * Abre el comprobante en una pestaña nueva PASANDO por HttpClient (que
+   * adjunta el token); un enlace directo sería rechazado por el backend.
+   * Ver PedidoClienteService.descargarArchivo().
    */
-  enviarComprobante(pagoId: number): void {
-    const archivo = this.archivos[pagoId];
+  verComprobante(pago: PagoDetalle): void {
+    if (!pago.comprobante_url || this.abriendoId !== null) return;
 
-    if (!archivo) {
-      this.toastr.warning('Elegí el comprobante corregido.', 'Falta el archivo');
-      return;
-    }
+    const url = pago.comprobante_url.startsWith('http')
+      ? pago.comprobante_url
+      : URL_BACKEND.replace(/\/$/, '') + '/' + pago.comprobante_url.replace(/^\//, '');
 
-    this.enviando = pagoId;
-
-    this.servicio.reemplazarComprobante(this.numero, pagoId, archivo).subscribe({
-      next: (resp) => {
-        this.toastr.success(resp.message, 'Listo');
-        this.archivos[pagoId] = null;
-        this.enviando = null;
-        this.cargar();
-      },
-      error: (e) => {
-        this.enviando = null;
-        this.toastr.error(this.mensajeError(e), 'Error');
-      },
-    });
-  }
-
-  /**
-   * El 422 de Laravel trae los errores por campo; el mensaje suelto sólo
-   * aparece en los abort(). Se prioriza el del campo porque es el que
-   * dice qué corregir ("El comprobante no puede superar los 5 MB").
-   */
-  private mensajeError(e: any): string {
-    const porCampo = e?.error?.errors ? Object.values(e.error.errors)[0] : null;
-
-    if (Array.isArray(porCampo) && porCampo.length) {
-      return porCampo[0] as string;
-    }
-
-    return e?.error?.message ?? 'No pudimos enviar el comprobante.';
-  }
-
-  /**
-   * No es un window.open(url, '_blank') directo: ese endpoint exige
-   * sesión, y una navegación directa del navegador no lleva el token que
-   * Angular adjunta en los pedidos por HttpClient. Por eso el archivo se
-   * pide primero como Blob (con el token puesto) y recién ese Blob se
-   * abre en una pestaña nueva — ahí sí se ve el comprobante en vez de un
-   * error de autenticación.
-   */
-  abrirComprobante(url: string | null): void {
-    if (!url) return;
+    this.abriendoId = pago.ppa_id;
 
     this.servicio.descargarArchivo(url).subscribe({
       next: (blob) => {
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
-        // Se libera un poco después de abrir: el navegador ya tomó lo que
-        // necesitaba para mostrarlo en la pestaña nueva.
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+        const objeto = URL.createObjectURL(blob);
+        window.open(objeto, '_blank');
+        // Se libera más tarde: revocarlo ya mismo puede cortar la carga de la pestaña.
+        setTimeout(() => URL.revokeObjectURL(objeto), 60_000);
+        this.abriendoId = null;
       },
       error: () => {
+        this.abriendoId = null;
         this.toastr.error('No pudimos abrir el comprobante.', 'Error');
       },
     });
   }
 
-  volver(): void {
-    this.router.navigate(['/mis-pedidos']);
+  onArchivoSeleccionado(evento: Event, pago: PagoDetalle): void {
+    const input = evento.target as HTMLInputElement;
+    const archivo = input.files?.[0] ?? null;
+
+    delete this.erroresArchivo[pago.ppa_id];
+
+    if (archivo && !TIPOS_COMPROBANTE.includes(archivo.type)) {
+      this.erroresArchivo[pago.ppa_id] = 'El comprobante debe ser JPG, PNG o PDF.';
+      input.value = '';
+      this.archivos[pago.ppa_id] = null;
+      return;
+    }
+
+    if (archivo && archivo.size > MAX_COMPROBANTE_BYTES) {
+      this.erroresArchivo[pago.ppa_id] = 'El comprobante no puede superar los 5 MB.';
+      input.value = '';
+      this.archivos[pago.ppa_id] = null;
+      return;
+    }
+
+    this.archivos[pago.ppa_id] = archivo;
+  }
+
+  enviarComprobante(pago: PagoDetalle): void {
+    const archivo = this.archivos[pago.ppa_id];
+
+    if (!archivo) {
+      this.erroresArchivo[pago.ppa_id] = 'Adjuntá el comprobante de pago.';
+      return;
+    }
+    if (this.subiendoId !== null) return;
+
+    this.subiendoId = pago.ppa_id;
+
+    this.servicio.reemplazarComprobante(this.numero, pago.ppa_id, archivo).subscribe({
+      next: (resp) => {
+        this.subiendoId = null;
+        delete this.archivos[pago.ppa_id];
+        this.toastr.success(resp.message ?? 'Comprobante enviado.', 'Listo');
+        this.cargar();
+      },
+      error: (e) => {
+        this.subiendoId = null;
+        this.toastr.error(
+          e.error?.errors?.comprobante?.[0] ?? e.error?.message ?? 'No pudimos enviar el comprobante.',
+          'Error',
+        );
+      },
+    });
   }
 }

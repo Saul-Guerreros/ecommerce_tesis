@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
@@ -19,6 +20,7 @@ export class AppComponent implements OnInit {
   readonly #destroyRef: DestroyRef = inject(DestroyRef);
   readonly #activatedRoute: ActivatedRoute = inject(ActivatedRoute);
   readonly #router = inject(Router);
+  readonly #document = inject(DOCUMENT);
   readonly #titleService = inject(Title);
 
   readonly #colorModeService = inject(ColorModeService);
@@ -40,6 +42,7 @@ export class AppComponent implements OnInit {
       if (!(evt instanceof NavigationEnd)) {
         return;
       }
+      this.#limpiarBackdropsHuerfanos();
     });
 
     this.#activatedRoute.queryParams
@@ -53,5 +56,25 @@ export class AppComponent implements OnInit {
         takeUntilDestroyed(this.#destroyRef)
       )
       .subscribe();
+  }
+
+  /**
+   * CoreUI deja su backdrop (el filtro negro) en <body> cuando un <c-modal> se destruye
+   * estando abierto: por ejemplo, cuando el interceptor redirige a /login por un 401
+   * (token vencido) o un guard cambia la ruta con un formulario abierto.
+   * Tras cada navegación se retiran los backdrops que ya no pertenecen a ningún modal
+   * abierto (un <c-modal> visible lleva aria-modal="true"), y se restaura el scroll.
+   */
+  #limpiarBackdropsHuerfanos(): void {
+    if (this.#document.querySelector('c-modal[aria-modal="true"]')) {
+      return;
+    }
+
+    this.#document.querySelectorAll('.modal-backdrop').forEach((el) => el.remove());
+
+    const body = this.#document.body;
+    body.classList.remove('modal-open');
+    body.style.removeProperty('overflow');
+    body.style.removeProperty('padding-right');
   }
 }

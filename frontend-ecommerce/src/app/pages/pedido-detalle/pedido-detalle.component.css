@@ -63,3 +63,13 @@
   padding: 4px;
   height: auto;
 }
+
+/* Copia de .ck-resumen del checkout (los estilos de componente son encapsulados,
+   no se heredan de paso-pago.component.css). */
+.ck-resumen {
+  text-align: center;
+}
+
+.ck-resumen .uk-flex-between {
+  text-align: left;
+}

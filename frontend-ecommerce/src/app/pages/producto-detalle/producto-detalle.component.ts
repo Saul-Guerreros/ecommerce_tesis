@@ -57,6 +57,9 @@ export class ProductoDetalleComponent implements OnInit {
   stockAvisos: StockAvisos | null = null;
   cantidadContado = 1;
   cantidadCuotas = 1;
+  /** El usuario tipeó más unidades que el stock (el selector ya las acotó). */
+  excedeContado = false;
+  excedeCuotas = false;
   /** Nº de cuotas elegido (3, 6, 12...). Se guarda el número, no el objeto,
    *  para conservar la elección cuando el selector cambia de tramo. */
   private cuotaElegidaN: number | null = null;
@@ -155,6 +158,8 @@ export class ProductoDetalleComponent implements OnInit {
         // mayorista si el producto se vende solo al por mayor.
         this.cantidadContado = this.cantidadMinima;
         this.cantidadCuotas = this.cantidadMinima;
+        this.excedeContado = false;
+        this.excedeCuotas = false;
         this.cuotaElegidaN = null;
         this.tabActiva = 'descripcion';
         this.cargando = false;
@@ -374,35 +379,21 @@ export class ProductoDetalleComponent implements OnInit {
       : `Solo quedan ${avisos.unidades} unidades`;
   }
 
-    /**
-   * Se pidieron tantas unidades como hay disponibles (el selector ya
-   * clampeó cualquier valor mayor al stock real). Esto NO es una táctica
-   * de venta como "poco stock": es manejo de error, así que siempre se
-   * evalúa igual, sin depender de ninguna configuración del admin.
-   */
-  private alMaximo(cantidad: number): boolean {
-    const max = this.stockMaximo;
-
-    return max !== null && max >= this.cantidadMinima && cantidad >= max;
-  }
-
-  get alMaximoCuotas(): boolean {
-    return this.alMaximo(this.cantidadCuotas);
-  }
-
-  get alMaximoContado(): boolean {
-    return this.alMaximo(this.cantidadContado);
-  }
-
   /**
-   * Mensaje genérico a propósito: nunca debe revelar la cantidad real en
-   * stock. Revelar el número solo tiene sentido como aviso de urgencia
-   * ("Solo quedan X"), configurable por el admin; acá es solo el límite
-   * de lo que se puede pedir, y no hay ningún motivo de negocio para
-   * mostrar el dato exacto.
+   * Aviso al intentar pedir más unidades que el stock. Indica el stock
+   * disponible para que el usuario sepa cuál es el tope real.
    */
   get mensajeMaximo(): string {
-    return 'No hay suficiente stock para la cantidad solicitada';
+    const max = this.stockMaximo;
+    const base = 'No hay suficiente stock para la cantidad solicitada.';
+
+    if (max === null) {
+      return base;
+    }
+
+    return max === 1
+      ? `${base} Solo hay 1 unidad disponible.`
+      : `${base} Stock disponible: ${max} unidades.`;
   }
 
   get puedeComprar(): boolean {
