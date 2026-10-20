@@ -30,6 +30,8 @@ export class SelectorCantidadComponent {
   @Input() etiqueta = 'Unidades';
 
   @Output() valorChange = new EventEmitter<number>();
+  /** true si lo tipeado superó el máximo (antes de acotar); false en cualquier otra acción. */
+  @Output() excedido = new EventEmitter<boolean>();
 
   get enMinimo(): boolean {
     return this.valor <= this.minimo;
@@ -40,10 +42,19 @@ export class SelectorCantidadComponent {
   }
 
   disminuir(): void {
+    this.excedido.emit(false);
     this.emitir(this.valor - 1);
   }
 
   aumentar(): void {
+    // En el máximo el botón sigue activo a propósito: pulsarlo es intentar
+    // exceder el stock, y eso dispara el aviso en lugar de cambiar el valor.
+    if (this.enMaximo) {
+      this.excedido.emit(true);
+      return;
+    }
+
+    this.excedido.emit(false);
     this.emitir(this.valor + 1);
   }
 
@@ -51,6 +62,10 @@ export class SelectorCantidadComponent {
     const campo = evento.target as HTMLInputElement;
     const escrito = Math.floor(Number(campo.value));
     const limpio = this.acotar(Number.isFinite(escrito) ? escrito : this.minimo);
+
+    // Se compara lo ESCRITO contra el máximo (no el valor ya acotado):
+    // solo superarlo es excederse; igualarlo es válido.
+    this.excedido.emit(this.maximo !== null && escrito > this.maximo);
 
     // Si el valor acotado coincide con el actual no hay cambio de estado y
     // Angular no repinta: se corrige el texto del campo a mano.

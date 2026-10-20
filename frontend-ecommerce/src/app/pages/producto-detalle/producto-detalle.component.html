@@ -170,6 +170,7 @@
                           [minimo]="cantidadMinima"
                           [maximo]="stockMaximo"
                           [deshabilitado]="!puedeComprar"
+                          (excedido)="excedeCuotas = $event"
                           etiqueta="Unidades en cuotas"></app-selector-cantidad>
                       </div>
 
@@ -182,7 +183,7 @@
                   </button>
 
                   </div>
-                    <p class="pd-compra-stockmax" *ngIf="alMaximoCuotas">{{ mensajeMaximo }}</p>
+                    <p class="pd-compra-stockmax" *ngIf="excedeCuotas">{{ mensajeMaximo }}</p>
                   </section>
 
                   <!-- Precio al Contado: siempre visible -->
@@ -211,6 +212,7 @@
                           [minimo]="cantidadMinima"
                           [maximo]="stockMaximo"
                           [deshabilitado]="!puedeComprar"
+                          (excedido)="excedeContado = $event"
                           etiqueta="Unidades al contado"></app-selector-cantidad>
                       </div>
 
@@ -223,7 +225,7 @@
                       </button>
                     </div>
 
-                    <p class="pd-compra-stockmax" *ngIf="alMaximoContado">{{ mensajeMaximo }}</p>
+                    <p class="pd-compra-stockmax" *ngIf="excedeContado">{{ mensajeMaximo }}</p>
                   </section>
 
                   <!-- Solo se muestra si el producto tiene precio mayorista -->
