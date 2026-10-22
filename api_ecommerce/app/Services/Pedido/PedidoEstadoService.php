@@ -135,6 +135,8 @@ class PedidoEstadoService
             $pedido->update([
                 'ped_estid'   => $destino->est_id,
                 ...$this->camposDePlazoRetiro($pedido, $codigoDestino),
+                // La garantia de la compra corre desde la entrega real.
+                ...($codigoDestino === EstadoPedido::ENTREGADO ? ['ped_entreg' => now()] : []),
             ]);
 
             PedidoHistorialEstado::create([

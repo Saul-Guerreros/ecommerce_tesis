@@ -22,6 +22,7 @@ class NotificadorServicio
     /** Estados que generan aviso, con el asunto del correo. */
     private const AVISOS = [
         EstadoServicio::RECIBIDA      => 'Recibimos tu equipo',
+        EstadoServicio::EN_EMPRESA    => 'Enviamos tu producto a la empresa de la garantía',
         EstadoServicio::PRESUPUESTADA => 'Tenés un presupuesto para revisar',
         EstadoServicio::LISTA         => 'Tu equipo está listo',
         EstadoServicio::ENTREGADA     => 'Entregamos tu equipo',
@@ -73,7 +74,10 @@ class NotificadorServicio
     private function mensaje(string $estado, SolicitudServicio $s, ?string $detalle): string
     {
         return match ($estado) {
-            EstadoServicio::RECIBIDA      => 'Tu equipo ya está en nuestro taller. Un técnico lo va a diagnosticar y te avisamos con el presupuesto.',
+            EstadoServicio::RECIBIDA      => $s->esGarantiaDeCompra()
+                ? 'Tu producto ya está en nuestro local. Un técnico va a gestionar la garantía con la empresa responsable y te avisamos de cada novedad.'
+                : 'Tu equipo ya está en nuestro taller. Un técnico lo va a diagnosticar y te avisamos con el presupuesto.',
+            EstadoServicio::EN_EMPRESA    => 'Enviamos tu producto a la empresa responsable de la garantía. Te avisamos apenas regrese al local.',
             EstadoServicio::PRESUPUESTADA => 'El técnico terminó el diagnóstico. Ingresá a tu perfil para aprobar o rechazar el presupuesto antes de que venza.',
             EstadoServicio::LISTA         => 'Tu equipo está listo para retirar. ' . ($detalle ? "Detalle: {$detalle}." : ''),
             EstadoServicio::ENTREGADA     => 'Registramos la entrega de tu equipo. Podés descargar la constancia de retiro desde tu perfil.',

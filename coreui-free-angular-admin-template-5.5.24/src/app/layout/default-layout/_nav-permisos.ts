@@ -64,6 +64,15 @@ export const PERMISO_POR_RUTA: Record<string, string> = {
   '/servicios/fallas': 'fallas.ver',
   '/servicios/trabajos': 'trabajos.ver',
   '/servicios/presupuestos': 'servicios.presupuestos.ver',
+
+  // Métricas y Reportes (sincronizado con OpcionesAdmin backend)
+  '/reportes/ventas': 'reportes.ventas.ver',
+  '/reportes/inventario': 'reportes.inventario.ver',
+  '/reportes/compras': 'reportes.compras.ver',
+  '/reportes/servicio': 'reportes.servicio.ver',
+  '/reportes/clientes': 'reportes.clientes.ver',
+  '/reportes/promociones': 'reportes.promociones.ver',
+  '/reportes/chatbot': 'reportes.chatbot.ver',
 };
 
 // Claves más largas primero: '/categories/new' gana sobre '/categories'.

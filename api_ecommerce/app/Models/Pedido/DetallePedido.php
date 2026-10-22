@@ -15,7 +15,7 @@ class DetallePedido extends Model
     protected $fillable = [
         'dpd_pedid', 'dpd_prdid', 'dpd_descri', 'dpd_cantid', 'dpd_precio',
         'dpd_subtot', 'dpd_total', 'dpd_iva', 'dpd_modpag',
-        'dpd_numcuo', 'dpd_recargopct', 'dpd_montocuo',
+        'dpd_numcuo', 'dpd_recargopct', 'dpd_montocuo', 'dpd_gardia',
     ];
 
     protected $casts = [
@@ -26,6 +26,7 @@ class DetallePedido extends Model
         'dpd_iva'        => 'decimal:2',
         'dpd_recargopct' => 'decimal:2',
         'dpd_montocuo'   => 'decimal:2',
+        'dpd_gardia'     => 'integer',
     ];
 
     public function pedido(): BelongsTo

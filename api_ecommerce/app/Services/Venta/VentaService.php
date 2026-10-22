@@ -12,6 +12,8 @@ use App\Models\Venta\VentaDetalle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use App\Models\Compras\Stock;
+use App\Models\Configuracion\Deposito;
 
 /**
  * Emision del comprobante fiscal a partir de un pedido.
@@ -85,7 +87,7 @@ class VentaService
             );
         }
 
-        $lineas   = $this->construirLineas($pedido);
+        $lineas   = $this->construirLineas($pedido, $sucursal);
         $totales  = $this->calcularTotales($lineas);
 
         $this->verificarCoherencia($pedido, $totales['total']);
@@ -181,10 +183,17 @@ class VentaService
      *
      * @return array<int, array<string, mixed>>
      */
-    private function construirLineas(Pedido $pedido): array
+    private function construirLineas(Pedido $pedido, Sucursal $sucursal): array
     {
         $lineas = [];
         $item   = 0;
+
+         // Mismo deposito del que StockPedidoService descuenta la mercaderia:
+        // el principal de la sucursal emisora. Las salidas no alteran el CPP,
+        // asi que este costo coincide con el mst_cosuni del kardex.
+        $depositoId = Deposito::where('dpo_sucid', $sucursal->suc_id)
+            ->where('dpo_princi', 1)
+            ->value('dpo_id');
 
         foreach ($pedido->detalles as $detalle) {
             $producto = $detalle->producto;
@@ -206,6 +215,7 @@ class VentaService
                 'vnd_tasa'        => $tasa,
                 'vnd_valorventa'  => $valorVenta,
                 'vnd_iva'         => $this->ivaPorDentro($valorVenta, $tasa),
+                'vnd_cosuni'      => $this->costoUnitario($detalle->dpd_prdid, $depositoId),
             ];
         }
 
@@ -224,6 +234,7 @@ class VentaService
                 'vnd_tasa'        => 10,
                 'vnd_valorventa'  => $envio,
                 'vnd_iva'         => $this->ivaPorDentro($envio, 10),
+               'vnd_cosuni'      => null,
             ];
         }
 
@@ -373,6 +384,23 @@ class VentaService
         }
 
         return $sucursal;
+    }
+
+    /**
+     * CPP sin IVA del producto en el deposito de despacho, congelado en la
+     * factura para que el margen historico no cambie con compras futuras.
+     */
+    private function costoUnitario(?int $productoId, ?int $depositoId): ?float
+    {
+        if (!$productoId || !$depositoId) {
+            return null;
+        }
+
+        $costo = Stock::where('sto_prdid', $productoId)
+            ->where('sto_depid', $depositoId)
+            ->value('sto_cosprm');
+
+        return $costo !== null ? round((float) $costo, 4) : 0.0;
     }
 
     /**

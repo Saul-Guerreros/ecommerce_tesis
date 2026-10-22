@@ -21,7 +21,7 @@ class ChatMensaje extends Model
 
     protected $fillable = [
         'cnv_id', 'cms_rol', 'cms_contenido', 'cms_herramienta', 'cms_datos',
-        'cms_modelo', 'cms_tokens_ent', 'cms_tokens_sal', 'cms_latencia_ms',
+        'cms_modelo', 'cms_tokens_ent', 'cms_tokens_sal', 'cms_latencia_ms', 'cms_sinres',
     ];
 
     protected $casts = [
@@ -32,6 +32,7 @@ class ChatMensaje extends Model
         'cms_tokens_sal'  => 'integer',
         'cms_latencia_ms' => 'integer',
         'cms_creado'      => 'datetime',
+       'cms_sinres'      => 'boolean',
     ];
 
     public function conversacion(): BelongsTo

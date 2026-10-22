@@ -1,0 +1,188 @@
+<!-- Garantía de compra: la cubre la empresa responsable. El taller gestiona el reclamo; no diagnostica ni presupuesta. -->
+<ng-container *ngIf="orden.es_garantia_compra">
+
+  <!-- 1) Iniciar la gestión -->
+  <c-card class="mb-3" *ngIf="orden.acciones.iniciar_garantia">
+    <c-card-body class="text-center py-4">
+      <p class="mb-1">
+        Garantía de compra de <strong>{{ ge?.producto }}</strong>: la cubre la <strong>empresa responsable</strong> del producto.
+      </p>
+      <p class="mb-3 text-muted small">
+        No se diagnostica ni se presupuesta. El taller gestiona el reclamo con la empresa, coordina el envío y el
+        regreso del producto, y avisa al cliente cuando esté listo.
+      </p>
+      <button cButton color="primary" (click)="iniciar()" [disabled]="procesando !== null">
+        <c-spinner size="sm" *ngIf="procesando === 'iniciar'" class="me-2"></c-spinner>
+        Iniciar gestión de garantía
+      </button>
+    </c-card-body>
+  </c-card>
+
+  <!-- 2) Gestión en curso (en gestión o ya enviada a la empresa) -->
+  <c-card class="mb-3" *ngIf="orden.acciones.garantia_editar">
+    <c-card-header class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <strong>Gestión con la empresa responsable</strong>
+      <c-badge [color]="estado === 'EN_EMPRESA' ? 'info' : 'warning'">{{ orden.estado.descri }}</c-badge>
+    </c-card-header>
+    <c-card-body>
+      <div class="small text-muted mb-3">
+        Producto: <strong>{{ ge?.producto }}</strong><span *ngIf="ge?.pedido"> · Pedido {{ ge?.pedido }}</span>
+      </div>
+
+      <form [formGroup]="datos" (ngSubmit)="guardar()">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label cLabel for="gpr_proid">Empresa <span class="text-danger">*</span></label>
+            <select cSelect id="gpr_proid" formControlName="gpr_proid">
+              <option [ngValue]="null">Seleccione la empresa</option>
+              <option *ngFor="let e of config?.proveedores" [ngValue]="e.pro_id">{{ e.razon }}</option>
+            </select>
+            <div class="text-danger small" *ngIf="error(datos, 'gpr_proid') as e">{{ e }}</div>
+            <div class="small text-warning mt-1" *ngIf="!ge?.empresa_producto_id && estado === 'GESTION_GARANTIA'">
+              Este producto no tiene una empresa vinculada: elíjala para este reclamo
+              (puede vincularla en Productos para los próximos).
+            </div>
+          </div>
+
+          <div class="col-md-6" *ngIf="empresaSel as emp">
+            <div class="border rounded p-2 small h-100">
+              <div class="text-muted text-uppercase">Contacto de la empresa</div>
+              <div *ngIf="emp.telef">Tel.: {{ emp.telef }}</div>
+              <div *ngIf="emp.email">Correo: {{ emp.email }}</div>
+              <div class="mt-1" *ngFor="let c of emp.contactos">
+                <strong>{{ c.nombre }}</strong><span *ngIf="c.cargo"> · {{ c.cargo }}</span>
+                <span *ngIf="c.telef"> · {{ c.telef }}</span><span *ngIf="c.email"> · {{ c.email }}</span>
+              </div>
+              <div class="text-muted" *ngIf="!emp.telef && !emp.email && !emp.contactos.length">
+                La empresa no tiene datos de contacto cargados.
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label cLabel for="gpr_nrocaso">N.º de caso / reclamo de la empresa</label>
+            <input cFormControl id="gpr_nrocaso" maxlength="50" formControlName="gpr_nrocaso" placeholder="Opcional" />
+            <div class="text-danger small" *ngIf="error(datos, 'gpr_nrocaso') as e">{{ e }}</div>
+          </div>
+          <div class="col-md-6">
+            <label cLabel for="gpr_contacto">Persona con quien se gestiona</label>
+            <input cFormControl id="gpr_contacto" maxlength="150" formControlName="gpr_contacto" placeholder="Opcional" />
+            <div class="text-danger small" *ngIf="error(datos, 'gpr_contacto') as e">{{ e }}</div>
+          </div>
+          <div class="col-12">
+            <label cLabel for="gpr_obs_datos">Observaciones internas</label>
+            <textarea cFormControl id="gpr_obs_datos" rows="2" maxlength="500" formControlName="gpr_obs"
+                      placeholder="Seguimiento del trámite (no lo ve el cliente)"></textarea>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end mt-3">
+          <button cButton color="secondary" variant="outline" type="submit" [disabled]="procesando !== null">
+            <c-spinner size="sm" *ngIf="procesando === 'guardar'" class="me-2"></c-spinner>
+            Guardar datos
+          </button>
+        </div>
+      </form>
+
+      <!-- Envío a la empresa -->
+      <div class="border-top mt-3 pt-3" *ngIf="orden.acciones.garantia_enviar">
+        <form [formGroup]="envio" (ngSubmit)="enviar()" class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label cLabel for="gpr_fecenv">Fecha de envío a la empresa <span class="text-danger">*</span></label>
+            <input cFormControl type="date" id="gpr_fecenv" formControlName="gpr_fecenv" />
+            <div class="text-danger small" *ngIf="error(envio, 'gpr_fecenv') as e">{{ e }}</div>
+          </div>
+          <div class="col-md-8 d-flex justify-content-md-end">
+            <button cButton color="primary" type="submit" [disabled]="procesando !== null || !datos.getRawValue().gpr_proid">
+              <c-spinner size="sm" *ngIf="procesando === 'enviar'" class="me-2"></c-spinner>
+              Marcar como enviado a la empresa
+            </button>
+          </div>
+          <div class="small text-muted">Se avisa al cliente por correo que su producto fue enviado a la empresa.</div>
+        </form>
+      </div>
+    </c-card-body>
+  </c-card>
+
+  <!-- 3) Regreso del producto: resultado de la gestión -->
+  <c-card class="mb-3 border-success" *ngIf="orden.acciones.garantia_resolver">
+    <c-card-header><strong>{{ estado === 'EN_EMPRESA' ? 'Regreso del producto' : 'Cierre sin enviar' }}</strong></c-card-header>
+    <c-card-body>
+      <ng-container *ngIf="estado === 'EN_EMPRESA' || cerrandoSinEnvio; else abrirCierre">
+        <form [formGroup]="resultado" (ngSubmit)="resolver()">
+          <div class="row g-3">
+            <div class="col-md-6" *ngIf="!cerrandoSinEnvio">
+              <label cLabel for="gpr_result">Resultado <span class="text-danger">*</span></label>
+              <select cSelect id="gpr_result" formControlName="gpr_result">
+                <option [ngValue]="null">Seleccione</option>
+                <option *ngFor="let r of RESULTADOS" [ngValue]="r.valor">{{ r.texto }}</option>
+              </select>
+              <div class="text-danger small" *ngIf="error(resultado, 'gpr_result') as e">{{ e }}</div>
+            </div>
+            <div class="col-md-6" *ngIf="!cerrandoSinEnvio">
+              <label cLabel for="gpr_fecrec">Fecha de recepción en el local</label>
+              <input cFormControl type="date" id="gpr_fecrec" formControlName="gpr_fecrec" />
+              <div class="text-danger small" *ngIf="error(resultado, 'gpr_fecrec') as e">{{ e }}</div>
+            </div>
+            <div class="col-md-6" *ngIf="esReemplazo">
+              <label cLabel for="gpr_nroserr">N.º de serie del producto de reemplazo</label>
+              <input cFormControl id="gpr_nroserr" maxlength="80" formControlName="gpr_nroserr" placeholder="Opcional" />
+            </div>
+            <div class="col-12">
+              <label cLabel for="gpr_obs_res">
+                {{ esRechazo ? 'Motivo (lo verá el cliente)' : 'Detalle (opcional)' }}
+                <span class="text-danger" *ngIf="esRechazo">*</span>
+              </label>
+              <textarea cFormControl id="gpr_obs_res" rows="2" maxlength="500" formControlName="gpr_obs"></textarea>
+              <div class="text-danger small" *ngIf="error(resultado, 'gpr_obs') as e">{{ e }}</div>
+            </div>
+          </div>
+
+          <div class="alert alert-success py-2 small mt-3 mb-0">
+            Al registrar el resultado la solicitud pasa a <strong>Lista</strong> y se avisa al cliente por correo
+            que su producto está listo para retirar.
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button cButton color="secondary" type="button" *ngIf="cerrandoSinEnvio"
+                    (click)="cerrandoSinEnvio = false" [disabled]="procesando !== null">Volver</button>
+            <button cButton color="success" class="text-white" type="submit" [disabled]="procesando !== null">
+              <c-spinner size="sm" *ngIf="procesando === 'resolver'" class="me-2"></c-spinner>
+              Registrar resultado y avisar al cliente
+            </button>
+          </div>
+        </form>
+      </ng-container>
+
+      <ng-template #abrirCierre>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span class="small text-muted">
+            Si la empresa no acepta la garantía sin haber recibido el producto, puede cerrarse la gestión
+            y devolverlo al cliente.
+          </span>
+          <button cButton color="danger" variant="outline" size="sm" (click)="cerrandoSinEnvio = true">
+            La empresa no acepta la garantía
+          </button>
+        </div>
+      </ng-template>
+    </c-card-body>
+  </c-card>
+
+  <!-- 4) Gestión cerrada: resumen -->
+  <c-card class="mb-3" *ngIf="!orden.acciones.garantia_editar && ge?.gestion as g">
+    <c-card-header class="d-flex justify-content-between align-items-center">
+      <strong>Gestión con la empresa responsable</strong>
+      <c-badge [color]="g.gpr_result === 'RECHAZADO' ? 'danger' : 'success'" *ngIf="g.resultado">{{ g.resultado }}</c-badge>
+    </c-card-header>
+    <c-card-body class="small">
+      <div>Producto: <strong>{{ ge?.producto }}</strong><span *ngIf="ge?.pedido"> · Pedido {{ ge?.pedido }}</span></div>
+      <div class="mt-1" *ngIf="g.empresa">Empresa: <strong>{{ g.empresa.razon }}</strong></div>
+      <div class="mt-1" *ngIf="g.gpr_nrocaso">N.º de caso: {{ g.gpr_nrocaso }}</div>
+      <div class="mt-1" *ngIf="g.gpr_contacto">Gestionado con: {{ g.gpr_contacto }}</div>
+      <div class="mt-1" *ngIf="g.gpr_fecenv">Enviado el {{ g.gpr_fecenv | date:'dd/MM/yyyy' }}</div>
+      <div class="mt-1" *ngIf="g.gpr_fecrec">Recibido de la empresa el {{ g.gpr_fecrec | date:'dd/MM/yyyy' }}</div>
+      <div class="mt-1" *ngIf="g.gpr_nroserr">N.º de serie del reemplazo: {{ g.gpr_nroserr }}</div>
+      <div class="mt-1" *ngIf="g.gpr_obs">Observaciones: {{ g.gpr_obs }}</div>
+    </c-card-body>
+  </c-card>
+</ng-container>

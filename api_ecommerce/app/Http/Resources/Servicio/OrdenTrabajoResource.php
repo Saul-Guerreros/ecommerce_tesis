@@ -4,6 +4,7 @@ namespace App\Http\Resources\Servicio;
 
 use App\Models\Servicio\EstadoPresupuesto;
 use App\Models\Servicio\EstadoServicio;
+use App\Models\Servicio\GarantiaProveedor;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,10 @@ class OrdenTrabajoResource extends JsonResource
         $dia    = $orden?->diagnostico;
         $pres   = $orden?->presupuestoActual;
         $epr    = $pres?->estado?->epr_codigo;
+        // Garantía de compra: la gestiona la empresa responsable, no hay diagnóstico ni presupuesto.
+        $esGarantiaCompra = $this->esGarantiaDeCompra();
+        $gestion          = $this->garantiaProveedor;
+        $garantiaEnCurso  = $esGarantiaCompra && in_array($estado, [EstadoServicio::GESTION_GARANTIA, EstadoServicio::EN_EMPRESA], true);
         $esComplementario = $pres && $pres->pse_versio > 1;
         // Complementario sin resolver (borrador, en validación o enviado): bloquea el cierre.
         $complementarioPendiente = $esComplementario && in_array($epr, [
@@ -31,6 +36,8 @@ class OrdenTrabajoResource extends JsonResource
             'sse_id'     => $this->sse_id,
             'sse_numero' => $this->sse_numero,
             'sse_garant' => $this->sse_garant,
+            'es_garantia_compra' => $esGarantiaCompra,
+            'garantia_empresa'   => $esGarantiaCompra ? $this->garantiaEmpresa() : null,
             'estado'     => ['codigo' => $estado, 'descri' => $this->estadoServicio?->ets_descri],
             'cliente'    => $this->cliente?->persona?->nombre_completo,
 
@@ -108,7 +115,12 @@ class OrdenTrabajoResource extends JsonResource
             ],
 
             'acciones' => [
-                'iniciar'          => $estado === EstadoServicio::RECIBIDA && !$orden,
+                'iniciar'          => $estado === EstadoServicio::RECIBIDA && !$orden && !$esGarantiaCompra,
+                // Garantía de compra (gestión con la empresa)
+                'iniciar_garantia'   => $esGarantiaCompra && $estado === EstadoServicio::RECIBIDA && !$gestion,
+                'garantia_editar'    => $garantiaEnCurso,
+                'garantia_enviar'    => $esGarantiaCompra && $estado === EstadoServicio::GESTION_GARANTIA,
+                'garantia_resolver'  => $garantiaEnCurso,
                 // El diagnóstico se congela cuando el presupuesto sale del borrador.
                 'diagnosticar'     => $estado === EstadoServicio::EN_DIAGNOSTICO && $orden && !$orden->estaCerrada()
                                       && (!$pres || $epr === EstadoPresupuesto::BORRADOR),
@@ -128,6 +140,37 @@ class OrdenTrabajoResource extends JsonResource
                 'descartar_complementario' => $estado === EstadoServicio::EN_REPARACION && $esComplementario
                                               && $epr === EstadoPresupuesto::BORRADOR,
             ],
+        ];
+    }
+
+    /** Producto comprado y gestión del reclamo con la empresa responsable (vista interna del técnico). */
+    private function garantiaEmpresa(): array
+    {
+        $g    = $this->garantiaProveedor;
+        $line = $this->detallePedido;
+
+        return [
+            'producto'  => $line?->dpd_descri,
+            'pedido'    => $this->pedido?->ped_numero,
+            // Empresa vinculada al producto comprado (sugerencia para la gestión).
+            'empresa_producto_id' => $line?->producto?->prd_proid,
+            'gestion'   => $g ? [
+                'gpr_proid'    => $g->gpr_proid,
+                'empresa'      => $g->proveedor ? [
+                    'pro_id' => $g->proveedor->pro_id,
+                    'razon'  => $g->proveedor->pro_razon,
+                    'telef'  => $g->proveedor->pro_telef,
+                    'email'  => $g->proveedor->pro_email,
+                ] : null,
+                'gpr_nrocaso'  => $g->gpr_nrocaso,
+                'gpr_contacto' => $g->gpr_contacto,
+                'gpr_fecenv'   => $g->gpr_fecenv?->format('Y-m-d'),
+                'gpr_fecrec'   => $g->gpr_fecrec?->format('Y-m-d'),
+                'gpr_result'   => $g->gpr_result,
+                'resultado'    => $g->gpr_result ? GarantiaProveedor::RESULTADOS[$g->gpr_result] : null,
+                'gpr_nroserr'  => $g->gpr_nroserr,
+                'gpr_obs'      => $g->gpr_obs,
+            ] : null,
         ];
     }
 }

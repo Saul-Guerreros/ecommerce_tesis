@@ -25,7 +25,13 @@ export const routes: Routes = [
     children: [
       {
         path: 'dashboard',
-        loadChildren: () => import('./views/dashboard/routes').then((m) => m.routes)
+        loadChildren: () => import('./modules/dashboard/dashboard.module').then((m) => m.DashboardModule),
+        data: { title: 'Dashboard' },
+      },
+      {
+        path: 'reportes',
+        loadChildren: () => import('./modules/reportes/reportes.module').then((m) => m.ReportesModule),
+        data: { title: 'Reportes' },
       },
 	    {
         path: 'perfil',

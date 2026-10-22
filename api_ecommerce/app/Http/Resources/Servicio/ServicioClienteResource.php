@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Servicio;
 
 use App\Models\Servicio\EstadoPresupuesto;
+use App\Models\Servicio\GarantiaProveedor;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,9 +16,14 @@ class ServicioClienteResource extends JsonResource
     /** Pasos del timeline de C4 (SOLICITADO y CANCELADO quedan fuera). */
     public const PASOS = ['RECIBIDO', 'EN DIAGNÓSTICO', 'EN REPARACIÓN', 'LISTO', 'ENTREGADO'];
 
+    /** Garantía de compra: no hay diagnóstico ni reparación en el taller, el reclamo va a la empresa. */
+    public const PASOS_GARANTIA = ['RECIBIDO', 'EN GESTIÓN', 'EN LA EMPRESA', 'LISTO', 'ENTREGADO'];
+
     public function toArray(Request $request): array
     {
         $visible = $this->estadoServicio?->ets_visible;
+        $pasos   = $this->esGarantiaDeCompra() ? self::PASOS_GARANTIA : self::PASOS;
+        $paso    = array_search($visible, $pasos, true);
 
         return [
             'sse_numero'  => $this->sse_numero,
@@ -26,8 +32,8 @@ class ServicioClienteResource extends JsonResource
             'sse_nroser'  => $this->sse_nroser,
             'sse_garant'  => $this->sse_garant,
             'estado'      => $visible,
-            'paso_actual' => array_search($visible, self::PASOS, true) === false
-                ? null : array_search($visible, self::PASOS, true) + 1,
+            'pasos'       => $pasos,
+            'paso_actual' => $paso === false ? null : $paso + 1,
             'cancelado'   => $this->estadoServicio?->ets_codigo === 'CANCELADA',
             'accion_pendiente' => $this->accionPendiente(),
 
@@ -52,6 +58,11 @@ class ServicioClienteResource extends JsonResource
                 'modelo' => $this->sse_modelo, 'nroser' => $this->sse_nroser,
             ]),
             'reclamo_de'  => $this->whenLoaded('solicitudOriginal', fn () => $this->solicitudOriginal?->sse_numero),
+            'producto'    => $this->whenLoaded('detallePedido', fn () => $this->detallePedido?->dpd_descri),
+            'garantia_empresa' => $this->when(
+                $this->relationLoaded('garantiaProveedor') && $this->esGarantiaDeCompra(),
+                fn () => $this->garantiaEmpresaVisible()
+            ),
             'resultado'   => $this->when($this->relationLoaded('ordenServicio'), fn () => $this->resultadoVisible()),
             'entrega'     => $this->whenLoaded('entrega', fn () => $this->entrega ? [
                 'fecha'    => $this->entrega->ese_fecha?->format('Y-m-d H:i'),
@@ -102,6 +113,29 @@ class ServicioClienteResource extends JsonResource
                 'precio' => (float) $l->psd_precio,
                 'total'  => (float) $l->psd_total,
             ]),
+        ];
+    }
+
+    /**
+     * Lo que el cliente ve de la gestión con la empresa: quién, cuándo y cómo terminó.
+     * El contacto y las observaciones internas no se exponen (salvo el motivo si no la aceptó).
+     */
+    private function garantiaEmpresaVisible(): ?array
+    {
+        $g = $this->garantiaProveedor;
+        if (!$g) {
+            return null;
+        }
+
+        return [
+            'empresa'          => $g->proveedor?->pro_razon,
+            'nrocaso'          => $g->gpr_nrocaso,
+            'fecha_envio'      => $g->gpr_fecenv?->format('Y-m-d'),
+            'fecha_recepcion'  => $g->gpr_fecrec?->format('Y-m-d'),
+            'resultado'        => $g->gpr_result ? GarantiaProveedor::RESULTADOS[$g->gpr_result] : null,
+            'codigo_resultado' => $g->gpr_result,
+            'nuevo_serie'      => $g->gpr_result === GarantiaProveedor::REEMPLAZADO ? $g->gpr_nroserr : null,
+            'motivo'           => $g->gpr_result === GarantiaProveedor::RECHAZADO ? $g->gpr_obs : null,
         ];
     }
 

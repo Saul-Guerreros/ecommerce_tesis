@@ -1,0 +1,223 @@
+<app-pagina-reporte titulo="Reporte de clientes"
+                    descripcion="Comportamiento de compra de la cartera. Una compra = factura vigente (pedido pagado).">
+
+  <div acciones>
+    <app-exportar-reporte reporte="clientes" [vista]="vista()" [filtros]="ultimosFiltros()"
+                          [deshabilitado]="resultado().estado !== 'ok'" />
+  </div>
+
+  <app-filtros-reporte [mostrarFechas]="usaFechas()"
+                       [mostrarAgrupacion]="vista() === 'nuevos'"
+                       [cargando]="cargando()"
+                       [errores]="errores()"
+                       (aplicar)="aplicarFiltros($event)">
+    @if (vista() !== 'nuevos') {
+      <ng-container filtrosExtra>
+        <c-col md="6" lg="2">
+          <label cLabel for="cl-tipo">Tipo de cliente</label>
+          <select cSelect id="cl-tipo" sizing="sm" (change)="cambiarExtra('tipo_cliente_id', $any($event.target).value)"
+                  [class.is-invalid]="!!errores()?.['tipo_cliente_id']">
+            <option value="">Todos</option>
+            @for (t of tiposCliente(); track t.id) {
+              <option [value]="t.id" [selected]="extra().tipo_cliente_id === t.id">{{ t.nombre }}</option>
+            }
+          </select>
+          @if (errores()?.['tipo_cliente_id']?.[0]; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+        </c-col>
+        @if (vista() === 'top') {
+          <c-col md="6" lg="2">
+            <label cLabel for="cl-limite">Mostrar</label>
+            <select cSelect id="cl-limite" sizing="sm" (change)="cambiarExtra('limite', $any($event.target).value)">
+              @for (l of limites; track l) {
+                <option [value]="l" [selected]="extra().limite === l">Top {{ l }}</option>
+              }
+            </select>
+          </c-col>
+        }
+        @if (vista() === 'inactivos') {
+          <c-col md="6" lg="2">
+            <label cLabel for="cl-dias">Sin comprar hace más de (días)</label>
+            <input cFormControl id="cl-dias" type="number" sizing="sm" min="30" max="1095"
+                   [value]="extra().dias" (change)="cambiarExtra('dias', $any($event.target).value)"
+                   [class.is-invalid]="!!errores()?.['dias']" />
+            @if (errores()?.['dias']?.[0]; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+          </c-col>
+        }
+      </ng-container>
+    }
+  </app-filtros-reporte>
+
+  <c-card>
+    <c-card-body>
+      <c-nav variant="underline-border" class="mb-3">
+        @for (v of vistas; track v.clave) {
+          <c-nav-item>
+            <button cNavLink type="button" [active]="vista() === v.clave" (click)="cambiarVista(v.clave)">
+              {{ v.etiqueta }}
+            </button>
+          </c-nav-item>
+        }
+      </c-nav>
+
+      @let r = resultado();
+      @let t = r.totales;
+
+      <app-estado-bloque [estado]="r.estado" [altura]="300" [mensajeVacio]="mensajeVacio()" (reintentar)="cargar()">
+        @switch (vista()) {
+
+          <!-- ===== Top clientes ===== -->
+          @case ('top') {
+            @if (t) {
+              <div class="d-flex flex-wrap gap-3 mb-3 small">
+                <span>{{ t['clientes_activos'] }} clientes compraron en el período por <strong>{{ t['total_periodo'] | gs }}</strong></span>
+                <span>
+                  Los {{ t['clientes'] }} primeros concentran
+                  <strong>{{ t['concentracion'] === null ? '—' : numero(t['concentracion']) + ' %' }}</strong> de las ventas
+                </span>
+              </div>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>#</th><th>Cliente</th><th>Documento</th><th>Tipo</th><th style="width: 15%">Participación</th>
+                  <th class="text-end">Compras</th><th class="text-end">Ticket prom.</th>
+                  <th class="text-end">Total</th><th>Última compra</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id) {
+                    <tr>
+                      <td class="fw-semibold">{{ f.posicion }}</td>
+                      <td>{{ f.cliente }}</td>
+                      <td class="small">{{ f.documento }}</td>
+                      <td class="small">{{ f.tipo }}</td>
+                      <td>
+                        <div class="small text-body-secondary">{{ f.participacion === null ? '—' : numero(f.participacion) + ' %' }}</div>
+                        <c-progress thin color="success" [value]="f.participacion ?? 0" [attr.aria-label]="f.cliente" />
+                      </td>
+                      <td class="text-end">{{ f.compras }}</td>
+                      <td class="text-end text-nowrap">{{ f.ticket | gs }}</td>
+                      <td class="text-end text-nowrap fw-semibold">{{ f.total | gs }}</td>
+                      <td class="small text-nowrap">{{ fecha(f.ultima_compra) | date: 'dd/MM/yyyy' }}</td>
+                    </tr>
+                  }
+                </tbody>
+                @if (t) {
+                  <tfoot class="fw-semibold text-nowrap"><tr>
+                    <td colspan="5">Total top {{ t['clientes'] }}</td>
+                    <td class="text-end">{{ t['compras'] }}</td>
+                    <td></td>
+                    <td class="text-end">{{ t['total'] | gs }}</td>
+                    <td></td>
+                  </tr></tfoot>
+                }
+              </table>
+            </div>
+          }
+
+          <!-- ===== Clientes nuevos ===== -->
+          @case ('nuevos') {
+            @if (t) {
+              <div class="d-flex flex-wrap gap-3 mb-3 small">
+                <span><c-badge color="secondary">{{ t['registrados'] }}</c-badge> registrados</span>
+                <span><c-badge color="primary">{{ t['nuevos'] }}</c-badge> hicieron su primera compra</span>
+                <span><c-badge color="info">{{ t['recurrentes'] }}</c-badge> recompras de clientes existentes (suma por período)</span>
+              </div>
+            }
+            <div class="mb-4" style="height: 280px">
+              <c-chart type="bar" height="280" [data]="graficoNuevos()" [options]="opcionesNuevos" />
+            </div>
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead><tr>
+                  <th>Período</th><th class="text-end">Registrados</th><th class="text-end">Compradores nuevos</th>
+                  <th class="text-end">Recurrentes</th><th class="text-end">Clientes que compraron</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.periodo) {
+                    <tr>
+                      <td>{{ f.etiqueta }}</td>
+                      <td class="text-end">{{ f.registrados }}</td>
+                      <td class="text-end">{{ f.nuevos }}</td>
+                      <td class="text-end">{{ f.recurrentes }}</td>
+                      <td class="text-end fw-semibold">{{ f.activos }}</td>
+                    </tr>
+                  }
+                </tbody>
+                @if (t) {
+                  <tfoot class="fw-semibold"><tr>
+                    <td>Total</td>
+                    <td class="text-end">{{ t['registrados'] }}</td>
+                    <td class="text-end">{{ t['nuevos'] }}</td>
+                    <td class="text-end">{{ t['recurrentes'] }}</td>
+                    <td class="text-end">{{ t['activos'] }}</td>
+                  </tr></tfoot>
+                }
+              </table>
+            </div>
+            <div class="small text-body-secondary mt-2">
+              Registrados = altas de clientes (no depende de la sucursal). Compradores nuevos = primera compra concretada en ese período.
+            </div>
+          }
+
+          <!-- ===== Inactivos ===== -->
+          @case ('inactivos') {
+            @if (t) {
+              <c-row class="g-3 mb-4">
+                <c-col md="4">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Clientes sin comprar hace más de {{ t['dias_umbral'] }} días</div>
+                    <div class="fs-4 fw-semibold">{{ t['clientes'] }}</div>
+                    <div class="small text-body-secondary">
+                      Compraron históricamente {{ t['total'] | gs }} ·
+                      {{ t['con_email'] }} con email · {{ t['con_telefono'] }} con teléfono
+                    </div>
+                  </div>
+                </c-col>
+                <c-col md="8">
+                  <div class="border rounded p-3 h-100">
+                    @for (tr of t['tramos']; track tr.tramo; let i = $index) {
+                      <div class="d-flex justify-content-between small">
+                        <span>{{ tr.tramo }} <span class="text-body-secondary">· {{ tr.clientes }} clientes</span></span>
+                        <span class="fw-semibold">{{ tr.total | gs }}</span>
+                      </div>
+                      <c-progress thin class="mb-2" [color]="colorTramo(i)"
+                                  [value]="t['clientes'] ? (tr.clientes / t['clientes']) * 100 : 0" [attr.aria-label]="tr.tramo" />
+                    }
+                  </div>
+                </c-col>
+              </c-row>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Cliente</th><th>Contacto</th><th>Última compra</th><th class="text-end">Días</th><th>Tramo</th>
+                  <th class="text-end">Compras</th><th class="text-end">Ticket prom.</th><th class="text-end">Total histórico</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id; let i = $index) {
+                    <tr>
+                      <td>
+                        <div>{{ f.cliente }}</div>
+                        <div class="small text-body-secondary">{{ f.documento }} · {{ f.tipo }}</div>
+                      </td>
+                      <td class="small">
+                        <div>{{ f.email ?? '—' }}</div>
+                        <div class="text-body-secondary">{{ f.telefono ?? '' }}</div>
+                      </td>
+                      <td class="small text-nowrap">{{ fecha(f.ultima_compra) | date: 'dd/MM/yyyy' }}</td>
+                      <td class="text-end fw-semibold">{{ f.dias }}</td>
+                      <td><c-badge color="warning">{{ f.tramo }}</c-badge></td>
+                      <td class="text-end">{{ f.compras }}</td>
+                      <td class="text-end text-nowrap">{{ f.ticket | gs }}</td>
+                      <td class="text-end text-nowrap fw-semibold">{{ f.total | gs }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </app-estado-bloque>
+    </c-card-body>
+  </c-card>
+</app-pagina-reporte>

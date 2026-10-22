@@ -175,6 +175,11 @@ class PedidoService
                 'dpd_numcuo'     => $item->car_numcuo,
                 'dpd_recargopct' => $item->car_recargopct,
                 'dpd_montocuo'   => $item->car_montocuo,
+                // Snapshot de la garantía: si el plazo del producto cambia
+                // despues, esta compra conserva el que se le ofrecio.
+                'dpd_gardia'     => $producto
+                    ? $producto->garantiaEfectivaDias()
+                    : (int) config('servicio.garantia_compra_dias'),
             ]);
         }
     }

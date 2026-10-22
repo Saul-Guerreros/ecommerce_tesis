@@ -85,6 +85,7 @@ class ChatbotService
             'cms_tokens_ent' => $acumulador->tokensEntrada ?: null,
             'cms_tokens_sal' => $acumulador->tokensSalida ?: null,
             'cms_latencia_ms' => (int) round((microtime(true) - $inicio) * 1000),
+            'cms_sinres' => $respaldo || $acumulador->sinRespuesta(),
             'cms_datos' => array_filter([
                 'productos' => $acumulador->productosMostrados(),
                 'acciones' => $acumulador->acciones(),

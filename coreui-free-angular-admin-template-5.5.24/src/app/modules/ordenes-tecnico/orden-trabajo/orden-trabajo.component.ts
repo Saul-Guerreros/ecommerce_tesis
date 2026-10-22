@@ -10,16 +10,19 @@ import { FormDiagnosticoComponent } from '../form-diagnostico/form-diagnostico.c
 import { CerrarNoReparableComponent } from '../cerrar-no-reparable/cerrar-no-reparable.component';
 import { FormPresupuestoComponent } from '../form-presupuesto/form-presupuesto.component';
 import { EjecucionOrdenComponent } from '../ejecucion-orden/ejecucion-orden.component';
+import { GestionGarantiaComponent } from '../gestion-garantia/gestion-garantia.component';
 
 /**
  * Página de la orden (contenedor): datos + T2 diagnóstico + T3 presupuesto
  * + T4 ejecución y cierre (con presupuesto complementario).
+ * La garantía de compra no pasa por ahí: se gestiona con la empresa responsable.
  */
 @Component({
   selector: 'app-orden-trabajo',
   standalone: true,
   imports: [CommonModule, RouterModule, BadgeModule, ButtonModule, CardModule, SpinnerModule,
-    FormDiagnosticoComponent, CerrarNoReparableComponent, FormPresupuestoComponent, EjecucionOrdenComponent],
+    FormDiagnosticoComponent, CerrarNoReparableComponent, FormPresupuestoComponent, EjecucionOrdenComponent,
+    GestionGarantiaComponent],
   templateUrl: './orden-trabajo.component.html',
 })
 export class OrdenTrabajoComponent implements OnInit {

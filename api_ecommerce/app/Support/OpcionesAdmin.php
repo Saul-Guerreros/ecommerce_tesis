@@ -120,6 +120,19 @@ class OpcionesAdmin
 				    ['permiso' => 'servicios.presupuestos.ver', 'nombre' => 'Validación de presupuestos', 'urls' => ['/servicios/presupuestos'], 'fijo' => false],
 				],
 			],
+            [
+                'nombre' => 'Métricas y Reportes',
+                'opciones' => [
+                    ['permiso' => 'metricas.dashboard.ver',   'nombre' => 'Métricas del dashboard',      'urls' => [],                         'fijo' => false],
+                    ['permiso' => 'reportes.ventas.ver',      'nombre' => 'Reportes de ventas',          'urls' => ['/reportes/ventas'],       'fijo' => false],
+                    ['permiso' => 'reportes.compras.ver',     'nombre' => 'Reportes de compras',         'urls' => ['/reportes/compras'],      'fijo' => false],
+                    ['permiso' => 'reportes.inventario.ver',  'nombre' => 'Reportes de inventario',      'urls' => ['/reportes/inventario'],   'fijo' => false],
+                    ['permiso' => 'reportes.servicio.ver',    'nombre' => 'Reportes de servicio técnico','urls' => ['/reportes/servicio'],     'fijo' => false],
+                    ['permiso' => 'reportes.clientes.ver',    'nombre' => 'Reportes de clientes',        'urls' => ['/reportes/clientes'],     'fijo' => false],
+                    ['permiso' => 'reportes.promociones.ver', 'nombre' => 'Reportes de promociones',     'urls' => ['/reportes/promociones'],  'fijo' => false],
+                    ['permiso' => 'reportes.chatbot.ver',     'nombre' => 'Reportes del asistente virtual','urls' => ['/reportes/chatbot'],    'fijo' => false],
+                ],
+            ],
         ];
     }
 

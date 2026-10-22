@@ -7,8 +7,9 @@ use Illuminate\Validation\Rule;
 
 /**
  * Wizard C2 (tienda). Llega como multipart/form-data por las fotos.
- * Que el pedido esté en garantía y la dirección sea del cliente lo valida
- * el Service (depende del usuario autenticado y del estado del sistema).
+ * Que la compra (línea de pedido) esté en garantía y la dirección sea del
+ * cliente lo valida el Service (depende del usuario autenticado y del estado
+ * del sistema).
  */
 class SolicitudServicioStoreRequest extends FormRequest
 {
@@ -41,8 +42,10 @@ class SolicitudServicioStoreRequest extends FormRequest
             'sse_acceso' => ['nullable', 'string', 'max:255'],
 
             'sse_garant' => ['required', 'boolean'],
-            // Garantía de compra: exige el pedido. Reclamo de un servicio anterior: exige sse_sseori.
-            'sse_pedid'  => ['nullable', Rule::requiredIf(fn () => $this->boolean('sse_garant') && !$this->filled('sse_sseori')), 'integer'],
+            // Garantía de compra: exige la línea (producto) comprada; el pedido se deduce de ella.
+            // Reclamo de un servicio anterior: exige sse_sseori.
+            'sse_dpdid'  => ['nullable', Rule::requiredIf(fn () => $this->boolean('sse_garant') && !$this->filled('sse_sseori')), 'integer'],
+            'sse_pedid'  => ['nullable', 'integer'],
             'sse_sseori' => ['nullable', 'string', 'max:20'],
 
             'modalidad'  => ['required', Rule::in(['sucursal', 'domicilio'])],
@@ -67,7 +70,7 @@ class SolicitudServicioStoreRequest extends FormRequest
             'sse_proble.required'  => 'Describí el problema del equipo.',
             'sse_proble.min'       => 'Contanos un poco más del problema (mínimo 10 caracteres).',
             'sse_proble.max'       => 'La descripción no puede superar los 500 caracteres.',
-            'sse_pedid.required'   => 'Seleccioná la compra que cubre la garantía.',
+            'sse_dpdid.required'   => 'Seleccioná el producto que cubre la garantía.',
             'modalidad.required'   => 'Elegí cómo nos hacés llegar el equipo.',
             'sse_sucid.required_if' => 'Seleccioná la sucursal donde vas a llevar el equipo.',
             'sse_dirid.required_if' => 'Seleccioná la dirección de retiro.',

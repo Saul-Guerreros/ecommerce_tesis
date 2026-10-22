@@ -94,6 +94,8 @@ import {
   cilUserFemale,
   cilUserFollow,
   cilUserUnfollow,
+   cilStorage,
+  cilChatBubble,
 
   // Lo agregado para el Software E-commerce
              // Campaña de Descuento (ya en tu nav, faltaba acá)
@@ -223,7 +225,8 @@ export const iconSubset = {
   cilUserUnfollow,
   logo,
   signet,
-  
+  cilStorage,
+  cilChatBubble,
   //Lo agregado para el Sistema E-commerce
   cilBriefcase,
   cilBuilding,

@@ -87,7 +87,7 @@ export class SolicitudServicioComponent implements OnInit, OnDestroy {
     this.form = this.fb.group({
       equipo: this.fb.group({
         sse_garant: [false],
-        sse_pedid: [null as number | null],
+        sse_dpdid: [null as number | null],   // línea de compra (producto) que cubre la garantía
         sse_tdiid: [null as number | null, Validators.required],
         sse_marca: ['', [Validators.required, Validators.maxLength(50)]],
         sse_modelo: ['', [Validators.required, Validators.maxLength(80)]],
@@ -109,10 +109,10 @@ export class SolicitudServicioComponent implements OnInit, OnDestroy {
     this.equipo.get('sse_garant')!.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((garantia: boolean) => {
-        const pedido = this.equipo.get('sse_pedid')!;
-        pedido.setValidators(garantia ? [Validators.required] : []);
-        if (!garantia) pedido.setValue(null);
-        pedido.updateValueAndValidity();
+        const linea = this.equipo.get('sse_dpdid')!;
+        linea.setValidators(garantia ? [Validators.required] : []);
+        if (!garantia) linea.setValue(null);
+        linea.updateValueAndValidity();
       });
 
     this.ingreso.get('modalidad')!.valueChanges
@@ -169,10 +169,10 @@ export class SolicitudServicioComponent implements OnInit, OnDestroy {
           sse_modelo: s.equipo_datos.modelo,
           sse_nroser: s.equipo_datos.nroser ?? '',
         });
-        // Sin pedido: el respaldo de la garantía es el servicio original.
-        const pedido = this.equipo.get('sse_pedid')!;
-        pedido.clearValidators();
-        pedido.updateValueAndValidity();
+        // Sin compra: el respaldo de la garantía es el servicio original.
+        const linea = this.equipo.get('sse_dpdid')!;
+        linea.clearValidators();
+        linea.updateValueAndValidity();
         ['sse_tdiid', 'sse_marca', 'sse_modelo', 'sse_nroser'].forEach((c) => this.equipo.get(c)!.disable());
         this.cargando = false;
       },
@@ -260,8 +260,9 @@ export class SolicitudServicioComponent implements OnInit, OnDestroy {
     return this.config?.tipos_dispositivo.find((t) => t.tdi_id === this.equipo.getRawValue().sse_tdiid)?.tdi_descri ?? '';
   }
 
-  get pedidoElegido(): string {
-    return this.config?.pedidos_garantia.find((p) => p.ped_id === this.equipo.value.sse_pedid)?.ped_numero ?? '';
+  get lineaElegida(): string {
+    const l = this.config?.lineas_garantia.find((x) => x.dpd_id === this.equipo.value.sse_dpdid);
+    return l ? `${l.producto} (${l.ped_numero})` : '';
   }
 
   get lugarIngreso(): string {
@@ -285,7 +286,7 @@ export class SolicitudServicioComponent implements OnInit, OnDestroy {
 
     datos.append('sse_garant', e.sse_garant ? '1' : '0');
     if (this.reclamoDe) datos.append('sse_sseori', this.reclamoDe);
-    else if (e.sse_garant && e.sse_pedid) datos.append('sse_pedid', String(e.sse_pedid));
+    else if (e.sse_garant && e.sse_dpdid) datos.append('sse_dpdid', String(e.sse_dpdid));
     datos.append('sse_tdiid', String(e.sse_tdiid));
     datos.append('sse_marca', e.sse_marca);
     datos.append('sse_modelo', e.sse_modelo);

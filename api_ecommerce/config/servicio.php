@@ -5,7 +5,9 @@
  * Se centralizan acá para no dejar "números mágicos" en los Services.
  */
 return [
-    // Vigencia de la garantía de una COMPRA, contada desde la fecha del pedido.
+    // Plazo GENERAL de garantía de una COMPRA, en días, contado desde la ENTREGA del pedido.
+    // Es el valor por defecto: se aplica a los productos que no definen su propio
+    // plazo (producto.prd_gardia NULL). Al vender se copia a detalle_pedido.dpd_gardia.
     'garantia_compra_dias' => (int) env('SERVICIO_GARANTIA_COMPRA_DIAS', 365),
 
     // Fotos por solicitud

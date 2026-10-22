@@ -30,12 +30,17 @@
         </div>
 
         <a class="tarjeta" *ngFor="let o of de(col)" [routerLink]="['/servicios/mis-ordenes', o.sse_id]">
-          <div class="d-flex justify-content-between">
-            <strong>{{ o.ose_numero || o.sse_numero }}</strong>
-            <c-badge color="warning" *ngIf="o.sse_garant">Garantía</c-badge>
+          <strong class="d-block text-nowrap">{{ o.ose_numero || o.sse_numero }}</strong>
+          <div class="small text-muted text-nowrap" *ngIf="o.ose_numero">{{ o.sse_numero }}</div>
+
+          <div class="mt-1" *ngIf="o.sse_garant">
+            <c-badge color="warning" class="text-nowrap" *ngIf="!o.es_garantia_compra">Garantía</c-badge>
+            <c-badge color="warning" class="text-nowrap" *ngIf="o.es_garantia_compra">Garantía · empresa</c-badge>
           </div>
-          <div class="small text-muted" *ngIf="o.ose_numero">{{ o.sse_numero }}</div>
-          <div class="small mt-1">{{ o.equipo }}</div>
+
+          <div class="small mt-1 text-break">{{ o.equipo }}</div>
+          <div class="small text-muted" *ngIf="o.estado === 'EN_EMPRESA'">En la empresa</div>
+          <div class="small text-muted" *ngIf="o.estado === 'GESTION_GARANTIA'">En gestión con la empresa</div>
           <div class="small text-muted mt-1">Recibido: {{ o.recibido | date:'dd/MM HH:mm' }}</div>
           <div class="small text-muted" *ngIf="esAdmin && o.tecnico">Técnico: {{ o.tecnico }}</div>
         </a>

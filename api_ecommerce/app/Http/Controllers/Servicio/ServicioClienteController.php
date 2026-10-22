@@ -35,12 +35,16 @@ class ServicioClienteController extends Controller
             'tipos_dispositivo' => $datos['tipos_dispositivo'],
             'sucursales'        => SucursalRetiroResource::collection($datos['sucursales']),
             'direcciones'       => DireccionClienteResource::collection($datos['direcciones']),
-            'pedidos_garantia'  => $datos['pedidos_garantia']->map(fn ($p) => [
-                'ped_id'     => $p->ped_id,
-                'ped_numero' => $p->ped_numero,
-                'fecha'      => $p->ped_creado?->format('Y-m-d'),
-                'productos'  => $p->detalles->pluck('dpd_descri')->all(),
-            ]),
+            'lineas_garantia'   => $datos['lineas_garantia']->map(fn ($l) => [
+                'dpd_id'         => $l['dpd_id'],
+                'ped_id'         => $l['ped_id'],
+                'ped_numero'     => $l['ped_numero'],
+                'producto'       => $l['producto'],
+                'fecha_entrega'  => $l['fecha_entrega'],
+                'vence'          => $l['vence']->format('Y-m-d'),
+                'dias_restantes' => $l['dias_restantes'],
+                'dias_garantia'  => $l['dias_garantia'],
+            ])->values(),
             'garantia_dias' => $datos['garantia_dias'],
             'max_fotos'     => $datos['max_fotos'],
         ], 200);

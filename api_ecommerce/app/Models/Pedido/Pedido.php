@@ -20,7 +20,7 @@ class Pedido extends Model
     protected $fillable = [
         'ped_numero', 'ped_cliid', 'ped_subtot', 'ped_impues', 'ped_cosenv', 'ped_total',
         'ped_tenid', 'ped_sucid', 'ped_mpaid', 'ped_pagdiv', 'ped_estid', 'ped_epaid',
-        'ped_vence', 'ped_vencret', 'ped_obsint',
+        'ped_vence', 'ped_vencret', 'ped_entreg', 'ped_obsint',
     ];
 
     protected $casts = [
@@ -31,6 +31,7 @@ class Pedido extends Model
         'ped_pagdiv' => 'boolean',
         'ped_vence'  => 'datetime',
         'ped_vencret' => 'datetime',
+        'ped_entreg' => 'datetime',
         'ped_creado' => 'datetime',
         'ped_actual' => 'datetime',
     ];

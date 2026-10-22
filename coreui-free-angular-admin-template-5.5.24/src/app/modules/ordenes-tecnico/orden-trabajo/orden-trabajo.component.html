@@ -5,12 +5,13 @@
     <div>
       <a routerLink="/servicios/mis-ordenes" class="small">&larr; Volver al tablero</a>
       <h4 class="mb-0 mt-1">
-        {{ o.orden?.ose_numero || 'Sin orden de trabajo' }}
+        {{ o.orden?.ose_numero || (o.es_garantia_compra ? 'Garantía de compra' : 'Sin orden de trabajo') }}
         <small class="text-muted fs-6">· {{ o.sse_numero }}</small>
       </h4>
     </div>
     <div class="d-flex gap-2">
-      <c-badge color="warning" *ngIf="o.sse_garant">Garantía</c-badge>
+      <c-badge color="warning" *ngIf="o.sse_garant && !o.es_garantia_compra">Garantía</c-badge>
+      <c-badge color="warning" *ngIf="o.es_garantia_compra">Garantía · empresa</c-badge>
       <c-badge color="primary">{{ o.estado.descri }}</c-badge>
     </div>
   </div>
@@ -59,6 +60,10 @@
 
     <!-- ===== Columna derecha: trabajo del técnico ===== -->
     <div class="col-lg-8">
+      <!-- Garantía de compra: gestión con la empresa responsable (sin diagnóstico ni presupuesto) -->
+      <app-gestion-garantia *ngIf="o.es_garantia_compra" [orden]="o" [config]="config"
+        (actualizada)="onActualizada($event)"></app-gestion-garantia>
+
       <!-- Iniciar OT -->
       <c-card class="mb-3" *ngIf="o.acciones.iniciar">
         <c-card-body class="text-center py-4">

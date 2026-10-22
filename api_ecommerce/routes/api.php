@@ -83,7 +83,16 @@ use App\Http\Controllers\Admin\Servicio\SolicitudServicioController;
 use App\Http\Controllers\Admin\Servicio\OrdenTecnicoController;
 use App\Http\Controllers\Admin\Servicio\PresupuestoValidacionController;
 use App\Http\Controllers\Admin\Servicio\PanelServicioController;
-
+use App\Http\Controllers\Admin\Reporte\ReporteConfigController;
+use App\Http\Controllers\Admin\Reporte\DashboardController;
+use App\Http\Controllers\Admin\Reporte\ReporteVentasController;
+use App\Http\Controllers\Admin\Reporte\ReporteInventarioController;
+use App\Http\Controllers\Admin\Reporte\ReporteExportacionController;
+use App\Http\Controllers\Admin\Reporte\ReporteComprasController;
+use App\Http\Controllers\Admin\Reporte\ReporteServicioController;
+use App\Http\Controllers\Admin\Reporte\ReporteClientesController;
+use App\Http\Controllers\Admin\Reporte\ReportePromocionesController;
+use App\Http\Controllers\Admin\Reporte\ReporteChatbotController;
 use App\Http\Controllers\Pedido\PagoPedidoController;
 
 use App\Http\Controllers\Pedido\PedidoClienteController;
@@ -561,6 +570,12 @@ Route::prefix('admin/servicios/tecnico/ordenes')
         Route::post('/{sseId}/iniciar', [OrdenTecnicoController::class, 'iniciar'])->whereNumber('sseId');
         Route::post('/{sseId}/diagnostico', [OrdenTecnicoController::class, 'diagnostico'])->whereNumber('sseId');
         Route::post('/{sseId}/no-reparable', [OrdenTecnicoController::class, 'noReparable'])->whereNumber('sseId');
+
+        // Garantía de compra: el taller gestiona el reclamo con la empresa responsable
+        Route::post('/{sseId}/garantia/iniciar', [OrdenTecnicoController::class, 'iniciarGarantia'])->whereNumber('sseId');
+        Route::put('/{sseId}/garantia', [OrdenTecnicoController::class, 'guardarGarantia'])->whereNumber('sseId');
+        Route::post('/{sseId}/garantia/enviar', [OrdenTecnicoController::class, 'enviarGarantia'])->whereNumber('sseId');
+        Route::post('/{sseId}/garantia/resolver', [OrdenTecnicoController::class, 'resolverGarantia'])->whereNumber('sseId');
 		
 		Route::get('/{sseId}/productos', [OrdenTecnicoController::class, 'productos'])->whereNumber('sseId');
         Route::put('/{sseId}/presupuesto', [OrdenTecnicoController::class, 'guardarPresupuesto'])->whereNumber('sseId');
@@ -698,6 +713,124 @@ Route::prefix('admin/facturas-venta')->middleware('auth:api')->group(function ()
 
     Route::patch('/{id}/anular', [VentaController::class, 'anular'])
         ->middleware('permiso:facturas-venta.ver');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Módulo de Métricas y Reportes
+|--------------------------------------------------------------------------
+| Grupo propio (no dentro del admin con 'permiso:dashboard.ver') porque cada
+| bloque exige su permiso específico. 'config' alimenta los combos de
+| filtros y basta con tener acceso a cualquier reporte.
+*/
+Route::prefix('admin')->middleware('auth:api')->group(function () {
+
+    Route::get('reportes/config', [ReporteConfigController::class, 'config'])
+        ->middleware('permiso:metricas.dashboard.ver,reportes.ventas.ver,reportes.compras.ver,'
+            . 'reportes.inventario.ver,reportes.servicio.ver,reportes.clientes.ver,'
+            . 'reportes.promociones.ver,reportes.chatbot.ver');
+
+    // --- Paso 3: métricas del dashboard ---
+    Route::prefix('metricas/dashboard')
+        ->middleware('permiso:metricas.dashboard.ver')
+        ->controller(DashboardController::class)
+        ->group(function () {
+            Route::get('resumen', 'resumen');
+            Route::get('ventas-compras', 'ventasCompras');
+            Route::get('distribucion', 'distribucion');
+            Route::get('tablas', 'tablas');
+        });
+        
+    // --- Reportes ---
+    Route::prefix('reportes/ventas')
+        ->middleware('permiso:reportes.ventas.ver')
+        ->controller(ReporteVentasController::class)
+        ->group(function () {
+            Route::get('periodo', 'periodo');
+            Route::get('productos', 'productos');
+            Route::get('agrupado', 'agrupado');
+            Route::get('metodos-pago', 'metodosPago');
+            Route::get('ubicacion', 'ubicacion');
+			
+			Route::get('{vista}/exportar', [ReporteExportacionController::class, 'ventas'])
+                ->whereIn('vista', ['periodo', 'productos', 'agrupado', 'metodos-pago', 'ubicacion']);
+        });
+
+    Route::prefix('reportes/inventario')
+        ->middleware('permiso:reportes.inventario.ver')
+        ->controller(ReporteInventarioController::class)
+        ->group(function () {
+            Route::get('valorizado', 'valorizado');
+            Route::get('critico', 'critico');
+            Route::get('sin-movimiento', 'sinMovimiento');
+            Route::get('margen', 'margen');
+			
+			Route::get('{vista}/exportar', [ReporteExportacionController::class, 'inventario'])
+                ->whereIn('vista', ['valorizado', 'critico', 'sin-movimiento', 'margen']);
+        });
+
+    // --- Reporte de compras ---
+    Route::prefix('reportes/compras')
+        ->middleware('permiso:reportes.compras.ver')
+        ->group(function () {
+            Route::get('proveedores', [ReporteComprasController::class, 'proveedores']);
+            Route::get('cxp-vencidas', [ReporteComprasController::class, 'vencidas']);
+            Route::get('cxp-por-vencer', [ReporteComprasController::class, 'porVencer']);
+
+            Route::get('{vista}/exportar', [ReporteExportacionController::class, 'compras'])
+                ->where('vista', 'proveedores|cxp-vencidas|cxp-por-vencer');
+        });
+    
+    // --- Reporte de servicio técnico ---
+    Route::prefix('reportes/servicio')
+        ->middleware('permiso:reportes.servicio.ver')
+        ->group(function () {
+            Route::get('estados', [ReporteServicioController::class, 'estados']);
+            Route::get('tecnicos', [ReporteServicioController::class, 'tecnicos']);
+            Route::get('tiempos', [ReporteServicioController::class, 'tiempos']);
+            Route::get('fallas', [ReporteServicioController::class, 'fallas']);
+            Route::get('presupuestos', [ReporteServicioController::class, 'presupuestos']);
+
+            Route::get('{vista}/exportar', [ReporteExportacionController::class, 'servicio'])
+                ->where('vista', 'estados|tecnicos|tiempos|fallas|presupuestos');
+        });
+
+   // --- Reporte de clientes ---
+    Route::prefix('reportes/clientes')
+        ->middleware('permiso:reportes.clientes.ver')
+        ->group(function () {
+            Route::get('top', [ReporteClientesController::class, 'top']);
+            Route::get('nuevos', [ReporteClientesController::class, 'nuevos']);
+            Route::get('inactivos', [ReporteClientesController::class, 'inactivos']);
+
+            Route::get('{vista}/exportar', [ReporteExportacionController::class, 'clientes'])
+                ->where('vista', 'top|nuevos|inactivos');
+        });
+
+    // --- Reporte de promociones ---
+    Route::prefix('reportes/promociones')
+        ->middleware('permiso:reportes.promociones.ver')
+        ->group(function () {
+            Route::get('cupones', [ReportePromocionesController::class, 'cupones']);
+            Route::get('campanas', [ReportePromocionesController::class, 'campanas']);
+
+            Route::get('{vista}/exportar', [ReporteExportacionController::class, 'promociones'])
+                ->where('vista', 'cupones|campanas');
+        });
+
+     // --- Reporte del asistente virtual ---
+    Route::prefix('reportes/chatbot')
+        ->middleware('permiso:reportes.chatbot.ver')
+        ->group(function () {
+            Route::get('periodo', [ReporteChatbotController::class, 'periodo']);
+            Route::get('temas', [ReporteChatbotController::class, 'temas']);
+            Route::get('preguntas', [ReporteChatbotController::class, 'preguntas']);
+            Route::get('sin-respuesta', [ReporteChatbotController::class, 'sinRespuesta']);
+
+            Route::get('{vista}/exportar', [ReporteExportacionController::class, 'chatbot'])
+                ->where('vista', 'periodo|temas|preguntas|sin-respuesta');
+        });
+
 });
 
 

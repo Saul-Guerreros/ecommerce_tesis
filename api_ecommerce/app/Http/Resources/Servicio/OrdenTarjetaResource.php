@@ -18,6 +18,7 @@ class OrdenTarjetaResource extends JsonResource
             'ose_numero'  => $this->ordenServicio?->ose_numero,
             'equipo'      => trim(($this->tipoDispositivo?->tdi_descri ?? '') . ' ' . $this->sse_marca . ' ' . $this->sse_modelo),
             'sse_garant'  => $this->sse_garant,
+            'es_garantia_compra' => $this->esGarantiaDeCompra(),
             'estado'      => $this->estadoServicio?->ets_codigo,
             'recibido'    => $this->recepcion?->rse_fecha?->format('Y-m-d H:i'),
             'tecnico'     => $tec ? trim($tec->per_nombr1 . ' ' . $tec->per_apell1) : null,

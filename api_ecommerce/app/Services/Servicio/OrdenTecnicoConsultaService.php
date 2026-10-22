@@ -16,7 +16,8 @@ class OrdenTecnicoConsultaService
     /** Estados que se muestran en el tablero (lo entregado/cancelado ya no es trabajo). */
     public const ESTADOS_TABLERO = [
         EstadoServicio::RECIBIDA, EstadoServicio::EN_DIAGNOSTICO, EstadoServicio::PRESUPUESTADA,
-        EstadoServicio::APROBADA, EstadoServicio::EN_REPARACION, EstadoServicio::LISTA,
+        EstadoServicio::APROBADA, EstadoServicio::EN_REPARACION,
+        EstadoServicio::GESTION_GARANTIA, EstadoServicio::EN_EMPRESA, EstadoServicio::LISTA,
     ];
 
     public static function esAdmin(Usuario $u): bool

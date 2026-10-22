@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\Compras\Proveedor;
 use App\Models\Compras\TipoIva;
 use App\Models\Compras\UnidadMedida;
 
@@ -39,6 +40,8 @@ class Producto extends Model
         'prd_stkmin',
         'prd_afestk',
         'prd_repues',
+        'prd_gardia',
+        'prd_proid',
         'prd_estado',
     ];
 
@@ -57,9 +60,30 @@ class Producto extends Model
         'prd_stkmin'      => 'decimal:4',
         'prd_afestk'      => 'integer',
         'prd_repues'      => 'integer',
+        'prd_gardia'      => 'integer',
+        'prd_proid'       => 'integer',
         'prd_estado'      => 'integer',
         'prd_creado'      => 'datetime',
     ];
+
+    /**
+     * Días de garantía que se le ofrecen al cliente al VENDER este producto.
+     * prd_gardia NULL = sin plazo propio, usa el general; 0 = sin garantía.
+     * El valor se copia a detalle_pedido.dpd_gardia al crear el pedido.
+     */
+    public function garantiaEfectivaDias(): int
+    {
+        return $this->prd_gardia ?? (int) config('servicio.garantia_compra_dias');
+    }
+
+    /**
+     * Empresa (proveedor) que respalda la garantía del producto: a ella se le gestiona el
+     * reclamo cuando el cliente solicita garantía de compra. NULL = se elige al gestionar.
+     */
+    public function proveedor(): BelongsTo
+    {
+        return $this->belongsTo(Proveedor::class, 'prd_proid', 'pro_id');
+    }
 
     public function marca(): BelongsTo
     {

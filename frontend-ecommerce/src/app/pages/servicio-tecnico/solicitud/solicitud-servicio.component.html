@@ -48,31 +48,38 @@
                   <button type="button" class="st-opcion" [class.st-opcion--activa]="esGarantia" (click)="elegirTipoServicio(true)">
                     <span uk-icon="icon: bookmark"></span>
                     <strong>Garantía</strong>
-                    <small>Equipo comprado en Z Informática (hasta {{ config.garantia_dias }} días)</small>
+                    <small>Producto comprado en Z Informática, dentro de su plazo de garantía</small>
                   </button>
                 </div>
               </div>
 
               @if (esGarantia) {
                 <div class="uk-margin-top">
-                  <label class="uk-form-label">¿En qué compra lo adquiriste? <span class="uk-text-danger">*</span></label>
-                  @if (config.pedidos_garantia.length === 0) {
+                  <label class="uk-form-label">¿Qué producto querés llevar a garantía? <span class="uk-text-danger">*</span></label>
+                  @if (config.lineas_garantia.length === 0) {
                     <div class="uk-alert-warning uk-margin-small" uk-alert>
-                      <p class="uk-margin-remove">No tenés compras entregadas dentro del plazo de garantía. Podés solicitarlo como reparación.</p>
+                      <p class="uk-margin-remove">No tenés productos entregados dentro del plazo de garantía. Podés solicitarlo como reparación.</p>
                     </div>
                   }
-                  @for (p of config.pedidos_garantia; track p.ped_id) {
-                    <label class="st-radio" [class.st-radio--activa]="equipo.value.sse_pedid === p.ped_id">
-                      <input type="radio" class="uk-radio" formControlName="sse_pedid" [value]="p.ped_id">
+                  @for (l of config.lineas_garantia; track l.dpd_id) {
+                    <label class="st-radio" [class.st-radio--activa]="equipo.value.sse_dpdid === l.dpd_id">
+                      <input type="radio" class="uk-radio" formControlName="sse_dpdid" [value]="l.dpd_id">
                       <div>
-                        <strong>{{ p.ped_numero }}</strong>
-                        <span class="uk-text-meta"> · {{ p.fecha | date:'dd/MM/yyyy' }}</span>
-                        <div class="uk-text-meta uk-text-truncate">{{ p.productos.join(', ') }}</div>
+                        <strong class="uk-text-truncate">{{ l.producto }}</strong>
+                        <div class="uk-text-meta">
+                          {{ l.ped_numero }} · entregado el {{ l.fecha_entrega | date:'dd/MM/yyyy' }}
+                        </div>
+                        <div class="uk-text-meta">
+                          Garantía hasta el {{ l.vence | date:'dd/MM/yyyy' }}
+                          @if (l.dias_restantes === 0) { (vence hoy) }
+                          @else if (l.dias_restantes === 1) { (queda 1 día) }
+                          @else { (quedan {{ l.dias_restantes }} días) }
+                        </div>
                       </div>
                     </label>
                   }
-                  @if (invalido(equipo, 'sse_pedid')) {
-                    <div class="uk-text-danger uk-text-small">{{ errorBackend(equipo, 'sse_pedid') ?? 'Seleccioná la compra.' }}</div>
+                  @if (invalido(equipo, 'sse_dpdid')) {
+                    <div class="uk-text-danger uk-text-small">{{ errorBackend(equipo, 'sse_dpdid') ?? 'Seleccioná el producto.' }}</div>
                   }
                 </div>
               }
@@ -256,7 +263,7 @@
             <h4 class="uk-card-title">Revisá tu solicitud</h4>
             <dl class="uk-description-list uk-description-list-divider">
               <dt>Servicio</dt>
-              <dd>{{ reclamoDe ? 'Reclamo de garantía del servicio ' + reclamoDe : (esGarantia ? 'Garantía · Compra ' + pedidoElegido : 'Reparación') }}</dd>
+              <dd>{{ reclamoDe ? 'Reclamo de garantía del servicio ' + reclamoDe : (esGarantia ? 'Garantía · ' + lineaElegida : 'Reparación') }}</dd>
               <dt>Equipo</dt>
               <dd>{{ tipoDispositivo }} {{ equipo.getRawValue().sse_marca }} {{ equipo.getRawValue().sse_modelo }}
                 @if (equipo.getRawValue().sse_nroser) { · S/N {{ equipo.getRawValue().sse_nroser }} }</dd>

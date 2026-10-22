@@ -1,0 +1,228 @@
+<app-pagina-reporte titulo="Reporte de inventario"
+                    descripcion="Estado actual del stock. Valores a costo promedio ponderado (sin IVA).">
+
+   <div acciones>
+    <app-exportar-reporte reporte="inventario" [vista]="vista()" [filtros]="ultimosFiltros()"
+                          [deshabilitado]="resultado().estado !== 'ok'" />
+  </div>
+
+  <app-filtros-reporte [mostrarFechas]="false"
+                       [mostrarDeposito]="true"
+                       [cargando]="cargando()"
+                       [errores]="errores()"
+                       (aplicar)="aplicarFiltros($event)">
+    <ng-container filtrosExtra>
+      <c-col md="6" lg="2">
+        <label cLabel for="i-categoria">Categoría</label>
+        <select cSelect id="i-categoria" sizing="sm" (change)="cambiarExtra('categoria_id', $any($event.target).value)">
+          <option value="">Todas</option>
+          @for (c of categorias(); track c.id) {
+            <option [value]="c.id" [selected]="extra().categoria_id === c.id">{{ sangria(c.nivel) }}{{ c.nombre }}</option>
+          }
+        </select>
+      </c-col>
+      <c-col md="6" lg="2">
+        <label cLabel for="i-marca">Marca</label>
+        <select cSelect id="i-marca" sizing="sm" (change)="cambiarExtra('marca_id', $any($event.target).value)">
+          <option value="">Todas</option>
+          @for (m of marcas(); track m.id) {
+            <option [value]="m.id" [selected]="extra().marca_id === m.id">{{ m.nombre }}</option>
+          }
+        </select>
+      </c-col>
+      @if (vista() === 'sin-movimiento') {
+        <c-col md="6" lg="1">
+          <label cLabel for="i-dias">Días</label>
+          <input cFormControl id="i-dias" type="number" sizing="sm" min="7" max="730"
+                 [value]="extra().dias" (change)="cambiarExtra('dias', $any($event.target).value)"
+                 [class.is-invalid]="!!errores()?.['dias']" />
+          @if (errores()?.['dias']?.[0]; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+        </c-col>
+      }
+    </ng-container>
+  </app-filtros-reporte>
+
+  <c-card>
+    <c-card-body>
+      <c-nav variant="underline-border" class="mb-3">
+        @for (v of vistas; track v.clave) {
+          <c-nav-item>
+            <button cNavLink type="button" [active]="vista() === v.clave" (click)="cambiarVista(v.clave)">
+              {{ v.etiqueta }}
+            </button>
+          </c-nav-item>
+        }
+      </c-nav>
+
+      @let r = resultado();
+      @let t = r.totales;
+
+      <app-estado-bloque [estado]="r.estado" [altura]="300" [mensajeVacio]="mensajeVacio()" (reintentar)="cargar()">
+        @switch (vista()) {
+
+          <!-- ===== Stock valorizado ===== -->
+          @case ('valorizado') {
+            @if (t) {
+              <c-row class="g-3 mb-4">
+                <c-col md="4">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Valor total del inventario</div>
+                    <div class="fs-4 fw-semibold">{{ t['valor'] | gs }}</div>
+                    <div class="small text-body-secondary">{{ t['productos'] }} registros · {{ numero(t['unidades']) }} unidades</div>
+                  </div>
+                </c-col>
+                <c-col md="8">
+                  <div class="border rounded p-3 h-100">
+                    @for (d of t['por_deposito']; track d.id) {
+                      <div class="d-flex justify-content-between small">
+                        <span>{{ d.deposito }} <span class="text-body-secondary">· {{ d.productos }} prod.</span></span>
+                        <span class="fw-semibold">{{ d.valor | gs }} ({{ numero(d.participacion ?? 0) }} %)</span>
+                      </div>
+                      <c-progress thin color="info" class="mb-2" [value]="d.participacion ?? 0" [attr.aria-label]="d.deposito" />
+                    }
+                  </div>
+                </c-col>
+              </c-row>
+            }
+            <div class="small text-body-secondary mb-2">{{ r.filas.length }} resultados encontrados</div>
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Código</th><th>Producto</th><th>Categoría</th><th>Depósito</th>
+                  <th class="text-end">Cantidad</th><th class="text-end">Costo prom.</th><th class="text-end">Valor</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id + f.deposito) {
+                    <tr>
+                      <td class="small">{{ f.codigo }}</td>
+                      <td>{{ f.producto }}</td>
+                      <td class="small">{{ f.categoria }}</td>
+                      <td class="small">{{ f.deposito }}</td>
+                      <td class="text-end">{{ numero(f.cantidad) }}</td>
+                      <td class="text-end text-nowrap">{{ f.costo | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.valor | gs }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          <!-- ===== Stock crítico ===== -->
+          @case ('critico') {
+            @if (t) {
+              <div class="d-flex flex-wrap gap-3 mb-3 small">
+                <span><c-badge color="danger">{{ t['agotados'] }}</c-badge> agotados</span>
+                <span><c-badge color="warning">{{ t['criticos'] }}</c-badge> bajo el mínimo</span>
+                <span>Costo estimado de reposición: <strong>{{ t['costo_reposicion'] | gs }}</strong></span>
+              </div>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Nivel</th><th>Código</th><th>Producto</th><th>Depósito</th>
+                  <th class="text-end">Existencia</th><th class="text-end">Reservado</th>
+                  <th class="text-end">Disponible</th><th class="text-end">Mínimo</th>
+                  <th class="text-end">A reponer</th><th class="text-end">Costo repos.</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id + f.deposito) {
+                    <tr>
+                      <td><c-badge [color]="f.nivel === 'agotado' ? 'danger' : 'warning'">{{ f.nivel === 'agotado' ? 'Agotado' : 'Crítico' }}</c-badge></td>
+                      <td class="small">{{ f.codigo }}</td>
+                      <td>{{ f.producto }}</td>
+                      <td class="small">{{ f.deposito }}</td>
+                      <td class="text-end">{{ numero(f.existencia) }}</td>
+                      <td class="text-end">{{ numero(f.reservado) }}</td>
+                      <td class="text-end fw-semibold text-danger">{{ numero(f.disponible) }}</td>
+                      <td class="text-end">{{ numero(f.minimo) }}</td>
+                      <td class="text-end">{{ numero(f.reponer) }}</td>
+                      <td class="text-end text-nowrap">{{ f.costo_reposicion | gs }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          <!-- ===== Sin movimiento ===== -->
+          @case ('sin-movimiento') {
+            @if (t) {
+              <div class="d-flex flex-wrap gap-3 mb-3 small">
+                <span>{{ t['productos'] }} productos sin ventas en más de {{ t['dias_umbral'] }} días</span>
+                <span>({{ t['nunca'] }} nunca vendidos)</span>
+                <span>Capital inmovilizado: <strong>{{ t['valor'] | gs }}</strong></span>
+              </div>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Código</th><th>Producto</th><th>Depósito</th>
+                  <th>Última salida</th><th>Última entrada</th><th class="text-end">Días</th>
+                  <th class="text-end">Cantidad</th><th class="text-end">Valor</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id + f.deposito) {
+                    <tr>
+                      <td class="small">{{ f.codigo }}</td>
+                      <td>{{ f.producto }}</td>
+                      <td class="small">{{ f.deposito }}</td>
+                      <td class="small">{{ f.ultima_salida ? (f.ultima_salida + 'T00:00:00' | date: 'dd/MM/yyyy') : 'Nunca' }}</td>
+                      <td class="small">{{ f.ultima_entrada ? (f.ultima_entrada + 'T00:00:00' | date: 'dd/MM/yyyy') : '—' }}</td>
+                      <td class="text-end">{{ f.dias ?? '—' }}</td>
+                      <td class="text-end">{{ numero(f.cantidad) }}</td>
+                      <td class="text-end text-nowrap">{{ f.valor | gs }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          <!-- ===== Margen por producto ===== -->
+          @case ('margen') {
+            @if (t) {
+              <div class="d-flex flex-wrap gap-3 mb-3 small">
+                <span>Margen promedio: <strong>{{ t['margen_promedio'] === null ? '—' : numero(t['margen_promedio']) + ' %' }}</strong></span>
+                <span><c-badge color="danger">{{ t['negativos'] }}</c-badge> con precio bajo el costo</span>
+                <span><c-badge color="warning">{{ t['desactualizados'] }}</c-badge> con precio desactualizado</span>
+                <span class="text-body-secondary">Markup general configurado: {{ numero(t['markup_general']) }} %</span>
+              </div>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Código</th><th>Producto</th>
+                  <th class="text-end">Costo prom.</th><th class="text-end">Precio (IVA)</th>
+                  <th class="text-end">Precio s/IVA</th><th class="text-end">Ganancia u.</th>
+                  <th class="text-end">Margen</th><th class="text-end">Markup real</th>
+                  <th class="text-end">Markup conf.</th><th></th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id) {
+                    <tr>
+                      <td class="small">{{ f.codigo }}</td>
+                      <td>{{ f.producto }}</td>
+                      <td class="text-end text-nowrap">{{ f.costo | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.precio | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.precio_sin_iva | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.ganancia_unitaria | gs }}</td>
+                      <td class="text-end" [class]="claseMargen(f.margen_pct)">
+                        {{ f.margen_pct === null ? '—' : numero(f.margen_pct) + ' %' }}
+                      </td>
+                      <td class="text-end">{{ numero(f.markup_real) }} %</td>
+                      <td class="text-end">{{ numero(f.markup_config) }} %</td>
+                      <td>
+                        @if (f.desactualizado) { <c-badge color="warning">Revisar precio</c-badge> }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </app-estado-bloque>
+    </c-card-body>
+  </c-card>
+</app-pagina-reporte>

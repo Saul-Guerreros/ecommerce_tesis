@@ -67,6 +67,11 @@ export class DetalleServicioComponent implements OnInit {
     });
   }
 
+  /** La garantía de compra tiene su propio recorrido (gestión con la empresa). */
+  get pasosServicio(): string[] {
+    return this.servicio?.pasos ?? this.pasos;
+  }
+
   estadoPaso(i: number): 'hecho' | 'actual' | 'pendiente' {
     const actual = this.servicio?.paso_actual ?? 0;
     if (i + 1 < actual) return 'hecho';

@@ -35,7 +35,8 @@ class PanelServicioService
         $carga = DB::table('recepcion_servicio as r')
             ->join('solicitud_servicio as s', 's.sse_id', '=', 'r.rse_sseid')
             ->join('estado_servicio as e', 'e.ets_id', '=', 's.sse_etsid')
-            ->whereIn('e.ets_codigo', ['RECIBIDA', 'EN_DIAGNOSTICO', 'PRESUPUESTADA', 'APROBADA', 'EN_REPARACION'])
+            ->whereIn('e.ets_codigo', ['RECIBIDA', 'EN_DIAGNOSTICO', 'PRESUPUESTADA', 'APROBADA', 'EN_REPARACION',
+                                       'GESTION_GARANTIA', 'EN_EMPRESA'])
             ->groupBy('r.rse_tecid')
             ->select('r.rse_tecid', DB::raw('COUNT(*) as total'))
             ->pluck('total', 'rse_tecid');
@@ -44,7 +45,8 @@ class PanelServicioService
             'por_estado' => $porEstado,
             'tarjetas'   => [
                 'pendientes_recepcion' => $this->contarEstado('SOLICITADA'),
-                'en_taller'            => $porEstado->whereIn('codigo', ['RECIBIDA', 'EN_DIAGNOSTICO', 'APROBADA', 'EN_REPARACION'])->sum('total'),
+                'en_taller'            => $porEstado->whereIn('codigo', ['RECIBIDA', 'EN_DIAGNOSTICO', 'APROBADA', 'EN_REPARACION', 'GESTION_GARANTIA'])->sum('total'),
+                'en_empresa'           => $this->contarEstado('EN_EMPRESA'),
                 'presupuestos_validar' => PresupuestoServicio::whereHas('estado', fn ($q) => $q->where('epr_codigo', EstadoPresupuesto::EN_REVISION))->count(),
                 'esperando_cliente'    => (clone $enviados)->count(),
                 'por_vencer'           => (clone $enviados)->whereBetween('pse_fecven', [$hoy, $limite])->count(),

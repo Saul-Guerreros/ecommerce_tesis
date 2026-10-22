@@ -18,6 +18,7 @@ class ReasignacionService
     private const ESTADOS_REASIGNABLES = [
         EstadoServicio::RECIBIDA, EstadoServicio::EN_DIAGNOSTICO, EstadoServicio::PRESUPUESTADA,
         EstadoServicio::APROBADA, EstadoServicio::EN_REPARACION,
+        EstadoServicio::GESTION_GARANTIA, EstadoServicio::EN_EMPRESA,
     ];
 
     public function __construct(

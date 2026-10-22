@@ -3,7 +3,8 @@
 FROM serversideup/php:8.3-fpm-nginx
 
 USER root
-RUN install-php-extensions pdo_pgsql intl gd bcmath
+RUN install-php-extensions pdo_pgsql intl gd bcmath zip
+
 
 WORKDIR /var/www/html
 

@@ -1,0 +1,239 @@
+<app-pagina-reporte titulo="Reporte del asistente virtual"
+                    descripcion="Uso y efectividad del chatbot con IA. Sirve para detectar qué consultas no resuelve y mejorar catálogo, FAQ o instrucciones del asistente.">
+
+  <div acciones>
+    <app-exportar-reporte reporte="chatbot" [vista]="vista()" [filtros]="ultimosFiltros()"
+                          [deshabilitado]="resultado().estado !== 'ok'" />
+  </div>
+
+  <app-filtros-reporte [mostrarSucursal]="false"
+                       [mostrarAgrupacion]="vista() === 'periodo'"
+                       [cargando]="cargando()"
+                       [errores]="errores()"
+                       (aplicar)="aplicarFiltros($event)">
+    @if (vista() === 'preguntas') {
+      <c-col md="6" lg="2" filtrosExtra>
+        <label cLabel for="ch-limite">Mostrar</label>
+        <select cSelect id="ch-limite" sizing="sm" (change)="cambiarLimite($any($event.target).value)">
+          @for (l of limites; track l) {
+            <option [value]="l" [selected]="extra().limite === l">Top {{ l }}</option>
+          }
+        </select>
+      </c-col>
+    }
+    @if (vista() === 'sin-respuesta') {
+      <c-col md="6" lg="3" filtrosExtra>
+        <label cLabel for="ch-tipo">Tipo</label>
+        <select cSelect id="ch-tipo" sizing="sm" (change)="cambiarTipo($any($event.target).value)"
+                [class.is-invalid]="!!errores()?.['tipo']">
+          <option value="todos" [selected]="extra().tipo === 'todos'">Sin respuesta y derivadas</option>
+          <option value="sin_respuesta" [selected]="extra().tipo === 'sin_respuesta'">Solo sin respuesta</option>
+          <option value="derivada" [selected]="extra().tipo === 'derivada'">Solo derivadas</option>
+        </select>
+        @if (errores()?.['tipo']?.[0]; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+      </c-col>
+    }
+  </app-filtros-reporte>
+
+  <c-card>
+    <c-card-body>
+      <c-nav variant="underline-border" class="mb-3">
+        @for (v of vistas; track v.clave) {
+          <c-nav-item>
+            <button cNavLink type="button" [active]="vista() === v.clave" (click)="cambiarVista(v.clave)">
+              {{ v.etiqueta }}
+            </button>
+          </c-nav-item>
+        }
+      </c-nav>
+
+      @let r = resultado();
+      @let t = r.totales;
+
+      <app-estado-bloque [estado]="r.estado" [altura]="300" [mensajeVacio]="mensajeVacio()" (reintentar)="cargar()">
+        @switch (vista()) {
+
+          <!-- ===== Conversaciones por período ===== -->
+          @case ('periodo') {
+            @if (t) {
+              <c-row class="g-3 mb-4">
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Conversaciones</div>
+                    <div class="fs-4 fw-semibold">{{ numero(t['conversaciones']) }}</div>
+                    <div class="small text-body-secondary">
+                      {{ t['identificadas'] }} de usuarios identificados ·
+                      {{ t['mensajes_por_conversacion'] ?? '—' }} mensajes por conversación
+                    </div>
+                  </div>
+                </c-col>
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Tasa de derivación a humano</div>
+                    <div class="fs-4 fw-semibold text-warning">{{ pct(t['tasa_derivacion']) }}</div>
+                    <div class="small text-body-secondary">{{ t['derivadas'] }} conversaciones derivadas</div>
+                  </div>
+                </c-col>
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Conversaciones con consultas sin respuesta</div>
+                    <div class="fs-4 fw-semibold text-danger">{{ pct(t['tasa_sin_respuesta']) }}</div>
+                    <div class="small text-body-secondary">{{ t['turnos_sin_respuesta'] }} respuestas fallidas en total</div>
+                  </div>
+                </c-col>
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Consumo del modelo de IA</div>
+                    <div class="fs-5 fw-semibold">{{ numero(t['tokens']) }} tokens</div>
+                    <div class="small text-body-secondary">Tiempo de respuesta promedio: {{ latencia(t['latencia_ms']) }}</div>
+                  </div>
+                </c-col>
+              </c-row>
+            }
+            <div class="mb-4" style="height: 280px">
+              <c-chart type="bar" height="280" [data]="graficoPeriodo()" [options]="opcionesPeriodo" />
+            </div>
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Período</th><th class="text-end">Conversaciones</th><th class="text-end">Mensajes</th>
+                  <th class="text-end">Derivadas</th><th class="text-end">% deriv.</th>
+                  <th class="text-end">Con sin respuesta</th><th class="text-end">% sin resp.</th>
+                  <th class="text-end">Tokens</th><th class="text-end">Latencia</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.periodo) {
+                    <tr>
+                      <td>{{ f.etiqueta }}</td>
+                      <td class="text-end">{{ f.conversaciones }}</td>
+                      <td class="text-end">{{ f.mensajes }}</td>
+                      <td class="text-end">{{ f.derivadas }}</td>
+                      <td class="text-end">{{ pct(f.tasa_derivacion) }}</td>
+                      <td class="text-end">{{ f.con_sin_respuesta }}</td>
+                      <td class="text-end">{{ pct(f.tasa_sin_respuesta) }}</td>
+                      <td class="text-end">{{ numero(f.tokens) }}</td>
+                      <td class="text-end text-nowrap">{{ latencia(f.latencia_ms) }}</td>
+                    </tr>
+                  }
+                </tbody>
+                @if (t) {
+                  <tfoot class="fw-semibold text-nowrap"><tr>
+                    <td>Total</td>
+                    <td class="text-end">{{ t['conversaciones'] }}</td>
+                    <td class="text-end">{{ t['mensajes'] }}</td>
+                    <td class="text-end">{{ t['derivadas'] }}</td>
+                    <td class="text-end">{{ pct(t['tasa_derivacion']) }}</td>
+                    <td class="text-end">{{ t['con_sin_respuesta'] }}</td>
+                    <td class="text-end">{{ pct(t['tasa_sin_respuesta']) }}</td>
+                    <td class="text-end">{{ numero(t['tokens']) }}</td>
+                    <td class="text-end">{{ latencia(t['latencia_ms']) }}</td>
+                  </tr></tfoot>
+                }
+              </table>
+            </div>
+          }
+
+          <!-- ===== Temas ===== -->
+          @case ('temas') {
+            @if (t) {
+              <div class="small text-body-secondary mb-3">
+                {{ t['invocaciones'] }} acciones del asistente sobre {{ t['mensajes_usuario'] }} mensajes de usuarios.
+                Cada tema es una herramienta que el modelo decidió usar según la intención detectada.
+              </div>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Tema</th><th style="width: 30%">Participación</th>
+                  <th class="text-end">Veces</th><th class="text-end">Conversaciones</th><th>Último uso</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.herramienta) {
+                    <tr>
+                      <td>
+                        <div>{{ f.tema }}</div>
+                        <div class="small text-body-secondary">{{ f.herramienta }}</div>
+                      </td>
+                      <td>
+                        <div class="small text-body-secondary">{{ pct(f.participacion) }}</div>
+                        <c-progress thin color="primary" [value]="f.participacion ?? 0" [attr.aria-label]="f.tema" />
+                      </td>
+                      <td class="text-end fw-semibold">{{ f.invocaciones }}</td>
+                      <td class="text-end">{{ f.conversaciones }}</td>
+                      <td class="small text-nowrap">{{ fecha(f.ultima) | date: 'dd/MM/yyyy' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          <!-- ===== Preguntas frecuentes ===== -->
+          @case ('preguntas') {
+            @if (t) {
+              <div class="small text-body-secondary mb-3">
+                Las {{ t['preguntas'] }} consultas más repetidas suman {{ t['veces'] }} de {{ t['mensajes_usuario'] }}
+                mensajes ({{ pct(t['cobertura']) }}). Se agrupan textos idénticos sin distinguir mayúsculas ni espacios.
+              </div>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>#</th><th>Pregunta</th><th class="text-end">Veces</th>
+                  <th class="text-end">Conversaciones</th><th class="text-end">% mensajes</th><th>Última vez</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.posicion) {
+                    <tr>
+                      <td class="fw-semibold">{{ f.posicion }}</td>
+                      <td class="texto-largo">{{ f.pregunta }}</td>
+                      <td class="text-end fw-semibold">{{ f.veces }}</td>
+                      <td class="text-end">{{ f.conversaciones }}</td>
+                      <td class="text-end">{{ pct(f.participacion) }}</td>
+                      <td class="small text-nowrap">{{ fecha(f.ultima) | date: 'dd/MM/yyyy' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          <!-- ===== Sin respuesta y derivadas ===== -->
+          @case ('sin-respuesta') {
+            @if (t) {
+              <div class="d-flex flex-wrap gap-3 mb-3 small">
+                <span><c-badge color="danger">{{ t['sin_respuesta'] }}</c-badge> consultas sin respuesta</span>
+                <span><c-badge color="warning">{{ t['derivadas'] }}</c-badge> derivadas a atención humana</span>
+                @if (t['total'] >= t['limite']) {
+                  <span class="text-body-secondary">Se muestran los {{ t['limite'] }} casos más recientes.</span>
+                }
+              </div>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Tipo</th><th>Fecha</th><th class="text-end">Conv.</th><th>Lo que preguntó el usuario</th><th>Respuesta / motivo</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.tipo + f.conversacion + f.fecha) {
+                    <tr>
+                      <td>
+                        <c-badge [color]="f.tipo === 'derivada' ? 'warning' : 'danger'">
+                          {{ f.tipo === 'derivada' ? 'Derivada' : 'Sin respuesta' }}
+                        </c-badge>
+                      </td>
+                      <td class="small text-nowrap">{{ fecha(f.fecha) | date: 'dd/MM/yy HH:mm' }}</td>
+                      <td class="text-end small">#{{ f.conversacion }}</td>
+                      <td class="texto-largo">{{ f.pregunta ?? '—' }}</td>
+                      <td class="texto-largo small text-body-secondary">{{ f.detalle ?? '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </app-estado-bloque>
+    </c-card-body>
+  </c-card>
+</app-pagina-reporte>

@@ -20,6 +20,8 @@ class ProductoResource extends JsonResource
             'prd_stkmin'  => $this->prd_stkmin !== null ? (float) $this->prd_stkmin : null,
             'prd_afestk'  => $this->prd_afestk,
             'prd_repues'  => (int) $this->prd_repues,
+            'prd_gardia'  => $this->prd_gardia !== null ? (int) $this->prd_gardia : null,
+            'prd_proid'   => $this->prd_proid !== null ? (int) $this->prd_proid : null,
             'prd_estado'  => $this->prd_estado,
             'prd_creado'  => $this->prd_creado,
             'prd_padre_id' => $this->prd_padre_id,

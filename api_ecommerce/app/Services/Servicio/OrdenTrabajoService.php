@@ -34,6 +34,12 @@ class OrdenTrabajoService
         if ($s->ordenServicio()->exists()) {
             throw ValidationException::withMessages(['orden' => 'Esta solicitud ya tiene una orden de trabajo.']);
         }
+        // La garantía de compra la cubre la empresa responsable: no se diagnostica ni se presupuesta.
+        if ($s->esGarantiaDeCompra()) {
+            throw ValidationException::withMessages([
+                'orden' => 'Las garantías de compra se gestionan con la empresa responsable: use «Iniciar gestión de garantía».',
+            ]);
+        }
 
         return DB::transaction(function () use ($s, $usuario) {
             $orden = OrdenServicio::create([

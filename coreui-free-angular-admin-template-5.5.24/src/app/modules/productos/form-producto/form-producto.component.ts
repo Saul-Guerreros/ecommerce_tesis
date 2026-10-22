@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { ButtonModule, BadgeModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
-import { Producto, MarcaOption, TipoIvaOption, UnidadMedidaOption } from '../models/producto.model';
+import { Producto, MarcaOption, ProveedorOption, TipoIvaOption, UnidadMedidaOption } from '../models/producto.model';
 import { ProductosService } from '../service/productos.service';
 import { Atributo, Propiedad } from '../../../views/atributos/atributo.model';
 
@@ -28,6 +28,8 @@ export class FormProductoComponent implements OnInit, OnChanges {
   guardando = false;
 
   marcas: MarcaOption[] = [];
+  /** Empresas que pueden respaldar la garantía del producto (distribuidora o fabricante). */
+  proveedores: ProveedorOption[] = [];
   tiposIva: TipoIvaOption[] = [];
   unidades: UnidadMedidaOption[] = [];
 
@@ -64,6 +66,10 @@ export class FormProductoComponent implements OnInit, OnChanges {
       prd_stkmin: [null, [Validators.required, Validators.min(0)]],
       prd_afestk: [1],
       prd_repues: [0],   // 1 = repuesto de taller (no se publica en la tienda)
+      // Garantía de venta en días: null = plazo general de la tienda, 0 = sin garantía.
+      prd_gardia: [null, [Validators.min(0), Validators.max(3650), Validators.pattern(/^\d+$/)]],
+      // Empresa que respalda la garantía: a ella el técnico le gestiona el reclamo del cliente.
+      prd_proid: [null],
       prd_estado: [1],
 
       // Equivalencia inicial: solo se usa en modo creación (ver template).
@@ -114,6 +120,7 @@ export class FormProductoComponent implements OnInit, OnChanges {
     this.service.getConfig().subscribe({
       next: (res) => {
         this.marcas   = res.marcas;
+        this.proveedores = res.proveedores ?? [];
         this.tiposIva = res.tipos_iva;
         this.unidades = res.unidades;
         this.atributosVariante = res.atributos_variante ?? [];
@@ -140,6 +147,41 @@ export class FormProductoComponent implements OnInit, OnChanges {
     return !this.esVariante && !this.esRepuesto;
   }
 
+  // ---------- Garantía de venta ----------
+
+  /** Plazos predefinidos, en días. null = plazo general de la tienda; 0 = sin garantía. */
+  readonly GARANTIA_PRESETS: number[] = [0, 90, 180, 365, 730];
+
+  readonly opcionesGarantia = [
+    { clave: 'general', texto: 'Plazo general de la tienda' },
+    { clave: '0',       texto: 'Sin garantía' },
+    { clave: '90',      texto: '3 meses (90 días)' },
+    { clave: '180',     texto: '6 meses (180 días)' },
+    { clave: '365',     texto: '1 año (365 días)' },
+    { clave: '730',     texto: '2 años (730 días)' },
+    { clave: 'otro',    texto: 'Otro plazo (días)…' },
+  ];
+
+  /** true = el admin eligió "Otro": se muestra el campo numérico. */
+  garantiaPersonalizada = false;
+
+  get garantiaSeleccion(): string {
+    if (this.garantiaPersonalizada) return 'otro';
+    const v = this.form.get('prd_gardia')?.value;
+    return v === null || v === undefined ? 'general' : String(v);
+  }
+
+  onGarantiaSeleccion(clave: string): void {
+    const control = this.form.get('prd_gardia')!;
+    if (clave === 'otro') {
+      this.garantiaPersonalizada = true;   // conserva el valor actual para editarlo
+    } else {
+      this.garantiaPersonalizada = false;
+      control.setValue(clave === 'general' ? null : Number(clave));
+    }
+    control.markAsDirty();
+  }
+
   get esRepuesto(): boolean {
     return this.form.get('prd_repues')?.value === 1;
   }
@@ -147,6 +189,9 @@ export class FormProductoComponent implements OnInit, OnChanges {
   onToggleRepuesto(activo: boolean): void {
     this.form.patchValue({ prd_repues: activo ? 1 : 0 });
     if (activo) {
+      // Un repuesto de taller no se vende en la tienda: no lleva garantía de venta.
+      this.form.patchValue({ prd_gardia: null, prd_proid: null });
+      this.garantiaPersonalizada = false;
       this.seccionVariantesAbierta = false;
       this.variantesArray().clear();
     }
@@ -327,6 +372,8 @@ export class FormProductoComponent implements OnInit, OnChanges {
         prd_stkmin: this.producto?.prd_stkmin ?? null,
         prd_afestk: this.producto?.prd_afestk ?? 1,
         prd_repues: this.producto?.prd_repues ?? 0,
+        prd_gardia: this.producto?.prd_gardia ?? null,
+        prd_proid: this.producto?.prd_proid ?? null,
         prd_estado: this.producto?.prd_estado ?? 1,
 
         // Solo aplica al crear: siempre arranca en "No" (requisito 2),
@@ -336,6 +383,10 @@ export class FormProductoComponent implements OnInit, OnChanges {
         peq_factor: null,
       });
       this.actualizarValidadoresEquivalencia(false);
+
+      // Un plazo que no es uno de los predefinidos (ej. 45 días) se edita como "Otro".
+      const g = this.producto?.prd_gardia ?? null;
+      this.garantiaPersonalizada = g !== null && !this.GARANTIA_PRESETS.includes(g);
 
       this.variantesArray().clear();
       this.errorVariantes = null;
@@ -354,6 +405,9 @@ export class FormProductoComponent implements OnInit, OnChanges {
           this.form.get('prd_marid')!.disable();
           this.form.get('prd_tivid')!.disable();
           this.form.get('prd_umdid')!.disable();
+          // La garantía también se hereda del producto base (se propaga al guardarlo).
+          this.form.get('prd_gardia')!.disable();
+          this.form.get('prd_proid')!.disable();
         }
       }
     }

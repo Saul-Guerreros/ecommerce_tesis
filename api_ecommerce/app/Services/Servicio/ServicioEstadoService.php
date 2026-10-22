@@ -24,11 +24,16 @@ class ServicioEstadoService
     /** Ciclo técnico. ENTREGADA y CANCELADA son terminales. */
     private const TRANSICIONES_SERVICIO = [
         EstadoServicio::SOLICITADA     => [EstadoServicio::RECIBIDA, EstadoServicio::CANCELADA],
-        EstadoServicio::RECIBIDA       => [EstadoServicio::EN_DIAGNOSTICO, EstadoServicio::CANCELADA],
+        // GESTION_GARANTIA solo para garantía de compra (lo exige GarantiaProveedorService).
+        EstadoServicio::RECIBIDA       => [EstadoServicio::EN_DIAGNOSTICO, EstadoServicio::GESTION_GARANTIA, EstadoServicio::CANCELADA],
         EstadoServicio::EN_DIAGNOSTICO => [EstadoServicio::PRESUPUESTADA, EstadoServicio::APROBADA, EstadoServicio::LISTA],
         EstadoServicio::PRESUPUESTADA  => [EstadoServicio::APROBADA, EstadoServicio::LISTA],
         EstadoServicio::APROBADA       => [EstadoServicio::EN_REPARACION],
         EstadoServicio::EN_REPARACION  => [EstadoServicio::PRESUPUESTADA, EstadoServicio::LISTA],
+        // Garantía de compra: el taller gestiona con la empresa. Si la empresa no la acepta sin
+        // haberla recibido todavía, se cierra directo; si no, pasa por la empresa y vuelve LISTA.
+        EstadoServicio::GESTION_GARANTIA => [EstadoServicio::EN_EMPRESA, EstadoServicio::LISTA],
+        EstadoServicio::EN_EMPRESA     => [EstadoServicio::LISTA],
         EstadoServicio::LISTA          => [EstadoServicio::ENTREGADA],
         EstadoServicio::ENTREGADA      => [],
         EstadoServicio::CANCELADA      => [],

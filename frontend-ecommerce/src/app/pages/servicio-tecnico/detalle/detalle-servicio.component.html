@@ -24,7 +24,7 @@
           @if (s.reclamo_de) {
             <span class="uk-label uk-label-warning">Reclamo de garantía de {{ s.reclamo_de }}</span>
           } @else if (s.sse_garant) {
-            <span class="uk-label uk-label-warning">Garantía · {{ s.pedido }}</span>
+            <span class="uk-label uk-label-warning">Garantía · {{ s.producto || s.pedido }}</span>
           }
         </div>
 
@@ -40,7 +40,7 @@
             <p class="uk-margin-remove">Registramos tu solicitud. El seguimiento comienza cuando el equipo llega al taller.</p>
           } @else {
             <ol class="ds-timeline">
-              @for (p of pasos; track p; let i = $index) {
+              @for (p of pasosServicio; track p; let i = $index) {
                 <li [class]="'ds-paso ds-paso--' + estadoPaso(i)">
                   <span class="ds-punto">
                     @if (estadoPaso(i) === 'hecho') { <span uk-icon="icon: check; ratio: 0.8"></span> } @else { {{ i + 1 }} }
@@ -51,6 +51,26 @@
             </ol>
           }
         </div>
+
+        <!-- Garantía de compra: la gestiona el taller con la empresa responsable -->
+        @if (s.garantia_empresa; as ge) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <h4 class="uk-card-title">Garantía con la empresa responsable</h4>
+            <p class="uk-text-small uk-margin-small">
+              La garantía de tu compra la cubre la empresa que respalda el producto. Nosotros hacemos
+              todo el trámite y el traslado, y te avisamos cuando esté listo.
+            </p>
+            <dl class="uk-description-list">
+              @if (ge.empresa) { <dt>Empresa</dt><dd>{{ ge.empresa }}</dd> }
+              @if (ge.nrocaso) { <dt>N° de caso</dt><dd>{{ ge.nrocaso }}</dd> }
+              @if (ge.fecha_envio) { <dt>Enviado el</dt><dd>{{ ge.fecha_envio | date:'dd/MM/yyyy' }}</dd> }
+              @if (ge.fecha_recepcion) { <dt>Recibido de la empresa</dt><dd>{{ ge.fecha_recepcion | date:'dd/MM/yyyy' }}</dd> }
+              @if (ge.resultado) { <dt>Resultado</dt><dd><strong>{{ ge.resultado }}</strong></dd> }
+              @if (ge.nuevo_serie) { <dt>Nuevo N° de serie</dt><dd>{{ ge.nuevo_serie }}</dd> }
+              @if (ge.motivo) { <dt>Motivo</dt><dd>{{ ge.motivo }}</dd> }
+            </dl>
+          </div>
+        }
 
         <!-- Resultado, entrega y garantía (Paso 6) -->
         @if (s.resultado; as r) {
