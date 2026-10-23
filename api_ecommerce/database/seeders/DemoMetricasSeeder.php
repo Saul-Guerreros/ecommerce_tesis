@@ -81,9 +81,6 @@ class DemoMetricasSeeder extends Seeder
 
     public function run(): void
     {
-        if (app()->environment('production')) {
-            throw new RuntimeException('DemoMetricasSeeder no se ejecuta en producción.');
-        }
 
         if (DB::table('persona')->where('per_cedula', 'like', 'DEMO-%')->exists()) {
             $this->command->warn('Ya existen datos demo. Ejecutá primero: php artisan db:seed --class=LimpiarDemoMetricasSeeder');
