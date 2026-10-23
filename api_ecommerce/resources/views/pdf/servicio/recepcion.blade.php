@@ -19,7 +19,7 @@
   <h2>Cliente</h2>
   <table class="datos">
     <tr><td class="et">Nombre</td><td>{{ $s->cliente?->persona?->nombre_completo }}</td></tr>
-    <tr><td class="et">C.I.</td><td>{{ $s->cliente?->persona?->per_cedula ?: '—' }}</td></tr>
+    <tr><td class="et">{{ $s->cliente?->persona?->tipoDocumento?->tpd_codigo === 'PAS' ? 'Pasaporte' : 'C.I.' }}</td><td>{{ $s->cliente?->persona?->per_cedula ?: '—' }}</td></tr>
   </table>
 
   <h2>Equipo</h2>
@@ -61,7 +61,13 @@
   </tr></table>
 
   <div class="pie">
-    El diagnóstico se informa mediante presupuesto, que el cliente aprueba o rechaza desde su perfil. Hacé un respaldo de tu
+    @if($s->cliente?->persona?->usuario)
+      El diagnóstico se informa mediante presupuesto, que el cliente aprueba o rechaza desde su perfil o comunicándose con la sucursal.
+    @else
+      El diagnóstico se informa mediante presupuesto, que el cliente aprueba o rechaza comunicándose con la sucursal
+      (o desde su perfil, si crea su cuenta en la tienda con el correo registrado).
+    @endif
+    Hacé un respaldo de tu
     información: el taller no se responsabiliza por los datos almacenados. Documento de uso interno, sin validez fiscal.
   </div>
 </body></html>

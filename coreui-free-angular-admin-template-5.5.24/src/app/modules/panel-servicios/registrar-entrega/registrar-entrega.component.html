@@ -13,18 +13,57 @@
     <ng-container *ngIf="cfg && !entregado">
       <p class="small mb-2"><strong>{{ cfg.cliente }}</strong> · {{ cfg.equipo }}</p>
 
-      <div class="alert alert-danger small" *ngIf="!cfg.cobro.habilitado">
+      <div class="alert alert-danger small" *ngIf="!cfg.cobro.habilitado && !puedeCobrarYEntregar">
         {{ cfg.cobro.motivo }} Total: Gs. {{ cfg.cobro.total | number:'1.0-0' }}.
+        <div class="mt-1" *ngIf="pagosEnVerificacion">Hay pagos web en verificación: confírmelos o recházelos en la sección Pagos.</div>
       </div>
 
-      <form [formGroup]="form" *ngIf="cfg.cobro.habilitado">
+      <!-- Cobrar y entregar: cobro del saldo en el mostrador -->
+      <div class="border rounded p-3 mb-3" *ngIf="puedeCobrarYEntregar && cobro as c">
+        <div class="d-flex justify-content-between flex-wrap mb-2">
+          <strong>Cobro del saldo</strong>
+          <span>Total Gs. {{ formatoGs(c.resumen.total) }} · Pagado Gs. {{ formatoGs(c.resumen.confirmado) }} ·
+            <strong class="text-danger">Saldo Gs. {{ formatoGs(c.resumen.saldo) }}</strong></span>
+        </div>
+        <form [formGroup]="cobroForm" class="row g-3">
+          <div class="col-md-6">
+            <label cLabel>Forma de pago <span class="text-danger">*</span></label>
+            <select cSelect formControlName="mpa_codigo" [class.is-invalid]="cobroInvalido('mpa_codigo')">
+              <option value="">Seleccione...</option>
+              <option *ngFor="let m of metodos" [value]="m.mpa_codigo">{{ m.mpa_descri }}</option>
+            </select>
+            <div class="text-danger small" *ngIf="cobroInvalido('mpa_codigo')">{{ errorCobro('mpa_codigo') || 'Seleccione la forma de pago.' }}</div>
+          </div>
+          <ng-container *ngIf="cobroRequiereReferencia">
+            <div class="col-md-6">
+              <label cLabel>Referencia / N° de transferencia <span class="text-danger">*</span></label>
+              <input cFormControl formControlName="nro_transaccion" maxlength="50" [class.is-invalid]="cobroInvalido('nro_transaccion')" />
+              <div class="text-danger small" *ngIf="cobroInvalido('nro_transaccion')">{{ errorCobro('nro_transaccion') || 'Obligatoria para este método.' }}</div>
+            </div>
+            <div class="col-md-6">
+              <label cLabel>Banco / Billetera</label>
+              <input cFormControl formControlName="banco" maxlength="60" />
+            </div>
+            <div class="col-md-6">
+              <label cLabel>Comprobante (opcional)</label>
+              <input cFormControl type="file" accept=".jpg,.jpeg,.png,.pdf" (change)="onArchivoCobro($event)" />
+              <div class="text-danger small" *ngIf="errorArchivoCobro || errorCobro('comprobante')">{{ errorArchivoCobro || errorCobro('comprobante') }}</div>
+            </div>
+          </ng-container>
+        </form>
+      </div>
+
+      <form [formGroup]="form" *ngIf="mostrarFormulario">
         <div class="row g-3">
           <div class="col-md-6">
             <label cLabel>Modalidad <span class="text-danger">*</span></label>
             <select cSelect formControlName="modalidad">
               <option value="retiro">Retira en sucursal</option>
-              <option value="envio">Envío al domicilio del cliente</option>
+              <option value="envio" *ngIf="!cfg.solo_retiro_sucursal">Envío al domicilio del cliente</option>
             </select>
+            <div class="form-text" *ngIf="cfg.solo_retiro_sucursal">
+              Servicio de mostrador: se entrega en la sucursal donde se recibió. El envío se define al cerrar el cobro.
+            </div>
           </div>
           <div class="col-md-6" *ngIf="!esEnvio">
             <label cLabel>Sucursal <span class="text-danger">*</span></label>
@@ -98,8 +137,9 @@
   </c-modal-body>
   <c-modal-footer>
     <button cButton color="secondary" (click)="cerrar()" [disabled]="guardando">{{ entregado ? 'Cerrar' : 'Cancelar' }}</button>
-    <button cButton color="success" class="text-white" *ngIf="cfg?.cobro?.habilitado && !entregado" (click)="guardar()" [disabled]="guardando">
-      <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>Registrar entrega
+    <button cButton color="success" class="text-white" *ngIf="mostrarFormulario && !entregado" (click)="guardar()" [disabled]="guardando">
+      <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+      {{ puedeCobrarYEntregar ? 'Cobrar Gs. ' + formatoGs(cobro?.resumen?.saldo ?? 0) + ' y entregar' : 'Registrar entrega' }}
     </button>
   </c-modal-footer>
 </c-modal>

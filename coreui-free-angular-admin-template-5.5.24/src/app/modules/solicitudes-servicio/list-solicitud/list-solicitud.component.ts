@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { Subject, Subscription, debounceTime } from 'rxjs';
 import {
@@ -18,7 +19,7 @@ import { ConfirmarRecepcionComponent } from '../confirmar-recepcion/confirmar-re
   selector: 'app-list-solicitud',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, CardModule, TableModule, ButtonModule, BadgeModule, SpinnerModule,
+    CommonModule, FormsModule, RouterLink, CardModule, TableModule, ButtonModule, BadgeModule, SpinnerModule,
     FormModule, PaginationModule,
     DetalleSolicitudComponent, AgendarRetiroComponent, RechazarSolicitudComponent, ConfirmarRecepcionComponent,
   ],
@@ -26,11 +27,11 @@ import { ConfirmarRecepcionComponent } from '../confirmar-recepcion/confirmar-re
 })
 export class ListSolicitudComponent implements OnInit, OnDestroy {
   solicitudes: SolicitudServicioLista[] = [];
-  config: SolicitudesConfig = { estados_servicio: [], estados_ingreso: [], tipos_entrega: [], tecnicos: [] };
+  config: SolicitudesConfig = { estados_servicio: [], estados_ingreso: [], tipos_entrega: [], tecnicos: [], sucursales: [], canales: [] };
   cargando = false;
   procesandoId: number | null = null;
 
-  filtros: SolicitudFiltros = { buscar: '', ets_id: '', elg_id: '', ten_id: '', garantia: '', solo_pendientes: true };
+  filtros: SolicitudFiltros = { buscar: '', ets_id: '', elg_id: '', ten_id: '', garantia: '', suc_id: '', canal: '', solo_pendientes: true };
   private searchSubject = new Subject<void>();
   private searchSub?: Subscription;
 
@@ -82,7 +83,7 @@ export class ListSolicitudComponent implements OnInit, OnDestroy {
   }
 
   limpiarFiltros(): void {
-    this.filtros = { buscar: '', ets_id: '', elg_id: '', ten_id: '', garantia: '', solo_pendientes: true };
+    this.filtros = { buscar: '', ets_id: '', elg_id: '', ten_id: '', garantia: '', suc_id: '', canal: '', solo_pendientes: true };
     this.cargar();
   }
 

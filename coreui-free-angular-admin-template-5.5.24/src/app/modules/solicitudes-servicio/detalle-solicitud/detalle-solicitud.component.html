@@ -10,6 +10,10 @@
         <c-badge color="primary">Servicio: {{ d.estado_servicio.descri }}</c-badge>
         <c-badge color="info">Ingreso: {{ d.estado_ingreso.descri }}</c-badge>
         <c-badge color="warning" *ngIf="d.sse_garant">Garantía · Pedido {{ d.pedido }}</c-badge>
+        <c-badge color="dark" *ngIf="d.canal === 'MOSTRADOR'">Mostrador · registró {{ d.registrado_por || '—' }}</c-badge>
+        <c-badge color="secondary" *ngIf="!d.cliente.tiene_cuenta">Cliente sin cuenta web</c-badge>
+        <c-badge color="warning" *ngIf="d.es_reclamo_de">Reclamo de {{ d.es_reclamo_de }}</c-badge>
+        <c-badge color="success" *ngIf="d.garantia_vence">Garantía del trabajo hasta {{ d.garantia_vence | date:'dd/MM/yyyy' }}</c-badge>
       </div>
 
       <div class="row g-3">
@@ -19,6 +23,8 @@
           <div class="small">C.I.: {{ d.cliente.cedula || '—' }}</div>
           <div class="small">Teléfono: {{ d.cliente.telefono || '—' }}</div>
           <div class="small">Correo: {{ d.cliente.correo || '—' }}</div>
+          <button cButton size="sm" color="success" class="me-2 text-white mt-2" *ngIf="d.cliente.whatsapp_url"
+                  (click)="avisarWhatsapp()">Avisar por WhatsApp</button>
         </div>
         <div class="col-md-6">
           <h6 class="text-muted text-uppercase small">Equipo</h6>
@@ -71,6 +77,41 @@
         </div>
       </ng-container>
 
+      <ng-container *ngIf="d.presupuesto as p">
+        <hr />
+        <h6 class="text-muted text-uppercase small">Presupuesto</h6>
+        <div class="d-flex flex-wrap justify-content-between gap-2">
+          <div class="small">
+            <strong>{{ p.numero }}</strong> v{{ p.versio }} ·
+            <c-badge [color]="p.codigo === 'APROBADO' ? 'success' : p.codigo === 'ENVIADO' ? 'warning' : 'secondary'">{{ p.estado }}</c-badge>
+            · Total Gs. {{ p.total | number:'1.0-0' }}
+            <span *ngIf="p.fecven"> · Vence {{ p.fecven | date:'dd/MM/yyyy' }}</span>
+            <span class="text-danger" *ngIf="p.vencido && p.codigo === 'ENVIADO'"> (vencido)</span>
+            <div *ngIf="p.respuesta as r" class="mt-1">
+              Respuesta: {{ r.fecha | date:'dd/MM/yyyy HH:mm' }} {{ r.etiqueta }}
+              <span *ngIf="r.registro"> · registró {{ r.registro }}</span>
+              <span *ngIf="r.motivo"> · Motivo: {{ r.motivo }}</span>
+              <div class="text-muted" *ngIf="r.obs">Obs.: {{ r.obs }}</div>
+            </div>
+            <div class="mt-1 text-muted" *ngIf="p.codigo === 'ENVIADO'">
+              <ng-container *ngIf="d.ultimo_contacto as c; else sinCont">
+                Último contacto: {{ c.fecha | date:'dd/MM/yyyy HH:mm' }} · {{ c.medio }} · {{ c.resultado }}
+              </ng-container>
+              <ng-template #sinCont>Sin contacto registrado</ng-template>
+            </div>
+          </div>
+          <div class="text-nowrap">
+            <button cButton size="sm" color="primary" class="me-2 text-white" *ngIf="p.puede_responder" (click)="respuestaVisible = true">Registrar respuesta</button>
+            <button cButton size="sm" color="secondary" class="me-2 text-white" *ngIf="p.codigo === 'ENVIADO' && !d.cerrada" (click)="abrirContacto()">Registrar contacto</button>
+            <button cButton size="sm" color="info" class="me-2 text-white" *ngIf="p.puede_imprimir" (click)="imprimirPresupuesto()">PDF presupuesto</button>
+          </div>
+        </div>
+      </ng-container>
+
+      <hr />
+      <h6 class="text-muted text-uppercase small">Pagos</h6>
+      <app-pagos-solicitud [solicitudId]="d.sse_id" (actualizado)="onGuardado()"></app-pagos-solicitud>
+
       <hr />
       <h6 class="text-muted text-uppercase small">Historial</h6>
       <table cTable small striped>
@@ -84,7 +125,9 @@
             <td>
               <span *ngIf="h.estado_ant">{{ h.estado_ant }} → </span>{{ h.estado_nuevo || '—' }}
             </td>
-            <td>{{ h.she_coment || '—' }}</td>
+            <td>
+              <span *ngIf="h.medio">{{ h.medio }} · {{ h.resultado }}<span *ngIf="h.she_coment">: </span></span>{{ h.she_coment || (h.medio ? '' : '—') }}
+            </td>
             <td>{{ h.usuario || '—' }}</td>
           </tr>
         </tbody>
@@ -92,7 +135,16 @@
     </ng-container>
   </c-modal-body>
   <c-modal-footer>
+    <button cButton color="warning" class="text-white" *ngIf="detalle?.puede_reclamar" (click)="registrarReclamo()">Registrar reclamo de garantía</button>
     <button cButton color="primary" *ngIf="detalle?.recepcion" (click)="imprimirRecepcion()">Constancia de recepción (PDF)</button>
     <button cButton color="secondary" (click)="cerrar()">Cerrar</button>
   </c-modal-footer>
 </c-modal>
+
+<app-registrar-respuesta [visible]="respuestaVisible" [solicitudId]="detalle?.sse_id ?? null"
+  [numero]="detalle?.sse_numero ?? null" [presupuesto]="detalle?.presupuesto ?? null"
+  (visibleChange)="respuestaVisible = $event" (guardado)="onGuardado()"></app-registrar-respuesta>
+
+<app-registrar-contacto [visible]="contactoVisible" [solicitudId]="detalle?.sse_id ?? null"
+  [numero]="detalle?.sse_numero ?? null" [medioInicial]="medioContacto"
+  (visibleChange)="contactoVisible = $event" (guardado)="onGuardado()"></app-registrar-contacto>

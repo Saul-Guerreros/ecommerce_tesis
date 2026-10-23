@@ -123,6 +123,11 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-calculator' }
   },
   {
+    name: 'Cobros de servicios',
+    url: '/servicios/cobros',
+    iconComponent: { name: 'cil-dollar' }
+  },
+  {
     name: 'Catálogos de servicio',
     url: '/servicios',
     iconComponent: { name: 'cil-settings' },

@@ -64,6 +64,7 @@ export const PERMISO_POR_RUTA: Record<string, string> = {
   '/servicios/fallas': 'fallas.ver',
   '/servicios/trabajos': 'trabajos.ver',
   '/servicios/presupuestos': 'servicios.presupuestos.ver',
+  '/servicios/cobros': 'servicios.cobros.ver',
 
   // Métricas y Reportes (sincronizado con OpcionesAdmin backend)
   '/reportes/ventas': 'reportes.ventas.ver',

@@ -18,6 +18,7 @@ class ServicioConsultaService
                 'cliente.persona:per_id,per_nombr1,per_nombr2,per_apell1,per_apell2,per_cedula',
                 'tipoDispositivo', 'estadoServicio', 'estadoIngreso', 'tipoEntrega',
                 'recepcion.tecnico.persona:per_id,per_nombr1,per_apell1',
+                'sucursal:suc_id,suc_nombre',
             ])
             ->when($f['buscar'] ?? null, function (Builder $q, $buscar) {
                 $like = '%' . mb_strtolower($buscar) . '%';
@@ -42,6 +43,9 @@ class ServicioConsultaService
             ->when($f['ets_id'] ?? null, fn (Builder $q, $v) => $q->where('sse_etsid', $v))
             ->when($f['elg_id'] ?? null, fn (Builder $q, $v) => $q->where('sse_elging', $v))
             ->when($f['ten_id'] ?? null, fn (Builder $q, $v) => $q->where('sse_tenid', $v))
+            // Filtros opcionales por sucursal y canal (decisión B.6: no restringen lo que ve cada usuario).
+            ->when($f['suc_id'] ?? null, fn (Builder $q, $v) => $q->where('sse_sucid', $v))
+            ->when($f['canal'] ?? null, fn (Builder $q, $v) => $q->where('sse_canal', $v))
             ->when(isset($f['garantia']) && $f['garantia'] !== '', fn (Builder $q) => $q->where('sse_garant', (bool) $f['garantia']))
             ->when($f['desde'] ?? null, fn (Builder $q, $v) => $q->whereDate('sse_creado', '>=', $v))
             ->when($f['hasta'] ?? null, fn (Builder $q, $v) => $q->whereDate('sse_creado', '<=', $v))

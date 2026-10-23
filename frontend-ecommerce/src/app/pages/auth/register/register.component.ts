@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { AuthService } from '../service/auth.service';
 
@@ -11,7 +11,7 @@ import { AuthService } from '../service/auth.service';
   templateUrl: './register.component.html',
   styleUrl: './register.component.css',
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit {
   // Campos alineados a AuthController::register() (persona + cliente + usuario)
   nombre1 = '';
   nombre2 = '';
@@ -30,7 +30,19 @@ export class RegisterComponent {
     private authService: AuthService,
     private router: Router,
     private toastr: ToastrService,
+    private route: ActivatedRoute,
   ) {}
+
+  /**
+   * Invitación del correo de servicio técnico (/register?email=...): precarga el correo con el
+   * que el cliente fue registrado en la sucursal, así la cuenta se vincula a su historial.
+   */
+  ngOnInit(): void {
+    const email = this.route.snapshot.queryParamMap.get('email');
+    if (email && this.regexEmail.test(email.trim())) {
+      this.email = email.trim();
+    }
+  }
 
   register(): void {
     if (this.procesando) return;

@@ -169,6 +169,12 @@ export const routes: Routes = [
         title: 'Solicitar servicio técnico | Z Informática',
     },
     {
+        path: 'mis-servicios/:numero/pago',
+        loadComponent: () => import('./pages/servicio-tecnico/pago/pago-servicio.component').then(m => m.PagoServicioComponent),
+        canActivate: [suthGuard],
+        title: 'Pagar servicio técnico | Z Informática',
+    },
+    {
         path: 'mis-servicios/:numero',
         loadComponent: () => import('./pages/servicio-tecnico/detalle/detalle-servicio.component').then(m => m.DetalleServicioComponent),
         canActivate: [suthGuard],

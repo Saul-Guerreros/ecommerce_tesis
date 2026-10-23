@@ -21,9 +21,19 @@
               <h2 style="margin:0 0 12px;font-size:20px;color:#222;">{{ $titulo }}</h2>
               <p style="margin:0 0 8px;color:#666;font-size:13px;">Solicitud <strong>{{ $numero }}</strong></p>
               <p style="margin:0 0 20px;line-height:1.5;">{{ $mensaje }}</p>
-              <a href="{{ $url }}" style="display:inline-block;background:#1e87f0;color:#fff;text-decoration:none;padding:12px 22px;border-radius:4px;">
-                Ver mi servicio
-              </a>
+              @if ($invitarRegistro)
+                <p style="margin:0 0 16px;line-height:1.5;color:#555;font-size:14px;">
+                  Creá tu cuenta en nuestra tienda con <strong>este mismo correo</strong> y vas a poder seguir
+                  el estado de tu servicio, ver el presupuesto y descargar tus constancias en línea.
+                </p>
+                <a href="{{ $url }}" style="display:inline-block;background:#1e87f0;color:#fff;text-decoration:none;padding:12px 22px;border-radius:4px;">
+                  Crear mi cuenta
+                </a>
+              @else
+                <a href="{{ $url }}" style="display:inline-block;background:#1e87f0;color:#fff;text-decoration:none;padding:12px 22px;border-radius:4px;">
+                  Ver mi servicio
+                </a>
+              @endif
             </td>
           </tr>
           <tr>

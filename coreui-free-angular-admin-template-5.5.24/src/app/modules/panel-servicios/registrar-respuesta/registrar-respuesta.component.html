@@ -1,0 +1,62 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Registrar respuesta del cliente — {{ numero }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="alert alert-light border small" *ngIf="presupuesto as p">
+        <strong>{{ p.numero }}</strong> v{{ p.versio }}{{ p.versio > 1 ? ' (complementario)' : '' }} ·
+        Total <strong>Gs. {{ p.total | number:'1.0-0' }}</strong> · Vence {{ p.fecven | date:'dd/MM/yyyy' }}
+      </div>
+
+      <label cLabel class="d-block">Decisión del cliente <span class="text-danger">*</span></label>
+      <div class="mb-3">
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="dec_ap" formControlName="decision" value="APROBAR" />
+          <label class="form-check-label" for="dec_ap">Aprobó</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="dec_re" formControlName="decision" value="RECHAZAR" />
+          <label class="form-check-label" for="dec_re">Rechazó</label>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label cLabel for="canal">¿Cómo lo comunicó? <span class="text-danger">*</span></label>
+        <select cSelect id="canal" formControlName="canal">
+          <option [ngValue]="null" disabled>Seleccione...</option>
+          <option *ngFor="let c of canales" [ngValue]="c.valor">{{ c.texto }}</option>
+        </select>
+        <div class="text-danger small" *ngIf="campoInvalido('canal')">{{ errorBackend('canal') || 'Indique el medio.' }}</div>
+      </div>
+
+      <div class="mb-3" *ngIf="rechaza">
+        <label cLabel for="motivo">Motivo del rechazo <span class="text-danger">*</span></label>
+        <input cFormControl id="motivo" formControlName="motivo" maxlength="200" />
+        <div class="text-danger small" *ngIf="campoInvalido('motivo')">{{ errorBackend('motivo') || 'Indique el motivo (mínimo 5 caracteres).' }}</div>
+      </div>
+
+      <div class="mb-2">
+        <label cLabel for="obs">Observación (respaldo) <span class="text-danger">*</span></label>
+        <textarea cFormControl id="obs" rows="3" formControlName="obs" maxlength="200"
+                  placeholder="Ej.: aprobó por llamada al 0981 123 456 a las 10:30"></textarea>
+        <div class="text-danger small" *ngIf="campoInvalido('obs')">{{ errorBackend('obs') || 'Mínimo 10 caracteres.' }}</div>
+      </div>
+
+      <div class="small text-muted" *ngIf="!rechaza">Al aprobar se reservan los repuestos y la orden pasa a reparación.</div>
+      <div class="small text-warning" *ngIf="rechaza && presupuesto?.versio === 1">
+        Al rechazar, la orden se cierra sin reparar y el equipo queda listo para devolver.
+      </div>
+      <div class="small text-muted" *ngIf="rechaza && (presupuesto?.versio ?? 1) > 1">
+        Al rechazar el complementario, la reparación sigue con lo ya aprobado.
+      </div>
+    </c-modal-body>
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton [color]="rechaza ? 'danger' : 'success'" class="text-white" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando"></c-spinner> {{ rechaza ? 'Registrar rechazo' : 'Registrar aprobación' }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

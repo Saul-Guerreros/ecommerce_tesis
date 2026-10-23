@@ -1,0 +1,30 @@
+/* Mismo aspecto que .pd-pago / .pd-rechazo de pedido-detalle (los estilos
+   de componente son encapsulados y no se heredan). */
+.tp-pago {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.tp-pago:last-of-type {
+  border-bottom: none;
+}
+
+.tp-rechazo {
+  background: #fff5f5;
+  border-left: 3px solid #f0506e;
+  padding: 10px 12px;
+  margin: 0 0 10px;
+  border-radius: 3px;
+}
+
+.tp-rechazo-form {
+  margin-top: 10px;
+}
+
+.tp-rechazo-form input[type='file'] {
+  padding: 4px;
+  height: auto;
+}

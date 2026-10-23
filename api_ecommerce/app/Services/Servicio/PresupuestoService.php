@@ -213,31 +213,88 @@ class PresupuestoService
 
     public function aprobarPorCliente(SolicitudServicio $s, Usuario $cliente): PresupuestoServicio
     {
+        return $this->aprobar($s, $cliente->usu_id, PresupuestoServicio::RESPUESTA_WEB, null, 'Aprobado por el cliente');
+    }
+
+    public function rechazarPorCliente(SolicitudServicio $s, string $motivo, Usuario $cliente): PresupuestoServicio
+    {
+        return $this->rechazar($s, $motivo, $cliente->usu_id, PresupuestoServicio::RESPUESTA_WEB, null, 'Rechazado por el cliente');
+    }
+
+    // =====================================================================
+    // Aprobación asistida (Paso 2): el funcionario registra lo que el cliente
+    // decidió en el mostrador, por teléfono o por WhatsApp. Mismo camino que C4.
+    // =====================================================================
+
+    public function aprobarAsistido(SolicitudServicio $s, string $canal, string $obs, Usuario $funcionario): PresupuestoServicio
+    {
+        $this->exigirCanalAsistido($canal);
+
+        return $this->aprobar($s, $funcionario->usu_id, $canal, $obs, $this->textoAsistido('Aprobado', $canal));
+    }
+
+    public function rechazarAsistido(SolicitudServicio $s, string $canal, string $motivo, string $obs, Usuario $funcionario): PresupuestoServicio
+    {
+        $this->exigirCanalAsistido($canal);
+
+        return $this->rechazar($s, $motivo, $funcionario->usu_id, $canal, $obs, $this->textoAsistido('Rechazado', $canal));
+    }
+
+    /**
+     * Núcleo común de la aprobación (C4 y asistida). Si respondió el cliente desde la
+     * tienda, pse_usures queda null; si lo registró un funcionario, queda su usuario.
+     */
+    private function aprobar(SolicitudServicio $s, int $usuId, string $canal, ?string $obs, string $coment): PresupuestoServicio
+    {
         $p = $this->presupuestoEnviado($s);
 
-        return DB::transaction(function () use ($s, $p, $cliente) {
-            $p->update(['pse_respon' => now()]);
-            $this->cambiarEstado($s, $p, EstadoPresupuesto::APROBADO, $cliente->usu_id, 'Aprobado por el cliente');
-            $this->reservarYAprobar($s, $p, $cliente->usu_id);
+        return DB::transaction(function () use ($s, $p, $usuId, $canal, $obs, $coment) {
+            $p->update($this->datosRespuesta($canal, $usuId, $obs));
+            $this->cambiarEstado($s, $p, EstadoPresupuesto::APROBADO, $usuId, $coment . ($obs ? ". Obs.: {$obs}" : ''));
+            $this->reservarYAprobar($s, $p, $usuId);
 
             return $p->fresh(['detalles', 'estado']);
         });
     }
 
-    public function rechazarPorCliente(SolicitudServicio $s, string $motivo, Usuario $cliente): PresupuestoServicio
+    private function rechazar(SolicitudServicio $s, string $motivo, int $usuId, string $canal, ?string $obs, string $coment): PresupuestoServicio
     {
         $p = $this->presupuestoEnviado($s);
 
-        return DB::transaction(function () use ($s, $p, $motivo, $cliente) {
-            $p->update(['pse_respon' => now(), 'pse_motrec' => $motivo]);
-            $this->cambiarEstado($s, $p, EstadoPresupuesto::RECHAZADO, $cliente->usu_id, "Rechazado por el cliente: {$motivo}");
+        return DB::transaction(function () use ($s, $p, $motivo, $usuId, $canal, $obs, $coment) {
+            $p->update($this->datosRespuesta($canal, $usuId, $obs) + ['pse_motrec' => $motivo]);
+            $this->cambiarEstado($s, $p, EstadoPresupuesto::RECHAZADO, $usuId, "{$coment}: {$motivo}" . ($obs ? ". Obs.: {$obs}" : ''));
 
             $p->pse_versio > 1
-                ? $this->volverAlAprobado($s, $cliente->usu_id, 'Complementario rechazado: se continúa con lo ya aprobado')
-                : $this->cerrarSinReparar($s, $p, "Presupuesto rechazado por el cliente: {$motivo}", $cliente->usu_id);
+                ? $this->volverAlAprobado($s, $usuId, 'Complementario rechazado: se continúa con lo ya aprobado')
+                : $this->cerrarSinReparar($s, $p, "Presupuesto rechazado por el cliente: {$motivo}", $usuId);
 
             return $p->fresh(['detalles', 'estado']);
         });
+    }
+
+    private function datosRespuesta(string $canal, int $usuId, ?string $obs): array
+    {
+        $web = $canal === PresupuestoServicio::RESPUESTA_WEB;
+
+        return [
+            'pse_respon' => now(),
+            'pse_canres' => $canal,
+            'pse_usures' => $web ? null : $usuId,
+            'pse_obsres' => $web ? null : $obs,
+        ];
+    }
+
+    private function exigirCanalAsistido(string $canal): void
+    {
+        if (!in_array($canal, PresupuestoServicio::RESPUESTAS_ASISTIDAS, true)) {
+            throw ValidationException::withMessages(['canal' => 'El medio de respuesta no es válido.']);
+        }
+    }
+
+    private function textoAsistido(string $accion, string $canal): string
+    {
+        return "{$accion} por el cliente " . PresupuestoServicio::ETIQUETAS_RESPUESTA[$canal] . ' (registrado en sucursal)';
     }
 
     /** Lo usa el comando programado: sin respuesta en plazo => mismo camino que el rechazo. */
@@ -361,7 +418,7 @@ class PresupuestoService
             'she_tipo'   => ServicioHistorialEstado::PRESUPUESTO,
             'she_estant' => $anterior,
             'she_estid'  => $nuevo->epr_id,
-            'she_coment' => "{$p->pse_numero} v{$p->pse_versio}: {$coment}",
+            'she_coment' => mb_substr("{$p->pse_numero} v{$p->pse_versio}: {$coment}", 0, 500),
             'she_ip'     => request()->ip(),
         ]);
     }

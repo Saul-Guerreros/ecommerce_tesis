@@ -28,4 +28,7 @@ return [
 
     // Panel general (A3): presupuestos que vencen dentro de estos días se destacan
     'alerta_vencimiento_dias' => 2,
+
+    // Paso 2: presupuesto ENVIADO sin contacto con el cliente en estos días (tarjeta del panel A3).
+    'contacto_alerta_dias' => (int) env('SERVICIO_CONTACTO_ALERTA_DIAS', 2),
 ];

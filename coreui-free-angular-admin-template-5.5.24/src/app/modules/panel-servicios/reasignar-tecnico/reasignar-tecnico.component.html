@@ -7,7 +7,7 @@
         <label cLabel for="rse_tecid">Nuevo técnico <span class="text-danger">*</span></label>
         <select cSelect id="rse_tecid" formControlName="rse_tecid">
           <option [ngValue]="null" disabled>Seleccione...</option>
-          <option *ngFor="let t of tecnicos" [ngValue]="t.usu_id" [disabled]="t.usu_id === fila?.tecnico?.usu_id">
+          <option *ngFor="let t of tecnicosDisponibles" [ngValue]="t.usu_id" [disabled]="t.usu_id === fila?.tecnico?.usu_id">
             {{ t.nombre }}{{ t.abiertas !== undefined ? " (" + t.abiertas + " abiertas)" : "" }}
           </option>
         </select>

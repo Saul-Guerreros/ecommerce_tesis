@@ -1,6 +1,9 @@
 <c-card class="mb-4">
   <c-card-header class="d-flex justify-content-between align-items-center">
     <strong>Bandeja de solicitudes de servicio</strong>
+    <a cButton color="success" size="sm" class="text-white" routerLink="/servicios/solicitudes/mostrador">
+      Nueva solicitud en mostrador
+    </a>
   </c-card-header>
   <c-card-body>
     <!-- Filtros -->
@@ -32,6 +35,21 @@
         <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
       </div>
     </div>
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
+        <select cSelect [(ngModel)]="filtros.suc_id" (ngModelChange)="cargar()">
+          <option value="">Todas las sucursales</option>
+          <option *ngFor="let s of config.sucursales" [value]="s.suc_id">{{ s.suc_nombre }}</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <select cSelect [(ngModel)]="filtros.canal" (ngModelChange)="cargar()">
+          <option value="">Todos los canales</option>
+          <option value="WEB">Tienda web</option>
+          <option value="MOSTRADOR">Mostrador</option>
+        </select>
+      </div>
+    </div>
     <div class="form-check mb-3">
       <input class="form-check-input" type="checkbox" id="soloPendientes"
              [(ngModel)]="filtros.solo_pendientes" (ngModelChange)="cargar()" />
@@ -59,12 +77,16 @@
             <td class="text-nowrap">
               <strong>{{ s.sse_numero }}</strong>
               <c-badge color="warning" class="ms-1" *ngIf="s.sse_garant">Garantía</c-badge>
+              <c-badge color="dark" class="ms-1" *ngIf="s.canal === 'MOSTRADOR'">Mostrador</c-badge>
             </td>
             <td class="text-nowrap">{{ s.sse_creado | date:'dd/MM/yyyy HH:mm' }}</td>
             <td>{{ s.cliente }}<div class="small text-muted">C.I. {{ s.cedula || '—' }}</div></td>
             <td>{{ s.equipo }}</td>
             <td>
-              <div class="small">{{ s.a_domicilio ? 'Retiro a domicilio' : 'Trae a sucursal' }}</div>
+              <div class="small">
+                {{ s.canal === 'MOSTRADOR' ? 'Ingreso en mostrador' : (s.a_domicilio ? 'Retiro a domicilio' : 'Trae a sucursal') }}
+                <span class="text-muted" *ngIf="s.sucursal"> · {{ s.sucursal }}</span>
+              </div>
               <div class="small text-muted">
                 {{ s.estado_ingreso.descri }}
                 <span *ngIf="s.sse_fecing"> · {{ s.sse_fecing | date:'dd/MM/yyyy' }}</span>
@@ -115,7 +137,7 @@
 </c-card>
 
 <app-detalle-solicitud [visible]="detalleVisible" [solicitudId]="seleccionada?.sse_id ?? null"
-  (visibleChange)="detalleVisible = $event"></app-detalle-solicitud>
+  (visibleChange)="detalleVisible = $event" (actualizado)="onGuardado()"></app-detalle-solicitud>
 
 <app-agendar-retiro [visible]="agendarVisible" [solicitud]="seleccionada"
   (visibleChange)="agendarVisible = $event" (guardado)="onGuardado()"></app-agendar-retiro>

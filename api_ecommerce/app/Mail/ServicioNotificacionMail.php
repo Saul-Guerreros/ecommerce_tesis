@@ -20,6 +20,8 @@ class ServicioNotificacionMail extends Mailable
         public string $mensaje,
         public string $url,
         public ?string $nombre = null,
+        // Cliente sin cuenta (mostrador): el botón invita a registrarse con este correo.
+        public bool $invitarRegistro = false,
     ) {}
 
     public function envelope(): Envelope

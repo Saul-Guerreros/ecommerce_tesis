@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { EntregaConfig, PanelConfig, PanelPaginado, PanelResumen } from '../models/panel-servicio.model';
+import {
+  CanalRespuesta, EntregaConfig, MedioContacto, PanelConfig, PanelPaginado, PanelResumen, ResultadoContacto,
+} from '../models/panel-servicio.model';
 import { environment } from '../../../../environments/environment';
 
 export type TipoConstancia = 'recepcion' | 'retiro';
@@ -38,6 +40,26 @@ export class PanelServiciosService {
 
   registrarEntrega(id: number, datos: Record<string, unknown>): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.apiUrl}/${id}/entrega`, datos);
+  }
+
+  // ---------- Paso 2: aprobación asistida, contacto y PDF del presupuesto ----------
+
+  responderPresupuesto(
+    id: number,
+    datos: { decision: 'APROBAR' | 'RECHAZAR'; canal: CanalRespuesta; obs: string; motivo?: string | null },
+  ): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/${id}/presupuesto/respuesta`, datos);
+  }
+
+  registrarContacto(
+    id: number,
+    datos: { medio: MedioContacto; resultado: ResultadoContacto; obs?: string | null },
+  ): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/${id}/contacto`, datos);
+  }
+
+  pdfPresupuesto(id: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/presupuesto/pdf`, { responseType: 'blob' });
   }
 
   /** El PDF viaja con el JWT (interceptor), por eso se pide como Blob y no con un <a href>. */

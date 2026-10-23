@@ -15,12 +15,18 @@ import { PanelServiciosService } from '../service/panel-servicios.service';
 export class ReasignarTecnicoComponent implements OnChanges {
   @Input() visible = false;
   @Input() fila: PanelFila | null = null;
-  @Input() tecnicos: { usu_id: number; nombre: string; abiertas?: number }[] = [];
+  @Input() tecnicos: { usu_id: number; nombre: string; abiertas?: number; sucursales?: number[] }[] = [];
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() guardado = new EventEmitter<void>();
 
   form: FormGroup;
   guardando = false;
+
+  /** Cada sucursal tiene su taller: solo técnicos de la sucursal de la solicitud. */
+  get tecnicosDisponibles() {
+    const suc = this.fila?.sucursal?.suc_id ?? null;
+    return suc ? this.tecnicos.filter((t) => (t.sucursales ?? []).includes(suc)) : this.tecnicos;
+  }
 
   constructor(private fb: FormBuilder, private service: PanelServiciosService, private toastr: ToastrService) {
     this.form = this.fb.group({

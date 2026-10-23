@@ -9,6 +9,7 @@ use App\Models\Cliente;
 use App\Models\Persona;
 use App\Models\TipoCliente;
 use App\Models\TipoDocumento;
+use App\Services\Cliente\ClienteRapidoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +18,8 @@ class ClienteController extends Controller
 {
     private const TIPOS_CONTACTO  = ['CELULAR','TELEFONO','WHATSAPP','EMAIL'];
     private const ESTADOS_CIVILES = ['SOLTERO','CASADO','DIVORCIADO','VIUDO','UNION_LIBRE'];
+
+    public function __construct(private ClienteRapidoService $clientes) {}
 
     /** Catálogos que necesita el formulario */
     public function config()
@@ -69,10 +72,7 @@ class ClienteController extends Controller
             'documento'      => ['required','string'],
         ]);
 
-        $persona = Persona::with(['cliente','contactos:con_id,con_perid,con_tipo,con_valor'])
-            ->where('per_tpdid', $request->tipo_documento)
-            ->where('per_cedula', $request->documento)
-            ->first();
+        $persona = $this->clientes->personaPorDocumento((int) $request->tipo_documento, $request->documento);
 
         if (!$persona) {
             return response()->json(['existe' => false], 200);
@@ -103,40 +103,8 @@ class ClienteController extends Controller
     {
         $data = $request->validated();
 
-        $cliente = DB::transaction(function () use ($data) {
-
-            $persona = Persona::updateOrCreate(
-                ['per_tpdid' => $data['per_tpdid'], 'per_cedula' => $data['per_cedula']],
-                [
-                    'per_nombr1' => $data['per_nombr1'],
-                    'per_nombr2' => $data['per_nombr2'] ?? null,
-                    'per_apell1' => $data['per_apell1'],
-                    'per_apell2' => $data['per_apell2'] ?? null,
-                    'per_estciv' => $data['per_estciv'] ?? null,
-                    'per_fechna' => $data['per_fechna'] ?? null,
-                    'per_estado' => 1,
-                    'per_cread'  => now(),
-                ]
-            );
-
-            if ($persona->cliente()->exists()) {
-                throw ValidationException::withMessages([
-                    'per_cedula' => ['Esta persona ya está registrada como cliente.'],
-                ]);
-            }
-
-            $cliente = Cliente::create([
-                'cli_perid'  => $persona->per_id,
-                'cli_tpcid'  => $data['cli_tpcid'],
-                'cli_ruc'    => $data['cli_ruc'] ?? null,
-                'cli_estado' => $data['cli_estado'],
-                'cli_creado' => now(),
-            ]);
-
-            $this->sincronizarContactos($persona, $data['contactos']);
-
-            return $cliente;
-        });
+        // La lógica de alta vive en ClienteRapidoService (compartida con el mostrador de servicio técnico).
+        $cliente = $this->clientes->registrar($data);
 
         return response()->json([
             'data' => ClienteResource::make($cliente->load('persona.contactos','tipoCliente')),
@@ -167,28 +135,12 @@ class ClienteController extends Controller
                 'cli_estado' => $data['cli_estado'],
             ]);
 
-            $this->sincronizarContactos($cliente->persona, $data['contactos']);
+            $this->clientes->sincronizarContactos($cliente->persona, $data['contactos']);
         });
 
         return response()->json([
             'data' => ClienteResource::make($cliente->fresh()->load('persona.contactos','tipoCliente')),
         ], 200);
-    }
-
-    /** Reemplaza el set completo de contactos de la persona */
-    private function sincronizarContactos(Persona $persona, array $contactos): void
-    {
-        $persona->contactos()->delete();
-
-        foreach ($contactos as $c) {
-            $persona->contactos()->create([
-                'con_tipo'    => $c['con_tipo'],
-                'con_valor'   => trim($c['con_valor']),
-                'con_estado'  => 1,
-                'con_creado'  => now(),
-                'con_modific' => now(),
-            ]);
-        }
     }
 
     public function destroy(string $id)

@@ -1,0 +1,69 @@
+<div class="text-center py-3" *ngIf="cargando && !detalle"><c-spinner size="sm" color="primary"></c-spinner></div>
+
+<ng-container *ngIf="detalle as d">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+    <div class="small">
+      <ng-container *ngIf="d.resumen.consolidado">
+        Total <strong>Gs. {{ formatoGs(d.resumen.total) }}</strong> ·
+        Pagado <strong class="text-success">Gs. {{ formatoGs(d.resumen.confirmado) }}</strong>
+        <ng-container *ngIf="d.resumen.en_verificacion > 0"> · En verificación Gs. {{ formatoGs(d.resumen.en_verificacion) }}</ng-container>
+        · Saldo <strong [class.text-danger]="d.resumen.saldo > 0">Gs. {{ formatoGs(d.resumen.saldo) }}</strong>
+      </ng-container>
+      <ng-container *ngIf="!d.resumen.consolidado">
+        Total aún no definido (se fija al terminar la reparación).
+        <ng-container *ngIf="d.resumen.confirmado > 0"> Anticipos: <strong>Gs. {{ formatoGs(d.resumen.confirmado) }}</strong>.</ng-container>
+      </ng-container>
+      <c-badge class="ms-2" [color]="colorEstado(d.estado_pago.codigo)" *ngIf="d.estado_pago">{{ d.estado_pago.descripcion }}</c-badge>
+      <div class="text-muted" *ngIf="!d.resumen.admite_pagos">Este servicio no genera cobros (garantía o sin monto).</div>
+    </div>
+    <button cButton size="sm" color="success" class="text-white" *ngIf="puedeRegistrarCobro" (click)="cobroVisible = true">
+      {{ d.resumen.consolidado ? 'Registrar cobro' : 'Registrar anticipo' }}
+    </button>
+  </div>
+
+  <div class="small text-muted" *ngIf="d.pagos.length === 0">Sin pagos registrados.</div>
+
+  <div class="table-responsive" *ngIf="d.pagos.length > 0">
+    <table cTable small striped class="mb-0">
+      <thead>
+        <tr><th>#</th><th>Tipo</th><th>Método</th><th class="text-end">Monto</th><th>Estado</th><th>Detalle</th><th class="text-end">Acciones</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of d.pagos">
+          <td>{{ p.orden }}</td>
+          <td class="small">{{ p.tipo }}<div class="text-muted">{{ p.canal === 'WEB' ? 'Web' : 'Mostrador' }}</div></td>
+          <td class="small">{{ p.metodo.descri }}</td>
+          <td class="text-end text-nowrap">Gs. {{ formatoGs(p.monto_asignado) }}</td>
+          <td><c-badge [color]="colorEstado(p.estado.codigo)">{{ p.estado.descripcion }}</c-badge></td>
+          <td class="small">
+            <div *ngIf="p.cobro">Cobró {{ p.cobro.por }}<span *ngIf="p.cobro.sucursal"> · {{ p.cobro.sucursal }}</span></div>
+            <div *ngIf="p.verificacion && !p.cobro">Verificó {{ p.verificacion.por }} · {{ p.verificacion.fecha }}</div>
+            <div *ngIf="p.verificacion?.nro_transaccion">Ref. {{ p.verificacion?.nro_transaccion }}</div>
+            <div class="text-danger" *ngIf="p.rechazo">{{ p.rechazo.motivo }}<span *ngIf="p.rechazo.detalle && p.rechazo.detalle !== p.rechazo.motivo">: {{ p.rechazo.detalle }}</span></div>
+            <div class="text-muted" *ngIf="p.observacion">{{ p.observacion }}</div>
+          </td>
+          <td class="text-end text-nowrap">
+            <button cButton size="sm" color="info" class="me-2 text-white" *ngIf="p.comprobante"
+                    [disabled]="procesandoId === p.spa_id" (click)="verComprobante(p)">Comprobante</button>
+            <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="puedeVerificar(p)"
+                    (click)="abrir('confirmar', p)">Verificar</button>
+            <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="puedeCobrarAlRetirar(p)"
+                    [disabled]="procesandoId === p.spa_id" (click)="cobrarAlRetirar(p)">Cobrar efectivo</button>
+            <button cButton size="sm" color="danger" class="me-2 text-white" *ngIf="puedeRechazarEfectivo(p)"
+                    (click)="abrir('rechazar', p)">Rechazar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</ng-container>
+
+<app-confirmar-pago-servicio [visible]="confirmarVisible" [detalle]="detalle" [pago]="seleccionado"
+  (visibleChange)="confirmarVisible = $event" (guardado)="onGuardado($event)"
+  (rechazar)="abrir('rechazar', $event)"></app-confirmar-pago-servicio>
+
+<app-rechazar-pago-servicio [visible]="rechazarVisible" [detalle]="detalle" [pago]="seleccionado"
+  (visibleChange)="rechazarVisible = $event" (guardado)="onGuardado($event)"></app-rechazar-pago-servicio>
+
+<app-registrar-cobro [visible]="cobroVisible" [detalle]="detalle"
+  (visibleChange)="cobroVisible = $event" (guardado)="onGuardado($event)"></app-registrar-cobro>

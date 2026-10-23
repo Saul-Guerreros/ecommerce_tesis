@@ -27,6 +27,8 @@ class OpcionesAdminPermisoSeeder extends Seeder
         'reportes.ventas.ver', 'reportes.compras.ver', 'reportes.inventario.ver',
         'reportes.servicio.ver', 'reportes.clientes.ver', 'reportes.promociones.ver',
         'reportes.chatbot.ver',
+        // Recibir dinero: solo por asignación explícita
+        'servicios.cobros.confirmar',
     ];
 
     public function run(): void

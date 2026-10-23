@@ -9,6 +9,7 @@ use App\Http\Requests\Servicio\RechazarSolicitudRequest;
 use App\Http\Requests\Servicio\SolicitudServicioIndexRequest;
 use App\Http\Resources\Servicio\SolicitudServicioListaResource;
 use App\Http\Resources\Servicio\SolicitudServicioResource;
+use App\Models\Configuracion\Sucursal;
 use App\Models\Pedido\TipoEntrega;
 use App\Models\Servicio\EstadoLogistica;
 use App\Models\Servicio\EstadoServicio;
@@ -59,7 +60,10 @@ class SolicitudServicioController extends Controller
                 ->get(['elg_id', 'elg_codigo', 'elg_descri']),
             'tipos_entrega'    => TipoEntrega::where('ten_estado', 1)->orderBy('ten_id')
                 ->get(['ten_id', 'ten_codigo', 'ten_descri']),
+            // Cada técnico trae sus 'sucursales': A2 filtra el combo por la sucursal de la solicitud.
             'tecnicos'         => $this->tecnicos->activos(),
+            'sucursales'       => Sucursal::where('suc_estado', 1)->orderBy('suc_nombre')->get(['suc_id', 'suc_nombre']),
+            'canales'          => [SolicitudServicio::CANAL_WEB, SolicitudServicio::CANAL_MOSTRADOR],
         ], 200);
     }
 
@@ -111,10 +115,15 @@ class SolicitudServicioController extends Controller
     private function cargar(int $id): SolicitudServicio
     {
         return SolicitudServicio::with([
-            'cliente.persona.contactos', 'tipoDispositivo', 'tipoEntrega', 'pedido:ped_id,ped_numero',
+            'cliente.persona.contactos', 'cliente.persona.usuario:usu_id,usu_perid', 'registradoPor.persona', 'tipoDispositivo', 'tipoEntrega', 'pedido:ped_id,ped_numero',
             'sucursal', 'direccion.ciudad', 'estadoServicio', 'estadoIngreso',
             'adjuntos', 'recepcion.accesorios', 'recepcion.tecnico.persona', 'recepcion.recibidoPor.persona',
             'historial.usuario.persona',
+            // Paso 2: presupuesto vigente, quién registró la respuesta y último contacto
+            'ordenServicio.presupuestoActual.estado', 'ordenServicio.presupuestoActual.respondidoPor.persona',
+            'ultimoContacto',
+            // Paso 3: garantía del trabajo y reclamos (botón "Registrar reclamo de garantía")
+            'ordenServicio', 'entrega', 'reclamos.estadoServicio', 'solicitudOriginal:sse_id,sse_numero',
         ])->findOrFail($id);
     }
 

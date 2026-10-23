@@ -19,6 +19,8 @@ class SolicitudServicioIndexRequest extends FormRequest
             'elg_id'          => ['nullable', 'integer'],
             'ten_id'          => ['nullable', 'integer'],
             'garantia'        => ['nullable', 'in:0,1'],
+            'suc_id'          => ['nullable', 'integer'],
+            'canal'           => ['nullable', 'in:WEB,MOSTRADOR'],
             'solo_pendientes' => ['nullable', 'boolean'],
             'desde'           => ['nullable', 'date'],
             'hasta'           => ['nullable', 'date', 'after_or_equal:desde'],

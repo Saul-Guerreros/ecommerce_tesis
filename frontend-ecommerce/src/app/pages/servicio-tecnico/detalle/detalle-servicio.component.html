@@ -85,6 +85,41 @@
           </div>
         }
 
+        <!-- Pago del servicio (C4): saldo, botón Pagar y pagos registrados -->
+        @if (s.pago; as pg) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap" style="gap: 10px;">
+              <div>
+                <h4 class="uk-card-title uk-margin-remove">Pago del servicio</h4>
+                @if (pg.estado) { <div class="uk-text-meta">{{ pg.estado }}</div> }
+              </div>
+              @if (pg.pagable) {
+                <a class="uk-button uk-button-primary" [routerLink]="['/mis-servicios', s.sse_numero, 'pago']">
+                  Pagar {{ pg.saldo | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                </a>
+              }
+            </div>
+
+            <dl class="uk-description-list uk-margin-small-top ds-montos">
+              <dt>Total</dt><dd>{{ pg.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd>
+              @if (pg.pagado > 0) { <dt>Pagado</dt><dd>{{ pg.pagado | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd> }
+              @if (pg.en_verificacion > 0) { <dt>En verificación</dt><dd>{{ pg.en_verificacion | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd> }
+              @if (pg.saldo > 0) { <dt>Saldo</dt><dd><strong>{{ pg.saldo | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong></dd> }
+            </dl>
+
+            @if (pg.pagos.length) {
+              <app-tarjeta-pagos
+                #tarjetaPagos
+                [pagos]="pagosTarjeta"
+                [abriendoId]="abriendoId"
+                [subiendoId]="subiendoId"
+                (verComprobante)="verComprobante($event)"
+                (reemplazar)="reemplazarComprobante($event, tarjetaPagos)">
+              </app-tarjeta-pagos>
+            }
+          </div>
+        }
+
         @if (s.garantia; as g) {
           <div class="uk-card uk-card-default uk-card-body uk-margin">
             <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap" style="gap: 10px;">
@@ -158,6 +193,12 @@
             </table>
             @if (p.pse_obs) { <p class="uk-text-small">{{ p.pse_obs }}</p> }
             @if (p.pse_motrec) { <p class="uk-text-small uk-text-danger">Motivo: {{ p.pse_motrec }}</p> }
+            @if (p.respuesta?.asistida) {
+              <p class="uk-text-small uk-text-meta">
+                {{ p.codigo === 'APROBADO' ? 'Aprobado' : 'Rechazado' }} {{ p.respuesta?.etiqueta }}
+                el {{ p.respuesta?.fecha | date:'dd/MM/yyyy' }} (registrado en sucursal).
+              </p>
+            }
 
             @if (p.puede_responder) {
               @if (!confirmando) {

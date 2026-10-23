@@ -373,6 +373,11 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/panel-servicios/panel-servicios.module').then(m => m.PanelServiciosModule),
         data: { title: 'Panel general de servicios' },
       },
+      {
+        path: 'servicios/cobros',
+        loadChildren: () => import('./modules/cobros-servicio/cobros-servicio.module').then(m => m.CobrosServicioModule),
+        data: { title: 'Cobros de servicios' },
+      },
     {
       //Fuera del FrontEnd
       path: 'discounts',

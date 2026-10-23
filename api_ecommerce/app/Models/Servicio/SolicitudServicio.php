@@ -9,6 +9,7 @@ use App\Models\Pedido\DetallePedido;
 use App\Models\Pedido\EstadoPago;
 use App\Models\Pedido\Pedido;
 use App\Models\Pedido\TipoEntrega;
+use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,6 +19,10 @@ class SolicitudServicio extends Model
 {
     protected $table = 'solicitud_servicio';
     protected $primaryKey = 'sse_id';
+
+    /** Canal de entrada: tienda online (wizard C2) o mostrador de la sucursal. */
+    public const CANAL_WEB       = 'WEB';
+    public const CANAL_MOSTRADOR = 'MOSTRADOR';
 
     // sse_creado / sse_actual cumplen el rol de created_at / updated_at
     const CREATED_AT = 'sse_creado';
@@ -30,6 +35,7 @@ class SolicitudServicio extends Model
         'sse_tenid', 'sse_sucid', 'sse_dirid', 'sse_fecing', 'sse_cosret',
         'sse_etsid', 'sse_elging', 'sse_epaid', 'sse_elgegr',
         'sse_subtot', 'sse_impues', 'sse_cosenv', 'sse_total',
+        'sse_canal', 'sse_usuid',
     ];
 
     protected $casts = [
@@ -80,6 +86,12 @@ class SolicitudServicio extends Model
     public function sucursal(): BelongsTo
     {
         return $this->belongsTo(Sucursal::class, 'sse_sucid', 'suc_id');
+    }
+
+    /** Funcionario que registró la solicitud en el mostrador (null en el canal web). */
+    public function registradoPor(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'sse_usuid', 'usu_id');
     }
 
     public function direccion(): BelongsTo
@@ -139,12 +151,30 @@ class SolicitudServicio extends Model
         return $this->hasOne(GarantiaProveedor::class, 'gpr_sseid', 'sse_id');
     }
 
+    /** Último "Registrar contacto con el cliente" (panel: esperando respuesta del presupuesto). */
+    public function ultimoContacto(): HasOne
+    {
+        return $this->hasOne(ServicioHistorialEstado::class, 'she_sseid', 'sse_id')
+            ->ofMany(['she_id' => 'max'], fn ($q) => $q->where('she_tipo', ServicioHistorialEstado::CONTACTO));
+    }
+
+    /** Pagos del servicio (anticipo, saldo o total), en el orden en que se registraron. */
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(ServicioPago::class, 'spa_sseid', 'sse_id')->orderBy('spa_orden');
+    }
+
     public function historial(): HasMany
     {
         return $this->hasMany(ServicioHistorialEstado::class, 'she_sseid', 'sse_id')->orderBy('she_fecha')->orderBy('she_id');
     }
 
     // ---------- Ayudas de dominio ----------
+
+    public function esMostrador(): bool
+    {
+        return $this->sse_canal === self::CANAL_MOSTRADOR;
+    }
 
     /** true = el taller retira el equipo del domicilio (tipo_entrega ENVIO). */
     public function esADomicilio(): bool

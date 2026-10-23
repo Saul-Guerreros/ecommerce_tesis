@@ -132,10 +132,34 @@ class ServicioEstadoService
         $this->registrar($s, ServicioHistorialEstado::NOTA, null, null, $usuId, $coment);
     }
 
-    /** Registro inicial al crear la solicitud (no hay estado anterior). */
-    public function registrarAlta(SolicitudServicio $s, ?int $usuId): void
+    /**
+     * Paso 2 - "Registrar contacto con el cliente": deja constancia de cada intento de
+     * comunicación (medio y resultado) para que el panel sepa si el cliente fue contactado.
+     */
+    public function registrarContacto(SolicitudServicio $s, int $usuId, string $medio, string $resultado, ?string $coment): void
     {
-        $this->registrar($s, ServicioHistorialEstado::SERVICIO, null, $s->sse_etsid, $usuId, 'Solicitud registrada por el cliente');
+        $s->loadMissing('estadoServicio');
+        if (in_array($s->estadoServicio?->ets_codigo, [EstadoServicio::ENTREGADA, EstadoServicio::CANCELADA], true)) {
+            throw ValidationException::withMessages(['medio' => 'La solicitud está cerrada: no se registran contactos.']);
+        }
+
+        ServicioHistorialEstado::create([
+            'she_sseid'  => $s->sse_id,
+            'she_usuid'  => $usuId,
+            'she_tipo'   => ServicioHistorialEstado::CONTACTO,
+            'she_estant' => null,
+            'she_estid'  => null,
+            'she_medio'  => $medio,
+            'she_result' => $resultado,
+            'she_coment' => $coment,
+            'she_ip'     => request()->ip(),
+        ]);
+    }
+
+    /** Registro inicial al crear la solicitud (no hay estado anterior). */
+    public function registrarAlta(SolicitudServicio $s, ?int $usuId, string $coment = 'Solicitud registrada por el cliente'): void
+    {
+        $this->registrar($s, ServicioHistorialEstado::SERVICIO, null, $s->sse_etsid, $usuId, $coment);
         $this->registrar($s, ServicioHistorialEstado::INGRESO, null, $s->sse_elging, $usuId, null);
     }
 

@@ -1,4 +1,4 @@
-import { SucursalRetiro } from './checkout.model';
+import { DatosBilletera, DatosTransferencia, MetodoPagoOpcion, SucursalRetiro } from './checkout.model';
 import { Direccion } from './direccion.model';
 
 export type ModalidadIngreso = 'sucursal' | 'domicilio';
@@ -72,6 +72,57 @@ export interface ServicioCliente {
   entrega?: { fecha: string; receptor: string } | null;
   garantia?: { dias: number; vence: string; vigente: boolean; puede_reclamar: boolean; reclamo_abierto: boolean } | null;
   constancias?: { recepcion: boolean; retiro: boolean };
+
+  // Pago del servicio (solo en el detalle; null si no genera cobro)
+  pago?: PagoServicioBloque | null;
+}
+
+// ---------- Pago del servicio (C4) ----------
+
+/** Un pago tal como lo ve el cliente (ServicioPagoClienteResource). */
+export interface PagoServicioCliente {
+  spa_id: number;
+  orden: number;
+  metodo: string | null;
+  monto: number;
+  estado: string | null;
+  estado_descri: string | null;
+  tiene_comprobante: boolean;
+  comprobante_url: string | null;
+  motivo_rechazo: { motivo: string | null; detalle: string | null } | null;
+  reemplazable: boolean;
+}
+
+/** Bloque "pago" del detalle C4. 'pagable' lo decide el backend. */
+export interface PagoServicioBloque {
+  estado: string | null;
+  total: number;
+  pagado: number;
+  en_verificacion: number;
+  saldo: number;
+  pagable: boolean;
+  pagos: PagoServicioCliente[];
+}
+
+/** EstadoPagoServicioService::resumen() */
+export interface ResumenPagoServicio {
+  total: number;
+  consolidado: boolean;
+  confirmado: number;
+  en_verificacion: number;
+  comprometido: number;
+  saldo: number;
+  admite_pagos: boolean;
+}
+
+export interface ConfigPagoServicioResponse {
+  servicio: { sse_numero: string };
+  resumen: ResumenPagoServicio;
+  metodos: MetodoPagoOpcion[];
+  datos_transferencia: DatosTransferencia;
+  datos_billetera: DatosBilletera;
+  mensaje_efectivo: string | null;
+  pagos: PagoServicioCliente[];
 }
 
 export interface GarantiaEmpresaCliente {
@@ -93,6 +144,8 @@ export interface PresupuestoCliente {
   pse_fecven: string | null;
   pse_obs: string | null;
   pse_motrec: string | null;
+  /** Paso 2: cómo se registró la respuesta (asistida = la cargó la sucursal). */
+  respuesta?: { fecha: string; canal: string | null; etiqueta: string | null; asistida: boolean } | null;
   pse_impues: number;
   pse_total: number;
   costo_retiro: number;

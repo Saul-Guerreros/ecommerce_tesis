@@ -6,10 +6,12 @@ import { Subject, Subscription, debounceTime } from 'rxjs';
 import {
   BadgeModule, ButtonModule, CardModule, FormModule, PaginationModule, SpinnerModule, TableModule,
 } from '@coreui/angular';
-import { PanelConfig, PanelFila, PanelResumen } from '../models/panel-servicio.model';
+import { MedioContacto, PanelConfig, PanelFila, PanelResumen } from '../models/panel-servicio.model';
 import { PanelServiciosService, TipoConstancia } from '../service/panel-servicios.service';
 import { ReasignarTecnicoComponent } from '../reasignar-tecnico/reasignar-tecnico.component';
 import { RegistrarEntregaComponent } from '../registrar-entrega/registrar-entrega.component';
+import { RegistrarRespuestaComponent } from '../registrar-respuesta/registrar-respuesta.component';
+import { RegistrarContactoComponent } from '../registrar-contacto/registrar-contacto.component';
 import { DetalleSolicitudComponent } from '../../solicitudes-servicio/detalle-solicitud/detalle-solicitud.component';
 
 /** A3 - Panel general del servicio técnico (RF-040). */
@@ -19,16 +21,17 @@ import { DetalleSolicitudComponent } from '../../solicitudes-servicio/detalle-so
   imports: [
     CommonModule, FormsModule, BadgeModule, ButtonModule, CardModule, FormModule, PaginationModule, SpinnerModule, TableModule,
     ReasignarTecnicoComponent, RegistrarEntregaComponent, DetalleSolicitudComponent,
+    RegistrarRespuestaComponent, RegistrarContactoComponent,
   ],
   templateUrl: './panel-general.component.html',
 })
 export class PanelGeneralComponent implements OnInit, OnDestroy {
   resumen: PanelResumen | null = null;
-  config: PanelConfig = { estados_servicio: [], tecnicos: [] };
+  config: PanelConfig = { estados_servicio: [], tecnicos: [], sucursales: [], canales: [], contacto_alerta_dias: 2 };
   filas: PanelFila[] = [];
   cargando = false;
 
-  filtros = { buscar: '', ets_codigo: '', tec_id: '', solo_activas: true };
+  filtros = { buscar: '', ets_codigo: '', tec_id: '', suc_id: '', canal: '', solo_activas: true };
   private searchSubject = new Subject<void>();
   private searchSub?: Subscription;
 
@@ -42,6 +45,9 @@ export class PanelGeneralComponent implements OnInit, OnDestroy {
   reasignarVisible = false;
   entregaVisible = false;
   detalleVisible = false;
+  respuestaVisible = false;
+  contactoVisible = false;
+  medioContacto: MedioContacto | null = null;
 
   constructor(private service: PanelServiciosService, private toastr: ToastrService) {}
 
@@ -91,7 +97,7 @@ export class PanelGeneralComponent implements OnInit, OnDestroy {
   }
 
   limpiarFiltros(): void {
-    this.filtros = { buscar: '', ets_codigo: '', tec_id: '', solo_activas: true };
+    this.filtros = { buscar: '', ets_codigo: '', tec_id: '', suc_id: '', canal: '', solo_activas: true };
     this.cargar();
   }
 
@@ -108,11 +114,39 @@ export class PanelGeneralComponent implements OnInit, OnDestroy {
     this.cargar(page);
   }
 
-  abrir(modal: 'reasignar' | 'entrega' | 'detalle', f: PanelFila): void {
+  abrir(modal: 'reasignar' | 'entrega' | 'detalle' | 'respuesta' | 'contacto', f: PanelFila, medio: MedioContacto | null = null): void {
     this.seleccionada = f;
+    this.medioContacto = medio;
     this.reasignarVisible = modal === 'reasignar';
     this.entregaVisible = modal === 'entrega';
     this.detalleVisible = modal === 'detalle';
+    this.respuestaVisible = modal === 'respuesta';
+    this.contactoVisible = modal === 'contacto';
+  }
+
+  /** D.13-b: abre WhatsApp y enseguida pide confirmar el contacto (el clic no garantiza el envío). */
+  avisarWhatsapp(f: PanelFila): void {
+    if (!f.whatsapp_url) return;
+    window.open(f.whatsapp_url, '_blank', 'noopener');
+    this.abrir('contacto', f, 'WHATSAPP');
+  }
+
+  pdfPresupuesto(f: PanelFila): void {
+    this.service.pdfPresupuesto(f.sse_id).subscribe({
+      next: (pdf) => this.service.abrirPdf(pdf, `presupuesto-${f.presupuesto?.numero ?? f.sse_numero}.pdf`),
+      error: () => this.toastr.error('No se pudo generar el presupuesto', 'Error'),
+    });
+  }
+
+  /** Días desde el último contacto (para resaltar los que superan la alerta). */
+  sinContactoReciente(f: PanelFila): boolean {
+    const dias = this.diasDesde(f.ultimo_contacto?.fecha);
+    return dias === null || dias >= this.config.contacto_alerta_dias;
+  }
+
+  diasDesde(fecha: string | null | undefined): number | null {
+    if (!fecha) return null;
+    return Math.floor((Date.now() - new Date(fecha.replace(' ', 'T')).getTime()) / 86_400_000);
   }
 
   constancia(f: PanelFila, tipo: TipoConstancia): void {

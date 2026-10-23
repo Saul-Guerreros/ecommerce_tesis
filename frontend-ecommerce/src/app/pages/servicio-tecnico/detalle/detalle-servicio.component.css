@@ -48,3 +48,16 @@
 .ds-fotos img { width: 96px; height: 96px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e5e5; }
 
 .ds-presupuesto--pendiente { border-left: 4px solid var(--uk-global-primary-background, #1e87f0); }
+
+/* Montos del bloque "Pago del servicio" en dos columnas compactas. */
+.ds-montos {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 16px;
+  row-gap: 2px;
+}
+
+.ds-montos dt,
+.ds-montos dd {
+  margin: 0;
+}

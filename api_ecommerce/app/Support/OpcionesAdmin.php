@@ -118,6 +118,9 @@ class OpcionesAdmin
 					['permiso' => 'fallas.ver',                'nombre' => 'Fallas',                     'urls' => ['/servicios/fallas'], 'fijo' => false],
 					['permiso' => 'trabajos.ver',              'nombre' => 'Trabajos (mano de obra)',    'urls' => ['/servicios/trabajos'], 'fijo' => false],
 				    ['permiso' => 'servicios.presupuestos.ver', 'nombre' => 'Validación de presupuestos', 'urls' => ['/servicios/presupuestos'], 'fijo' => false],
+					['permiso' => 'servicios.cobros.ver',       'nombre' => 'Cobros de servicios',        'urls' => ['/servicios/cobros'], 'fijo' => false],
+					// Acción sin pantalla propia: cobrar en el mostrador (anticipo, saldo, "Cobrar y entregar").
+					['permiso' => 'servicios.cobros.confirmar', 'nombre' => 'Cobrar servicios en el mostrador', 'urls' => [], 'fijo' => false],
 				],
 			],
             [

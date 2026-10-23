@@ -33,8 +33,8 @@ class ReasignacionService
         if (!$recepcion || !in_array($s->codigoServicio(), self::ESTADOS_REASIGNABLES, true)) {
             throw ValidationException::withMessages(['rse_tecid' => 'Esta solicitud no admite reasignación en su estado actual.']);
         }
-        if (!$this->tecnicos->esTecnicoActivo($tecnicoId)) {
-            throw ValidationException::withMessages(['rse_tecid' => 'El usuario seleccionado no es un técnico activo.']);
+        if (!$this->tecnicos->esTecnicoActivo($tecnicoId, $s->sse_sucid)) {
+            throw ValidationException::withMessages(['rse_tecid' => 'El usuario seleccionado no es un técnico activo de la sucursal de esta solicitud.']);
         }
         if ((int) $recepcion->rse_tecid === $tecnicoId) {
             throw ValidationException::withMessages(['rse_tecid' => 'La orden ya está asignada a ese técnico.']);

@@ -80,9 +80,12 @@ use App\Http\Controllers\Admin\Servicio\FallaController;
 use App\Http\Controllers\Admin\Servicio\TrabajoController;
 use App\Http\Controllers\Servicio\ServicioClienteController;
 use App\Http\Controllers\Admin\Servicio\SolicitudServicioController;
+use App\Http\Controllers\Admin\Servicio\MostradorServicioController;
 use App\Http\Controllers\Admin\Servicio\OrdenTecnicoController;
 use App\Http\Controllers\Admin\Servicio\PresupuestoValidacionController;
 use App\Http\Controllers\Admin\Servicio\PanelServicioController;
+use App\Http\Controllers\Admin\Servicio\CobroServicioController;
+use App\Http\Controllers\Servicio\PagoServicioController;
 use App\Http\Controllers\Admin\Reporte\ReporteConfigController;
 use App\Http\Controllers\Admin\Reporte\DashboardController;
 use App\Http\Controllers\Admin\Reporte\ReporteVentasController;
@@ -217,6 +220,15 @@ Route::group([
     Route::post('servicios/{numero}/presupuesto/rechazar', [ServicioClienteController::class, 'rechazarPresupuesto'])
         ->where('numero', 'SS-[0-9]{4}-[0-9]+');
 
+    // --- Pago del servicio (C4). Espejo de tienda/pedidos/{numero}/pago ---
+    Route::prefix('servicios/{numero}')->where(['numero' => 'SS-[0-9]{4}-[0-9]+'])->group(function () {
+        Route::get('pago', [PagoServicioController::class, 'config']);
+        Route::post('pago', [PagoServicioController::class, 'registrar'])->middleware('throttle:10,1');
+        // GET descarga el comprobante, POST lo reemplaza (pago rechazado)
+        Route::get('pagos/{pago}/comprobante', [PagoServicioController::class, 'comprobante'])->whereNumber('pago');
+        Route::post('pagos/{pago}/comprobante', [PagoServicioController::class, 'reemplazarComprobante'])->whereNumber('pago');
+    });
+
     // Paso 2: Facturación + Confirmar Pedido (crea el pedido y reserva stock)
     Route::get('checkout/facturacion',  [CheckoutController::class, 'configFacturacion']);
     Route::post('checkout/facturacion', [CheckoutController::class, 'guardarFacturacion']);
@@ -271,6 +283,18 @@ Route::prefix('admin/servicios/solicitudes')->middleware('auth:api')->group(func
         Route::post('/{id}/en-transito', [SolicitudServicioController::class, 'enTransito'])->whereNumber('id');
         Route::post('/{id}/rechazar', [SolicitudServicioController::class, 'rechazar'])->whereNumber('id');
         Route::post('/{id}/recepcion', [SolicitudServicioController::class, 'confirmarRecepcion'])->whereNumber('id');
+
+        // Ingreso presencial (mostrador): alta rápida de cliente + solicitud recibida en una transacción
+        Route::prefix('mostrador')->group(function () {
+            Route::get('/config', [MostradorServicioController::class, 'config']);
+            Route::get('/clientes', [MostradorServicioController::class, 'buscarClientes']);
+            Route::post('/clientes', [MostradorServicioController::class, 'crearCliente']);
+            Route::put('/clientes/{cliId}/documento', [MostradorServicioController::class, 'completarDocumento'])->whereNumber('cliId');
+            Route::get('/clientes/{cliId}/garantias', [MostradorServicioController::class, 'garantias'])->whereNumber('cliId');
+            Route::get('/clientes/{cliId}/reclamables', [MostradorServicioController::class, 'reclamables'])->whereNumber('cliId');
+            Route::get('/reclamo/{numero}', [MostradorServicioController::class, 'reclamo'])->where('numero', 'SS-[0-9]{4}-[0-9]+');
+            Route::post('/', [MostradorServicioController::class, 'store']);
+        });
     });
 });
 
@@ -604,6 +628,13 @@ Route::prefix('admin/servicios/panel')->middleware('auth:api')->group(function (
         ->whereNumber('id')->whereIn('tipo', ['recepcion', 'retiro'])
         ->middleware('permiso:servicios.solicitudes.ver,servicios.panel.ver');
 
+    // Paso 2: aprobación asistida, contacto y PDF del presupuesto (desde A3 y desde el detalle de A1)
+    Route::middleware('permiso:servicios.solicitudes.ver,servicios.panel.ver')->group(function () {
+        Route::post('/{id}/presupuesto/respuesta', [PanelServicioController::class, 'responderPresupuesto'])->whereNumber('id');
+        Route::post('/{id}/contacto', [PanelServicioController::class, 'registrarContacto'])->whereNumber('id');
+        Route::get('/{id}/presupuesto/pdf', [PanelServicioController::class, 'pdfPresupuesto'])->whereNumber('id');
+    });
+
     Route::middleware('permiso:servicios.panel.ver')->group(function () {
         Route::get('/resumen', [PanelServicioController::class, 'resumen']);
         Route::get('/config', [PanelServicioController::class, 'config']);
@@ -611,6 +642,38 @@ Route::prefix('admin/servicios/panel')->middleware('auth:api')->group(function (
         Route::post('/{id}/reasignar', [PanelServicioController::class, 'reasignar'])->whereNumber('id');
         Route::get('/{id}/entrega', [PanelServicioController::class, 'entregaConfig'])->whereNumber('id');
         Route::post('/{id}/entrega', [PanelServicioController::class, 'entregar'])->whereNumber('id');
+    });
+});
+
+// Servicio técnico - Cobro del servicio (bandeja, verificación web y cobro en mostrador)
+Route::prefix('admin/servicios/cobros')->middleware('auth:api')->group(function () {
+    // Literales antes de {id}
+    Route::get('/config', [CobroServicioController::class, 'config'])
+        ->middleware('permiso:servicios.cobros.ver,servicios.panel.ver,servicios.solicitudes.ver');
+    Route::get('/', [CobroServicioController::class, 'index'])
+        ->middleware('permiso:servicios.cobros.ver');
+
+    // Sección "Pagos" del detalle (A1/A3) y del modal A5
+    Route::middleware('permiso:servicios.cobros.ver,servicios.panel.ver,servicios.solicitudes.ver')->group(function () {
+        Route::get('/{id}', [CobroServicioController::class, 'show'])->whereNumber('id');
+        Route::get('/{id}/pagos/{pago}/comprobante', [CobroServicioController::class, 'comprobante'])
+            ->whereNumber('id')->whereNumber('pago');
+    });
+
+    // Verificación de pagos web: mismo permiso que en pedidos (decisión 14-b)
+    Route::middleware('permiso:pedidos.pago.verificar')->group(function () {
+        Route::post('/{id}/pagos/{pago}/confirmar', [CobroServicioController::class, 'confirmar'])->whereNumber('id')->whereNumber('pago');
+        Route::post('/{id}/pagos/{pago}/rechazar', [CobroServicioController::class, 'rechazar'])->whereNumber('id')->whereNumber('pago');
+    });
+
+    // Cobro presencial: sin este permiso no se registran cobros (decisión 12-a)
+    Route::middleware('permiso:servicios.cobros.confirmar')->group(function () {
+        Route::post('/{id}/cobros', [CobroServicioController::class, 'registrarCobro'])->whereNumber('id');
+        Route::post('/{id}/pagos/{pago}/cobrar-al-retirar', [CobroServicioController::class, 'cobrarAlRetirar'])
+            ->whereNumber('id')->whereNumber('pago');
+        // A5: además exige el acceso al panel (dos middleware = se exigen los DOS permisos)
+        Route::post('/{id}/cobrar-entregar', [CobroServicioController::class, 'cobrarYEntregar'])
+            ->whereNumber('id')->middleware('permiso:servicios.panel.ver');
     });
 });
 

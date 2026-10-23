@@ -1,0 +1,418 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>{{ reclamoBloqueado ? 'Reclamo de garantía en mostrador' : 'Nueva solicitud en mostrador' }}</strong>
+    <a cButton size="sm" color="secondary" variant="outline" routerLink="/servicios/solicitudes">Volver a la bandeja</a>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="text-center py-4" *ngIf="cargandoConfig"><c-spinner color="primary"></c-spinner></div>
+
+    <ng-container *ngIf="!cargandoConfig && config">
+      <div class="alert alert-warning" *ngIf="config.sucursales.length === 0">
+        No hay sucursales activas disponibles para su usuario.
+      </div>
+
+      <!-- ===================== Resultado ===================== -->
+      <div *ngIf="registrado as r" class="text-center py-4">
+        <h4 class="mb-2">Solicitud <strong>{{ r.sse_numero }}</strong> registrada</h4>
+        <p class="text-muted mb-1">El equipo quedó <strong>recibido</strong> y asignado al técnico.</p>
+        <p class="small text-muted mb-4" *ngIf="r.tiene_correo">Se envió un aviso al correo del cliente.</p>
+        <p class="small text-warning mb-4" *ngIf="!r.tiene_correo">El cliente no tiene correo: avísele por WhatsApp.</p>
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+          <button cButton color="secondary" class="text-white" (click)="imprimirConstancia()">Imprimir constancia de recepción</button>
+          <a cButton color="success" class="text-white" *ngIf="r.whatsapp_url" [href]="r.whatsapp_url" target="_blank" rel="noopener">
+            Avisar por WhatsApp
+          </a>
+          <button cButton color="primary" class="text-white" (click)="nuevaSolicitud()">Nueva solicitud</button>
+          <button cButton color="info" class="text-white" (click)="volverABandeja()">Ir a la bandeja</button>
+        </div>
+      </div>
+
+      <ng-container *ngIf="!registrado">
+        <!-- Indicador de pasos -->
+        <ul class="nav nav-pills mb-4 flex-nowrap overflow-auto">
+          <li class="nav-item" *ngFor="let p of pasos">
+            <a class="nav-link text-nowrap" role="button" [class.active]="paso === p.n" (click)="irA(p.n)">
+              {{ p.n }}. {{ p.titulo }}
+            </a>
+          </li>
+        </ul>
+
+        <!-- ===================== Paso 1: Cliente ===================== -->
+        <div *ngIf="paso === 1">
+          <ng-container *ngIf="!cliente">
+            <label cLabel for="busqueda">Buscar cliente</label>
+            <input cFormControl id="busqueda" [formControl]="busqueda" autocomplete="off"
+                   placeholder="Documento, correo o celular del cliente (mínimo 4 caracteres)" />
+            <div class="text-center py-3" *ngIf="buscando"><c-spinner size="sm" color="primary"></c-spinner></div>
+
+            <ng-container *ngIf="!buscando && buscado">
+              <div class="text-muted small my-2">{{ resultados.length }} resultado(s) encontrado(s)</div>
+              <div class="table-responsive" *ngIf="resultados.length">
+                <table cTable striped hover class="align-middle">
+                  <thead>
+                    <tr><th>Cliente</th><th>Documento</th><th>Contacto</th><th class="text-end">Acciones</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let c of resultados">
+                      <td>
+                        {{ c.nombre }}
+                        <c-badge color="info" class="ms-1" *ngIf="c.tiene_cuenta">Cuenta web</c-badge>
+                        <c-badge color="secondary" class="ms-1" *ngIf="c.cli_estado !== 1">Inactivo</c-badge>
+                      </td>
+                      <td>{{ c.documento ? (c.tpd_codigo + ' ' + c.documento) : '—' }}</td>
+                      <td class="small">{{ c.celular || '—' }}<div class="text-muted">{{ c.correo || 'Sin correo' }}</div></td>
+                      <td class="text-end">
+                        <button cButton size="sm" color="primary" class="me-2 text-white" (click)="seleccionar(c)">Seleccionar</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </ng-container>
+
+            <div class="mt-3" *ngIf="!mostrarAlta">
+              <button cButton color="success" class="text-white" (click)="abrirAlta()">Registrar cliente nuevo</button>
+            </div>
+
+            <!-- Alta rápida -->
+            <form *ngIf="mostrarAlta" [formGroup]="formCliente" (ngSubmit)="guardarCliente()" class="border rounded p-3 mt-3">
+              <h6 class="mb-3">Alta rápida de cliente (sin cuenta en la tienda)</h6>
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label cLabel for="per_tpdid">Tipo de documento <span class="text-danger">*</span></label>
+                  <select cSelect id="per_tpdid" formControlName="per_tpdid">
+                    <option *ngFor="let t of config.tipos_documento" [ngValue]="t.tpd_id">{{ t.tpd_descri }}</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label cLabel for="per_cedula">N.º de documento <span class="text-danger">*</span></label>
+                  <input cFormControl id="per_cedula" formControlName="per_cedula" maxlength="20" />
+                  <div class="text-danger small" *ngIf="campoInvalido(formCliente, 'per_cedula')">
+                    {{ errorBackend(formCliente, 'per_cedula') || 'Ingrese el documento.' }}
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <label cLabel for="per_nombr1">Primer nombre <span class="text-danger">*</span></label>
+                  <input cFormControl id="per_nombr1" formControlName="per_nombr1" maxlength="45" />
+                  <div class="text-danger small" *ngIf="campoInvalido(formCliente, 'per_nombr1')">
+                    {{ errorBackend(formCliente, 'per_nombr1') || 'Ingrese el nombre.' }}
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <label cLabel for="per_nombr2">Segundo nombre</label>
+                  <input cFormControl id="per_nombr2" formControlName="per_nombr2" maxlength="45" />
+                </div>
+                <div class="col-md-3">
+                  <label cLabel for="per_apell1">Primer apellido <span class="text-danger">*</span></label>
+                  <input cFormControl id="per_apell1" formControlName="per_apell1" maxlength="50" />
+                  <div class="text-danger small" *ngIf="campoInvalido(formCliente, 'per_apell1')">
+                    {{ errorBackend(formCliente, 'per_apell1') || 'Ingrese el apellido.' }}
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <label cLabel for="per_apell2">Segundo apellido</label>
+                  <input cFormControl id="per_apell2" formControlName="per_apell2" maxlength="50" />
+                </div>
+                <div class="col-md-3">
+                  <label cLabel for="celular">Celular <span class="text-danger">*</span></label>
+                  <input cFormControl id="celular" formControlName="celular" placeholder="0981 123 456" />
+                  <div class="text-danger small" *ngIf="campoInvalido(formCliente, 'celular')">
+                    {{ errorBackend(formCliente, 'celular') || 'Ingrese un celular válido.' }}
+                  </div>
+                  <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" id="es_whatsapp" formControlName="es_whatsapp" />
+                    <label class="form-check-label small" for="es_whatsapp">Tiene WhatsApp</label>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <label cLabel for="correo">Correo (opcional)</label>
+                  <input cFormControl id="correo" type="email" formControlName="correo" maxlength="100" />
+                  <div class="text-danger small" *ngIf="campoInvalido(formCliente, 'correo')">
+                    {{ errorBackend(formCliente, 'correo') || 'El correo no es válido.' }}
+                  </div>
+                  <div class="form-text">Con este correo podrá crear su cuenta y ver el servicio en línea.</div>
+                </div>
+              </div>
+              <div class="mt-3 d-flex gap-2">
+                <button cButton color="success" class="text-white" type="submit" [disabled]="guardandoCliente">
+                  <c-spinner size="sm" *ngIf="guardandoCliente"></c-spinner> Guardar cliente
+                </button>
+                <button cButton color="secondary" variant="outline" type="button" (click)="mostrarAlta = false">Cancelar</button>
+              </div>
+            </form>
+          </ng-container>
+
+          <!-- Cliente seleccionado -->
+          <div *ngIf="cliente as c" class="border rounded p-3">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h6 class="mb-1">{{ c.nombre }}
+                  <c-badge color="info" class="ms-1" *ngIf="c.tiene_cuenta">Cuenta web</c-badge>
+                </h6>
+                <div class="small">Documento: {{ c.documento ? (c.tpd_codigo + ' ' + c.documento) : '—' }}</div>
+                <div class="small">Celular: {{ c.celular || '—' }} · Correo: {{ c.correo || '—' }}</div>
+              </div>
+              <button cButton size="sm" color="secondary" variant="outline" *ngIf="!reclamoBloqueado" (click)="cambiarCliente()">Cambiar</button>
+            </div>
+
+            <!-- Cuenta web sin documento: se completa antes de seguir -->
+            <form *ngIf="!c.documento" [formGroup]="formDocumento" (ngSubmit)="guardarDocumento()" class="mt-3">
+              <div class="alert alert-warning small mb-2">
+                El cliente no tiene documento registrado. Es obligatorio para la constancia de recepción.
+              </div>
+              <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                  <label cLabel for="doc_tpdid">Tipo</label>
+                  <select cSelect id="doc_tpdid" formControlName="per_tpdid">
+                    <option *ngFor="let t of config.tipos_documento" [ngValue]="t.tpd_id">{{ t.tpd_descri }}</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label cLabel for="doc_cedula">N.º de documento</label>
+                  <input cFormControl id="doc_cedula" formControlName="per_cedula" maxlength="20" />
+                </div>
+                <div class="col-md-4">
+                  <button cButton color="success" class="text-white w-100" type="submit" [disabled]="guardandoDocumento">Guardar documento</button>
+                </div>
+              </div>
+              <div class="text-danger small mt-1" *ngIf="campoInvalido(formDocumento, 'per_cedula')">
+                {{ errorBackend(formDocumento, 'per_cedula') || 'Ingrese el documento.' }}
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- ===================== Paso 2: Servicio y equipo ===================== -->
+        <form *ngIf="paso === 2" [formGroup]="formServicio">
+          <div class="mb-3">
+            <label cLabel class="d-block">Tipo de servicio</label>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="tipo_rep" formControlName="tipo" value="REPARACION" />
+              <label class="form-check-label" for="tipo_rep">Reparación</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="tipo_gar" formControlName="tipo" value="GARANTIA" />
+              <label class="form-check-label" for="tipo_gar">Garantía de compra</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="tipo_rec" formControlName="tipo" value="RECLAMO" />
+              <label class="form-check-label" for="tipo_rec">Reclamo de garantía de un servicio</label>
+            </div>
+          </div>
+
+          <!-- Paso 3: reclamo de garantía de un servicio anterior -->
+          <div class="mb-3" *ngIf="esReclamo">
+            <div class="text-center py-2" *ngIf="cargandoReclamables"><c-spinner size="sm" color="primary"></c-spinner></div>
+            <ng-container *ngIf="!cargandoReclamables">
+              <div class="alert alert-warning small" *ngIf="reclamables.length === 0">
+                El cliente no tiene servicios entregados con garantía vigente (o ya tienen un reclamo en curso).
+              </div>
+              <ng-container *ngIf="reclamables.length">
+                <label cLabel for="sse_sseori">Servicio que reclama <span class="text-danger">*</span></label>
+                <select cSelect id="sse_sseori" formControlName="sse_sseori">
+                  <option [ngValue]="null" disabled>Seleccione...</option>
+                  <option *ngFor="let r of reclamables" [ngValue]="r.sse_numero">
+                    {{ r.sse_numero }} · {{ r.equipo }} · garantía hasta {{ r.vence | date:'dd/MM/yyyy' }}
+                  </option>
+                </select>
+                <div class="text-danger small" *ngIf="campoInvalido(formServicio, 'sse_sseori')">
+                  {{ errorBackend(formServicio, 'sse_sseori') || 'Seleccione el servicio.' }}
+                </div>
+                <div class="form-text" *ngIf="reclamableSeleccionado">El equipo se toma del servicio original y no se puede modificar.</div>
+              </ng-container>
+            </ng-container>
+          </div>
+
+          <div class="mb-3" *ngIf="esGarantia">
+            <div class="text-center py-2" *ngIf="cargandoLineas"><c-spinner size="sm" color="primary"></c-spinner></div>
+            <ng-container *ngIf="!cargandoLineas">
+              <div class="alert alert-warning small" *ngIf="lineas.length === 0">
+                El cliente no tiene productos dentro del plazo de garantía.
+              </div>
+              <ng-container *ngIf="lineas.length">
+                <label cLabel for="sse_dpdid">Producto en garantía <span class="text-danger">*</span></label>
+                <select cSelect id="sse_dpdid" formControlName="sse_dpdid">
+                  <option [ngValue]="null" disabled>Seleccione...</option>
+                  <option *ngFor="let l of lineas" [ngValue]="l.dpd_id">
+                    {{ l.producto }} · Pedido {{ l.ped_numero }} · vence {{ l.vence | date:'dd/MM/yyyy' }} ({{ l.dias_restantes }} días)
+                  </option>
+                </select>
+                <div class="text-danger small" *ngIf="campoInvalido(formServicio, 'sse_dpdid')">
+                  {{ errorBackend(formServicio, 'sse_dpdid') || 'Seleccione el producto.' }}
+                </div>
+              </ng-container>
+            </ng-container>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label cLabel for="sse_tdiid">Tipo de equipo <span class="text-danger">*</span></label>
+              <select cSelect id="sse_tdiid" formControlName="sse_tdiid">
+                <option [ngValue]="null" disabled>Seleccione...</option>
+                <option *ngFor="let t of config.tipos_dispositivo" [ngValue]="t.tdi_id">{{ t.tdi_descri }}</option>
+              </select>
+              <div class="text-danger small" *ngIf="campoInvalido(formServicio, 'sse_tdiid')">
+                {{ errorBackend(formServicio, 'sse_tdiid') || 'Seleccione el tipo.' }}
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label cLabel for="sse_marca">Marca <span class="text-danger">*</span></label>
+              <input cFormControl id="sse_marca" formControlName="sse_marca" maxlength="50" />
+              <div class="text-danger small" *ngIf="campoInvalido(formServicio, 'sse_marca')">
+                {{ errorBackend(formServicio, 'sse_marca') || 'Indique la marca.' }}
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label cLabel for="sse_modelo">Modelo <span class="text-danger">*</span></label>
+              <input cFormControl id="sse_modelo" formControlName="sse_modelo" maxlength="80" />
+              <div class="text-danger small" *ngIf="campoInvalido(formServicio, 'sse_modelo')">
+                {{ errorBackend(formServicio, 'sse_modelo') || 'Indique el modelo.' }}
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label cLabel for="sse_nroser">N.º de serie</label>
+              <input cFormControl id="sse_nroser" formControlName="sse_nroser" maxlength="80" />
+            </div>
+            <div class="col-md-8">
+              <label cLabel for="sse_acceso">Accesorios que deja (separados por coma)</label>
+              <input cFormControl id="sse_acceso" formControlName="sse_acceso" maxlength="255" placeholder="Cargador, funda, mouse..." />
+            </div>
+            <div class="col-12">
+              <label cLabel for="sse_proble">
+                {{ esReclamo ? 'Qué falla nuevamente (motivo del reclamo)' : 'Problema que reporta el cliente' }} <span class="text-danger">*</span>
+              </label>
+              <textarea cFormControl id="sse_proble" rows="3" formControlName="sse_proble" maxlength="500"></textarea>
+              <div class="text-danger small" *ngIf="campoInvalido(formServicio, 'sse_proble')">
+                {{ errorBackend(formServicio, 'sse_proble') || 'Describa el problema (mínimo 10 caracteres).' }}
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <!-- ===================== Paso 3: Recepción ===================== -->
+        <form *ngIf="paso === 3" [formGroup]="formRecepcion">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label cLabel for="sse_sucid">Sucursal de recepción <span class="text-danger">*</span></label>
+              <select cSelect id="sse_sucid" formControlName="sse_sucid">
+                <option [ngValue]="null" disabled>Seleccione...</option>
+                <option *ngFor="let s of config.sucursales" [ngValue]="s.suc_id">{{ s.suc_nombre }}</option>
+              </select>
+              <div class="text-danger small" *ngIf="campoInvalido(formRecepcion, 'sse_sucid')">
+                {{ errorBackend(formRecepcion, 'sse_sucid') || 'Seleccione la sucursal.' }}
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label cLabel for="rse_tecid">Técnico asignado <span class="text-danger">*</span></label>
+              <select cSelect id="rse_tecid" formControlName="rse_tecid">
+                <option [ngValue]="null" disabled>Seleccione...</option>
+                <option *ngFor="let t of tecnicosDisponibles" [ngValue]="t.usu_id">{{ t.nombre }}</option>
+              </select>
+              <div class="text-danger small" *ngIf="campoInvalido(formRecepcion, 'rse_tecid')">
+                {{ errorBackend(formRecepcion, 'rse_tecid') || 'Asigne un técnico.' }}
+              </div>
+              <div class="text-warning small" *ngIf="formRecepcion.get('sse_sucid')?.value && tecnicosDisponibles.length === 0">
+                No hay técnicos activos asignados a esta sucursal.
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label cLabel for="rse_clave">Clave / PIN del equipo</label>
+              <div class="input-group">
+                <input cFormControl id="rse_clave" [type]="verClave ? 'text' : 'password'" maxlength="100"
+                       formControlName="rse_clave" autocomplete="off" />
+                <button cButton color="secondary" variant="outline" type="button" (click)="verClave = !verClave">
+                  {{ verClave ? 'Ocultar' : 'Ver' }}
+                </button>
+              </div>
+              <div class="form-text">Se guarda cifrada y solo la ve el técnico (acceso auditado).</div>
+            </div>
+            <div class="col-md-6">
+              <label cLabel for="rse_estfis">Estado físico del equipo <span class="text-danger">*</span></label>
+              <textarea cFormControl id="rse_estfis" rows="3" formControlName="rse_estfis" maxlength="500"
+                        placeholder="Rayones, golpes, pantalla, tapas, etc."></textarea>
+              <div class="text-danger small" *ngIf="campoInvalido(formRecepcion, 'rse_estfis')">
+                {{ errorBackend(formRecepcion, 'rse_estfis') || 'Describa el estado físico (mínimo 5 caracteres).' }}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label cLabel for="rse_obs">Observaciones</label>
+              <textarea cFormControl id="rse_obs" rows="3" formControlName="rse_obs" maxlength="500"></textarea>
+            </div>
+          </div>
+
+          <h6 class="mt-4">Accesorios recibidos</h6>
+          <div formArrayName="accesorios">
+            <div class="input-group mb-2" *ngFor="let a of accesorios.controls; let i = index">
+              <input cFormControl [formControlName]="i" maxlength="100" placeholder="Accesorio" />
+              <button cButton color="danger" class="text-white" type="button" (click)="quitarAccesorio(i)">Quitar</button>
+            </div>
+          </div>
+          <button cButton size="sm" color="secondary" variant="outline" type="button" (click)="agregarAccesorio()">+ Agregar accesorio</button>
+
+          <h6 class="mt-4">Fotos de ingreso <span class="text-danger">*</span></h6>
+          <input cFormControl type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onFotos($event)" />
+          <div class="form-text">Obligatorias: respaldo del estado en que se recibe el equipo. Máximo {{ config.max_fotos }}.</div>
+          <div class="text-danger small" *ngIf="errorFotos">{{ errorFotos }}</div>
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <div *ngFor="let f of fotos; let i = index" class="position-relative">
+              <img [src]="f.preview" class="rounded border" style="width: 110px; height: 110px; object-fit: cover;" alt="Foto de ingreso" />
+              <button cButton size="sm" color="danger" class="text-white position-absolute top-0 end-0" type="button" (click)="quitarFoto(i)">×</button>
+            </div>
+          </div>
+
+          <div class="form-check mt-4">
+            <input class="form-check-input" type="checkbox" id="acepta_condiciones" formControlName="acepta_condiciones" />
+            <label class="form-check-label" for="acepta_condiciones">
+              El cliente aceptó las condiciones del servicio (firma la constancia de recepción).
+            </label>
+            <div class="text-danger small" *ngIf="campoInvalido(formRecepcion, 'acepta_condiciones')">
+              {{ errorBackend(formRecepcion, 'acepta_condiciones') || 'Confirme la aceptación de las condiciones.' }}
+            </div>
+          </div>
+        </form>
+
+        <!-- ===================== Paso 4: Confirmación ===================== -->
+        <div *ngIf="paso === 4 && cliente">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <h6 class="text-muted text-uppercase small">Cliente</h6>
+              <div><strong>{{ cliente.nombre }}</strong></div>
+              <div class="small">{{ cliente.tpd_codigo }} {{ cliente.documento }} · {{ cliente.celular || 'Sin celular' }}</div>
+              <div class="small">{{ cliente.correo || 'Sin correo (avisar por WhatsApp)' }}</div>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-muted text-uppercase small">Servicio</h6>
+              <div>{{ esReclamo ? 'Reclamo de garantía de ' + (formServicio.getRawValue().sse_sseori || '') : (esGarantia ? 'Garantía de compra' : 'Reparación') }}</div>
+              <div class="small" *ngIf="lineaSeleccionada as l">{{ l.producto }} · Pedido {{ l.ped_numero }}</div>
+              <div class="small">{{ nombreTipo }} {{ formServicio.getRawValue().sse_marca }} {{ formServicio.getRawValue().sse_modelo }}</div>
+              <div class="small text-muted">{{ formServicio.value.sse_proble }}</div>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-muted text-uppercase small">Recepción</h6>
+              <div class="small">Sucursal: {{ nombreSucursal }} · Técnico: {{ nombreTecnico }}</div>
+              <div class="small">Estado físico: {{ formRecepcion.value.rse_estfis }}</div>
+              <div class="small">Accesorios: {{ accesorios.length ? accesorios.value.join(', ') : 'Ninguno' }}</div>
+              <div class="small">Fotos: {{ fotos.length }} · Clave: {{ formRecepcion.value.rse_clave ? 'registrada' : 'no' }}</div>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-muted text-uppercase small">Ingreso</h6>
+              <div class="small">Modalidad: el cliente trae el equipo (sin costo de retiro).</div>
+              <div class="small">Al confirmar, la solicitud queda <strong>RECIBIDA</strong> y se imprime la constancia.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navegación -->
+        <div class="d-flex justify-content-between mt-4">
+          <button cButton color="secondary" variant="outline" (click)="anterior()" [disabled]="paso === 1 || guardando">Anterior</button>
+          <button cButton color="primary" class="text-white" *ngIf="paso < 4" (click)="siguiente()"
+                  [disabled]="paso === 1 && !clienteListo">Siguiente</button>
+          <button cButton color="success" class="text-white" *ngIf="paso === 4" (click)="confirmar()" [disabled]="guardando">
+            <c-spinner size="sm" *ngIf="guardando"></c-spinner> Registrar y recibir equipo
+          </button>
+        </div>
+      </ng-container>
+    </ng-container>
+  </c-card-body>
+</c-card>

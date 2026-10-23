@@ -1,0 +1,79 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ esAnticipo ? 'Registrar anticipo' : 'Registrar cobro' }} — {{ detalle?.sse_numero }}</h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="detalle">
+    <c-alert color="info" class="py-2 small" *ngIf="esAnticipo">
+      El servicio todavía no tiene total final. El anticipo es opcional y se descuenta del saldo al terminar la reparación.
+    </c-alert>
+    <c-alert color="light" class="py-2 small" *ngIf="!esAnticipo">
+      Total Gs. {{ formatoGs(detalle.resumen.total) }} · Pagado Gs. {{ formatoGs(detalle.resumen.confirmado) }} ·
+      <strong>Saldo Gs. {{ formatoGs(detalle.resumen.saldo) }}</strong>
+    </c-alert>
+
+    <form [formGroup]="form">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label cLabel>Forma de pago <span class="text-danger">*</span></label>
+          <select cSelect formControlName="mpa_codigo" [class.is-invalid]="campoInvalido('mpa_codigo') || errorBackend('mpa_codigo')">
+            <option value="">Seleccione...</option>
+            <option *ngFor="let m of metodos" [value]="m.mpa_codigo">{{ m.mpa_descri }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('mpa_codigo') || errorBackend('mpa_codigo')">
+            {{ errorBackend('mpa_codigo') || 'Seleccione la forma de pago.' }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel>Monto <span class="text-danger">*</span></label>
+          <input cFormControl type="number" min="1" formControlName="monto"
+                 [class.is-invalid]="campoInvalido('monto') || errorBackend('monto') || excedeSaldo" />
+          <div class="text-danger small" *ngIf="excedeSaldo">Supera el saldo (Gs. {{ formatoGs(detalle.resumen.saldo) }}).</div>
+          <div class="text-danger small" *ngIf="!excedeSaldo && (campoInvalido('monto') || errorBackend('monto'))">
+            {{ errorBackend('monto') || 'Ingrese un monto mayor que cero.' }}
+          </div>
+        </div>
+
+        <ng-container *ngIf="requiereReferencia">
+          <div class="col-md-6">
+            <label cLabel>{{ esGiro ? 'Referencia del giro' : 'N° de transferencia' }} <span class="text-danger">*</span></label>
+            <input cFormControl formControlName="nro_transaccion" maxlength="50"
+                   [class.is-invalid]="campoInvalido('nro_transaccion') || errorBackend('nro_transaccion')" />
+            <div class="text-danger small" *ngIf="campoInvalido('nro_transaccion') || errorBackend('nro_transaccion')">
+              {{ errorBackend('nro_transaccion') || 'La referencia es obligatoria para este método.' }}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label cLabel>Banco / Billetera</label>
+            <input cFormControl formControlName="banco" maxlength="60" />
+          </div>
+          <div class="col-md-6">
+            <label cLabel>Fecha del pago</label>
+            <input cFormControl type="date" formControlName="fecha_pago" [class.is-invalid]="errorBackend('fecha_pago')" />
+            <div class="text-danger small" *ngIf="errorBackend('fecha_pago')">{{ errorBackend('fecha_pago') }}</div>
+          </div>
+          <div class="col-md-6">
+            <label cLabel>Comprobante (opcional)</label>
+            <input cFormControl type="file" accept=".jpg,.jpeg,.png,.pdf" (change)="onArchivo($event)" />
+            <div class="text-danger small" *ngIf="errorArchivo || errorBackend('comprobante')">{{ errorArchivo || errorBackend('comprobante') }}</div>
+          </div>
+        </ng-container>
+
+        <div class="col-12">
+          <label cLabel>Observación</label>
+          <textarea cFormControl rows="2" maxlength="255" formControlName="observacion"></textarea>
+        </div>
+      </div>
+    </form>
+
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+    <button cButton color="success" class="text-white" (click)="guardar()" [disabled]="guardando">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      {{ esAnticipo ? 'Registrar anticipo' : 'Registrar cobro' }}
+    </button>
+  </c-modal-footer>
+</c-modal>

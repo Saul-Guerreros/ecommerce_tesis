@@ -20,13 +20,13 @@
           <label cLabel for="rse_tecid">Técnico asignado <span class="text-danger">*</span></label>
           <select cSelect id="rse_tecid" formControlName="rse_tecid">
             <option [ngValue]="null" disabled>Seleccione...</option>
-            <option *ngFor="let t of tecnicos" [ngValue]="t.usu_id">{{ t.nombre }}</option>
+            <option *ngFor="let t of tecnicosDisponibles" [ngValue]="t.usu_id">{{ t.nombre }}</option>
           </select>
           <div class="text-danger small" *ngIf="campoInvalido('rse_tecid')">
             {{ errorBackend('rse_tecid') || 'Asigne un técnico.' }}
           </div>
-          <div class="text-warning small" *ngIf="tecnicos.length === 0">
-            No hay usuarios activos con rol Técnico.
+          <div class="text-warning small" *ngIf="detalle && tecnicosDisponibles.length === 0">
+            No hay técnicos activos asignados a la sucursal de esta solicitud.
           </div>
         </div>
 

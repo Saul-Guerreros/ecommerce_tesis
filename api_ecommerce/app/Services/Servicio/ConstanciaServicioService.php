@@ -23,7 +23,7 @@ class ConstanciaServicioService
     public function generar(SolicitudServicio $s, string $tipo): Response
     {
         $s->loadMissing([
-            'cliente.persona', 'tipoDispositivo', 'sucursal', 'tipoEntrega',
+            'cliente.persona.tipoDocumento', 'cliente.persona.usuario', 'tipoDispositivo', 'sucursal', 'tipoEntrega',
             'recepcion.accesorios', 'recepcion.tecnico.persona', 'recepcion.recibidoPor.persona',
             'ordenServicio', 'entrega.usuario.persona', 'entrega.sucursal', 'adjuntos',
         ]);
