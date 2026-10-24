@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
+use App\Jobs\DeclararFacturaElectronica;
+use App\Models\Venta\VentaFe;
 /**
  * Emision del comprobante fiscal a partir de un pedido.
  *
@@ -135,7 +137,28 @@ class VentaService
             VentaDetalle::create(['vnd_venid' => $venta->ven_id] + $linea);
         }
 
+        $this->programarDeclaracion($venta);
+
         return $venta->load('detalle');
+    }
+
+        /**
+     * Deja la declaracion electronica programada. El registro venta_fe se crea
+     * DENTRO de la transaccion (si el cobro se revierte, desaparece) y el job se
+     * despacha DESPUES del commit: la llamada a la API nunca bloquea el cobro.
+     */
+    private function programarDeclaracion(VentaCab $venta): void
+    {
+        if (!config('facturacion.activa')) {
+            return;
+        }
+
+        VentaFe::firstOrCreate(
+            ['vfe_venid' => $venta->ven_id],
+            ['vfe_estado' => VentaFe::ESTADO_PENDIENTE]
+        );
+
+        DeclararFacturaElectronica::dispatch($venta->ven_id)->afterCommit();
     }
 
     // ---------- Anulacion ----------
@@ -154,8 +177,10 @@ class VentaService
         if ($venta->anulada()) {
             throw ValidationException::withMessages([
                 'factura' => 'Esta factura ya está anulada.',
+                
             ]);
         }
+         $this->verificarSinDeclaracionElectronica($venta);
 
         return DB::transaction(function () use ($venta, $usuario, $motivo) {
             $venta->update([
@@ -395,5 +420,20 @@ class VentaService
         }
 
         return $caja;
+    }
+
+        /**
+     * Una factura declarada (o en proceso de declararse) ante la DNIT no se anula
+     * internamente: el sistema quedaria en desacuerdo con la DNIT. Se corrige con
+     * una nota de credito.
+     */
+    private function verificarSinDeclaracionElectronica(VentaCab $venta): void
+    {
+        if ($venta->fe?->bloqueaAnulacion()) {
+            throw ValidationException::withMessages([
+                'factura' => 'Esta factura ya fue declarada (o está en proceso de declararse) ante la DNIT. '
+                           . 'No se anula desde acá: se corrige con una nota de crédito.',
+            ]);
+        }
     }
 }

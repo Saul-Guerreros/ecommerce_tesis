@@ -211,6 +211,12 @@ class Pedido extends Model
     {
         return $this->hasOne(PedidoFacturacion::class, 'pfa_pedid', 'ped_id');
     }
+    
+        /** Factura de venta emitida a partir de este pedido (null hasta que se cobre o entregue). */
+    public function factura(): HasOne
+    {
+        return $this->hasOne(\App\Models\Venta\VentaCab::class, 'ven_pedid', 'ped_id');
+    }
 
     public function historial(): HasMany
     {

@@ -17,6 +17,10 @@ use App\Models\Pedido\PedidoPago;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+use App\Models\Venta\VentaCab;
+use App\Services\Facturacion\FacturaEnvioService;
+use Illuminate\Http\Request;
+use RuntimeException;
 
 /**
  * Gestión del Pedido: detalle, verificación de pagos y cambio de estado.
@@ -50,6 +54,7 @@ class PedidoGestionController extends Controller
         'pagos.comprobante',
         'pagos.motivoRechazo',
         'pagos.usuarioVerificador.persona',
+        'factura.fe',
     ];
 
     public function __construct(
@@ -139,6 +144,66 @@ class PedidoGestionController extends Controller
             'data'    => $this->serializar($actualizado),
         ]);
     }
+
+
+        /**
+     * POST /api/admin/pedidos/{pedido}/factura/reenviar
+     * Body opcional: { "canal": "CORREO"|"WHATSAPP", "destino": "correo o telefono" }
+     *
+     * Sin canal se usa el que eligio el cliente en el checkout. Devuelve el pedido
+     * completo para que la pantalla muestre el nuevo estado sin pedir el detalle.
+     */
+    public function reenviarFactura(Request $request, Pedido $pedido, FacturaEnvioService $envio): JsonResponse
+    {
+        $datos = $request->validate(
+            [
+                'canal'   => ['nullable', 'in:CORREO,WHATSAPP'],
+                'destino' => ['nullable', 'string', 'max:100'],
+            ],
+            ['canal.in' => 'Canal de envío no válido.', 'destino.max' => 'El destino es demasiado largo.']
+        );
+
+        $venta = VentaCab::with('fe')->where('ven_pedid', $pedido->ped_id)->first();
+
+        if (!$venta) {
+            return response()->json(['message' => 'Este pedido todavía no tiene factura emitida.'], 404);
+        }
+
+        $pedido->loadMissing('facturacion');
+        $canal = $datos['canal'] ?? $pedido->facturacion?->pfa_recibe ?? FacturaEnvioService::CANAL_CORREO;
+
+        try {
+            $destino = $envio->reenviar($venta, $canal, $datos['destino'] ?? null);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 502);
+        }
+
+        return response()->json([
+            'message' => "Factura enviada a {$destino}.",
+            'data'    => $this->serializar($pedido),
+        ]);
+    }
+    
+
+        /**
+     * GET /api/admin/pedidos/{pedido}/factura/kude
+     *
+     * KuDE (PDF) de la factura del pedido, para adjuntarlo a mano en el envio
+     * asistido por WhatsApp. Sale del disco privado: no hay URL publica.
+     */
+    public function kudeFactura(Pedido $pedido): JsonResponse|StreamedResponse
+    {
+        $venta = VentaCab::with('fe')->where('ven_pedid', $pedido->ped_id)->first();
+        $ruta  = $venta?->fe?->vfe_pdf_ruta;
+        $disco = Storage::disk('local');
+
+        if (!$ruta || !$disco->exists($ruta)) {
+            return response()->json(['message' => 'El PDF de esta factura no está disponible.'], 404);
+        }
+
+        return $disco->response($ruta, "{$venta->ven_nrodoc}.pdf", ['Content-Type' => 'application/pdf'], 'attachment');
+    }
+
 
     // ---------- Auxiliares de serialización ----------
 

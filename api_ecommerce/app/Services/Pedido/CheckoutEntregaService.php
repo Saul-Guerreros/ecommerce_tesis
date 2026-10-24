@@ -105,35 +105,37 @@ class CheckoutEntregaService
     // ---------- Receptor ----------
 
     private function receptorTitular(Persona $persona, array $datos): array
-    {
-        if (blank($persona->per_cedula)) {
-            if (blank($datos['rec_nrodoc'] ?? null)) {
-                throw ValidationException::withMessages([
-                    'rec_nrodoc' => 'Necesitamos tu numero de cedula para preparar la entrega.',
-                ]);
-            }
+{
+    $cedula = $persona->per_cedula;
 
-            $ocupada = Persona::where('per_tpdid', $persona->per_tpdid)
-                ->where('per_cedula', $datos['rec_nrodoc'])
-                ->where('per_id', '<>', $persona->per_id)
-                ->exists();
-
-            if ($ocupada) {
-                throw ValidationException::withMessages([
-                    'rec_nrodoc' => 'Ese numero de cedula ya esta registrado en otra cuenta.',
-                ]);
-            }
-
-            $persona->update(['per_cedula' => $datos['rec_nrodoc']]);
+    if (blank($cedula)) {
+        if (blank($datos['rec_nrodoc'] ?? null)) {
+            throw ValidationException::withMessages([
+                'rec_nrodoc' => 'Necesitamos tu numero de cedula para preparar la entrega.',
+            ]);
         }
 
-        return [
-            'rec_nrodoc' => $persona->per_cedula,
-            'rec_nombre' => $persona->per_nombr1,
-            'rec_apelli' => $persona->per_apell1,
-            'rec_telef'  => $this->telefonoDe($persona),
-        ];
+        $ocupada = Persona::where('per_tpdid', $persona->per_tpdid)
+            ->where('per_cedula', $datos['rec_nrodoc'])
+            ->where('per_id', '<>', $persona->per_id)
+            ->exists();
+
+        if ($ocupada) {
+            throw ValidationException::withMessages([
+                'rec_nrodoc' => 'Ese numero de cedula ya esta registrado en otra cuenta.',
+            ]);
+        }
+
+        $cedula = $datos['rec_nrodoc']; // ya no se persiste aquí
     }
+
+    return [
+        'rec_nrodoc' => $cedula,
+        'rec_nombre' => $persona->per_nombr1,
+        'rec_apelli' => $persona->per_apell1,
+        'rec_telef'  => $this->telefonoDe($persona),
+    ];
+}
 
     private function receptorTercero(array $datos): array
     {

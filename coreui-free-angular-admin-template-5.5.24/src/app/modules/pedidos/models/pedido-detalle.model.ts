@@ -72,6 +72,17 @@ export interface TotalesPedido {
   total: number;
 }
 
+export interface FacturaPedido {
+  ven_id: number;
+  numero: string;
+  fe_estado: number | null;       // 1 Pendiente, 2 Enviada, 3 Rechazada; null = sin factura electrónica
+  puede_reenviar: boolean;
+  correo_enviado: boolean | null; // null = no se intentó mandar por correo
+  correo_detalle: string | null;  // destinatario si salió; motivo si no salió
+  empresa: string;
+  tiene_pdf: boolean;
+}
+
 export interface FacturacionDetalle {
   tipo_documento: 'CI' | 'RUC';
   tipo_label: string;
@@ -81,6 +92,7 @@ export interface FacturacionDetalle {
   correo: string | null;
   recibe_por: 'CORREO' | 'WHATSAPP';
   destino: string | null;
+  factura: FacturaPedido | null;
   comprobante_emitido: boolean;
 }
 

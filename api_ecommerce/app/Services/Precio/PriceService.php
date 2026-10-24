@@ -70,7 +70,7 @@ class PriceService
     {
         $sinIva = $costoPromedio * (1 + $margen / 100);
  
-        return round($sinIva * (1 + $tasaIva / 100), 2);
+        return round($sinIva * (1 + $tasaIva / 100), 0);
     }
  
     /**

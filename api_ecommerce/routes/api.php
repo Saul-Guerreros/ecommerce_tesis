@@ -679,6 +679,12 @@ Route::prefix('admin/pedidos')->middleware('auth:api')->group(function () {
     Route::patch('/{pedido}/estado', [PedidoGestionController::class, 'cambiarEstado'])
         ->middleware('permiso:pedidos.gestionar');
 
+    Route::post('/{pedido}/factura/reenviar', [PedidoGestionController::class, 'reenviarFactura'])
+        ->middleware(['permiso:pedidos.gestionar', 'throttle:5,1']);
+
+    Route::get('/{pedido}/factura/kude', [PedidoGestionController::class, 'kudeFactura'])
+        ->middleware('permiso:pedidos.gestionar');
+
     Route::get('/{pedido}/pagos/{pago}/comprobante', [PedidoGestionController::class, 'comprobante'])
     ->middleware('permiso:pedidos.ver');
 });
@@ -698,6 +704,15 @@ Route::prefix('admin/facturas-venta')->middleware('auth:api')->group(function ()
 
     Route::patch('/{id}/anular', [VentaController::class, 'anular'])
         ->middleware('permiso:facturas-venta.ver');
+
+        Route::get('/{id}/fe/kude', [VentaController::class, 'kude'])
+        ->middleware('permiso:facturas-venta.ver');
+
+    Route::get('/{id}/fe/xml', [VentaController::class, 'xml'])
+        ->middleware('permiso:facturas-venta.ver');
+
+    Route::post('/{id}/fe/reintentar', [VentaController::class, 'reintentarFe'])
+        ->middleware(['permiso:facturas-venta.ver', 'throttle:10,1']);
 });
 
 

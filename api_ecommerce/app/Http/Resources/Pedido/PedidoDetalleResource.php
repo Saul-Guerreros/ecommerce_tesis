@@ -211,8 +211,20 @@ class PedidoDetalleResource extends JsonResource
                 ? $facturacion->pfa_telefono
                 : $facturacion->pfa_correo,
 
-            // El comprobante fiscal todavía no se emite en esta etapa.
-            'comprobante_emitido' => false,
+            'comprobante_emitido' => $this->factura !== null,
+
+            // Factura emitida a partir de este pedido (null si aun no se emitio).
+            'factura' => $this->factura ? [
+                'ven_id'         => $this->factura->ven_id,
+                'numero'         => $this->factura->ven_nrodoc,
+                'fe_estado'      => $this->factura->fe?->vfe_estado,   // 1 Pendiente, 2 Enviada, 3 Rechazada
+                'puede_reenviar' => $this->factura->fe?->estaEnviado() === true
+                                    && !empty($this->factura->fe->vfe_xml_ruta),
+                'correo_enviado' => $this->factura->fe?->vfe_correo_enviado,
+                'correo_detalle' => $this->factura->fe?->vfe_correo_detalle,
+                'empresa'        => $this->factura->ven_emp_razon,
+                'tiene_pdf'      => !empty($this->factura->fe?->vfe_pdf_ruta),
+            ] : null,
         ];
     }
 

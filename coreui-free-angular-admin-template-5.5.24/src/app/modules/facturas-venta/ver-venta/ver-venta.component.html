@@ -57,6 +57,56 @@
       </div>
     </fieldset>
 
+    <!-- Factura electronica: estado de la declaracion ante la DNIT -->
+    <fieldset class="border rounded p-3 mb-3" *ngIf="fe">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Factura electrónica</legend>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label d-block">Estado</label>
+          <c-badge [color]="feColor">{{ feTexto }}</c-badge>
+          <c-badge color="light" class="ms-1 text-dark" *ngIf="esPrueba">PRUEBA · sin valor fiscal</c-badge>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Aprobada el</label>
+          <input cFormControl [value]="fe.aprobado || '—'" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Intentos de envío</label>
+          <input cFormControl [value]="fe.intentos" readonly />
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">CDC (código de control)</label>
+          <input cFormControl [value]="fe.cdc || '—'" readonly />
+        </div>
+      </div>
+
+      <!--
+      <div class="alert mb-0 mt-3" [ngClass]="'alert-' + feColor" *ngIf="fe.mensaje || fe.aviso">
+        <div *ngIf="fe.mensaje">{{ fe.mensaje }}</div>
+        <div class="small mt-1" *ngIf="fe.aviso">{{ fe.aviso }}</div>
+      </div>
+      -->
+      
+      <div class="small mt-2" *ngIf="fe.qr">
+        <a [href]="fe.qr" target="_blank" rel="noopener noreferrer">Consultar en e-Kuatia</a>
+      </div>
+
+      
+      <div class="small mt-2" *ngIf="fe.correo_enviado !== null && fe.correo_enviado !== undefined">
+        <span class="text-success" *ngIf="fe.correo_enviado">Correo enviado a {{ fe.correo_detalle }}</span>
+        <span class="text-danger" *ngIf="!fe.correo_enviado">
+          El correo no se pudo enviar: {{ fe.correo_detalle }}
+        </span>
+      </div>
+
+      <!--
+      <div class="text-muted small mt-2" *ngIf="!esAnulada && fe.bloquea_anulacion">
+        Esta factura ya fue declarada o está en proceso de declararse: no se anula desde
+        acá, se corrige con una nota de crédito.
+      </div>
+      -->      
+    </fieldset>
+
     <fieldset class="border rounded p-3 mb-3">
       <legend class="float-none w-auto px-2 fs-6 text-muted">Adquirente</legend>
       <div class="row g-3">
@@ -170,7 +220,17 @@
 
   <c-modal-footer>
     <button cButton color="secondary" (click)="cerrar()">Cerrar</button>
-    <button cButton color="danger" class="text-white" *ngIf="!esAnulada" (click)="pedirAnular()">
+    <button cButton color="secondary" class="text-white" *ngIf="fe?.tiene_xml" (click)="pedirXml()">
+      XML
+    </button>
+    <button cButton color="info" class="text-white" *ngIf="fe?.tiene_pdf" (click)="pedirKude()">
+      KuDE (PDF)
+    </button>
+    <button cButton color="warning" class="text-white" *ngIf="puedeReintentar"
+            [disabled]="reintentando" (click)="pedirReintento()">
+      {{ reintentando ? 'Reintentando...' : 'Reintentar' }}
+    </button>
+    <button cButton color="danger" class="text-white" *ngIf="puedeAnular" (click)="pedirAnular()">
       Anular
     </button>
   </c-modal-footer>

@@ -125,9 +125,11 @@
         <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
           <div>
             <label class="uk-form-label">Número de C.I. <span class="uk-text-danger">*</span></label>
+           <!-- línea 128 — rec_nrodoc -->
             <input class="uk-input" formControlName="rec_nrodoc" maxlength="15" autocomplete="off"
-                   [readonly]="titularCompleto"
-                   [class.uk-form-danger]="campoInvalido('rec_nrodoc')">
+                  [readonly]="titularCompleto"
+                  (input)="soloNumeros($event, 'rec_nrodoc')"
+                  [class.uk-form-danger]="campoInvalido('rec_nrodoc')">
             <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('rec_nrodoc')">
               {{ errorBackend('rec_nrodoc') ?? 'Ingresá un número de cédula válido (solo dígitos).' }}
             </div>
@@ -135,9 +137,10 @@
 
           <div>
             <label class="uk-form-label">Teléfono <span class="uk-text-danger" *ngIf="esTercero">*</span></label>
+           <!-- línea 138 — rec_telef -->
             <input class="uk-input" formControlName="rec_telef" maxlength="20" autocomplete="off"
-                   [readonly]="titularCompleto"
-                   [class.uk-form-danger]="campoInvalido('rec_telef')">
+                  (input)="soloTelefono($event, 'rec_telef')"
+                  [class.uk-form-danger]="campoInvalido('rec_telef')">
             <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('rec_telef')">
               {{ errorBackend('rec_telef') ?? 'El teléfono es obligatorio.' }}
             </div>
@@ -145,9 +148,11 @@
 
           <div>
             <label class="uk-form-label">Primer nombre <span class="uk-text-danger" *ngIf="esTercero">*</span></label>
-            <input class="uk-input" formControlName="rec_nombre" maxlength="100" autocomplete="off"
-                   [readonly]="titularCompleto"
-                   [class.uk-form-danger]="campoInvalido('rec_nombre')">
+           <input class="uk-input" formControlName="rec_nombre" maxlength="100" autocomplete="off"
+            [readonly]="titularCompleto"
+            (input)="soloTexto($event, 'rec_nombre')"
+            [class.uk-form-danger]="campoInvalido('rec_nombre')">
+
             <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('rec_nombre')">
               {{ errorBackend('rec_nombre') ?? 'El primer nombre es obligatorio.' }}
             </div>
@@ -156,8 +161,9 @@
           <div>
             <label class="uk-form-label">Primer apellido <span class="uk-text-danger" *ngIf="esTercero">*</span></label>
             <input class="uk-input" formControlName="rec_apelli" maxlength="100" autocomplete="off"
-                   [readonly]="titularCompleto"
-                   [class.uk-form-danger]="campoInvalido('rec_apelli')">
+              [readonly]="titularCompleto"
+              (input)="soloTexto($event, 'rec_apelli')"
+              [class.uk-form-danger]="campoInvalido('rec_apelli')">
             <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('rec_apelli')">
               {{ errorBackend('rec_apelli') ?? 'El primer apellido es obligatorio.' }}
             </div>

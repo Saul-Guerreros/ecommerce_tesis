@@ -19,6 +19,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+use App\Models\Persona;
+
 /**
  * Creacion del pedido. Corresponde al Paso 2 del checkout (boton
  * "Confirmar Pedido"), NO al pago.
@@ -77,10 +79,12 @@ class PedidoService
         $facturacion = $temporal->ptm_factura;
         $resumen     = $this->resumen->resumenDeItems($carritoItems, $entrega);
 
-        return DB::transaction(function () use (
-            $usuario, $cliente, $carritoItems, $entrega, $facturacion, $resumen, $temporal
-        ) {
-            $pedido = Pedido::create([
+      return DB::transaction(function () use (
+        $usuario, $cliente, $carritoItems, $entrega, $facturacion, $resumen, $temporal
+    ) {
+        $this->guardarCedulaSiCorresponde($usuario->persona, $entrega);
+
+        $pedido = Pedido::create([
                 'ped_cliid'  => $cliente->cli_id,
                 'ped_subtot' => $resumen['subtotal'],
                 'ped_impues' => $resumen['impuestos'],
@@ -142,6 +146,13 @@ class PedidoService
      * El borrador ya NO necesita tener ptm_pago: el metodo de pago dejo de
      * ser un requisito para crear el pedido.
      */
+    private function guardarCedulaSiCorresponde(Persona $persona, array $entrega): void
+{
+    if ($entrega['receptor'] === 'titular' && blank($persona->per_cedula)) {
+        $persona->update(['per_cedula' => $entrega['rec_nrodoc']]);
+    }
+}
+
     private function temporalCompleto(Usuario $usuario): PedidoTemporal
     {
         $temporal = PedidoTemporal::where('ptm_usuid', $usuario->usu_id)->first();
