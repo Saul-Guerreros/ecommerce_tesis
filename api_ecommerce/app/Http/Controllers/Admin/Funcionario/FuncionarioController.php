@@ -37,6 +37,9 @@ class FuncionarioController extends Controller
                                     ->where('rol_estado', 1)
                                     ->orderBy('rol_descri')
                                     ->get(['rol_id', 'rol_descri']),						
+            'sucursales'      => Sucursal::where('suc_estado', 1)
+                                    ->select('suc_id', 'suc_nombre')
+                                    ->orderBy('suc_nombre')->get(),
             'estados_civiles' => self::ESTADOS_CIVILES,
             'tipos_contacto'  => self::TIPOS_CONTACTO,
         ], 200);
@@ -51,6 +54,7 @@ class FuncionarioController extends Controller
                 'persona.usuario.rol:rol_id,rol_descri',
                 'cargo:crg_id,crg_descr',
 				'rol:rol_id,rol_descri',
+                'sucursal:suc_id,suc_nombre',
             ])
             ->when($request->search, function ($q, $search) {
                 $q->where(function ($sub) use ($search) {
@@ -143,6 +147,7 @@ class FuncionarioController extends Controller
                 'fun_perid'  => $persona->per_id,
                 'fun_crgid'  => $data['fun_crgid'],
 				'fun_rolid'  => $data['rol_id'],
+                'fun_sucid'  => $data['fun_sucid'],
                 'fun_fecing' => $data['fun_fecing'],
                 'fun_fecegr' => $data['fun_fecegr'] ?? null,
                 'fun_estado' => $data['fun_estado'],
@@ -155,7 +160,7 @@ class FuncionarioController extends Controller
         });
 
         return response()->json([
-			'data' => FuncionarioResource::make($funcionario->load('persona.contactos', 'persona.usuario.rol', 'cargo', 'rol')),
+			'data' => FuncionarioResource::make($funcionario->load('persona.contactos', 'persona.usuario.rol', 'cargo', 'rol', 'sucursal')),
         ], 201);
     }
 
@@ -181,6 +186,7 @@ class FuncionarioController extends Controller
                 'fun_crgid'  => $data['fun_crgid'],
                 'fun_fecing' => $data['fun_fecing'],
 				'fun_rolid'  => $data['rol_id'],
+                'fun_sucid'  => $data['fun_sucid'],
                 'fun_fecegr' => $data['fun_fecegr'] ?? null,
                 'fun_estado' => $data['fun_estado'],
             ]);
@@ -190,7 +196,7 @@ class FuncionarioController extends Controller
         });
 
         return response()->json([
-			'data' => FuncionarioResource::make($funcionario->fresh()->load('persona.contactos', 'persona.usuario.rol', 'cargo', 'rol')),
+			'data' => FuncionarioResource::make($funcionario->fresh()->load('persona.contactos', 'persona.usuario.rol', 'cargo', 'rol', 'sucursal')),
         ], 200);
     }
 
@@ -198,7 +204,8 @@ class FuncionarioController extends Controller
      * Acceso al panel (cuenta de usuario) del funcionario. Es opcional.
      *
      *  - Sin cuenta: si vienen correo y contraseña, la crea ACTIVA con el rol del
-     *    funcionario y la asigna a la sucursal principal (como hace Usuarios).
+     *    funcionario y la asigna a la sucursal del funcionario como principal.
+     *    (Las sucursales extra de la cuenta se gestionan desde Usuarios.)
      *  - Con cuenta: actualiza correo y/o contraseña si vienen, y mantiene el rol de la
      *    cuenta igual al del funcionario (antes solo se cambiaba fun_rolid).
      *  - Una persona con cuenta de Cliente (tienda) no recibe acceso al panel desde aquí.
@@ -232,7 +239,7 @@ class FuncionarioController extends Controller
                 'usu_estado' => Usuario::ESTADO_ACTIVO,
             ]);
 
-            $this->asignarSucursalPrincipal($usuario);
+            $this->asignarSucursalPrincipal($usuario, (int) $data['fun_sucid']);
 
             return;
         }
@@ -256,10 +263,13 @@ class FuncionarioController extends Controller
         $usuario->update($cambios);
     }
 
-    /** Toda cuenta del panel debe tener al menos una sucursal (regla de Usuarios). */
-    private function asignarSucursalPrincipal(Usuario $usuario): void
+    /**
+     * Toda cuenta del panel debe tener al menos una sucursal (regla de Usuarios).
+     * Se usa la del funcionario; si no viene, cae a la sucursal principal de la empresa.
+     */
+    private function asignarSucursalPrincipal(Usuario $usuario, ?int $preferida = null): void
     {
-        $sucId = Sucursal::where('suc_estado', 1)
+        $sucId = $preferida ?: Sucursal::where('suc_estado', 1)
             ->orderByDesc('suc_princi')->orderBy('suc_id')->value('suc_id');
 
         if ($sucId) {

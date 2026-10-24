@@ -44,6 +44,7 @@ class StoreFuncionarioRequest extends FormRequest
             // --- Datos de funcionario ---
             'fun_crgid'  => ['required', 'integer', 'exists:cargo,crg_id'],
 			'rol_id'     => ['required', 'integer', 'exists:rol,rol_id'],
+            'fun_sucid'  => ['required', 'integer', 'exists:sucursal,suc_id'],
             'fun_fecing' => ['required', 'date_format:Y-m-d'],
             'fun_fecegr' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:fun_fecing'],
             'fun_estado' => ['required', 'integer', Rule::in([0, 1])],
@@ -126,6 +127,8 @@ class StoreFuncionarioRequest extends FormRequest
             'fun_crgid.exists'    => 'El cargo seleccionado no es válido.',
 			'rol_id.required'     => 'Debe seleccionar el rol.',
             'rol_id.exists'       => 'El rol seleccionado no es válido.',
+            'fun_sucid.required'  => 'Debe seleccionar la sucursal.',
+            'fun_sucid.exists'    => 'La sucursal seleccionada no es válida.',
             'usu_email.email'     => 'El correo de acceso no tiene un formato válido.',
             'usu_email.max'       => 'El correo de acceso no puede superar los 30 caracteres.',
             'usu_email.unique'    => 'Ya existe una cuenta con ese correo.',

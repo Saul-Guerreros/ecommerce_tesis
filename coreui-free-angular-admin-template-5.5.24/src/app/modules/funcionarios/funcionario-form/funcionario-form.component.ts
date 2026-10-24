@@ -32,7 +32,7 @@ export class FuncionarioFormComponent implements OnChanges {
   readonly fechaMax = fechaNacimientoMax();
 
   config: FuncionarioConfig = {
-  tipos_documento: [], cargos: [], roles: [], estados_civiles: [], tipos_contacto: [],
+  tipos_documento: [], cargos: [], roles: [], sucursales: [], estados_civiles: [], tipos_contacto: [],
 	};
 
 
@@ -59,6 +59,7 @@ export class FuncionarioFormComponent implements OnChanges {
       this.reset();
       if (this.isEdit) {
         this.cargarFuncionario();
+        this.asegurarSucursalActual();
         this.asegurarCargoActual();
 		 this.asegurarRolActual();
       }
@@ -71,6 +72,7 @@ export class FuncionarioFormComponent implements OnChanges {
       this.config = c;
       this.asegurarCargoActual();
       this.asegurarRolActual();
+      this.asegurarSucursalActual();
     },
     error: () => this.toastr.error('No se pudieron cargar los datos del formulario'),
   });
@@ -95,11 +97,19 @@ private asegurarRolActual(): void {
   }
 }
 
+  /** El catálogo solo trae sucursales activas: si la del funcionario está inactiva, se agrega para no perderla al editar. */
+  private asegurarSucursalActual(): void {
+    const actual = this.funcionario?.sucursal;
+    if (actual && !this.config.sucursales.some(s => s.suc_id === actual.suc_id)) {
+      this.config = { ...this.config, sucursales: [...this.config.sucursales, actual] };
+    }
+  }
+
   reset(): void {
     this.form = {
       per_tpdid: null, per_cedula: '', per_nombr1: '', per_nombr2: null,
       per_apell1: '', per_apell2: null, per_estciv: null, per_fechna: null,
-	  fun_crgid: null, rol_id: null, fun_fecing: hoyIso(), fun_fecegr: null, fun_estado: 1,
+	  fun_crgid: null, rol_id: null, fun_sucid: null, fun_fecing: hoyIso(), fun_fecegr: null, fun_estado: 1,
       contactos: [{ con_tipo: 'CELULAR', con_valor: '' }],
       usu_email: '', usu_password: '',
     };
@@ -123,6 +133,7 @@ private asegurarRolActual(): void {
       per_fechna: f.persona.per_fechna,
       fun_crgid: f.cargo?.crg_id ?? null,
 	  rol_id: f.rol_id ?? null,
+      fun_sucid: f.sucursal?.suc_id ?? null,
       fun_fecing: f.fun_fecing,
       fun_fecegr: f.fun_fecegr,
       fun_estado: f.fun_estado,
@@ -232,6 +243,11 @@ private asegurarRolActual(): void {
 	  this.errors = { rol_id: ['Debe seleccionar el rol.'] };
 	  return;
 	}
+
+    if (!this.form.fun_sucid) {
+      this.errors = { fun_sucid: ['Debe seleccionar la sucursal.'] };
+      return;
+    }
 
     // Acceso al sistema: si todavía no tiene cuenta, correo y contraseña van juntos.
     if (!this.tieneAcceso) {

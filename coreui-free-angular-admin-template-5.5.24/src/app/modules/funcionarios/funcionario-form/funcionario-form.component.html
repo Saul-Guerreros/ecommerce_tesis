@@ -125,6 +125,21 @@
       </c-col>
 
       <c-col md="6" class="mb-3">
+        <label cLabel>Sucursal <span class="text-danger">*</span></label>
+        <select cSelect [(ngModel)]="form.fun_sucid" name="fun_sucid"
+                [class.is-invalid]="errors.fun_sucid">
+          <option [ngValue]="null">Seleccione…</option>
+          <option *ngFor="let s of config.sucursales" [ngValue]="s.suc_id">{{ s.suc_nombre }}</option>
+        </select>
+        <div class="invalid-feedback d-block" *ngIf="errors.fun_sucid">
+          {{ errors.fun_sucid[0] }}
+        </div>
+        <small class="text-muted" *ngIf="config.sucursales.length === 0">
+          No hay sucursales activas. Créalas primero en el módulo de Sucursales.
+        </small>
+      </c-col>
+
+      <c-col md="6" class="mb-3">
         <label cLabel>Estado</label>
         <c-form-check switch class="mt-2">
           <input cFormCheckInput type="checkbox" name="fun_estado"

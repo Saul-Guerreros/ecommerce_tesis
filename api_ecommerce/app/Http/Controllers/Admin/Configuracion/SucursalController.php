@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Schema;
 class SucursalController extends Controller
 {
     private const DEPENDENCIAS = [
-        'deposito' => ['columna' => 'dpo_sucid', 'etiqueta' => 'depósito(s)'],
+        'deposito'    => ['columna' => 'dpo_sucid', 'etiqueta' => 'depósito(s)'],
+        'funcionario' => ['columna' => 'fun_sucid', 'etiqueta' => 'funcionario(s)'],
     ];
 
     private function contarUsos(): array

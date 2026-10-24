@@ -56,6 +56,12 @@ class FuncionarioResource extends JsonResource
                 'crg_descr' => $this->cargo->crg_descr,
             ]),
 
+            // Nullable: los funcionarios anteriores a esta columna pueden no tener sucursal.
+            'sucursal' => $this->whenLoaded('sucursal', fn() => $this->sucursal ? [
+                'suc_id'     => $this->sucursal->suc_id,
+                'suc_nombre' => $this->sucursal->suc_nombre,
+            ] : null),
+
             'usuario' => $this->acceso(),
 
             'contactos' => $this->persona->contactos->map(fn($c) => [
