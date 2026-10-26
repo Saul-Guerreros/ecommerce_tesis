@@ -76,12 +76,18 @@ export class RegistrarCobroComponent implements OnInit, OnChanges {
         monto: this.esAnticipo ? null : this.detalle.resumen.saldo,
         nro_transaccion: '',
         banco: '',
-        fecha_pago: new Date().toISOString().slice(0, 10),
+       fecha_pago: this.hoyLocal(),
         observacion: '',
       });
     }
   }
 
+	/** Fecha local (Paraguay) en formato YYYY-MM-DD; toISOString() da la fecha UTC. */
+	private hoyLocal(): string {
+	  const d = new Date();
+	  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+	}
+	
   get esAnticipo(): boolean { return !this.detalle?.resumen.consolidado; }
 
   get requiereReferencia(): boolean {

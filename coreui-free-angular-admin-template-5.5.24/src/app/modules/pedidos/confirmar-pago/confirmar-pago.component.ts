@@ -83,12 +83,18 @@ export class ConfirmarPagoComponent implements OnChanges {
         monto_verificado: this.pago.monto_asignado,
         nro_transaccion: '',
         banco: this.pago.metodo.descri ?? '',
-        fecha_pago: new Date().toISOString().slice(0, 10),
+       fecha_pago: this.hoyLocal(),
         observacion: '',
         confirmar_diferencia: false,
       });
     }
   }
+  
+  /** Fecha local (Paraguay) en formato YYYY-MM-DD; toISOString() da la fecha UTC. */
+	private hoyLocal(): string {
+	  const d = new Date();
+	  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+	}
 
   // ---------- Montos ----------
 
