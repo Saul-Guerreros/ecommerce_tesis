@@ -6,7 +6,7 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import {
   BadgeModule, ButtonModule, CardModule, FormModule, ModalModule, SpinnerModule, TableModule,
 } from '@coreui/angular';
-import { EstadoOption, Venta } from '../models/venta.model';
+import { EstadoOption, FeEstadoOption, Venta } from '../models/venta.model';
 import { VentasService } from '../service/ventas.service';
 import { VerVentaComponent } from '../ver-venta/ver-venta.component';
 
@@ -22,11 +22,13 @@ import { VerVentaComponent } from '../ver-venta/ver-venta.component';
 export class ListVentaComponent implements OnInit {
   ventas: Venta[] = [];
   estados: EstadoOption[] = [];
+  feEstados: FeEstadoOption[] = [];
   cargando = false;
   cargandoVer = false;
 
   search = '';
   filtroEstado = '';
+  filtroFe = '';
   filtroDesde = '';
   filtroHasta = '';
 
@@ -40,13 +42,19 @@ export class ListVentaComponent implements OnInit {
   motivoAnulacion = '';
   anulando = false;
 
+  // Ids con un reintento de factura electronica en curso (evita doble clic).
+  reintentando = new Set<number>();
+
   constructor(private service: VentasService, private toastr: ToastrService) {}
 
   ngOnInit(): void {
     this.cargar();
 
     this.service.getConfig().subscribe({
-      next: (res) => (this.estados = res.estados),
+      next: (res) => {
+        this.estados = res.estados;
+        this.feEstados = res.fe_estados ?? [];
+      },
       error: () => {},
     });
 
@@ -66,6 +74,7 @@ export class ListVentaComponent implements OnInit {
       .getAll({
         search: this.search,
         estado: this.filtroEstado,
+        fe_estado: this.filtroFe,
         desde: this.filtroDesde,
         hasta: this.filtroHasta,
       })
@@ -81,6 +90,7 @@ export class ListVentaComponent implements OnInit {
   limpiarFiltros(): void {
     this.search = '';
     this.filtroEstado = '';
+    this.filtroFe = '';
     this.filtroDesde = '';
     this.filtroHasta = '';
     this.cargar();
@@ -136,6 +146,91 @@ export class ListVentaComponent implements OnInit {
         this.anulando = false;
       },
     });
+  }
+
+  // ---------- Factura electronica ----------
+
+  /** Abre el KuDE (PDF) en otra pestaña. Viaja con el JWT, por eso se pide como Blob. */
+  abrirKude(v: Venta): void {
+    this.service.kude(v.ven_id).subscribe({
+      next: (blob) => this.service.abrirPdf(blob, `${v.ven_nrodoc}.pdf`),
+      error: async (err) =>
+        this.toastr.error(await this.service.mensajeDeError(err, 'No se pudo abrir el KuDE'), 'Error'),
+    });
+  }
+
+  /** El XML es el documento con valor legal: se descarga, no se muestra. */
+  descargarXml(v: Venta): void {
+    this.service.xml(v.ven_id).subscribe({
+      next: (blob) => this.service.descargar(blob, `${v.ven_nrodoc}.xml`),
+      error: async (err) =>
+        this.toastr.error(await this.service.mensajeDeError(err, 'No se pudo descargar el XML'), 'Error'),
+    });
+  }
+
+  /**
+   * Solo encola el reintento: la declaracion corre en segundo plano. Se
+   * recarga a los pocos segundos para mostrar el resultado.
+   */
+  reintentarFe(v: Venta): void {
+    if (this.reintentando.has(v.ven_id)) return;
+
+    this.reintentando.add(v.ven_id);
+
+    this.service.reintentarFe(v.ven_id).subscribe({
+      next: (res) => {
+        this.toastr.info(res?.message ?? 'Reintento en curso', 'Facturación electrónica');
+
+        setTimeout(() => {
+          this.reintentando.delete(v.ven_id);
+          this.cargar();
+          this.refrescarVer(v.ven_id);
+        }, 4000);
+      },
+      error: (err) => {
+        this.toastr.error(err?.error?.message ?? 'No se pudo reintentar', 'Error');
+        this.reintentando.delete(v.ven_id);
+      },
+    });
+  }
+
+  /** Si el modal Ver esta abierto con esa factura, trae su estado actualizado. */
+  private refrescarVer(id: number): void {
+    if (!this.verModalVisible || this.ventaSeleccionada?.ven_id !== id) return;
+
+    this.service.getById(id).subscribe({
+      next: (completa) => (this.ventaSeleccionada = completa),
+      error: () => {},
+    });
+  }
+
+  colorFe(estado: number): string {
+    if (estado === 2) return 'success';
+    if (estado === 3) return 'danger';
+    return 'warning';
+  }
+
+  textoFe(estado: number): string {
+    if (estado === 2) return 'Enviada';
+    if (estado === 3) return 'Rechazada';
+    return 'Pendiente';
+  }
+
+  esPrueba(v: Venta): boolean {
+    return v.fe?.ambiente === 'simulado';
+  }
+
+  puedeReintentar(v: Venta): boolean {
+    return v.ven_estado !== 9 && v.fe?.estado === 1;
+  }
+
+  /**
+   * Una factura aprobada ante la DNIT (o en proceso) no se anula desde aca:
+   * se corrige con una nota de credito. El backend lo aplica igual; esto
+   * solo evita mostrar un boton que siempre fallaria.
+   */
+  puedeAnular(v: Venta): boolean {
+    return v.ven_estado !== 9 && !v.fe?.bloquea_anulacion;
   }
 
   colorEstado(estado: number): string {

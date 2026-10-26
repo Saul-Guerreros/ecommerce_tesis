@@ -60,6 +60,27 @@ class VentaCabResource extends JsonResource
             'ped_numero' => $this->whenLoaded('pedido', fn () => $this->pedido->ped_numero),
 
             'detalle' => VentaDetalleResource::collection($this->whenLoaded('detalle')),
+
+            // Factura electronica. null = la factura se emitio sin ella (antes de
+            // activar la integracion, o con FACTURACION_ACTIVA=false).
+            // No se exponen las rutas de los archivos: solo si existen.
+            'fe' => $this->whenLoaded('fe', fn ($fe) => [
+                'estado'            => $fe->vfe_estado,   // 1 Pendiente, 2 Enviada, 3 Rechazada
+                'error'             => $fe->vfe_error,
+                'mensaje'           => $fe->vfe_mensaje,
+                'aviso'             => $fe->vfe_aviso,
+                'cdc'               => $fe->vfe_cdc,
+                'ambiente'          => $fe->vfe_ambiente,
+                'qr'                => $fe->vfe_qr,
+                'aprobado'          => $fe->vfe_aprobado?->format('Y-m-d H:i:s'),
+                'intentos'          => $fe->vfe_intentos,
+                'ultimo_intento'    => $fe->vfe_ultimo_intento?->format('Y-m-d H:i:s'),
+                'tiene_xml'         => !empty($fe->vfe_xml_ruta),
+                'tiene_pdf'         => !empty($fe->vfe_pdf_ruta),
+                'bloquea_anulacion' => $fe->bloqueaAnulacion(),
+                'correo_enviado'    => $fe->vfe_correo_enviado,
+                'correo_detalle'    => $fe->vfe_correo_detalle,
+            ]),
         ];
     }
 }

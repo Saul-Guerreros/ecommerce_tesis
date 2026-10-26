@@ -6,7 +6,9 @@ use App\Models\Pedido\EstadoPago;
 use App\Models\Servicio\EstadoServicio;
 use App\Models\Servicio\ServicioHistorialEstado;
 use App\Models\Servicio\ServicioPago;
+use App\Exceptions\EmisionFacturaException;
 use App\Models\Servicio\SolicitudServicio;
+use App\Models\Usuario;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -28,10 +30,21 @@ use Illuminate\Validation\ValidationException;
  *   no hay nada que corregir, se cobra de nuevo.
  *
  * Debe llamarse dentro de la DB::transaction() del service que orquesta.
+ *
+ * Facturación: cuando el cobro ACABA de quedar CONFIRMADO se emite la
+ * factura al contado (FacturaServicioService) en la misma transacción. Es
+ * el único punto donde un cobro se completa, así que cubre todos los
+ * caminos: verificación web, cobro de mostrador, "Cobrar efectivo",
+ * "Cobrar y entregar" y anticipos que ya cubren el total al consolidar.
+ * Si la emisión falla (sin timbrado, sin caja...), se revierte el cobro:
+ * mismo criterio que el pedido (ver EmisionFacturaException).
  */
 class EstadoPagoServicioService
 {
-    public function __construct(private NotificadorServicio $notificador) {}
+    public function __construct(
+        private NotificadorServicio $notificador,
+        private FacturaServicioService $facturas,
+    ) {}
 
     /**
      * Recalcula sse_epaid y deja UNA fila de historial (tipo PAGO) por
@@ -51,6 +64,19 @@ class EstadoPagoServicioService
         $s->save();
         $s->load('estadoPago');
 
+        $pagado = $codigo === EstadoPago::CONFIRMADO && $anterior !== EstadoPago::CONFIRMADO;
+
+        // Antes del historial y del aviso: si la emisión falla, la excepción
+        // revierte la transacción y no queda nada a medias.
+        if ($pagado) {
+            $factura = $this->facturas->emitir($s, $this->emisor($s, $usuId));
+
+            if ($factura) {
+                $nota   = "Factura {$factura->ven_nrodoc} emitida";
+                $coment = $coment !== null ? "{$coment} · {$nota}" : $nota;
+            }
+        }
+
         if ($coment !== null || $nuevoId !== $anteriorId) {
             ServicioHistorialEstado::create([
                 'she_sseid'  => $s->sse_id,
@@ -63,13 +89,30 @@ class EstadoPagoServicioService
             ]);
         }
 
-        $pagado = $codigo === EstadoPago::CONFIRMADO && $anterior !== EstadoPago::CONFIRMADO;
-
         if ($pagado) {
             $this->notificador->alCambiarPago($s, EstadoPago::CONFIRMADO, null);
         }
 
         return $pagado;
+    }
+
+    /**
+     * Usuario que figura como emisor de la factura (venta_cab.ven_usuid es
+     * obligatorio): el que hizo la operación que completó el cobro. Sin
+     * usuario (proceso automático), el funcionario que registró la solicitud
+     * en el mostrador.
+     */
+    private function emisor(SolicitudServicio $s, ?int $usuId): Usuario
+    {
+        $usuario = Usuario::find($usuId ?? $s->sse_usuid);
+
+        if (!$usuario) {
+            throw new EmisionFacturaException(
+                "No se pudo determinar el usuario emisor de la factura de {$s->sse_numero}."
+            );
+        }
+
+        return $usuario;
     }
 
     /**

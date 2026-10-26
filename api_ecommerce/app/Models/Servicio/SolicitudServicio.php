@@ -10,6 +10,7 @@ use App\Models\Pedido\EstadoPago;
 use App\Models\Pedido\Pedido;
 use App\Models\Pedido\TipoEntrega;
 use App\Models\Usuario;
+use App\Models\Venta\VentaCab;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -162,6 +163,22 @@ class SolicitudServicio extends Model
     public function pagos(): HasMany
     {
         return $this->hasMany(ServicioPago::class, 'spa_sseid', 'sse_id')->orderBy('spa_orden');
+    }
+
+    /** Datos fiscales elegidos para facturar (CI o RUC). Sin fila: se factura con la CI. */
+    public function facturacion(): HasOne
+    {
+        return $this->hasOne(ServicioFacturacion::class, 'sfa_sseid', 'sse_id');
+    }
+
+    /**
+     * Factura VIGENTE del servicio (las anuladas quedan fuera, igual que
+     * uq_venta_servicio). Se define de este lado para no modificar VentaCab.
+     */
+    public function factura(): HasOne
+    {
+        return $this->hasOne(VentaCab::class, 'ven_sseid', 'sse_id')
+            ->where('ven_estado', '<>', VentaCab::ESTADO_ANULADA);
     }
 
     public function historial(): HasMany

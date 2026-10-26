@@ -120,6 +120,45 @@
           </div>
         }
 
+        <!-- Factura del servicio: aparece cuando se confirma el pago -->
+        @if (factura; as f) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap" style="gap: 10px;">
+              <div>
+                <h4 class="uk-card-title uk-margin-remove">Factura</h4>
+                <div class="uk-text-meta">N.º {{ f.numero }} · {{ f.fecha | date:'dd/MM/yyyy' }}</div>
+              </div>
+              @if (f.disponible) {
+                <button type="button" class="uk-button uk-button-primary" [disabled]="descargandoFactura" (click)="descargarFactura()">
+                  @if (descargandoFactura) { <span uk-spinner="ratio: 0.6"></span> } @else { <span uk-icon="icon: download"></span> }
+                  Descargar factura
+                </button>
+              }
+            </div>
+
+            <dl class="uk-description-list uk-margin-small-top ds-montos">
+              <dt>A nombre de</dt><dd>{{ f.nombre }} ({{ f.documento }})</dd>
+              <dt>Total</dt><dd>{{ f.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd>
+            </dl>
+
+            @if (!f.disponible) {
+              <p class="uk-text-meta uk-margin-remove-bottom">
+                Estamos procesando tu factura electrónica. En unos minutos vas a poder descargarla.
+              </p>
+            }
+            @if (f.disponible && f.qr) {
+              <p class="uk-text-meta uk-margin-remove-bottom">
+                Podés verificarla en <a [href]="f.qr" target="_blank" rel="noopener">e-Kuatia (DNIT)</a>.
+              </p>
+            }
+            @if (f.prueba) {
+              <p class="uk-text-warning uk-text-small uk-margin-small-top uk-margin-remove-bottom">
+                Comprobante de prueba: no tiene valor fiscal.
+              </p>
+            }
+          </div>
+        }
+
         @if (s.garantia; as g) {
           <div class="uk-card uk-card-default uk-card-body uk-margin">
             <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap" style="gap: 10px;">

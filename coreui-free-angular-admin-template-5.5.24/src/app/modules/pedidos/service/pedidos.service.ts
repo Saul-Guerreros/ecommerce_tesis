@@ -99,6 +99,25 @@ export class PedidosService {
 
     return params;
   }
+  
+  
+   /** Reenvía la factura electrónica aprobada por el canal indicado. Devuelve el pedido actualizado. */
+  reenviarFactura(
+    pedidoId: number,
+    canal: 'CORREO' | 'WHATSAPP',
+    destino?: string | null,
+  ): Observable<{ message: string; data: PedidoDetalle }> {
+    return this.http.post<{ message: string; data: PedidoDetalle }>(
+      `${this.apiUrl}/${pedidoId}/factura/reenviar`,
+      { canal, destino: destino || null },
+    );
+  }
+
+  /** KuDE (PDF) de la factura del pedido: se adjunta a mano en el envío por WhatsApp. */
+  kudeFactura(pedidoId: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${pedidoId}/factura/kude`, { responseType: 'blob' });
+  }
+
 
   /** El comprobante se trae como blob porque la ruta exige token JWT. */
     comprobante(pedidoId: number, pagoId: number): Observable<Blob> {

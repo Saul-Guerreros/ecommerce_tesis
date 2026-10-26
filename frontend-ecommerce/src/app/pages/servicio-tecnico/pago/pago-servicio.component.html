@@ -150,6 +150,9 @@
               (metodoActivoChange)="metodoActivo = $event"
               (cambio)="onCambioPagos($event)">
             </app-pago-dividido>
+
+            <!-- CI / RUC y medio de recepción de la factura -->
+            <app-facturacion-servicio [numero]="numero" [intento]="intentoEnviar"></app-facturacion-servicio>
           </div>
 
           <div class="ck-col-lateral">

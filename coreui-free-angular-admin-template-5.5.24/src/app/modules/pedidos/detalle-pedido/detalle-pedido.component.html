@@ -299,11 +299,35 @@
               <span class="ms-1" *ngIf="fac.destino">&rarr; {{ fac.destino }}</span>
             </div>
           </div>
+
+          <div class="col-12" *ngIf="fac.factura as f">
+            <span class="small text-muted">Factura:</span>
+            <span class="ms-1 fw-semibold">{{ f.numero }}</span>
+            <c-badge class="ms-2" *ngIf="f.fe_estado !== null"
+                     [color]="f.fe_estado === 2 ? 'success' : f.fe_estado === 3 ? 'danger' : 'warning'">
+              {{ f.fe_estado === 2 ? 'Enviada' : f.fe_estado === 3 ? 'Rechazada' : 'Pendiente' }}
+            </c-badge>
+            <div class="small mt-1" *ngIf="f.correo_enviado !== null">
+              <span class="text-success" *ngIf="f.correo_enviado">Correo enviado a {{ f.correo_detalle }}</span>
+              <span class="text-danger" *ngIf="!f.correo_enviado">
+                El correo no se pudo enviar: {{ f.correo_detalle }}
+              </span>
+            </div>
+          </div>
+
         </c-card-body>
 
         <c-card-footer class="d-flex justify-content-between">
-          <button cButton color="primary" variant="outline" size="sm"
-                  (click)="pendiente('Ver factura')">Ver factura</button>
+          
+          <div>
+            <button cButton color="primary" variant="outline" size="sm"
+                    (click)="pendiente('Ver factura')">Ver factura</button>
+            <button cButton color="primary" variant="outline" size="sm" class="ms-2"
+                    *ngIf="fac.factura?.puede_reenviar" (click)="abrirReenvio()">
+              Reenviar factura
+            </button>
+          </div>
+
           <div>
             <button cButton color="secondary" variant="outline" size="sm" class="me-2"
                     (click)="pendiente('Editar datos')">Editar datos</button>
@@ -459,3 +483,80 @@
   [visible]="rechazarVisible" [pedido]="pedido" [pago]="pagoSeleccionado"
   (visibleChange)="rechazarVisible = $event"
   (guardado)="onPagoActualizado($event)"></app-rechazar-pago>
+
+
+<c-modal [visible]="reenvioVisible" (visibleChange)="reenvioVisible = $event">
+  <c-modal-header><h5 cModalTitle>Reenviar factura</h5></c-modal-header>
+  <c-modal-body>
+    <p class="mb-3">
+      Factura <strong>{{ pedido?.facturacion?.factura?.numero }}</strong>
+    </p>
+
+    <div class="mb-3">
+      <label class="form-label d-block">Enviar por</label>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" id="canalCorreo" name="canalReenvio"
+               value="CORREO" [(ngModel)]="canalReenvio" (ngModelChange)="cambiarCanalReenvio()" />
+        <label class="form-check-label" for="canalCorreo">Correo</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" id="canalWhatsapp" name="canalReenvio"
+               value="WHATSAPP" [(ngModel)]="canalReenvio" (ngModelChange)="cambiarCanalReenvio()"
+               [disabled]="!whatsappDisponible" />
+        <label class="form-check-label" for="canalWhatsapp">WhatsApp</label>
+      </div>
+    </div>
+
+    <label class="form-label">{{ canalReenvio === 'WHATSAPP' ? 'Teléfono (celular)' : 'Correo' }}</label>
+    <input cFormControl [type]="canalReenvio === 'WHATSAPP' ? 'tel' : 'email'"
+           [(ngModel)]="destinoReenvio" maxlength="100"
+           [placeholder]="canalReenvio === 'WHATSAPP' ? '0981 123 456' : 'correo@ejemplo.com'" />
+    <div class="form-text">
+      Si el cliente se equivocó al escribirlo, corríjalo aquí. Los datos guardados en el
+      pedido no se modifican.
+    </div>
+
+    <ng-container *ngIf="canalReenvio === 'WHATSAPP'">
+      <div class="text-danger small mt-2" *ngIf="destinoReenvio.trim() && !whatsappUrl">
+        El número no es un celular válido de Paraguay (ejemplo: 0981 123 456).
+      </div>
+
+      <div class="alert alert-secondary small mt-3 mb-0">
+        <div class="fw-semibold mb-1">Envío asistido</div>
+        <ol class="ps-3 mb-1">
+          <li>Descargue el PDF de la factura.</li>
+          <li>Abra WhatsApp: se abre el chat con el cliente y el mensaje ya escrito.</li>
+          <li>Adjunte el PDF y envíe.</li>
+        </ol>
+        <div class="text-muted">
+          El sistema no puede saber si el mensaje se envió, por eso este envío no queda registrado.
+        </div>
+      </div>
+    </ng-container>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" [disabled]="reenviando" (click)="reenvioVisible = false">
+      Cancelar
+    </button>
+
+    <ng-container *ngIf="canalReenvio === 'WHATSAPP'; else envioCorreo">
+      <button cButton color="info" class="text-white"
+              [disabled]="descargandoPdf || !pedido?.facturacion?.factura?.tiene_pdf"
+              (click)="descargarPdfFactura()">
+        {{ descargandoPdf ? 'Descargando...' : '1. Descargar PDF' }}
+      </button>
+      <button cButton color="success" class="text-white" [disabled]="!whatsappUrl"
+              (click)="abrirWhatsapp()">
+        2. Abrir WhatsApp
+      </button>
+    </ng-container>
+
+    <ng-template #envioCorreo>
+      <button cButton color="primary" [disabled]="reenviando || !destinoReenvio.trim()"
+              (click)="confirmarReenvio()">
+        {{ reenviando ? 'Enviando...' : 'Enviar factura' }}
+      </button>
+    </ng-template>
+  </c-modal-footer>
+</c-modal>

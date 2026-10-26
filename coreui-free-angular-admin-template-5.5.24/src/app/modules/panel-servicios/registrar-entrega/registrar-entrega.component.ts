@@ -1,13 +1,17 @@
-import { Component, DestroyRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, DestroyRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
+import { of, switchMap } from 'rxjs';
 import { ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
 import { EntregaConfig, PanelFila } from '../models/panel-servicio.model';
 import { PanelServiciosService } from '../service/panel-servicios.service';
 import { CobroDetalle, MetodoPagoOpcion } from '../../cobros-servicio/models/cobro-servicio.model';
 import { CobrosServicioService } from '../../cobros-servicio/service/cobros-servicio.service';
+import {
+  DatosFacturacionServicioComponent, ERROR_FACTURACION,
+} from '../../cobros-servicio/datos-facturacion-servicio/datos-facturacion-servicio.component';
 
 /**
  * A5 - Registrar entrega. Receptor (titular o tercero con C.I.), checklist
@@ -17,11 +21,14 @@ import { CobrosServicioService } from '../../cobros-servicio/service/cobros-serv
  * puede cobrar en esta sucursal (acciones.cobrar, lo decide el backend), el
  * modal agrega el bloque del cobro del saldo y lo envía junto con la entrega
  * en UNA transacción. Sin ese permiso, la regla 7 sigue bloqueando igual.
+ *
+ * Ese cobro completa el total, así que emite la factura: antes se guardan los
+ * datos fiscales (CI o RUC) con el bloque reutilizable de cobros-servicio.
  */
 @Component({
   selector: 'app-registrar-entrega',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonModule, FormModule, ModalModule, SpinnerModule],
+  imports: [CommonModule, ReactiveFormsModule, ButtonModule, FormModule, ModalModule, SpinnerModule, DatosFacturacionServicioComponent],
   templateUrl: './registrar-entrega.component.html',
 })
 export class RegistrarEntregaComponent implements OnChanges {
@@ -31,6 +38,9 @@ export class RegistrarEntregaComponent implements OnChanges {
   @Input() fila: PanelFila | null = null;
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() guardado = new EventEmitter<void>();
+
+  /** Solo existe cuando se cobra y entrega en la misma operación. */
+  @ViewChild(DatosFacturacionServicioComponent) datosFacturacion?: DatosFacturacionServicioComponent;
 
   cfg: EntregaConfig | null = null;
   form: FormGroup;
@@ -242,11 +252,13 @@ export class RegistrarEntregaComponent implements OnChanges {
 
   /** Cobro del saldo + entrega en una transacción (si algo falla, no queda ni el cobro). */
   private cobrarYEntregar(entrega: Record<string, unknown>): void {
-    if (this.cobroForm.invalid || this.errorArchivoCobro || !this.fila) {
+    if (this.cobroForm.invalid || this.errorArchivoCobro || !this.fila || this.datosFacturacion?.cargando) {
       this.cobroForm.markAllAsTouched();
       return;
     }
 
+    const sseId = this.fila.sse_id;
+    const facturacion$ = this.datosFacturacion ? this.datosFacturacion.guardar() : of(null);
     const datos = CobrosServicioService.formData({
       ...entrega,
       accesorios: [...this.devueltos],
@@ -254,7 +266,8 @@ export class RegistrarEntregaComponent implements OnChanges {
     });
 
     this.guardando = true;
-    this.cobros.cobrarYEntregar(this.fila.sse_id, datos).subscribe({
+    // 1) datos fiscales  2) cobro + entrega (una transacción en el backend)
+    facturacion$.pipe(switchMap(() => this.cobros.cobrarYEntregar(sseId, datos))).subscribe({
       next: (res) => {
         this.guardando = false;
         this.entregado = true;
@@ -263,6 +276,7 @@ export class RegistrarEntregaComponent implements OnChanges {
       },
       error: (err) => {
         this.guardando = false;
+        if (err === ERROR_FACTURACION) return;   // ya marcado junto a los campos fiscales
         if (err.status === 422 && err.error?.errors) {
           Object.entries(err.error.errors as Record<string, string[]>).forEach(([c, m]) => {
             // Los errores del cobro llegan como "cobro.campo".

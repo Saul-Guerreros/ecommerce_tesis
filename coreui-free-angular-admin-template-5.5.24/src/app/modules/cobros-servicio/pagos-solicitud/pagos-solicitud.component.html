@@ -56,6 +56,13 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Factura del servicio (garantía / sin monto: no hay factura que mostrar) -->
+  <ng-container *ngIf="d.resumen.admite_pagos || d.resumen.total > 0">
+    <hr />
+    <h6 class="text-muted text-uppercase small">Factura</h6>
+    <app-factura-servicio [solicitudId]="d.sse_id" [refresco]="refrescoFactura"></app-factura-servicio>
+  </ng-container>
 </ng-container>
 
 <app-confirmar-pago-servicio [visible]="confirmarVisible" [detalle]="detalle" [pago]="seleccionado"

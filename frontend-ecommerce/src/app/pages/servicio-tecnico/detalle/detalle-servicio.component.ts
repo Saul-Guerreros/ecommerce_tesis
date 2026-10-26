@@ -6,6 +6,8 @@ import { ToastrService } from 'ngx-toastr';
 import { URL_BACKEND } from '../../../config/config';
 import { ServicioCliente } from '../../../core/models/servicio-tecnico.model';
 import { PagoServicioService } from '../../../core/services/pago-servicio.service';
+import { FacturaServicioCliente } from '../../../core/models/factura-servicio.model';
+import { FacturaServicioService } from '../../../core/services/factura-servicio.service';
 import { ServicioTecnicoService } from '../../../core/services/servicio-tecnico.service';
 import { PagoTarjeta, TarjetaPagosComponent } from '../../../shared/components/tarjeta-pagos/tarjeta-pagos.component';
 
@@ -36,11 +38,16 @@ export class DetalleServicioComponent implements OnInit {
   abriendoId: number | null = null;
   subiendoId: number | null = null;
 
+  // Factura del servicio (se emite al confirmarse el pago)
+  factura: FacturaServicioCliente | null = null;
+  descargandoFactura = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private service: ServicioTecnicoService,
     private pagos: PagoServicioService,
+    private facturas: FacturaServicioService,
     private toastr: ToastrService,
   ) {}
 
@@ -74,8 +81,43 @@ export class DetalleServicioComponent implements OnInit {
   private cargar(): void {
     const numero = this.route.snapshot.paramMap.get('numero') ?? '';
     this.service.detalle(numero).subscribe({
-      next: (res) => { this.servicio = res.data; this.cargando = false; },
+      next: (res) => { this.servicio = res.data; this.cargando = false; this.cargarFactura(); },
       error: () => { this.noEncontrado = true; this.cargando = false; },
+    });
+  }
+
+  // ---------- Factura ----------
+
+  /** Solo si el servicio tiene cobro: la garantía no se factura. */
+  private cargarFactura(): void {
+    const s = this.servicio;
+    if (!s?.pago || s.pago.total <= 0) { this.factura = null; return; }
+
+    this.facturas.opciones(s.sse_numero).subscribe({
+      next: (res) => (this.factura = res.data.factura ?? null),
+      error: () => (this.factura = null),   // no bloquea el detalle
+    });
+  }
+
+  descargarFactura(): void {
+    if (!this.servicio || !this.factura?.disponible || this.descargandoFactura) return;
+
+    const numero = this.factura.numero;
+    this.descargandoFactura = true;
+    this.facturas.kude(this.servicio.sse_numero).subscribe({
+      next: (pdf) => {
+        this.descargandoFactura = false;
+        const url = URL.createObjectURL(pdf);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Factura_${numero}.pdf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      },
+      error: () => {
+        this.descargandoFactura = false;
+        this.toastr.error('No pudimos descargar tu factura.', 'Servicio técnico');
+      },
     });
   }
 

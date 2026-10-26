@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, shareReplay } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { CobroConfig, CobroDetalle, CobrosPaginado, RespuestaCobro } from '../models/cobro-servicio.model';
+import { FacturaServicio, GuardarFacturacion, OpcionesFacturacion } from '../models/factura-servicio.model';
 
 @Injectable({ providedIn: 'root' })
 export class CobrosServicioService {
@@ -55,6 +56,48 @@ export class CobrosServicioService {
   /** A5: cobro del saldo + entrega en una transacción (multipart). */
   cobrarYEntregar(sseId: number, datos: FormData): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.apiUrl}/${sseId}/cobrar-entregar`, datos);
+  }
+
+  // ---------- Facturación del servicio ----------
+
+  /** Opciones CI/RUC del cliente y la elección actual. */
+  facturacion(sseId: number): Observable<{ data: OpcionesFacturacion }> {
+    return this.http.get<{ data: OpcionesFacturacion }>(`${this.apiUrl}/${sseId}/facturacion`);
+  }
+
+  guardarFacturacion(sseId: number, datos: GuardarFacturacion): Observable<{ message: string; data: OpcionesFacturacion }> {
+    return this.http.put<{ message: string; data: OpcionesFacturacion }>(`${this.apiUrl}/${sseId}/facturacion`, datos);
+  }
+
+  factura(sseId: number): Observable<{ data: FacturaServicio | null }> {
+    return this.http.get<{ data: FacturaServicio | null }>(`${this.apiUrl}/${sseId}/factura`);
+  }
+
+  /** La ruta exige token: el KuDE y el XML se traen como Blob. */
+  kudeFactura(sseId: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${sseId}/factura/kude`, { responseType: 'blob' });
+  }
+
+  xmlFactura(sseId: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${sseId}/factura/xml`, { responseType: 'blob' });
+  }
+
+  reintentarFactura(sseId: number): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/${sseId}/factura/reintentar`, {});
+  }
+
+  reenviarFactura(sseId: number, datos: { canal?: string; destino?: string | null }): Observable<{ message: string; data: FacturaServicio | null }> {
+    return this.http.post<{ message: string; data: FacturaServicio | null }>(`${this.apiUrl}/${sseId}/factura/reenviar`, datos);
+  }
+
+  /** Descarga un Blob con nombre (el XML se guarda, no se abre). */
+  descargarBlob(blob: Blob, nombre: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
   abrirBlob(blob: Blob): void {

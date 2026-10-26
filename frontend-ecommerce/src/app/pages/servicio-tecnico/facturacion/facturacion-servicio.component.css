@@ -1,0 +1,4 @@
+/* Custom element: sin esto uk-margin no la separa de la tarjeta siguiente. */
+:host {
+  display: block;
+}

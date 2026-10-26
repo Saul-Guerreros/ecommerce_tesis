@@ -1,0 +1,98 @@
+<div class="uk-card uk-card-default uk-card-body uk-margin">
+  <h4 class="uk-card-title">Datos de facturación</h4>
+
+  <div *ngIf="cargando" class="uk-text-center"><div uk-spinner></div></div>
+
+  <ng-container *ngIf="!cargando && opciones">
+    <p class="uk-text-meta uk-margin-remove-top" *ngIf="editable">
+      La factura electrónica se emite cuando confirmamos tu pago.
+    </p>
+    <p class="uk-text-meta uk-margin-remove-top" *ngIf="!editable">
+      Tu factura ya fue emitida con estos datos.
+    </p>
+
+    <div class="uk-grid-small uk-child-width-1-2@s uk-margin-small-bottom" uk-grid>
+      <div>
+        <button type="button" class="ck-opcion ck-opcion--chica" [disabled]="!editable"
+                [class.ck-opcion--activa]="tipoDocumento === 'CI'" (click)="elegirTipoDocumento('CI')">
+          C.I.
+        </button>
+      </div>
+      <div>
+        <button type="button" class="ck-opcion ck-opcion--chica" [disabled]="!editable"
+                [class.ck-opcion--activa]="tipoDocumento === 'RUC'" (click)="elegirTipoDocumento('RUC')">
+          RUC
+        </button>
+      </div>
+    </div>
+
+    <!-- C.I. del titular -->
+    <div *ngIf="tipoDocumento === 'CI'" class="uk-grid-small uk-child-width-1-2@s uk-margin-small-top" uk-grid>
+      <div>
+        <label class="uk-form-label">Número de C.I.</label>
+        <input class="uk-input" [value]="opciones.titular.nrodoc || 'No registrada'" readonly>
+      </div>
+      <div>
+        <label class="uk-form-label">Nombre</label>
+        <input class="uk-input" [value]="opciones.titular.raznom" readonly>
+      </div>
+    </div>
+
+    <!-- RUC guardado (o agregar uno nuevo) -->
+    <div *ngIf="tipoDocumento === 'RUC'" class="uk-margin-small-top">
+      <p class="uk-text-meta">¿A nombre de quién va la factura?</p>
+
+      <label *ngFor="let dato of datosFiscales" class="ck-radio"
+             [class.ck-radio--activa]="dato.dfi_id === datoFiscalSeleccionado?.dfi_id">
+        <input type="radio" class="uk-radio" name="datoFiscalServicio" [disabled]="!editable"
+               [checked]="dato.dfi_id === datoFiscalSeleccionado?.dfi_id" (change)="seleccionarDatoFiscal(dato)">
+        <div>
+          <strong>{{ dato.dfi_alias }}</strong>
+          <span class="uk-label uk-label-success uk-margin-small-left" *ngIf="dato.dfi_principal">Predeterminada</span>
+          <div class="uk-text-meta">RUC {{ dato.dfi_numero }} — {{ dato.dfi_razon }}</div>
+        </div>
+      </label>
+
+      <p *ngIf="datosFiscales.length === 0" class="uk-text-meta">Todavía no cargaste ningún RUC.</p>
+
+      <button type="button" class="uk-button uk-button-default uk-width-1-1 uk-margin-small-top"
+              *ngIf="editable" (click)="abrirNuevo()">
+        <span uk-icon="icon: plus; ratio: 0.8"></span> Agregar nuevo RUC
+      </button>
+
+      <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="rucInvalido">
+        Elegí el RUC al que va la factura.
+      </p>
+    </div>
+
+    <h5 class="uk-text-bold uk-margin-top uk-margin-small-bottom">¿Por qué medio querés recibir tu factura?</h5>
+    <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+      <div>
+        <button type="button" class="ck-opcion ck-opcion--chica" [disabled]="!editable"
+                [class.ck-opcion--activa]="medioRecepcion === 'CORREO'" (click)="elegirMedio('CORREO')">
+          <span uk-icon="icon: mail"></span> Correo electrónico
+        </button>
+      </div>
+      <div>
+        <button type="button" class="ck-opcion ck-opcion--chica" [disabled]="!editable"
+                [class.ck-opcion--activa]="medioRecepcion === 'WHATSAPP'" (click)="elegirMedio('WHATSAPP')">
+          <span uk-icon="icon: comment"></span> WhatsApp
+        </button>
+      </div>
+    </div>
+
+    <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="medioInvalido">
+      Seleccioná un medio para recibir tu factura.
+    </p>
+    <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="errorBackend">{{ errorBackend }}</p>
+  </ng-container>
+</div>
+
+<app-form-dato-fiscal
+  [visible]="modalVisible"
+  [datoFiscal]="null"
+  [datosFiscales]="datosFiscales"
+  [titular]="titular"
+  (visibleChange)="modalVisible = $event"
+  (guardado)="onGuardado($event)">
+</app-form-dato-fiscal>

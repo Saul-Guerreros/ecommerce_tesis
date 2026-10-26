@@ -86,6 +86,8 @@ use App\Http\Controllers\Admin\Servicio\PresupuestoValidacionController;
 use App\Http\Controllers\Admin\Servicio\PanelServicioController;
 use App\Http\Controllers\Admin\Servicio\CobroServicioController;
 use App\Http\Controllers\Servicio\PagoServicioController;
+use App\Http\Controllers\Servicio\FacturaServicioClienteController;
+use App\Http\Controllers\Admin\Servicio\FacturaServicioController;
 use App\Http\Controllers\Admin\Reporte\ReporteConfigController;
 use App\Http\Controllers\Admin\Reporte\DashboardController;
 use App\Http\Controllers\Admin\Reporte\ReporteVentasController;
@@ -227,6 +229,11 @@ Route::group([
         // GET descarga el comprobante, POST lo reemplaza (pago rechazado)
         Route::get('pagos/{pago}/comprobante', [PagoServicioController::class, 'comprobante'])->whereNumber('pago');
         Route::post('pagos/{pago}/comprobante', [PagoServicioController::class, 'reemplazarComprobante'])->whereNumber('pago');
+
+        // Facturación del servicio: CI/RUC antes de pagar y descarga del KuDE
+        Route::get('facturacion', [FacturaServicioClienteController::class, 'show']);
+        Route::put('facturacion', [FacturaServicioClienteController::class, 'update'])->middleware('throttle:20,1');
+        Route::get('factura/kude', [FacturaServicioClienteController::class, 'kude']);
     });
 
     // Paso 2: Facturación + Confirmar Pedido (crea el pedido y reserva stock)
@@ -675,6 +682,26 @@ Route::prefix('admin/servicios/cobros')->middleware('auth:api')->group(function 
         Route::post('/{id}/cobrar-entregar', [CobroServicioController::class, 'cobrarYEntregar'])
             ->whereNumber('id')->middleware('permiso:servicios.panel.ver');
     });
+
+    // Facturación del servicio: consulta (los mismos permisos que la sección "Pagos")
+    Route::middleware('permiso:servicios.cobros.ver,servicios.panel.ver,servicios.solicitudes.ver')->group(function () {
+        Route::get('/{id}/facturacion', [FacturaServicioController::class, 'datosFiscales'])->whereNumber('id');
+        Route::get('/{id}/factura', [FacturaServicioController::class, 'show'])->whereNumber('id');
+        Route::get('/{id}/factura/kude', [FacturaServicioController::class, 'kude'])->whereNumber('id');
+        Route::get('/{id}/factura/xml', [FacturaServicioController::class, 'xml'])->whereNumber('id');
+    });
+
+    // Datos fiscales: quien cobra en mostrador o quien verifica pagos web (con coma = cualquiera)
+    Route::put('/{id}/facturacion', [FacturaServicioController::class, 'guardarDatosFiscales'])
+        ->whereNumber('id')->middleware('permiso:servicios.cobros.confirmar,pedidos.pago.verificar');
+
+    // Acciones sobre la factura: mismo criterio que facturas-venta
+    Route::middleware('permiso:servicios.cobros.confirmar,facturas-venta.ver')->group(function () {
+        Route::post('/{id}/factura/reintentar', [FacturaServicioController::class, 'reintentar'])
+            ->whereNumber('id')->middleware('throttle:10,1');
+        Route::post('/{id}/factura/reenviar', [FacturaServicioController::class, 'reenviar'])
+            ->whereNumber('id')->middleware('throttle:5,1');
+    });
 });
 
 Route::prefix('admin/usuarios')->middleware('auth:api')->group(function () {
@@ -757,6 +784,12 @@ Route::prefix('admin/pedidos')->middleware('auth:api')->group(function () {
     Route::patch('/{pedido}/estado', [PedidoGestionController::class, 'cambiarEstado'])
         ->middleware('permiso:pedidos.gestionar');
 
+    Route::post('/{pedido}/factura/reenviar', [PedidoGestionController::class, 'reenviarFactura'])
+        ->middleware(['permiso:pedidos.gestionar', 'throttle:5,1']);
+
+    Route::get('/{pedido}/factura/kude', [PedidoGestionController::class, 'kudeFactura'])
+        ->middleware('permiso:pedidos.gestionar');
+
     Route::get('/{pedido}/pagos/{pago}/comprobante', [PedidoGestionController::class, 'comprobante'])
     ->middleware('permiso:pedidos.ver');
 });
@@ -776,6 +809,15 @@ Route::prefix('admin/facturas-venta')->middleware('auth:api')->group(function ()
 
     Route::patch('/{id}/anular', [VentaController::class, 'anular'])
         ->middleware('permiso:facturas-venta.ver');
+
+        Route::get('/{id}/fe/kude', [VentaController::class, 'kude'])
+        ->middleware('permiso:facturas-venta.ver');
+
+    Route::get('/{id}/fe/xml', [VentaController::class, 'xml'])
+        ->middleware('permiso:facturas-venta.ver');
+
+    Route::post('/{id}/fe/reintentar', [VentaController::class, 'reintentarFe'])
+        ->middleware(['permiso:facturas-venta.ver', 'throttle:10,1']);
 });
 
 /*

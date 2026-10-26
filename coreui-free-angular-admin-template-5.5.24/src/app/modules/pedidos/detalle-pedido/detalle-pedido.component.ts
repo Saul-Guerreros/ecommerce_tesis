@@ -5,7 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import {
   AlertModule, BadgeModule, ButtonModule, CardModule, FormModule,
-  ProgressModule, SpinnerModule, TableModule, TooltipModule,
+  ProgressModule, SpinnerModule, TableModule, TooltipModule,ModalModule,
 } from '@coreui/angular';
 
 import { PagoItem, PedidoDetalle } from '../models/pedido-detalle.model';
@@ -29,7 +29,7 @@ import { HttpClient } from '@angular/common/http';
   imports: [
     CommonModule, FormsModule, CardModule, TableModule, ButtonModule,
     BadgeModule, SpinnerModule, FormModule, AlertModule, ProgressModule,
-    TooltipModule, ConfirmarPagoComponent, RechazarPagoComponent,
+    TooltipModule, ConfirmarPagoComponent, RechazarPagoComponent,ModalModule,
   ],
   templateUrl: './detalle-pedido.component.html',
 })
@@ -45,6 +45,15 @@ export class DetallePedidoComponent implements OnInit {
   confirmarVisible = false;
   rechazarVisible = false;
   pagoSeleccionado: PagoItem | null = null;
+  // Reenvío de factura
+  reenvioVisible = false;
+  reenviando = false;
+  canalReenvio: 'CORREO' | 'WHATSAPP' = 'CORREO';
+  destinoReenvio = '';
+
+  /** El envío por WhatsApp es asistido: se descarga el PDF y se abre el chat. */
+  readonly whatsappDisponible = true;
+  descargandoPdf = false;
 
 constructor(
   private service: PedidosService,
@@ -118,6 +127,125 @@ constructor(
     if (this.pedido.estado_pedido.codigo === 'CANCELADO') return false;
     return pago.estado.codigo !== 'CONFIRMADO';
   }
+
+
+    // ---------- Reenvío de factura ----------
+
+  /** El canal que eligió el cliente en el checkout. */
+  get canalDelCliente(): 'CORREO' | 'WHATSAPP' {
+    return this.pedido?.facturacion?.recibe_por ?? 'CORREO';
+  }
+
+  abrirReenvio(): void {
+    // Mientras WhatsApp no exista, se ofrece correo aunque el cliente haya elegido otro.
+    this.canalReenvio = this.whatsappDisponible ? this.canalDelCliente : 'CORREO';
+    this.destinoReenvio = this.destinoSugerido(this.canalReenvio);
+    this.reenvioVisible = true;
+  }
+
+  cambiarCanalReenvio(): void {
+    this.destinoReenvio = this.destinoSugerido(this.canalReenvio);
+  }
+
+  private destinoSugerido(canal: 'CORREO' | 'WHATSAPP'): string {
+    const fac = this.pedido?.facturacion;
+    return (canal === 'WHATSAPP' ? fac?.telefono : fac?.correo) ?? '';
+  }
+
+  confirmarReenvio(): void {
+    if (!this.pedido || this.reenviando) return;
+
+    this.reenviando = true;
+
+    this.service
+      .reenviarFactura(this.pedido.ped_id, this.canalReenvio, this.destinoReenvio.trim() || null)
+      .subscribe({
+        next: (res) => {
+          this.toastr.success(res.message, 'Factura reenviada');
+          this.aplicar(res.data);
+          this.reenvioVisible = false;
+          this.reenviando = false;
+        },
+        error: (err) => {
+          this.toastr.error(err?.error?.message ?? 'No se pudo reenviar la factura', 'Error');
+          this.reenviando = false;
+        },
+      });
+  }
+
+
+    // ---------- Envío asistido por WhatsApp ----------
+
+  /**
+   * Celular paraguayo en formato internacional y sin "+", que es lo que exige wa.me.
+   * Acepta 0981123456, 0981 123 456, +595981123456, 981123456...
+   * Devuelve null si no es un celular válido: es preferible avisar a abrir un chat equivocado.
+   */
+  private normalizarCelularPy(texto: string): string | null {
+    let d = (texto ?? '').replace(/\D/g, '');
+
+    if (d.startsWith('595')) d = d.slice(3);
+    if (d.startsWith('0')) d = d.slice(1);
+
+    return /^9\d{8}$/.test(d) ? `595${d}` : null;
+  }
+
+  get mensajeWhatsapp(): string {
+    const fac = this.pedido?.facturacion;
+    const razon = (fac?.razon_social ?? '').trim();
+    const nombre = fac?.tipo_documento === 'CI' ? razon.split(/\s+/)[0] : razon;
+    const saludo = nombre ? `Hola ${nombre}` : 'Hola';
+    const empresa = fac?.factura?.empresa ? ` en ${fac.factura.empresa}` : '';
+
+    return `${saludo}, te enviamos la factura N.º ${fac?.factura?.numero} de tu compra${empresa}. ¡Gracias por tu compra!`;
+  }
+
+  /** null si el teléfono no es un celular válido. */
+  get whatsappUrl(): string | null {
+    const numero = this.normalizarCelularPy(this.destinoReenvio);
+
+    return numero ? `https://wa.me/${numero}?text=${encodeURIComponent(this.mensajeWhatsapp)}` : null;
+  }
+
+  abrirWhatsapp(): void {
+    const url = this.whatsappUrl;
+    if (!url) return;
+
+    window.open(url, '_blank', 'noopener');
+  }
+
+  descargarPdfFactura(): void {
+    const pedido = this.pedido;
+    if (!pedido || this.descargandoPdf) return;
+
+    this.descargandoPdf = true;
+
+    this.service.kudeFactura(pedido.ped_id).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = `${pedido.facturacion?.factura?.numero ?? 'factura'}.pdf`;
+        enlace.click();
+        window.URL.revokeObjectURL(url);
+        this.descargandoPdf = false;
+      },
+      error: async (err) => {
+        let mensaje = 'No se pudo descargar el PDF';
+
+        // Con responseType blob, el error también llega como Blob.
+        if (err?.error instanceof Blob) {
+          try {
+            mensaje = JSON.parse(await err.error.text())?.message ?? mensaje;
+          } catch {}
+        }
+
+        this.toastr.error(mensaje, 'Error');
+        this.descargandoPdf = false;
+      },
+    });
+  }
+    
 
   // ---------- Estado del pedido ----------
 

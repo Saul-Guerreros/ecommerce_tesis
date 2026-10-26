@@ -1,7 +1,8 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
+import { of, switchMap } from 'rxjs';
 import {
   DatosBilletera, DatosTransferencia, MetodoPagoCodigo, MetodoPagoOpcion,
   ModoPago, PagoDividRequest, RegistrarPagoRequest,
@@ -9,6 +10,7 @@ import {
 import { ResumenPagoServicio } from '../../../core/models/servicio-tecnico.model';
 import { PagoServicioService } from '../../../core/services/pago-servicio.service';
 import { PagoDivididoComponent } from '../../checkout/pago-dividido/pago-dividido.component';
+import { ERROR_FACTURACION_SERVICIO, FacturacionServicioComponent } from '../facturacion/facturacion-servicio.component';
 
 /**
  * C4 - Pagar el saldo del servicio técnico (/mis-servicios/:numero/pago).
@@ -18,16 +20,19 @@ import { PagoDivididoComponent } from '../../checkout/pago-dividido/pago-dividid
  * app-pago-dividido, que recibe el SALDO como total. Diferencias:
  *   - No hay plazo ni reserva: el equipo queda en el taller.
  *   - El efectivo es "pagar al retirar": se confirma en el mostrador.
- *   - Sin tarjetas de productos/facturación: la facturación es otra etapa.
+ *   - Datos de facturación (CI/RUC): se guardan JUSTO ANTES de registrar el
+ *     pago; la factura se emite cuando el verificador confirma el cobro.
  */
 @Component({
   selector: 'app-pago-servicio',
   standalone: true,
-  imports: [CommonModule, CurrencyPipe, RouterModule, PagoDivididoComponent],
+  imports: [CommonModule, CurrencyPipe, RouterModule, PagoDivididoComponent, FacturacionServicioComponent],
   templateUrl: './pago-servicio.component.html',
   styleUrls: ['../../checkout/paso-pago/paso-pago.component.css', './pago-servicio.component.css'],
 })
 export class PagoServicioComponent implements OnInit {
+  @ViewChild(FacturacionServicioComponent) facturacion?: FacturacionServicioComponent;
+
   numero = '';
   resumen!: ResumenPagoServicio;
 
@@ -203,7 +208,10 @@ export class PagoServicioComponent implements OnInit {
 
     this.enviando = true;
 
-    this.servicio.registrar(this.numero, payload).subscribe({
+    // 1) datos de facturación  2) pago. Si el 1 falla, no se registra el pago.
+    const facturacion$ = this.facturacion ? this.facturacion.guardar() : of(null);
+
+    facturacion$.pipe(switchMap(() => this.servicio.registrar(this.numero, payload))).subscribe({
       next: (resp) => {
         this.enviando = false;
         this.toastr.success(resp.message, 'Servicio técnico');
@@ -212,6 +220,10 @@ export class PagoServicioComponent implements OnInit {
       },
       error: (e) => {
         this.enviando = false;
+        if (e === ERROR_FACTURACION_SERVICIO) {
+          this.toastr.warning('Revisá los datos de facturación.', 'Servicio técnico');
+          return;
+        }
         const errores = e.error?.errors as Record<string, string[]> | undefined;
         const primero = errores ? Object.values(errores)[0]?.[0] : null;
         this.toastr.error(primero ?? e.error?.message ?? 'No pudimos registrar tu pago.', 'Servicio técnico');

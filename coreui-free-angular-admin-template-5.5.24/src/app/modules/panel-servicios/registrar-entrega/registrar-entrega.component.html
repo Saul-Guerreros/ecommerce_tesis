@@ -51,6 +51,11 @@
             </div>
           </ng-container>
         </form>
+
+        <hr />
+        <strong class="small">Datos de facturación</strong>
+        <div class="form-text mb-2">Al cobrar el saldo se emite la factura con estos datos.</div>
+        <app-datos-facturacion-servicio [solicitudId]="c.sse_id"></app-datos-facturacion-servicio>
       </div>
 
       <form [formGroup]="form" *ngIf="mostrarFormulario">

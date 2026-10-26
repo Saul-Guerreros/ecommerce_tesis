@@ -47,6 +47,12 @@ export class PasoEntregaComponent implements OnInit {
   /** dir_id en curso de borrado: desactiva su ícono y evita doble clic. */
   eliminandoId: number | null = null;
 
+  /** Snapshot de los datos de "otra persona" mientras se navega a "Yo mismo". */
+  private datosTercero: {
+    rec_nrodoc: string; rec_nombre: string; rec_apelli: string; rec_telef: string;
+  } | null = null;
+
+
   constructor(
     private fb: FormBuilder,
     private checkoutService: CheckoutService,
@@ -100,15 +106,15 @@ export class PasoEntregaComponent implements OnInit {
     this.aplicar('suc_id', esRetiro ? [Validators.required] : []);
     this.aplicar('dir_id', !esRetiro ? [Validators.required] : []);
 
-    const exigeCedula = esTercero || !this.titular?.rec_nrodoc;
+   const exigeCedula = esTercero || !this.titular?.rec_nrodoc;
     this.aplicar('rec_nrodoc', exigeCedula
       ? [Validators.required, Validators.pattern(/^[0-9]{5,15}$/)]
-      : []);
+      : [Validators.pattern(/^[0-9]{5,15}$/)]);
 
     const deTercero = esTercero ? [Validators.required] : [];
-    this.aplicar('rec_nombre', deTercero);
-    this.aplicar('rec_apelli', deTercero);
-    this.aplicar('rec_telef',  deTercero);
+    this.aplicar('rec_nombre', [...deTercero, Validators.pattern(/^[a-zA-ZÀ-ÿñÑ\s]*$/)]);
+    this.aplicar('rec_apelli', [...deTercero, Validators.pattern(/^[a-zA-ZÀ-ÿñÑ\s]*$/)]);
+    this.aplicar('rec_telef',  [...deTercero, Validators.pattern(/^\+?[0-9]{6,20}$/)]);
 
     if (!esTercero) {
       this.form.patchValue({
@@ -227,23 +233,68 @@ export class PasoEntregaComponent implements OnInit {
     return this.form.get(campo)?.errors?.['backend'] ?? null;
   }
 
+    /** Cédula: solo dígitos. */
+  soloNumeros(event: Event, campo: string): void {
+    const input = event.target as HTMLInputElement;
+    const limpio = input.value.replace(/[^0-9]/g, '');
+    if (limpio !== input.value) {
+      input.value = limpio;
+      this.form.get(campo)!.setValue(limpio, { emitEvent: false });
+    }
+  }
+
+  /** Teléfono: dígitos y un "+" opcional solo al inicio. */
+  soloTelefono(event: Event, campo: string): void {
+    const input = event.target as HTMLInputElement;
+    let limpio = input.value.replace(/[^0-9+]/g, '');
+    limpio = limpio.charAt(0) + limpio.slice(1).replace(/\+/g, '');
+    if (limpio !== input.value) {
+      input.value = limpio;
+      this.form.get(campo)!.setValue(limpio, { emitEvent: false });
+    }
+  }
+
+  /** Nombre/apellido: solo letras (con tildes y ñ) y espacios. */
+  soloTexto(event: Event, campo: string): void {
+    const input = event.target as HTMLInputElement;
+    const limpio = input.value.replace(/[^a-zA-ZÀ-ÿñÑ\s]/g, '');
+    if (limpio !== input.value) {
+      input.value = limpio;
+      this.form.get(campo)!.setValue(limpio, { emitEvent: false });
+    }
+  }
+
   elegirModalidad(modalidad: ModalidadEntrega): void {
     this.form.patchValue({ modalidad });
   }
 
+
   elegirReceptor(receptor: TipoReceptor): void {
-    if (receptor === 'tercero') {
-      this.form.patchValue(
-        { rec_nrodoc: '', rec_nombre: '', rec_apelli: '', rec_telef: '' },
-        { emitEvent: false },
-      );
-      ['rec_nrodoc', 'rec_nombre', 'rec_apelli', 'rec_telef'].forEach((campo) => {
-        this.form.get(campo)?.markAsPristine();
-        this.form.get(campo)?.markAsUntouched();
-      });
-    }
-    this.form.patchValue({ receptor });
+  if (this.esTercero && receptor === 'titular') {
+    // Me voy de "tercero": guardo lo tipeado antes de que se pise.
+    this.datosTercero = {
+      rec_nrodoc: this.valorDe('rec_nrodoc'),
+      rec_nombre: this.valorDe('rec_nombre'),
+      rec_apelli: this.valorDe('rec_apelli'),
+      rec_telef:  this.valorDe('rec_telef'),
+    };
   }
+
+  if (receptor === 'tercero') {
+    const datos = this.datosTercero
+      ?? { rec_nrodoc: '', rec_nombre: '', rec_apelli: '', rec_telef: '' };
+
+    this.form.patchValue(datos, { emitEvent: false });
+    ['rec_nrodoc', 'rec_nombre', 'rec_apelli', 'rec_telef'].forEach((campo) => {
+      this.form.get(campo)?.markAsPristine();
+      this.form.get(campo)?.markAsUntouched();
+    });
+  }
+
+  this.form.patchValue({ receptor });
+}
+
+
 
   elegirSucursal(suc_id: number): void { this.form.patchValue({ suc_id }); }
   elegirDireccion(dir_id: number): void { this.form.patchValue({ dir_id }); }

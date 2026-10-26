@@ -67,6 +67,14 @@
       </div>
     </form>
 
+    <!-- Datos de facturación: solo en LISTA (el anticipo no factura) -->
+    <ng-container *ngIf="visible && !esAnticipo">
+      <hr />
+      <h6 class="text-muted text-uppercase small">Datos de facturación</h6>
+      <div class="form-text mb-2">La factura se emite automáticamente cuando el cobro cubre el saldo.</div>
+      <app-datos-facturacion-servicio [solicitudId]="detalle.sse_id"></app-datos-facturacion-servicio>
+    </ng-container>
+
   </c-modal-body>
 
   <c-modal-footer>

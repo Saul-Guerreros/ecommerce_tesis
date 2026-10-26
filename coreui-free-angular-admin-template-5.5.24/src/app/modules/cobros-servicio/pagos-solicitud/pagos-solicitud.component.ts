@@ -7,6 +7,7 @@ import { CobrosServicioService } from '../service/cobros-servicio.service';
 import { ConfirmarPagoServicioComponent } from '../confirmar-pago-servicio/confirmar-pago-servicio.component';
 import { RechazarPagoServicioComponent } from '../rechazar-pago-servicio/rechazar-pago-servicio.component';
 import { RegistrarCobroComponent } from '../registrar-cobro/registrar-cobro.component';
+import { FacturaServicioComponent } from '../factura-servicio/factura-servicio.component';
 
 /**
  * Sección "Pagos" de una solicitud: resumen de montos, pagos registrados y
@@ -16,13 +17,16 @@ import { RegistrarCobroComponent } from '../registrar-cobro/registrar-cobro.comp
  *
  * Qué botones se ven lo decide el backend en 'acciones' (permiso, sucursal
  * y si la solicitud admite pagos); acá solo se cruza con el estado del pago.
+ *
+ * Debajo, la sección "Factura" (app-factura-servicio): se refresca cada vez
+ * que se registra algo, porque el cobro que completa el total la emite.
  */
 @Component({
   selector: 'app-pagos-solicitud',
   standalone: true,
   imports: [
     CommonModule, BadgeModule, ButtonModule, SpinnerModule, TableModule,
-    ConfirmarPagoServicioComponent, RechazarPagoServicioComponent, RegistrarCobroComponent,
+    ConfirmarPagoServicioComponent, RechazarPagoServicioComponent, RegistrarCobroComponent, FacturaServicioComponent,
   ],
   templateUrl: './pagos-solicitud.component.html',
 })
@@ -39,6 +43,9 @@ export class PagosSolicitudComponent implements OnChanges {
   confirmarVisible = false;
   rechazarVisible = false;
   cobroVisible = false;
+
+  /** Cambia en cada operación: la sección Factura se vuelve a leer. */
+  refrescoFactura = 0;
 
   constructor(private service: CobrosServicioService, private toastr: ToastrService) {}
 
@@ -116,6 +123,7 @@ export class PagosSolicitudComponent implements OnChanges {
 
   onGuardado(detalle: CobroDetalle): void {
     this.detalle = detalle;
+    this.refrescoFactura++;
     this.actualizado.emit();
   }
 
