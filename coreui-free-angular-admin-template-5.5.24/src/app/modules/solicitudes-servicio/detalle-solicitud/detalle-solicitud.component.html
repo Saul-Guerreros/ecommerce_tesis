@@ -1,11 +1,12 @@
 <c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" size="xl" scrollable>
   <c-modal-header>
-    <h5 cModalTitle>Solicitud {{ detalle?.sse_numero }}</h5>
+    <h5 cModalTitle>Solicitud {{ cargando ? '' : detalle?.sse_numero }}</h5>
   </c-modal-header>
   <c-modal-body>
     <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
 
     <ng-container *ngIf="detalle as d">
+      <div [hidden]="cargando">
       <div class="d-flex flex-wrap gap-2 mb-3">
         <c-badge color="primary">Servicio: {{ d.estado_servicio.descri }}</c-badge>
         <c-badge color="info">Ingreso: {{ d.estado_ingreso.descri }}</c-badge>
@@ -110,7 +111,7 @@
 
       <hr />
       <h6 class="text-muted text-uppercase small">Pagos</h6>
-      <app-pagos-solicitud [solicitudId]="d.sse_id" (actualizado)="onGuardado()"></app-pagos-solicitud>
+      <app-pagos-solicitud [solicitudId]="d.sse_id" [refresco]="aperturas" (actualizado)="onGuardado()"></app-pagos-solicitud>
 
       <hr />
       <h6 class="text-muted text-uppercase small">Historial</h6>
@@ -132,6 +133,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </ng-container>
   </c-modal-body>
   <c-modal-footer>

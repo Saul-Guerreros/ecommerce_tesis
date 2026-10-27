@@ -4,6 +4,7 @@ namespace App\Http\Requests\Servicio;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Rules\FechaSinDomingo;
 
 /**
  * Wizard C2 (tienda). Llega como multipart/form-data por las fotos.
@@ -51,8 +52,7 @@ class SolicitudServicioStoreRequest extends FormRequest
             'modalidad'  => ['required', Rule::in(['sucursal', 'domicilio'])],
             'sse_sucid'  => ['nullable', 'required_if:modalidad,sucursal', 'integer'],
             'sse_dirid'  => ['nullable', 'required_if:modalidad,domicilio', 'integer'],
-            'sse_fecing' => ['required', 'date', 'after_or_equal:today'],
-
+            'sse_fecing' => ['required', 'date', 'after_or_equal:today', new FechaSinDomingo],
             'acepta_condiciones' => ['accepted'],
 
             'fotos'   => ['nullable', 'array', "max:{$max}"],

@@ -30,6 +30,8 @@ export class DetalleSolicitudComponent implements OnChanges {
 
   detalle: SolicitudServicioDetalle | null = null;
   cargando = false;
+  /** Cambia en cada apertura: <app-pagos-solicitud> lo usa para releer pagos y factura. */
+  aperturas = 0;
 
   // Paso 2: aprobación asistida y contacto
   respuestaVisible = false;
@@ -63,7 +65,11 @@ export class DetalleSolicitudComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible && this.solicitudId) {
-      this.detalle = null;
+      // NO vaciar `detalle` acá (this.detalle = null). Al vaciarlo, el *ngIf del template destruye
+      // <app-pagos-solicitud> y los c-modal que contiene; CoreUI emite un cierre global en el
+      // ngOnDestroy de cada c-modal y eso cierra ESTE modal justo cuando se está abriendo.
+      // Mientras carga, el contenido anterior queda oculto con [hidden]="cargando" (ver el HTML).
+      this.aperturas++;
       this.recargar();
     }
   }
@@ -73,7 +79,11 @@ export class DetalleSolicitudComponent implements OnChanges {
     this.cargando = true;
     this.service.show(this.solicitudId).subscribe({
       next: (res) => { this.detalle = res.data; this.cargando = false; },
-      error: () => { this.cargando = false; this.toastr.error('No se pudo cargar la solicitud', 'Error'); },
+      error: () => {
+        this.detalle = null;   // que no quede a la vista la ficha de otra solicitud
+        this.cargando = false;
+        this.toastr.error('No se pudo cargar la solicitud', 'Error');
+      },
     });
   }
 

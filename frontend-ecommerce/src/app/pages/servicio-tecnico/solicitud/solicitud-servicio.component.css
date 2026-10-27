@@ -40,3 +40,5 @@
 .st-foto { position: relative; }
 .st-foto img { width: 96px; height: 96px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e5e5; }
 .st-foto button { position: absolute; top: -8px; right: -8px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+
+

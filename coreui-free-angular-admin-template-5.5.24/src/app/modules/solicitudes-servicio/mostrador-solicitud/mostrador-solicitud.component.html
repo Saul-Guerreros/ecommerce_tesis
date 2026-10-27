@@ -8,6 +8,9 @@
     <div class="text-center py-4" *ngIf="cargandoConfig"><c-spinner color="primary"></c-spinner></div>
 
     <ng-container *ngIf="!cargandoConfig && config">
+      <div class="alert alert-warning" *ngIf="hoyEsDomingo">
+        Hoy es domingo: el local no atiende y no se pueden registrar ingresos en el mostrador.
+      </div>
       <div class="alert alert-warning" *ngIf="config.sucursales.length === 0">
         No hay sucursales activas disponibles para su usuario.
       </div>

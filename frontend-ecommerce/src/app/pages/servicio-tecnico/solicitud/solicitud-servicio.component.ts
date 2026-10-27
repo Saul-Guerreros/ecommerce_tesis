@@ -8,7 +8,8 @@ import { Direccion } from '../../../core/models/direccion.model';
 import { ConfigServicio, ModalidadIngreso } from '../../../core/models/servicio-tecnico.model';
 import { ServicioTecnicoService } from '../../../core/services/servicio-tecnico.service';
 import { FormDireccionComponent } from '../../checkout/form-direccion/form-direccion.component';
-
+import { hoyIso, proximoDiaHabilIso, sinDomingoValidator } from '../../../shared/validators/fecha-servicio';
+import { comprimirImagen } from '../../../shared/utils/comprimir-imagen';
 interface Foto {
   archivo: File;
   preview: string;
@@ -31,7 +32,9 @@ export class SolicitudServicioComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly MAX_MB = 5;
-  readonly hoy = new Date().toISOString().substring(0, 10);
+  readonly hoy = hoyIso();
+  readonly MAX_ORIGINAL_MB = 25;   // tope de la foto original, antes de comprimir
+  procesandoFotos = false;
 
   config: ConfigServicio | null = null;
   paso: Paso = 1;
@@ -99,7 +102,7 @@ export class SolicitudServicioComponent implements OnInit, OnDestroy {
         modalidad: ['sucursal' as ModalidadIngreso, Validators.required],
         sse_sucid: [null as number | null, Validators.required],
         sse_dirid: [null as number | null],
-        sse_fecing: [this.hoy, Validators.required],
+        sse_fecing: [proximoDiaHabilIso(), [Validators.required, sinDomingoValidator]],
       }),
       confirmacion: this.fb.group({
         acepta_condiciones: [false, Validators.requiredTrue],
@@ -189,18 +192,31 @@ export class SolicitudServicioComponent implements OnInit, OnDestroy {
     this.equipo.patchValue({ sse_garant: garantia });
   }
 
-  onFotos(event: Event): void {
+  async onFotos(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
+    const archivos = Array.from(input.files ?? []);
+    input.value = '';   // permite volver a elegir la misma foto
     const max = this.config?.max_fotos ?? 5;
     this.errorFotos = null;
+    this.procesandoFotos = true;
 
-    for (const archivo of Array.from(input.files ?? [])) {
-      if (this.fotos.length >= max) { this.errorFotos = `Podés adjuntar hasta ${max} fotos.`; break; }
-      if (!/^image\/(jpeg|png|webp)$/.test(archivo.type)) { this.errorFotos = `"${archivo.name}" no es JPG, PNG o WEBP.`; continue; }
-      if (archivo.size > this.MAX_MB * 1024 * 1024) { this.errorFotos = `"${archivo.name}" supera los ${this.MAX_MB} MB.`; continue; }
-      this.fotos.push({ archivo, preview: URL.createObjectURL(archivo) });
+    try {
+      for (const original of archivos) {
+        if (this.fotos.length >= max) { this.errorFotos = `Podés adjuntar hasta ${max} fotos.`; break; }
+        if (!/^image\/(jpeg|png|webp)$/.test(original.type)) { this.errorFotos = `"${original.name}" no es JPG, PNG o WEBP.`; continue; }
+        if (original.size > this.MAX_ORIGINAL_MB * 1024 * 1024) { this.errorFotos = `"${original.name}" supera los ${this.MAX_ORIGINAL_MB} MB.`; continue; }
+
+        try {
+          const archivo = await comprimirImagen(original, { maxBytes: (this.MAX_MB - 0.5) * 1024 * 1024 });
+          if (archivo.size > this.MAX_MB * 1024 * 1024) { this.errorFotos = `"${original.name}" sigue superando los ${this.MAX_MB} MB.`; continue; }
+          this.fotos.push({ archivo, preview: URL.createObjectURL(archivo) });
+        } catch {
+          this.errorFotos = `No se pudo procesar "${original.name}". Probá con otra foto.`;
+        }
+      }
+    } finally {
+      this.procesandoFotos = false;
     }
-    input.value = '';
   }
 
   quitarFoto(i: number): void {

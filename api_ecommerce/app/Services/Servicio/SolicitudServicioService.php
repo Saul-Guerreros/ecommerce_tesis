@@ -262,6 +262,20 @@ class SolicitudServicioService
     {
         $cliente = Cliente::with('persona')->find($datos['sse_cliid']);
 
+        // El local no atiende los domingos: el ingreso presencial lleva la fecha de hoy (sse_fecing),
+        // así que se rechaza aquí. Misma regla que App\Rules\FechaSinDomingo en el canal web.
+        if (now()->isSunday()) {
+            throw ValidationException::withMessages([
+                'sse_fecing' => 'No se pueden registrar ingresos en el mostrador los domingos: el local no atiende ese día.',
+            ]);
+        }
+        // El local no atiende los domingos: el ingreso presencial lleva la fecha de hoy (sse_fecing),
+        // así que se rechaza aquí. Misma regla que App\Rules\FechaSinDomingo en el canal web.
+        if (now()->isSunday()) {
+            throw ValidationException::withMessages([
+                'sse_fecing' => 'No se pueden registrar ingresos en el mostrador los domingos: el local no atiende ese día.',
+            ]);
+        }
         if (!$cliente || (int) $cliente->cli_estado !== 1) {
             throw ValidationException::withMessages(['sse_cliid' => 'El cliente no existe o está inactivo.']);
         }

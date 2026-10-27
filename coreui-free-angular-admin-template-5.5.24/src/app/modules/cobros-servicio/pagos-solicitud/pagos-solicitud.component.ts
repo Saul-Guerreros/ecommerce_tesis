@@ -32,6 +32,8 @@ import { FacturaServicioComponent } from '../factura-servicio/factura-servicio.c
 })
 export class PagosSolicitudComponent implements OnChanges {
   @Input() solicitudId: number | null = null;
+    /** El contenedor lo cambia en cada apertura: fuerza releer pagos y factura sin destruir el componente. */
+  @Input() refresco = 0;
   /** Se registró algo: el contenedor refresca su propia vista (lista, historial). */
   @Output() actualizado = new EventEmitter<void>();
 
@@ -50,7 +52,10 @@ export class PagosSolicitudComponent implements OnChanges {
   constructor(private service: CobrosServicioService, private toastr: ToastrService) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['solicitudId'] && this.solicitudId) this.recargar();
+    if ((changes['solicitudId'] || changes['refresco']) && this.solicitudId) {
+      this.refrescoFactura++;   // la sección Factura también se vuelve a leer
+      this.recargar();
+    }
   }
 
   recargar(): void {

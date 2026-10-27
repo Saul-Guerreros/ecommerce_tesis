@@ -5,7 +5,7 @@ import { ToastrService } from 'ngx-toastr';
 import { ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
 import { SolicitudServicioLista } from '../models/solicitud-servicio.model';
 import { SolicitudesServicioService } from '../service/solicitudes-servicio.service';
-
+import { esDomingo, hoyIso, proximoDiaHabilIso, sinDomingoValidator } from '../../../core/validators/fecha-servicio';
 @Component({
   selector: 'app-agendar-retiro',
   standalone: true,
@@ -21,19 +21,20 @@ export class AgendarRetiroComponent implements OnChanges {
 
   form: FormGroup;
   guardando = false;
-  readonly hoy = new Date().toISOString().substring(0, 10);
+    readonly hoy = hoyIso();
 
   constructor(private fb: FormBuilder, private service: SolicitudesServicioService, private toastr: ToastrService) {
     this.form = this.fb.group({
-      sse_fecing: ['', Validators.required],
+      sse_fecing: ['', [Validators.required, sinDomingoValidator]],
       coment: ['', Validators.maxLength(255)],
     });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible) {
-      // Propone la fecha que eligió el cliente (o la ya agendada).
-      this.form.reset({ sse_fecing: this.solicitud?.sse_fecing ?? this.hoy, coment: '' });
+      // Propone la fecha que eligió el cliente (o la ya agendada); si cayó domingo, el lunes siguiente.
+      const propuesta = this.solicitud?.sse_fecing ?? this.hoy;
+      this.form.reset({ sse_fecing: esDomingo(propuesta) ? proximoDiaHabilIso(propuesta) : propuesta, coment: '' });
       this.guardando = false;
     }
   }

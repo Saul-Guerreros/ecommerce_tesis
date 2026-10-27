@@ -142,16 +142,16 @@
               </div>
             </div>
 
-            <div class="uk-card uk-card-default uk-card-body uk-margin">
+             <div class="uk-card uk-card-default uk-card-body uk-margin">
               <h4 class="uk-card-title">Fotos <span class="uk-text-meta uk-text-small">(opcional)</span></h4>
               <p class="uk-text-small uk-margin-small">Ayudan al técnico a entender el problema antes de recibir el equipo.</p>
-              <div uk-form-custom>
-                <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onFotos($event)">
-                <button class="uk-button uk-button-default" type="button" [disabled]="fotos.length >= config.max_fotos">
-                  <span uk-icon="icon: camera"></span> Agregar fotos
-                </button>
+                <div>
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple
+                       [disabled]="procesandoFotos || fotos.length >= config.max_fotos"
+                       (change)="onFotos($event)">
+                @if (procesandoFotos) { <span class="uk-text-meta uk-margin-small-left">Procesando...</span> }
               </div>
-              <span class="uk-text-meta uk-margin-small-left">{{ fotos.length }}/{{ config.max_fotos }} · máx. {{ MAX_MB }} MB c/u</span>
+              <span class="uk-text-meta uk-margin-small-left">{{ fotos.length }}/{{ config.max_fotos }} · se reducen solas</span>
               @if (errorFotos) { <div class="uk-text-danger uk-text-small uk-margin-small-top">{{ errorFotos }}</div> }
 
               <div class="st-fotos uk-margin-small-top">
@@ -247,11 +247,12 @@
               <h4 class="uk-card-title">{{ esDomicilio ? '¿Qué día te queda bien el retiro?' : '¿Qué día lo vas a llevar?' }}</h4>
               <input class="uk-input uk-form-width-medium" type="date" formControlName="sse_fecing" [min]="hoy"
                      [class.uk-form-danger]="invalido(ingreso, 'sse_fecing')">
+              <p class="uk-text-meta uk-margin-small">No atendemos los domingos.</p>
               @if (esDomicilio) {
                 <p class="uk-text-meta uk-margin-small">Es una fecha tentativa: te confirmamos el día del retiro.</p>
               }
               @if (invalido(ingreso, 'sse_fecing')) {
-                <div class="uk-text-danger uk-text-small">{{ errorBackend(ingreso, 'sse_fecing') ?? 'Indicá una fecha desde hoy.' }}</div>
+                <div class="uk-text-danger uk-text-small">{{ errorBackend(ingreso, 'sse_fecing') ?? (ingreso.get('sse_fecing')?.hasError('domingo') ? 'Los domingos no atendemos. Elegí otro día.' : 'Indicá una fecha desde hoy.') }}</div>
               }
             </div>
           </div>
@@ -276,8 +277,8 @@
                 {{ esDomicilio ? 'Retiro en ' : 'Lo llevás a ' }}{{ lugarIngreso }} · {{ ingreso.value.sse_fecing | date:'dd/MM/yyyy' }}
                 @if (esDomicilio && costoRetiro !== null) { · Costo {{ costoRetiro | currency:'PYG':'symbol-narrow':'1.0-0' }} }
               </dd>
-              <dt>Fotos</dt>
-              <dd>{{ fotos.length }} adjunta(s)</dd>
+              <dt >Fotos</dt>
+              <dd >{{ fotos.length }} adjunta(s)</dd>
             </dl>
           </div>
 

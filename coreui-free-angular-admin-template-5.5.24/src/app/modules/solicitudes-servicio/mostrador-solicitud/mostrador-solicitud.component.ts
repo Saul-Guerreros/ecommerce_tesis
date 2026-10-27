@@ -7,11 +7,9 @@ import { Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { BadgeModule, ButtonModule, CardModule, FormModule, SpinnerModule, TableModule } from '@coreui/angular';
 import { SolicitudesServicioService } from '../service/solicitudes-servicio.service';
 import { PanelServiciosService } from '../../panel-servicios/service/panel-servicios.service';
-import {
-  ClienteMostrador, LineaGarantia, MostradorConfig, MostradorRegistrado, ServicioReclamable, TipoServicioMostrador,
-} from '../models/mostrador.model';
+import {ClienteMostrador, LineaGarantia, MostradorConfig, MostradorRegistrado, ServicioReclamable, TipoServicioMostrador,} from '../models/mostrador.model';
 import { TecnicoOpcion } from '../models/solicitud-servicio.model';
-
+import { esDomingo, hoyIso } from '../../../core/validators/fecha-servicio';
 interface FotoSeleccionada {
   archivo: File;
   preview: string;
@@ -38,12 +36,15 @@ const PASO_DE_CAMPO: Record<string, Paso> = {
   templateUrl: './mostrador-solicitud.component.html',
 })
 export class MostradorSolicitudComponent implements OnInit, OnDestroy {
+    /** El local no atiende los domingos: el backend rechaza el alta de mostrador ese día. */
+  readonly hoyEsDomingo = esDomingo(hoyIso());
   readonly pasos: { n: Paso; titulo: string }[] = [
     { n: 1, titulo: 'Cliente' },
     { n: 2, titulo: 'Servicio y equipo' },
     { n: 3, titulo: 'Recepción' },
     { n: 4, titulo: 'Confirmación' },
   ];
+
 
   paso: Paso = 1;
   config: MostradorConfig | null = null;

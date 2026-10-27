@@ -210,6 +210,10 @@
               <li>
                 <a routerLink="/perfil-del-cliente" (click)="cerrarMenuCuenta(menuCuenta)">Mi perfil</a>
               </li>
+			    <li class="uk-nav-divider"></li>
+              <li>
+                <a href="#" onclick="return false" (click)="cerrarMenuCuenta(menuCuenta); logout()">Cerrar sesión</a>
+              </li>
             </ul>
           } @else {
             <ul class="uk-nav uk-dropdown-nav">
