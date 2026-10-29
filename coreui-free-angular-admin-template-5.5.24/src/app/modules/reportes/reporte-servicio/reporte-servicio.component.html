@@ -3,7 +3,7 @@
 
   <div acciones>
     <app-exportar-reporte reporte="servicio" [vista]="vista()" [filtros]="ultimosFiltros()"
-                          [deshabilitado]="resultado().estado !== 'ok'" />
+                          [deshabilitado]="resultado().estado !== 'ok' || vista() === 'clasificacion'" />
   </div>
 
   <app-filtros-reporte [cargando]="cargando()"
@@ -299,6 +299,72 @@
             </div>
             <div class="small text-body-secondary mt-2">
               Tasa de aprobación = aprobados ÷ (aprobados + rechazados). Cada versión de un presupuesto cuenta como una decisión.
+            </div>
+          }
+          
+          <!-- ===== Clasificación IA (Punto 7) ===== -->
+          @case ('clasificacion') {
+            @if (t) {
+              <c-row class="g-3 mb-4">
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Solicitudes clasificadas</div>
+                    <div class="fs-4 fw-semibold">{{ t['clasificadas'] }} <span class="fs-6 text-body-secondary">de {{ t['solicitudes'] }}</span></div>
+                    <div class="small text-body-secondary">{{ t['pendientes'] }} pendientes · {{ t['no_disponibles'] }} no disponibles</div>
+                  </div>
+                </c-col>
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Disponibilidad de la IA</div>
+                    <div class="fs-4 fw-semibold" [class]="colorEfectividad(t['disponibilidad'])">{{ valor(t['disponibilidad'], ' %') }}</div>
+                    <div class="small text-body-secondary">Latencia prom.: {{ t['latencia_ms'] !== null ? numero(t['latencia_ms']) + ' ms' : '—' }}</div>
+                  </div>
+                </c-col>
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Acierto (sobre {{ t['revisadas'] }} revisadas)</div>
+                    <div class="small">Tipo de problema: <strong [class]="colorEfectividad(t['acierto_categoria'])">{{ valor(t['acierto_categoria'], ' %') }}</strong></div>
+                    <div class="small">Urgencia: <strong [class]="colorEfectividad(t['acierto_urgencia'])">{{ valor(t['acierto_urgencia'], ' %') }}</strong></div>
+                    <div class="small">Dispositivo: <strong [class]="colorEfectividad(t['acierto_dispositivo'])">{{ valor(t['acierto_dispositivo'], ' %') }}</strong></div>
+                  </div>
+                </c-col>
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Dispositivo</div>
+                    <div class="small">Determinado por la IA: <strong>{{ t['dispositivo_por_ia'] }}</strong></div>
+                    <div class="small">Inconsistentes con el cliente: <strong>{{ t['inconsistentes'] }}</strong></div>
+                    <div class="small">Corregidas: {{ t['corregidas'] }} · Confianza baja: {{ t['confianza_baja'] }}</div>
+                  </div>
+                </c-col>
+              </c-row>
+            }
+            <c-row class="g-3">
+              @for (d of dimensiones; track d.clave) {
+                <c-col lg="4">
+                  <h6 class="small text-uppercase text-body-secondary">{{ d.titulo }}</h6>
+                  <table cTable hover small class="mb-0">
+                    <tbody>
+                      @for (f of filasDe(d.clave); track f.id) {
+                        <tr>
+                          <td><c-badge [color]="f.color">{{ f.descri }}</c-badge></td>
+                          <td style="width: 40%">
+                            <c-progress thin [color]="f.color" [value]="f.participacion ?? 0" [attr.aria-label]="f.descri" />
+                          </td>
+                          <td class="text-end">{{ f.cantidad }}</td>
+                          <td class="text-end text-body-secondary small">{{ valor(f.participacion, ' %') }}</td>
+                        </tr>
+                      } @empty {
+                        <tr><td colspan="4" class="text-body-secondary small">Sin datos</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </c-col>
+              }
+            </c-row>
+            <div class="small text-body-secondary mt-3">
+              Revisada = confirmada o corregida por una persona, o con diagnóstico del técnico registrado.
+              Acierto de tipo de problema = categoría de la IA frente a la falla principal del técnico.
+              La clasificación no modifica el orden de atención (por llegada).
             </div>
           }
         }

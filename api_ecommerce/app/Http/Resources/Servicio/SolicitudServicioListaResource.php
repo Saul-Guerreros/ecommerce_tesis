@@ -32,6 +32,9 @@ class SolicitudServicioListaResource extends JsonResource
                 'codigo' => $this->estadoIngreso?->elg_codigo,
                 'descri' => $this->estadoIngreso?->elg_descri,
             ],
+            'clasificacion' => $this->whenLoaded('clasificacion', fn () => $this->clasificacion
+                ? new ClasificacionSolicitudResource($this->clasificacion)
+                : null),
             'tecnico' => $this->whenLoaded('recepcion', fn () => $this->recepcion?->tecnico?->persona
                 ? trim($this->recepcion->tecnico->persona->per_nombr1 . ' ' . $this->recepcion->tecnico->persona->per_apell1)
                 : null),

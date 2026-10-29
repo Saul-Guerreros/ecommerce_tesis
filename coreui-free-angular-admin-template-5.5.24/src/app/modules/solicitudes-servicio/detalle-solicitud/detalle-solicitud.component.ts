@@ -10,14 +10,14 @@ import { RegistrarRespuestaComponent } from '../../panel-servicios/registrar-res
 import { RegistrarContactoComponent } from '../../panel-servicios/registrar-contacto/registrar-contacto.component';
 import { MedioContacto } from '../../panel-servicios/models/panel-servicio.model';
 import { PagosSolicitudComponent } from '../../cobros-servicio/pagos-solicitud/pagos-solicitud.component';
-
+import { ClasificacionCardComponent } from '../clasificacion-card/clasificacion-card.component';
 /** Ficha de la solicitud: datos, fotos, recepción, pagos e historial (trazabilidad). */
 @Component({
   selector: 'app-detalle-solicitud',
   standalone: true,
   imports: [
     CommonModule, BadgeModule, ButtonModule, ModalModule, SpinnerModule, TableModule,
-    RegistrarRespuestaComponent, RegistrarContactoComponent, PagosSolicitudComponent,
+    RegistrarRespuestaComponent, RegistrarContactoComponent, PagosSolicitudComponent, ClasificacionCardComponent,
   ],
   templateUrl: './detalle-solicitud.component.html',
 })

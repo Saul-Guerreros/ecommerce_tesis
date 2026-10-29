@@ -50,8 +50,15 @@ export class ReporteServicioComponent implements OnInit {
     { clave: 'tiempos', etiqueta: 'Tiempos de reparación', ayuda: 'Órdenes cerradas en el período: horas de taller y días hasta la entrega.' },
     { clave: 'fallas', etiqueta: 'Fallas frecuentes', ayuda: 'Fallas registradas en los diagnósticos del período.' },
     { clave: 'presupuestos', etiqueta: 'Presupuestos', ayuda: 'Presupuestos creados en el período, por estado de respuesta del cliente.' },
+    { clave: 'clasificacion', etiqueta: 'Clasificación IA', ayuda: 'Solicitudes creadas en el período según la clasificación automática (valores vigentes) y acierto de la IA sobre las revisadas.' },
   ];
 
+   /** Punto 7: la vista de clasificación agrupa sus filas en tres dimensiones. */
+  readonly dimensiones: { clave: 'categoria' | 'urgencia' | 'dispositivo'; titulo: string }[] = [
+    { clave: 'categoria', titulo: 'Tipo de problema' },
+    { clave: 'urgencia', titulo: 'Urgencia' },
+    { clave: 'dispositivo', titulo: 'Tipo de dispositivo' },
+  ];
   readonly vista = signal<VistaServicio>('estados');
   readonly resultado = signal<Resultado>({ estado: 'cargando', filas: [], totales: null });
   readonly errores = signal<Record<string, string[]> | null>(null);
@@ -67,9 +74,12 @@ export class ReporteServicioComponent implements OnInit {
   readonly ayuda = computed(() => this.vistas.find((v) => v.clave === this.vista())?.ayuda ?? '');
   readonly numero = formatoNumero;
 
+  filasDe(dimension: string): any[] {
+    return this.resultado().filas.filter((f) => f.dimension === dimension);
+  }
   /** Máximo de la vista actual, para dibujar barras proporcionales. */
   readonly maximo = computed(() => {
-    const campo = { estados: 'cantidad', tecnicos: 'asignadas', tiempos: 'horas_promedio', fallas: 'ocurrencias', presupuestos: 'cantidad' }[this.vista()];
+    const campo = { estados: 'cantidad', tecnicos: 'asignadas', tiempos: 'horas_promedio', fallas: 'ocurrencias', presupuestos: 'cantidad', clasificacion: 'cantidad' }[this.vista()];
     return Math.max(1, ...this.resultado().filas.map((f) => Number(f[campo] ?? 0)));
   });
 
@@ -109,6 +119,7 @@ export class ReporteServicioComponent implements OnInit {
       'tiempos': () => this.reportes.servicioTiempos(f),
       'fallas': () => this.reportes.servicioFallas(f),
       'presupuestos': () => this.reportes.servicioPresupuestos(f),
+      'clasificacion': () => this.reportes.servicioClasificacion(f),
     };
 
     this.peticion?.unsubscribe();
@@ -167,6 +178,7 @@ export class ReporteServicioComponent implements OnInit {
       'tiempos': 'No hay órdenes cerradas en el período.',
       'fallas': 'No hay diagnósticos con fallas registradas en el período.',
       'presupuestos': 'No hay presupuestos creados en el período.',
+      'clasificacion': 'No hay solicitudes clasificadas en el período.',
     }[this.vista()];
   }
 }

@@ -26,6 +26,10 @@ class SolicitudServicioIndexRequest extends FormRequest
             'hasta'           => ['nullable', 'date', 'after_or_equal:desde'],
             'page'            => ['nullable', 'integer', 'min:1'],
             'per_page'        => ['nullable', 'integer', 'min:5', 'max:100'],
+            'tdi_id'          => ['nullable', 'integer'],
+            'caf_id'          => ['nullable', 'integer'],
+            'urg_id'          => ['nullable', 'integer'],
+            'sin_clasificar'  => ['nullable', 'boolean'],
         ];
     }
 

@@ -4,10 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { Subject, Subscription, debounceTime } from 'rxjs';
 import { BadgeModule, ButtonModule, CardModule, FormModule, SpinnerModule, TableModule } from '@coreui/angular';
-import { Falla, TipoDispositivoOpcion } from '../models/falla.model';
 import { FallasService } from '../service/fallas.service';
 import { FormFallaComponent } from '../form-falla/form-falla.component';
 import { DeleteFallaComponent } from '../delete-falla/delete-falla.component';
+import { Falla, TipoDispositivoOpcion, CategoriaFallaOpcion } from '../models/falla.model';
 
 @Component({
   selector: 'app-list-falla',
@@ -19,6 +19,7 @@ import { DeleteFallaComponent } from '../delete-falla/delete-falla.component';
 export class ListFallaComponent implements OnInit, OnDestroy {
   fallas: Falla[] = [];
   tiposDispositivo: TipoDispositivoOpcion[] = [];
+  categorias: CategoriaFallaOpcion[] = [];
   cargando = false;
 
   search = '';
@@ -35,7 +36,10 @@ export class ListFallaComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.service.getConfig().subscribe({
-      next: (cfg) => (this.tiposDispositivo = cfg.tipos_dispositivo),
+      next: (cfg) => {
+        this.tiposDispositivo = cfg.tipos_dispositivo;
+        this.categorias = cfg.categorias ?? [];   // Punto 7
+      },
       error: () => this.toastr.error('No se pudieron cargar los tipos de dispositivo', 'Error'),
     });
     this.cargar();

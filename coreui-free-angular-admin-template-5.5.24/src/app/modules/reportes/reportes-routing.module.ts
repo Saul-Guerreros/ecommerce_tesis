@@ -10,6 +10,8 @@ import { ReporteServicioComponent } from './reporte-servicio/reporte-servicio.co
 import { ReporteClientesComponent } from './reporte-clientes/reporte-clientes.component';
 import { ReportePromocionesComponent } from './reporte-promociones/reporte-promociones.component';
 import { ReporteChatbotComponent } from './reporte-chatbot/reporte-chatbot.component';
+import { ReporteComportamientoComponent } from './reporte-comportamiento/reporte-comportamiento.component';
+
 /**
  * El permiso de cada reporte lo valida rutaPermisoGuard (registrado en el
  * layout) con el mapa de _nav-permisos.ts. Los reportes que aún no existen
@@ -28,6 +30,7 @@ const routes: Routes = [
       { path: 'clientes', component: ReporteClientesComponent, data: { title: 'Clientes' } },
       { path: 'promociones', component: ReportePromocionesComponent, data: { title: 'Promociones' } },
       { path: 'chatbot', component: ReporteChatbotComponent, data: { title: 'Asistente virtual' } },
+      { path: 'comportamiento', component: ReporteComportamientoComponent, data: { title: 'Comportamiento de clientes' } },
       { path: '**', redirectTo: '' },
     ],
   },

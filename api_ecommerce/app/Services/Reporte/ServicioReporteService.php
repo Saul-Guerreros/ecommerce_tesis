@@ -334,6 +334,187 @@ class ServicioReporteService extends ConsultaReporte
     }
 
     // =====================================================================
+    // 6. Diagnóstico preliminar con IA
+    // =====================================================================
+
+    /**
+     * Fecha de referencia: creación de la consulta (dpr_creado).
+     * Acierto = (TOTAL + PARCIAL) / evaluados. Rango de costo: la estimación se compara
+     * con la mano de obra (IVA incluido) de la última versión del presupuesto.
+     */
+    public function diagnosticoIa(FiltrosReporte $f, ?int $tipoDispositivoId = null): array
+    {
+        $manoObra = DB::table('presupuesto_servicio as ps')
+            ->join('orden_servicio as os2', 'os2.ose_id', '=', 'ps.pse_oseid')
+            ->join('presupuesto_detalle as pd', 'pd.psd_pseid', '=', 'ps.pse_id')
+            ->where('pd.psd_tipo', 'MANO_OBRA')
+            ->whereRaw('ps.pse_versio = (SELECT MAX(p2.pse_versio) FROM presupuesto_servicio p2 WHERE p2.pse_oseid = ps.pse_oseid)')
+            ->groupBy('os2.ose_sseid')
+            ->selectRaw('os2.ose_sseid AS sse_id, SUM(pd.psd_total) AS total');
+
+        $q = DB::table('diagnostico_preliminar as dp')
+            ->leftJoin('solicitud_servicio as ss', 'ss.sse_id', '=', 'dp.dpr_sseid')
+            ->leftJoinSub($manoObra, 'mo', 'mo.sse_id', '=', 'dp.dpr_sseid')
+            ->whereBetween('dp.dpr_creado', $f->rangoTimestamps());
+
+        if ($tipoDispositivoId) {
+            $q->where('dp.dpr_tdiid', $tipoDispositivoId);
+        }
+        $this->filtrarSolicitud($q, $f, null);
+
+        $filas = $q->selectRaw("dp.dpr_canal AS canal,
+                COUNT(*)                                                                 AS consultas,
+                COUNT(*) FILTER (WHERE dp.dpr_estado = 'GENERADO')                      AS generados,
+                COUNT(dp.dpr_sseid)                                                      AS vinculados,
+                COUNT(dp.dpr_coinci)                                                     AS evaluados,
+                COUNT(*) FILTER (WHERE dp.dpr_coinci = 'TOTAL')                          AS total,
+                COUNT(*) FILTER (WHERE dp.dpr_coinci = 'PARCIAL')                        AS parcial,
+                COUNT(*) FILTER (WHERE dp.dpr_coinci = 'NINGUNA')                        AS ninguna,
+                COUNT(*) FILTER (WHERE dp.dpr_confia = 'BAJA')                           AS confianza_baja,
+                COUNT(mo.total) FILTER (WHERE dp.dpr_cosmin IS NOT NULL)                 AS comparables,
+                COUNT(*) FILTER (WHERE mo.total BETWEEN dp.dpr_cosmin AND dp.dpr_cosmax) AS en_rango,
+                ROUND(AVG(dp.dpr_latms))                                                 AS latencia_ms")
+            ->groupBy('dp.dpr_canal')
+            ->orderBy('dp.dpr_canal')
+            ->get()
+            ->map(fn ($r) => [
+                'canal'          => $r->canal,
+                'consultas'      => (int) $r->consultas,
+                'generados'      => (int) $r->generados,
+                'vinculados'     => (int) $r->vinculados,
+                'evaluados'      => (int) $r->evaluados,
+                'total'          => (int) $r->total,
+                'parcial'        => (int) $r->parcial,
+                'ninguna'        => (int) $r->ninguna,
+                'confianza_baja' => (int) $r->confianza_baja,
+                'comparables'    => (int) $r->comparables,
+                'en_rango'       => (int) $r->en_rango,
+                'latencia_ms'    => $r->latencia_ms !== null ? (int) $r->latencia_ms : null,
+            ])
+            ->all();
+
+        foreach ($filas as &$fila) {
+            $fila['disponibilidad'] = $this->porcentaje($fila['generados'], $fila['consultas']);
+            $fila['tasa_acierto']   = $this->porcentaje($fila['total'] + $fila['parcial'], $fila['evaluados']);
+            $fila['tasa_total']     = $this->porcentaje($fila['total'], $fila['evaluados']);
+            $fila['tasa_en_rango']  = $this->porcentaje($fila['en_rango'], $fila['comparables']);
+        }
+        unset($fila);
+
+        $suma = fn (string $k) => array_sum(array_column($filas, $k));
+
+        return [
+            'filas'   => $filas,
+            'totales' => [
+                'consultas'     => $suma('consultas'),
+                'evaluados'     => $suma('evaluados'),
+                'tasa_acierto'  => $this->porcentaje($suma('total') + $suma('parcial'), $suma('evaluados')),
+                'tasa_en_rango' => $this->porcentaje($suma('en_rango'), $suma('comparables')),
+            ],
+        ];
+    }
+
+    // =====================================================================
+    // Punto 7. Clasificación automática de solicitudes (IA)
+    // =====================================================================
+
+    /**
+     * Distribución de las solicitudes del período por tipo de problema, urgencia y
+     * dispositivo (valores VIGENTES), más el acierto de la IA sobre las revisadas.
+     * Revisada = confirmada/corregida por una persona o con diagnóstico del técnico.
+     * Acierto categoría = IA vs. categoría de la falla principal del técnico (o la corregida).
+     */
+    public function clasificacion(FiltrosReporte $f, ?int $tipoDispositivoId = null): array
+    {
+        $base = function () use ($f, $tipoDispositivoId) {
+            $q = DB::table('solicitud_servicio as ss')
+                ->leftJoin('clasificacion_solicitud as cl', 'cl.cls_sseid', '=', 'ss.sse_id')
+                ->whereBetween('ss.sse_creado', $f->rangoTimestamps());
+            $this->filtrarSolicitud($q, $f, $tipoDispositivoId);
+
+            return $q;
+        };
+
+        $dimensiones = [
+            'categoria'   => ['categoria_falla', 'caf_id', 'cls_cafid', 'caf_codigo', 'caf_descri', "'info'"],
+            'urgencia'    => ['urgencia_servicio', 'urg_id', 'cls_urgid', 'urg_codigo', 'urg_descri', 'cat.urg_color'],
+            'dispositivo' => ['tipo_dispositivo', 'tdi_id', 'cls_tdiid', 'tdi_codigo', 'tdi_descri', "'primary'"],
+        ];
+
+        $filas = [];
+        foreach ($dimensiones as $dimension => [$tabla, $pk, $fk, $codigo, $descri, $color]) {
+            $grupo = $base()
+                ->join("{$tabla} as cat", "cat.{$pk}", '=', "cl.{$fk}")
+                ->whereIn('cl.cls_estado', ['IA', 'MANUAL'])
+                ->selectRaw("cat.{$pk} AS id, cat.{$codigo} AS codigo, cat.{$descri} AS descri, {$color} AS color, COUNT(*) AS cantidad")
+                ->groupByRaw("cat.{$pk}, cat.{$codigo}, cat.{$descri}" . ($dimension === 'urgencia' ? ', cat.urg_color, cat.urg_orden' : ''))
+                ->orderByRaw($dimension === 'urgencia' ? 'cat.urg_orden' : 'COUNT(*) DESC')
+                ->get();
+
+            $total = (int) $grupo->sum('cantidad');
+            foreach ($grupo as $r) {
+                $filas[] = [
+                    'dimension'     => $dimension,
+                    'id'            => (int) $r->id,
+                    'codigo'        => $r->codigo,
+                    'descri'        => $r->descri,
+                    'color'         => $r->color,
+                    'cantidad'      => (int) $r->cantidad,
+                    'participacion' => $this->porcentaje((int) $r->cantidad, $total),
+                ];
+            }
+        }
+
+        $t = $base()->selectRaw("
+                COUNT(*)                                                                    AS solicitudes,
+                COUNT(*) FILTER (WHERE cl.cls_estado IN ('IA', 'MANUAL'))                   AS clasificadas,
+                COUNT(*) FILTER (WHERE cl.cls_tdiia IS NOT NULL)                            AS generadas_ia,
+                COUNT(*) FILTER (WHERE cl.cls_estado = 'PENDIENTE' OR cl.cls_id IS NULL)    AS pendientes,
+                COUNT(*) FILTER (WHERE cl.cls_estado = 'NO_DISPONIBLE')                     AS no_disponibles,
+                COUNT(*) FILTER (WHERE cl.cls_estado = 'MANUAL')                            AS corregidas,
+                COUNT(*) FILTER (WHERE cl.cls_confia = 'BAJA')                              AS confianza_baja,
+                COUNT(*) FILTER (WHERE cl.cls_tdicli IS NULL AND cl.cls_tdiia IS NOT NULL)  AS dispositivo_por_ia,
+                COUNT(*) FILTER (WHERE cl.cls_tdicli IS NOT NULL AND cl.cls_tdiia IS NOT NULL
+                                   AND cl.cls_tdicli <> cl.cls_tdiia)                        AS inconsistentes,
+                COUNT(*) FILTER (WHERE cl.cls_tdiia IS NOT NULL
+                                   AND (cl.cls_revisa IS NOT NULL OR cl.cls_evalua IS NOT NULL)) AS revisadas,
+                COUNT(*) FILTER (WHERE cl.cls_tdiia IS NOT NULL
+                                   AND (cl.cls_revisa IS NOT NULL OR cl.cls_evalua IS NOT NULL)
+                                   AND cl.cls_tdiia = cl.cls_tdiid)                          AS ok_dispositivo,
+                COUNT(*) FILTER (WHERE cl.cls_tdiia IS NOT NULL
+                                   AND (cl.cls_revisa IS NOT NULL OR cl.cls_evalua IS NOT NULL)
+                                   AND cl.cls_urgia = cl.cls_urgid)                          AS ok_urgencia,
+                COUNT(*) FILTER (WHERE cl.cls_tdiia IS NOT NULL
+                                   AND (cl.cls_revisa IS NOT NULL OR cl.cls_evalua IS NOT NULL)
+                                   AND cl.cls_cafia = COALESCE(cl.cls_cafdia, cl.cls_cafid)) AS ok_categoria,
+                ROUND(AVG(cl.cls_latms) FILTER (WHERE cl.cls_tdiia IS NOT NULL))            AS latencia_ms
+            ")->first();
+
+        $revisadas = (int) $t->revisadas;
+        $intentos  = (int) $t->generadas_ia + (int) $t->no_disponibles;
+
+        return [
+            'filas'   => $filas,
+            'totales' => [
+                'solicitudes'         => (int) $t->solicitudes,
+                'clasificadas'        => (int) $t->clasificadas,
+                'pendientes'          => (int) $t->pendientes,
+                'no_disponibles'      => (int) $t->no_disponibles,
+                'corregidas'          => (int) $t->corregidas,
+                'confianza_baja'      => (int) $t->confianza_baja,
+                'dispositivo_por_ia'  => (int) $t->dispositivo_por_ia,
+                'inconsistentes'      => (int) $t->inconsistentes,
+                'revisadas'           => $revisadas,
+                'disponibilidad'      => $this->porcentaje((int) $t->generadas_ia, $intentos),
+                'acierto_dispositivo' => $this->porcentaje((int) $t->ok_dispositivo, $revisadas),
+                'acierto_urgencia'    => $this->porcentaje((int) $t->ok_urgencia, $revisadas),
+                'acierto_categoria'   => $this->porcentaje((int) $t->ok_categoria, $revisadas),
+                'latencia_ms'         => $t->latencia_ms !== null ? (int) $t->latencia_ms : null,
+            ],
+        ];
+    }
+
+    // =====================================================================
     // Auxiliares
     // =====================================================================
 

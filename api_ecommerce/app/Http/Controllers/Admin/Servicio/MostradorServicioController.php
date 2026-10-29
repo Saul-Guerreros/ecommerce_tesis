@@ -38,7 +38,7 @@ class MostradorServicioController extends Controller
         return response()->json([
             'sucursales'         => $this->solicitudes->sucursalesMostrador($usuario),
             'sucursal_principal' => $this->solicitudes->sucursalPrincipal($usuario),
-            'tipos_dispositivo'  => TipoDispositivo::activos()->orderBy('tdi_descri')->get(['tdi_id', 'tdi_codigo', 'tdi_descri']),
+            'tipos_dispositivo'  => TipoDispositivo::seleccionables()->orderBy('tdi_descri')->get(['tdi_id', 'tdi_codigo', 'tdi_descri']),
             'tipos_documento'    => TipoDocumento::where('tpd_estado', 1)
                 ->whereIn('tpd_codigo', ClienteRapidoService::DOCUMENTOS_MOSTRADOR)
                 ->orderBy('tpd_id')->get(['tpd_id', 'tpd_codigo', 'tpd_descri']),
@@ -49,12 +49,12 @@ class MostradorServicioController extends Controller
         ], 200);
     }
 
-    // GET /api/admin/servicios/solicitudes/mostrador/clientes?q=   (documento, correo o celular)
+    // GET /api/admin/servicios/solicitudes/mostrador/clientes?q=   (nombre, documento, correo o celular)
     public function buscarClientes(Request $request): JsonResponse
     {
         $request->validate(
             ['q' => ['required', 'string', 'min:4', 'max:100']],
-            ['q.required' => 'Ingrese un documento, correo o celular.', 'q.min' => 'Ingrese al menos 4 caracteres.'],
+            ['q.required' => 'Ingrese un nombre, documento, correo o celular.', 'q.min' => 'Ingrese al menos 4 caracteres.'],
         );
 
         return response()->json(['data' => $this->clientes->buscar($request->input('q'))], 200);

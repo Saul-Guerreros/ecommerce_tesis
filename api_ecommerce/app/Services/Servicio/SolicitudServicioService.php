@@ -33,6 +33,8 @@ class SolicitudServicioService
     public function __construct(
         private ServicioEstadoService $estados,
         private RecepcionServicioService $recepcion,
+        private DiagnosticoPreliminarService $preliminar,
+        private ClasificacionSolicitudService $clasificacion,
     ) {}
 
     // ---------- Configuración del wizard ----------
@@ -42,7 +44,7 @@ class SolicitudServicioService
         $persona = $usuario->persona;
 
         return [
-            'tipos_dispositivo' => TipoDispositivo::activos()->orderBy('tdi_descri')
+            'tipos_dispositivo' => TipoDispositivo::seleccionables()->orderBy('tdi_descri')
                 ->get(['tdi_id', 'tdi_codigo', 'tdi_descri']),
             'sucursales'        => Sucursal::paraRetiro()->with('ciudad')
                 ->orderByDesc('suc_princi')->orderBy('suc_nombre')->get(),
@@ -184,7 +186,8 @@ class SolicitudServicioService
             return DB::transaction(function () use ($usuario, $cliente, $datos, $fotos, $aDomicilio, $retiro, $tipoEntrega, $original, &$rutasGuardadas) {
                 $solicitud = $this->crearCabecera([
                     'sse_cliid'  => $cliente->cli_id,
-                    'sse_tdiid'  => $datos['sse_tdiid'],
+                    // Punto 7: opcional; sin tipo, queda "Por determinar" hasta que la IA lo determine.
+                    'sse_tdiid'  => $datos['sse_tdiid'] ?? TipoDispositivo::pendienteId(),
                     'sse_marca'  => $datos['sse_marca'],
                     'sse_modelo' => $datos['sse_modelo'],
                     'sse_nroser' => $datos['sse_nroser'] ?? null,
@@ -206,7 +209,7 @@ class SolicitudServicioService
                     'sse_epaid'  => null,
                     'sse_canal'  => SolicitudServicio::CANAL_WEB,
                 ]);
-
+                $this->preliminar->vincular($datos['dpr_id'] ?? null, $solicitud, $usuario);
                 $rutasGuardadas = AdjuntoServicio::guardar($solicitud, $fotos, SolicitudAdjunto::CLIENTE, $usuario->usu_id);
 
                 $this->estados->registrarAlta($solicitud, $usuario->usu_id);
@@ -269,13 +272,6 @@ class SolicitudServicioService
                 'sse_fecing' => 'No se pueden registrar ingresos en el mostrador los domingos: el local no atiende ese día.',
             ]);
         }
-        // El local no atiende los domingos: el ingreso presencial lleva la fecha de hoy (sse_fecing),
-        // así que se rechaza aquí. Misma regla que App\Rules\FechaSinDomingo en el canal web.
-        if (now()->isSunday()) {
-            throw ValidationException::withMessages([
-                'sse_fecing' => 'No se pueden registrar ingresos en el mostrador los domingos: el local no atiende ese día.',
-            ]);
-        }
         if (!$cliente || (int) $cliente->cli_estado !== 1) {
             throw ValidationException::withMessages(['sse_cliid' => 'El cliente no existe o está inactivo.']);
         }
@@ -328,7 +324,8 @@ class SolicitudServicioService
         return DB::transaction(function () use ($usuario, $cliente, $datos, $fotos, $sucursal, $garantia, $linea, $recepcion, $original) {
             $solicitud = $this->crearCabecera([
                 'sse_cliid'  => $cliente->cli_id,
-                'sse_tdiid'  => $datos['sse_tdiid'],
+                 // Punto 7: opcional; sin tipo, queda "Por determinar" hasta que la IA lo determine.
+                'sse_tdiid'  => $datos['sse_tdiid'] ?? TipoDispositivo::pendienteId(),
                 'sse_marca'  => $datos['sse_marca'],
                 'sse_modelo' => $datos['sse_modelo'],
                 'sse_nroser' => $datos['sse_nroser'] ?? null,
@@ -350,7 +347,7 @@ class SolicitudServicioService
                 'sse_canal'  => SolicitudServicio::CANAL_MOSTRADOR,
                 'sse_usuid'  => $usuario->usu_id,
             ]);
-
+            $this->preliminar->vincular($datos['dpr_id'] ?? null, $solicitud, $usuario);
             $this->estados->registrarAlta($solicitud, $usuario->usu_id, $original
                 ? "Reclamo de garantía de {$original->sse_numero} registrado en el mostrador de {$sucursal->suc_nombre}"
                 : "Solicitud registrada en el mostrador de {$sucursal->suc_nombre}");
@@ -423,6 +420,10 @@ class SolicitudServicioService
             'sse_numero' => 'SS-' . date('Y') . '-' . str_pad((string) $solicitud->sse_id, 5, '0', STR_PAD_LEFT),
         ]);
 
+        // Punto 7: punto único de alta (web, mostrador, garantía y reclamo) => toda solicitud se clasifica.
+        $tdiCliente = (int) $solicitud->sse_tdiid === TipoDispositivo::pendienteId() ? null : (int) $solicitud->sse_tdiid;
+        $this->clasificacion->registrarPendiente($solicitud, $tdiCliente);
+        
         return $solicitud;
     }
 

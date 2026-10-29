@@ -60,4 +60,10 @@ export const CATALOGO_REPORTES: ItemCatalogoReporte[] = [
     descripcion: 'Uso y efectividad del chatbot con IA.',
     contenidos: ['Conversaciones por período', 'Temas más consultados', 'Consultas sin respuesta y derivadas'],
   },
+  {
+    clave: 'comportamiento', titulo: 'Comportamiento de clientes', icono: 'cilMagnifyingGlass', ruta: '/reportes/comportamiento',
+    permiso: 'reportes.comportamiento.ver', disponible: true,
+    descripcion: 'Qué buscan, cómo compran y qué prefieren los clientes, con recomendaciones de IA.',
+    contenidos: ['Productos más buscados y demanda insatisfecha', 'Patrones de compra', 'Segmentos RFM', 'Perfil por cliente', 'Recomendaciones con IA'],
+  },
 ];

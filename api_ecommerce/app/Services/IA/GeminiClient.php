@@ -44,8 +44,8 @@ class GeminiClient
     // Buscador: JSON estructurado (comportamiento idéntico al anterior)
     // ------------------------------------------------------------------
 
-    public function generarJson(string $instrucciones, string $mensaje, array $esquema): ?array
-    {
+	public function generarJson(string $instrucciones, string $mensaje, array $esquema, ?int $porModelo = null, ?int $total = null): ?array
+    {	
         if (! $this->disponible()) {
             return null;
         }
@@ -74,7 +74,7 @@ class GeminiClient
             }
 
             return $datos;
-        }, (int) config('services.gemini.timeout', 8), (int) config('services.gemini.tiempo_total', 20));
+	    }, $porModelo ?? (int) config('services.gemini.timeout', 8), $total ?? (int) config('services.gemini.tiempo_total', 20));
     }
 
     // ------------------------------------------------------------------

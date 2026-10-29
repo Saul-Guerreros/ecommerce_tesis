@@ -11,7 +11,7 @@ import { CerrarNoReparableComponent } from '../cerrar-no-reparable/cerrar-no-rep
 import { FormPresupuestoComponent } from '../form-presupuesto/form-presupuesto.component';
 import { EjecucionOrdenComponent } from '../ejecucion-orden/ejecucion-orden.component';
 import { GestionGarantiaComponent } from '../gestion-garantia/gestion-garantia.component';
-
+import { SugerenciaIaComponent } from '../sugerencia-ia/sugerencia-ia.component';
 /**
  * Página de la orden (contenedor): datos + T2 diagnóstico + T3 presupuesto
  * + T4 ejecución y cierre (con presupuesto complementario).
@@ -22,7 +22,7 @@ import { GestionGarantiaComponent } from '../gestion-garantia/gestion-garantia.c
   standalone: true,
   imports: [CommonModule, RouterModule, BadgeModule, ButtonModule, CardModule, SpinnerModule,
     FormDiagnosticoComponent, CerrarNoReparableComponent, FormPresupuestoComponent, EjecucionOrdenComponent,
-    GestionGarantiaComponent],
+    GestionGarantiaComponent, SugerenciaIaComponent],
   templateUrl: './orden-trabajo.component.html',
 })
 export class OrdenTrabajoComponent implements OnInit {

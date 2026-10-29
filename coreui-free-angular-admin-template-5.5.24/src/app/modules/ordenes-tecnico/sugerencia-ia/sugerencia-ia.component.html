@@ -1,0 +1,15 @@
+<div class="mb-3" *ngIf="diagnostico">
+  <button cButton size="sm" color="info" variant="outline" type="button" (click)="visible = !visible">
+    {{ visible ? 'Ocultar' : 'Ver' }} sugerencia de la IA (referencia)
+  </button>
+  <app-diagnostico-ia-card *ngIf="visible" class="d-block mt-2" [diagnostico]="diagnostico"
+                           titulo="Sugerencia IA (al registrar la solicitud)" [mostrarCoincidencia]="true">
+  </app-diagnostico-ia-card>
+</div>
+<!-- Punto 7: clasificación automática (el técnico puede confirmar o corregir) -->
+<div class="mb-3">
+  <button cButton size="sm" color="primary" variant="outline" type="button" (click)="verClasificacion = !verClasificacion">
+    {{ verClasificacion ? 'Ocultar' : 'Ver' }} clasificación de la solicitud (IA)
+  </button>
+  <app-clasificacion-card *ngIf="verClasificacion" class="d-block mt-2" [solicitudId]="sseId"></app-clasificacion-card>
+</div>

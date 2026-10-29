@@ -38,6 +38,9 @@
           <p class="mb-0">{{ d.sse_proble }}</p>
         </div>
         <div class="col-12">
+          <app-clasificacion-card [solicitudId]="d.sse_id" (actualizado)="onGuardado()"></app-clasificacion-card>
+        </div>
+        <div class="col-12">
           <h6 class="text-muted text-uppercase small">Ingreso del equipo</h6>
           <div>{{ d.ingreso.modalidad }} · Fecha: {{ d.ingreso.sse_fecing ? (d.ingreso.sse_fecing | date:'dd/MM/yyyy') : '—' }}</div>
           <div class="small" *ngIf="d.ingreso.a_domicilio">

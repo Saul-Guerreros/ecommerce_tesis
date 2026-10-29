@@ -4,9 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { Subject, Subscription, debounceTime } from 'rxjs';
-import {
-  BadgeModule, ButtonModule, CardModule, FormModule, PaginationModule, SpinnerModule, TableModule,
-} from '@coreui/angular';
+import {BadgeModule, ButtonModule, CardModule, FormModule, PaginationModule, SpinnerModule, TableModule,} from '@coreui/angular';
 import { SolicitudesConfig, SolicitudFiltros, SolicitudServicioLista } from '../models/solicitud-servicio.model';
 import { SolicitudesServicioService } from '../service/solicitudes-servicio.service';
 import { DetalleSolicitudComponent } from '../detalle-solicitud/detalle-solicitud.component';
@@ -27,11 +25,15 @@ import { ConfirmarRecepcionComponent } from '../confirmar-recepcion/confirmar-re
 })
 export class ListSolicitudComponent implements OnInit, OnDestroy {
   solicitudes: SolicitudServicioLista[] = [];
-  config: SolicitudesConfig = { estados_servicio: [], estados_ingreso: [], tipos_entrega: [], tecnicos: [], sucursales: [], canales: [] };
+ config: SolicitudesConfig = {
+    estados_servicio: [], estados_ingreso: [], tipos_entrega: [], tecnicos: [], sucursales: [], canales: [],
+    tipos_dispositivo: [], categorias: [], urgencias: [],
+  };
+
   cargando = false;
   procesandoId: number | null = null;
 
-  filtros: SolicitudFiltros = { buscar: '', ets_id: '', elg_id: '', ten_id: '', garantia: '', suc_id: '', canal: '', solo_pendientes: true };
+  filtros: SolicitudFiltros = this.filtrosIniciales();
   private searchSubject = new Subject<void>();
   private searchSub?: Subscription;
 
@@ -48,6 +50,13 @@ export class ListSolicitudComponent implements OnInit, OnDestroy {
   recepcionVisible = false;
 
   constructor(private service: SolicitudesServicioService, private toastr: ToastrService) {}
+
+   private filtrosIniciales(): SolicitudFiltros {
+    return {
+      buscar: '', ets_id: '', elg_id: '', ten_id: '', garantia: '', suc_id: '', canal: '', solo_pendientes: true,
+      tdi_id: '', caf_id: '', urg_id: '', sin_clasificar: false,   // Punto 7
+    };
+  }
 
   ngOnInit(): void {
     this.service.getConfig().subscribe({
@@ -83,7 +92,7 @@ export class ListSolicitudComponent implements OnInit, OnDestroy {
   }
 
   limpiarFiltros(): void {
-    this.filtros = { buscar: '', ets_id: '', elg_id: '', ten_id: '', garantia: '', suc_id: '', canal: '', solo_pendientes: true };
+     this.filtros = this.filtrosIniciales();
     this.cargar();
   }
 
@@ -117,6 +126,15 @@ export class ListSolicitudComponent implements OnInit, OnDestroy {
   puedeRecibir(s: SolicitudServicioLista): boolean {
     if (!this.esSolicitada(s)) return false;
     return s.a_domicilio ? s.estado_ingreso.codigo !== 'PENDIENTE' : true;
+  }
+
+  /** Punto 7: texto de la columna cuando la IA aún no clasificó. */
+  estadoClasificacion(s: SolicitudServicioLista): string {
+    switch (s.clasificacion?.estado) {
+      case 'PENDIENTE': return 'Clasificando...';
+      case 'NO_DISPONIBLE': return 'Sin clasificar (IA no disponible)';
+      default: return 'Sin clasificar';
+    }
   }
 
   colorServicio(codigo: string | null): string {

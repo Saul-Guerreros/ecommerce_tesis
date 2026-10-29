@@ -32,6 +32,9 @@ export interface MetaBusqueda {
     /** true si se quitaron los filtros técnicos porque no había resultados con ellos. */
     filtros_relajados: boolean;
   } | null;
+
+  /** Id de la búsqueda registrada (análisis de comportamiento); null en página 2+ o sin texto. */
+  busqueda_id?: number | null;
 }
 
 /** Producto resumido para los resultados instantáneos del buscador del header. */

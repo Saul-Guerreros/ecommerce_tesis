@@ -41,6 +41,7 @@ class RegistrarMostradorRequest extends FormRequest
             'sse_cliid'  => ['required', 'integer'],
             'sse_sucid'  => ['required', 'integer'],
 
+            'dpr_id' => ['nullable', 'integer'],
             // Tipo de servicio
             'sse_garant' => ['required', 'boolean'],
             // Paso 3: reclamo de garantía de un servicio anterior (número SS-). El equipo sale de la original.
@@ -48,8 +49,8 @@ class RegistrarMostradorRequest extends FormRequest
             'sse_dpdid'  => ['nullable', Rule::requiredIf(fn () => $this->boolean('sse_garant') && !$this->filled('sse_sseori')), 'integer'],
 
             // Equipo (mismas reglas que el wizard web; en un reclamo se toman de la original)
-            'sse_tdiid'  => ['nullable', Rule::requiredIf(fn () => !$this->filled('sse_sseori')), 'integer',
-                             Rule::exists('tipo_dispositivo', 'tdi_id')->where('tdi_estado', 1)],
+            'sse_tdiid'  => ['nullable', 'integer', Rule::exists('tipo_dispositivo', 'tdi_id')
+                             ->where('tdi_estado', 1)->whereNot('tdi_codigo', \App\Models\Servicio\TipoDispositivo::PENDIENTE)],
             'sse_marca'  => ['nullable', Rule::requiredIf(fn () => !$this->filled('sse_sseori')), 'string', 'max:50'],
             'sse_modelo' => ['nullable', Rule::requiredIf(fn () => !$this->filled('sse_sseori')), 'string', 'max:80'],
             'sse_nroser' => ['nullable', 'string', 'max:80'],
@@ -77,7 +78,6 @@ class RegistrarMostradorRequest extends FormRequest
             'sse_cliid.required'    => 'Seleccione o registre el cliente.',
             'sse_sucid.required'    => 'Seleccione la sucursal de recepción.',
             'sse_dpdid.required'    => 'Seleccione el producto que cubre la garantía.',
-            'sse_tdiid.required'    => 'Seleccione el tipo de equipo.',
             'sse_tdiid.exists'      => 'El tipo de equipo no es válido.',
             'sse_marca.required'    => 'Indique la marca del equipo.',
             'sse_modelo.required'   => 'Indique el modelo del equipo.',

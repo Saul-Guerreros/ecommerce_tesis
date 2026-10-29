@@ -31,4 +31,10 @@ return [
 
     // Paso 2: presupuesto ENVIADO sin contacto con el cliente en estos días (tarjeta del panel A3).
     'contacto_alerta_dias' => (int) env('SERVICIO_CONTACTO_ALERTA_DIAS', 2),
+
+    // Diagnóstico preliminar con IA (Gemini). false = siempre responde "no disponible".
+    'diagnostico_ia' => (bool) env('SERVICIO_DIAGNOSTICO_IA', true),
+
+    // Punto 7 - Clasificación automática de solicitudes (IA). false = quedan NO_DISPONIBLE.
+    'clasificacion_ia' => (bool) env('SERVICIO_CLASIFICACION_IA', true),
 ];

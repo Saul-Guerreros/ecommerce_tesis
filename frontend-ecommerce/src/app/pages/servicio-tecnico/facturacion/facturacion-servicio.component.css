@@ -1,4 +1,9 @@
 /* Custom element: sin esto uk-margin no la separa de la tarjeta siguiente. */
 :host {
   display: block;
+  /* Este componente carga el CSS del checkout (paso-facturacion.component.css), cuyo :host
+     ensancha el elemento a 1350 px para la página completa. Acá va DENTRO de la columna del
+     pago, así que se anula: ocupa el ancho de la columna igual que las demás tarjetas. */
+  width: auto;
+  margin-left: 0;
 }

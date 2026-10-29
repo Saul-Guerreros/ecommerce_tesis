@@ -32,6 +32,13 @@
           </div>
         </div>
 
+         <div class="col-md-6">
+          <label cLabel for="trb_dias">Días estimados <span class="text-danger">*</span></label>
+          <input cFormControl id="trb_dias" type="number" min="1" max="60" step="1" formControlName="trb_dias" />
+          <div class="text-danger small" *ngIf="campoInvalido('trb_dias')">
+            {{ errorBackend('trb_dias') || 'Ingrese entre 1 y 60 días.' }}
+          </div>
+        </div>
         <div class="col-md-6">
           <label cLabel for="trb_tivid">Tipo de IVA <span class="text-danger">*</span></label>
           <select cSelect id="trb_tivid" formControlName="trb_tivid">

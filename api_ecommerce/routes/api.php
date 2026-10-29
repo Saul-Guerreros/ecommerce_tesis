@@ -99,11 +99,12 @@ use App\Http\Controllers\Admin\Reporte\ReporteClientesController;
 use App\Http\Controllers\Admin\Reporte\ReportePromocionesController;
 use App\Http\Controllers\Admin\Reporte\ReporteChatbotController;
 use App\Http\Controllers\Pedido\PagoPedidoController;
-
+use App\Http\Controllers\Servicio\DiagnosticoPreliminarController;
 use App\Http\Controllers\Pedido\PedidoClienteController;
-
+use App\Http\Controllers\Admin\Reporte\ReporteComportamientoController;
+use App\Http\Controllers\Api\ActividadController;
 use App\Http\Controllers\Admin\Venta\VentaController;
-
+use App\Http\Controllers\Admin\Servicio\ClasificacionSolicitudController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -171,6 +172,8 @@ Route::group([
     Route::post('chat/mensajes', [ChatController::class, 'enviar'])->middleware('throttle:chat');
     Route::get('chat/{token}', [ChatController::class, 'historial'])->whereUuid('token')->middleware('throttle:60,1');
 
+    // Análisis de comportamiento: vista de producto (invitado o cliente con JWT).
+    Route::post('actividad/vista', [ActividadController::class, 'vista'])->middleware('throttle:60,1');
     // Catálogo de estados de Solicitud de Crédito (público: se usa para
     // leyendas antes de loguear, ej. en "Mis Solicitudes").
     Route::get('credito/estados', [SolicitudCreditoController::class, 'estados']);
@@ -216,7 +219,8 @@ Route::group([
 	Route::get('servicios/{numero}/constancia/{tipo}', [ServicioClienteController::class, 'constancia'])
         ->where('numero', 'SS-[0-9]{4}-[0-9]+')->whereIn('tipo', ['recepcion', 'retiro']);
     Route::get('servicios/{numero}', [ServicioClienteController::class, 'show'])->where('numero', 'SS-[0-9]{4}-[0-9]+');
-	
+	Route::post('servicios/diagnostico-preliminar', [DiagnosticoPreliminarController::class, 'cliente'])->middleware('throttle:6,1');
+
 	Route::post('servicios/{numero}/presupuesto/aprobar', [ServicioClienteController::class, 'aprobarPresupuesto'])
         ->where('numero', 'SS-[0-9]{4}-[0-9]+');
     Route::post('servicios/{numero}/presupuesto/rechazar', [ServicioClienteController::class, 'rechazarPresupuesto'])
@@ -295,6 +299,7 @@ Route::prefix('admin/servicios/solicitudes')->middleware('auth:api')->group(func
         Route::prefix('mostrador')->group(function () {
             Route::get('/config', [MostradorServicioController::class, 'config']);
             Route::get('/clientes', [MostradorServicioController::class, 'buscarClientes']);
+            Route::post('/diagnostico-preliminar', [DiagnosticoPreliminarController::class, 'mostrador'])->middleware('throttle:20,1');
             Route::post('/clientes', [MostradorServicioController::class, 'crearCliente']);
             Route::put('/clientes/{cliId}/documento', [MostradorServicioController::class, 'completarDocumento'])->whereNumber('cliId');
             Route::get('/clientes/{cliId}/garantias', [MostradorServicioController::class, 'garantias'])->whereNumber('cliId');
@@ -304,6 +309,19 @@ Route::prefix('admin/servicios/solicitudes')->middleware('auth:api')->group(func
         });
     });
 });
+
+// Punto 7 - Clasificación automática de solicitudes (IA): consulta, corrección y reclasificación.
+// La usan la bandeja (solicitudes.ver) y el técnico (tecnico.ver).
+Route::prefix('admin/servicios/clasificacion')
+    ->middleware(['auth:api', 'permiso:servicios.solicitudes.ver,servicios.tecnico.ver'])
+    ->group(function () {
+        Route::get('/config', [ClasificacionSolicitudController::class, 'config']);
+        Route::get('/{sseId}', [ClasificacionSolicitudController::class, 'show'])->whereNumber('sseId');
+        Route::put('/{sseId}', [ClasificacionSolicitudController::class, 'update'])->whereNumber('sseId');
+        Route::post('/{sseId}/confirmar', [ClasificacionSolicitudController::class, 'confirmar'])->whereNumber('sseId');
+        Route::post('/{sseId}/reclasificar', [ClasificacionSolicitudController::class, 'reclasificar'])
+            ->whereNumber('sseId')->middleware('throttle:10,1');
+    });
 
 Route::group([
     'middleware'=> ['auth:api', 'permiso:dashboard.ver'],   // <- solo agregar esta línea
@@ -617,6 +635,8 @@ Route::prefix('admin/servicios/tecnico/ordenes')
         Route::post('/{sseId}/finalizar', [OrdenTecnicoController::class, 'finalizar'])->whereNumber('sseId');
         Route::post('/{sseId}/presupuesto/complementario', [OrdenTecnicoController::class, 'abrirComplementario'])->whereNumber('sseId');
         Route::delete('/{sseId}/presupuesto/complementario', [OrdenTecnicoController::class, 'descartarComplementario'])->whereNumber('sseId');
+    
+        Route::get('/{sseId}/diagnostico-preliminar', [DiagnosticoPreliminarController::class, 'tecnico'])->whereNumber('sseId');
     });
 
 // Servicio técnico - Validación de presupuestos (control de precios)
@@ -833,7 +853,7 @@ Route::prefix('admin')->middleware('auth:api')->group(function () {
     Route::get('reportes/config', [ReporteConfigController::class, 'config'])
         ->middleware('permiso:metricas.dashboard.ver,reportes.ventas.ver,reportes.compras.ver,'
             . 'reportes.inventario.ver,reportes.servicio.ver,reportes.clientes.ver,'
-            . 'reportes.promociones.ver,reportes.chatbot.ver');
+            . 'reportes.promociones.ver,reportes.chatbot.ver,reportes.comportamiento.ver');
 
     // --- Paso 3: métricas del dashboard ---
     Route::prefix('metricas/dashboard')
@@ -898,6 +918,9 @@ Route::prefix('admin')->middleware('auth:api')->group(function () {
 
             Route::get('{vista}/exportar', [ReporteExportacionController::class, 'servicio'])
                 ->where('vista', 'estados|tecnicos|tiempos|fallas|presupuestos');
+            
+            Route::get('diagnostico-ia', [ReporteServicioController::class, 'diagnosticoIa']);
+             Route::get('clasificacion', [ReporteServicioController::class, 'clasificacion']);   // Punto 7
         });
 
    // --- Reporte de clientes ---
@@ -923,6 +946,26 @@ Route::prefix('admin')->middleware('auth:api')->group(function () {
                 ->where('vista', 'cupones|campanas');
         });
 
+    // --- Análisis de comportamiento de clientes ---
+    Route::prefix('reportes/comportamiento')
+        ->middleware('permiso:reportes.comportamiento.ver')
+        ->controller(ReporteComportamientoController::class)
+        ->group(function () {
+            Route::get('busquedas', 'busquedas');
+            Route::get('sin-resultados', 'sinResultados');
+            Route::get('productos-buscados', 'productosBuscados');
+            Route::get('franja-horaria', 'franjaHoraria');
+            Route::get('comprados-juntos', 'compradosJuntos');
+            Route::get('recompra', 'recompra');
+            Route::get('modalidades', 'modalidades');
+            Route::get('embudo', 'embudo');
+            Route::get('carritos-abandonados', 'carritosAbandonados');
+            Route::get('segmentos', 'segmentos');
+            Route::get('clientes', 'buscarClientes')->middleware('throttle:60,1');
+            Route::get('clientes/{cliente}', 'perfil')->whereNumber('cliente');
+            Route::post('insights', 'generarInsights')->middleware('throttle:10,1');
+        });
+        
      // --- Reporte del asistente virtual ---
     Route::prefix('reportes/chatbot')
         ->middleware('permiso:reportes.chatbot.ver')

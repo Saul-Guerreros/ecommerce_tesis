@@ -79,6 +79,7 @@
       <app-form-diagnostico *ngIf="o.acciones.diagnosticar && config"
         [orden]="o" [config]="config" (guardado)="onActualizada($event)"></app-form-diagnostico>
 
+      <app-sugerencia-ia [sseId]="o.sse_id"></app-sugerencia-ia>  
       <!-- Diagnóstico en solo lectura -->
       <c-card class="mb-3" *ngIf="!o.acciones.diagnosticar && o.diagnostico as d">
         <c-card-header><strong>Diagnóstico</strong> <span class="small text-muted">· {{ d.dia_fecha | date:'dd/MM/yyyy HH:mm' }}</span></c-card-header>

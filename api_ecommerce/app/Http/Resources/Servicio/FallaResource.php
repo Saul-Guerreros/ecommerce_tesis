@@ -14,6 +14,10 @@ class FallaResource extends JsonResource
             'fll_codigo'       => $this->fll_codigo,
             'fll_descri'       => $this->fll_descri,
             'fll_tdiid'        => $this->fll_tdiid,
+            'fll_cafid'        => $this->fll_cafid,
+            'categoria'        => $this->whenLoaded('categoria', fn () => $this->categoria
+                ? ['caf_id' => $this->categoria->caf_id, 'caf_descri' => $this->categoria->caf_descri]
+                : null),
             'fll_estado'       => (int) $this->fll_estado,
             'fll_creado'       => $this->fll_creado?->format('Y-m-d H:i'),
             // null = falla genérica (sin tipo); se evita instanciar el Resource con null

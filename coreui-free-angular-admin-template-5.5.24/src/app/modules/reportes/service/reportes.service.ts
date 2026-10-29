@@ -10,7 +10,7 @@ import {  CompraProveedor, CuotaPendiente, FiltrosComprasExtra, TotalesComprasPr
 } from '../models/compras.model';
 import {
   FallaFrecuente, FiltrosServicioExtra, MetricasTiempo, OrdenesTecnico, PresupuestoPorEstado,
-  SolicitudPorEstado, TiempoPorTipo, TotalesEstados, TotalesFallas, TotalesPresupuestos, TotalesTecnicos,
+  SolicitudPorEstado, TiempoPorTipo, TotalesEstados, TotalesFallas, TotalesPresupuestos, TotalesTecnicos, ClasificacionDistribucion, TotalesClasificacion,
 } from '../models/servicio.model';
 import {
   ClienteInactivo, ClientesNuevosPeriodo, ClienteTop, FiltrosClientesExtra, TotalesClientesInactivos,
@@ -21,7 +21,12 @@ import {
   ChatNoResuelta, ChatPeriodo, ChatPregunta, ChatTema, FiltrosChatbotExtra, TotalesChatNoResueltas,
   TotalesChatPeriodo, TotalesChatPreguntas, TotalesChatTemas,
 } from '../models/chatbot.model';
-
+import {
+  CarritoAbandonado, CeldaFranja, ClienteEncontrado, ClienteSegmentado, EtapaEmbudo, FiltrosComportamientoExtra,
+  InsightsIa, Modalidad, ParComprado, PerfilCliente, ProductoBuscado, TerminoBuscado, TerminoSinResultado,
+  TotalesBusquedas, TotalesCanasta, TotalesCarritos, TotalesEmbudo, TotalesFranja, TotalesRecompra,
+  TotalesSegmentos, TramoRecompra,
+} from '../models/comportamiento.model';
 
 /**
  * Cliente de la API de métricas y reportes.
@@ -219,6 +224,12 @@ export class ReportesService {
       `${this.servicioUrl}/fallas`, { params: this.params(f) });
   }
 
+   /** Punto 7 - Clasificación automática de solicitudes. */
+  servicioClasificacion(f: FiltrosReporte & FiltrosServicioExtra): Observable<RespuestaTabla<ClasificacionDistribucion, TotalesClasificacion>> {
+    return this.http.get<RespuestaTabla<ClasificacionDistribucion, TotalesClasificacion>>(
+      `${this.servicioUrl}/clasificacion`, { params: this.params(f) });
+  }
+
   servicioPresupuestos(f: FiltrosReporte & FiltrosServicioExtra): Observable<RespuestaTabla<PresupuestoPorEstado, TotalesPresupuestos>> {
     return this.http.get<RespuestaTabla<PresupuestoPorEstado, TotalesPresupuestos>>(
       `${this.servicioUrl}/presupuestos`, { params: this.params(f) });
@@ -232,6 +243,67 @@ export class ReportesService {
       params: this.params({ ...filtros, formato }),
       responseType: 'blob',
     });
+  }
+
+    // ---------- Análisis de comportamiento de clientes ----------
+
+  private readonly comportamientoUrl = `${this.apiUrl}/reportes/comportamiento`;
+
+  private tablaComportamiento<F, T>(vista: string, f: object): Observable<RespuestaTabla<F, T>> {
+    return this.http.get<RespuestaTabla<F, T>>(`${this.comportamientoUrl}/${vista}`, { params: this.params(f) });
+  }
+
+  compBusquedas(f: FiltrosReporte & FiltrosComportamientoExtra) {
+    return this.tablaComportamiento<TerminoBuscado, TotalesBusquedas>('busquedas', f);
+  }
+
+  compSinResultados(f: FiltrosReporte & FiltrosComportamientoExtra) {
+    return this.tablaComportamiento<TerminoSinResultado, { terminos: number; veces: number }>('sin-resultados', f);
+  }
+
+  compProductosBuscados(f: FiltrosReporte & FiltrosComportamientoExtra) {
+    return this.tablaComportamiento<ProductoBuscado, { productos: number; desde_busqueda: number }>('productos-buscados', f);
+  }
+
+  compFranjaHoraria(f: FiltrosReporte) {
+    return this.tablaComportamiento<CeldaFranja, TotalesFranja>('franja-horaria', f);
+  }
+
+  compCompradosJuntos(f: FiltrosReporte & FiltrosComportamientoExtra) {
+    return this.tablaComportamiento<ParComprado, TotalesCanasta>('comprados-juntos', f);
+  }
+
+  compRecompra(f: FiltrosReporte) {
+    return this.tablaComportamiento<TramoRecompra, TotalesRecompra>('recompra', f);
+  }
+
+  compModalidades(f: FiltrosReporte) {
+    return this.tablaComportamiento<Modalidad, { compras: number }>('modalidades', f);
+  }
+
+  compEmbudo(f: FiltrosReporte) {
+    return this.tablaComportamiento<EtapaEmbudo, TotalesEmbudo>('embudo', f);
+  }
+
+  compCarritosAbandonados(f: FiltrosReporte & FiltrosComportamientoExtra) {
+    return this.tablaComportamiento<CarritoAbandonado, TotalesCarritos>('carritos-abandonados', f);
+  }
+
+  compSegmentos(f: FiltrosReporte & FiltrosComportamientoExtra) {
+    return this.tablaComportamiento<ClienteSegmentado, TotalesSegmentos>('segmentos', f);
+  }
+
+  compBuscarClientes(q: string): Observable<{ data: ClienteEncontrado[] }> {
+    return this.http.get<{ data: ClienteEncontrado[] }>(`${this.comportamientoUrl}/clientes`, { params: this.params({ q }) });
+  }
+
+  compPerfilCliente(id: number, f: FiltrosReporte & FiltrosComportamientoExtra): Observable<RespuestaReporte<PerfilCliente>> {
+    return this.http.get<RespuestaReporte<PerfilCliente>>(`${this.comportamientoUrl}/clientes/${id}`, { params: this.params(f) });
+  }
+
+  compInsights(cuerpo: FiltrosReporte & FiltrosComportamientoExtra & { cliente_id?: number | null; forzar?: boolean }): Observable<RespuestaReporte<InsightsIa>> {
+    const limpio = Object.fromEntries(Object.entries(cuerpo).filter(([, v]) => v !== null && v !== undefined && v !== ''));
+    return this.http.post<RespuestaReporte<InsightsIa>>(`${this.comportamientoUrl}/insights`, limpio);
   }
 
   // ---------- Auxiliares ----------

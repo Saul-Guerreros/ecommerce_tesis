@@ -11,6 +11,7 @@ import { MonedaPyPipe } from '../../shared/pipes/moneda-py.pipe';
 import { CargandoIaComponent } from '../../shared/components/cargando-ia/cargando-ia.component';
 import { Router } from '@angular/router';
 import { ProductoCardComponent } from '../../shared/components/producto-card/producto-card.component';
+import { ActividadTiendaService } from '../../core/services/actividad-tienda.service';
 
 type Orden = 'relevancia' | 'nuevos' | 'precio_asc' | 'precio_desc';
 
@@ -70,6 +71,7 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private filtroService: FiltroProductosService,
+    private actividad: ActividadTiendaService,
     private router: Router,
     private renderer: Renderer2,
     @Inject(DOCUMENT) private document: Document,
@@ -173,6 +175,7 @@ export class ProductosBusquedaComponent implements OnInit, OnDestroy {
           this.totalResultados = resp.meta.total;
           this.consultaCorregida = resp.meta.consulta_corregida ?? null;
           this.interpretacion = resp.meta.interpretacion ?? null;
+          this.actividad.marcarBusqueda(resp.meta.busqueda_id);
           this.ultimaPagina = resp.meta.ultima_pagina;
           this.paginas = Array.from({ length: this.ultimaPagina }, (_, i) => i + 1);
           this.cargandoProductos = false;

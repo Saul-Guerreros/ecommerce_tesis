@@ -45,8 +45,8 @@
         <div *ngIf="paso === 1">
           <ng-container *ngIf="!cliente">
             <label cLabel for="busqueda">Buscar cliente</label>
-            <input cFormControl id="busqueda" [formControl]="busqueda" autocomplete="off"
-                   placeholder="Documento, correo o celular del cliente (mínimo 4 caracteres)" />
+                <input cFormControl id="busqueda" [formControl]="busqueda" autocomplete="off"
+                   placeholder="Nombre, documento, correo o celular del cliente (mínimo 4 caracteres)" />
             <div class="text-center py-3" *ngIf="buscando"><c-spinner size="sm" color="primary"></c-spinner></div>
 
             <ng-container *ngIf="!buscando && buscado">
@@ -250,13 +250,13 @@
 
           <div class="row g-3">
             <div class="col-md-4">
-              <label cLabel for="sse_tdiid">Tipo de equipo <span class="text-danger">*</span></label>
+             <label cLabel for="sse_tdiid">Tipo de equipo</label>
               <select cSelect id="sse_tdiid" formControlName="sse_tdiid">
-                <option [ngValue]="null" disabled>Seleccione...</option>
+                <option [ngValue]="null">No sé — que lo determine la IA</option>
                 <option *ngFor="let t of config.tipos_dispositivo" [ngValue]="t.tdi_id">{{ t.tdi_descri }}</option>
               </select>
               <div class="text-danger small" *ngIf="campoInvalido(formServicio, 'sse_tdiid')">
-                {{ errorBackend(formServicio, 'sse_tdiid') || 'Seleccione el tipo.' }}
+                {{ errorBackend(formServicio, 'sse_tdiid') || 'Tipo de equipo no válido.' }}
               </div>
             </div>
             <div class="col-md-4">
@@ -287,8 +287,18 @@
               </label>
               <textarea cFormControl id="sse_proble" rows="3" formControlName="sse_proble" maxlength="500"></textarea>
               <div class="text-danger small" *ngIf="campoInvalido(formServicio, 'sse_proble')">
-                {{ errorBackend(formServicio, 'sse_proble') || 'Describa el problema (mínimo 10 caracteres).' }}
+                {{ errorBackend(formServicio, 'sse_proble') || 'Describa el problema (mínimo 10 caracteres, sin contar los espacios del inicio y del final).' }}  
               </div>
+            </div>
+              <div class="col-12">
+              <button cButton size="sm" color="info" variant="outline" type="button"
+                      [disabled]="consultandoIa" (click)="consultarIa()">
+                <c-spinner *ngIf="consultandoIa" size="sm" class="me-1"></c-spinner>
+                {{ diagnosticoIa ? 'Volver a analizar con IA' : 'Diagnóstico preliminar con IA' }}
+              </button>
+              <span class="small text-muted ms-2">Opcional · orienta al cliente en el mostrador</span>
+              <app-diagnostico-ia-card *ngIf="diagnosticoIa" class="d-block mt-2"
+                                       [diagnostico]="diagnosticoIa"></app-diagnostico-ia-card>
             </div>
           </div>
         </form>

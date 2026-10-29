@@ -29,6 +29,10 @@ class CatalogoChatAdapter
         $request = Request::create('/api/tienda/productos/buscar', 'GET',
             ['busqueda' => $consulta, 'por_pagina' => $limite],
             [], [], ['REMOTE_ADDR' => $ip ?? '127.0.0.1']);   // límite por IP del intérprete
+        
+        // Análisis de comportamiento: se registra como búsqueda del chatbot.
+        // Es un atributo interno: un cliente externo no lo puede enviar.
+        $request->attributes->set('origen_busqueda', \App\Models\Comportamiento\Busqueda::ORIGEN_CHATBOT);    
 
         $json = $this->vitrina->buscar($request, $this->buscador)->getData(true);
 

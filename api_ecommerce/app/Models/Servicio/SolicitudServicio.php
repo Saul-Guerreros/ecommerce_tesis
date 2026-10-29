@@ -63,6 +63,12 @@ class SolicitudServicio extends Model
         return $this->belongsTo(TipoDispositivo::class, 'sse_tdiid', 'tdi_id');
     }
 
+    /** Punto 7: clasificación automática (IA) de la solicitud. */
+    public function clasificacion(): HasOne
+    {
+        return $this->hasOne(ClasificacionSolicitud::class, 'cls_sseid', 'sse_id');
+    }
+
     public function pedido(): BelongsTo
     {
         return $this->belongsTo(Pedido::class, 'sse_pedid', 'ped_id');

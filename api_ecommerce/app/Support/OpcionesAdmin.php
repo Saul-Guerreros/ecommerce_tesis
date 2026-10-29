@@ -134,6 +134,7 @@ class OpcionesAdmin
                     ['permiso' => 'reportes.clientes.ver',    'nombre' => 'Reportes de clientes',        'urls' => ['/reportes/clientes'],     'fijo' => false],
                     ['permiso' => 'reportes.promociones.ver', 'nombre' => 'Reportes de promociones',     'urls' => ['/reportes/promociones'],  'fijo' => false],
                     ['permiso' => 'reportes.chatbot.ver',     'nombre' => 'Reportes del asistente virtual','urls' => ['/reportes/chatbot'],    'fijo' => false],
+                    ['permiso' => 'reportes.comportamiento.ver', 'nombre' => 'Análisis de comportamiento de clientes', 'urls' => ['/reportes/comportamiento'], 'fijo' => false],
                 ],
             ],
         ];

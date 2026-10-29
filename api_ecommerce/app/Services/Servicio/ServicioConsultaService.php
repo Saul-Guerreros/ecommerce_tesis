@@ -19,6 +19,7 @@ class ServicioConsultaService
                 'tipoDispositivo', 'estadoServicio', 'estadoIngreso', 'tipoEntrega',
                 'recepcion.tecnico.persona:per_id,per_nombr1,per_apell1',
                 'sucursal:suc_id,suc_nombre',
+                'clasificacion.tipoDispositivo', 'clasificacion.categoria', 'clasificacion.urgencia',
             ])
             ->when($f['buscar'] ?? null, function (Builder $q, $buscar) {
                 $like = '%' . mb_strtolower($buscar) . '%';
@@ -49,6 +50,12 @@ class ServicioConsultaService
             ->when(isset($f['garantia']) && $f['garantia'] !== '', fn (Builder $q) => $q->where('sse_garant', (bool) $f['garantia']))
             ->when($f['desde'] ?? null, fn (Builder $q, $v) => $q->whereDate('sse_creado', '>=', $v))
             ->when($f['hasta'] ?? null, fn (Builder $q, $v) => $q->whereDate('sse_creado', '<=', $v))
+             ->when($f['tdi_id'] ?? null, fn (Builder $q, $v) => $q->where('sse_tdiid', $v))
+            ->when($f['caf_id'] ?? null, fn (Builder $q, $v) => $q->whereHas('clasificacion', fn ($c) => $c->where('cls_cafid', $v)))
+            ->when($f['urg_id'] ?? null, fn (Builder $q, $v) => $q->whereHas('clasificacion', fn ($c) => $c->where('cls_urgid', $v)))
+            ->when(!empty($f['sin_clasificar']), fn (Builder $q) => $q->where(fn ($w) => $w
+                ->doesntHave('clasificacion')
+                ->orWhereHas('clasificacion', fn ($c) => $c->whereIn('cls_estado', ['PENDIENTE', 'NO_DISPONIBLE']))))
             // Prioridad por orden de llegada (decisión de alcance): la más antigua primero.
             ->orderBy('sse_id');
     }

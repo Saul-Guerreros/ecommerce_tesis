@@ -52,7 +52,7 @@ class TipoDispositivoController extends Controller
     // GET /api/admin/tipos-dispositivo?search=&estado=
     public function index(Request $request): JsonResponse
     {
-        $query = TipoDispositivo::query();
+        $query = TipoDispositivo::where('tdi_codigo', '!=', TipoDispositivo::PENDIENTE);
 
         if ($request->filled('search')) {
             $search = '%' . mb_strtolower($request->search) . '%';
@@ -73,7 +73,7 @@ class TipoDispositivoController extends Controller
     // GET /api/admin/tipos-dispositivo/select
     public function select(): JsonResponse
     {
-        $tipos = TipoDispositivo::activos()->orderBy('tdi_descri')->get(['tdi_id', 'tdi_codigo', 'tdi_descri']);
+        $tipos = TipoDispositivo::seleccionables()->orderBy('tdi_descri')->get(['tdi_id', 'tdi_codigo', 'tdi_descri']);
 
         return response()->json(['data' => $tipos], 200);
     }
@@ -102,7 +102,9 @@ class TipoDispositivoController extends Controller
     public function update(TipoDispositivoRequest $request, int $id): JsonResponse
     {
         $tipo = TipoDispositivo::find($id);
-        if (!$tipo) return response()->json(['message' => 'Tipo de dispositivo no encontrado'], 404);
+        if ($tipo->esPendiente()) {
+            return response()->json(['message' => 'El tipo "Por determinar" es interno del sistema y no se puede modificar.'], 409);
+        }
 
         $tipo->update($request->validated());
 
@@ -115,7 +117,9 @@ class TipoDispositivoController extends Controller
     public function destroy(int $id): JsonResponse
     {
         $tipo = TipoDispositivo::find($id);
-        if (!$tipo) return response()->json(['message' => 'Tipo de dispositivo no encontrado'], 404);
+        if ($tipo->esPendiente()) {
+            return response()->json(['message' => 'El tipo "Por determinar" es interno del sistema y no se puede modificar.'], 409);
+        }
 
         $detalle = $this->detalleUsos($id);
         if ($detalle) {
@@ -134,7 +138,9 @@ class TipoDispositivoController extends Controller
     public function toggleEstado(int $id): JsonResponse
     {
         $tipo = TipoDispositivo::find($id);
-        if (!$tipo) return response()->json(['message' => 'Tipo de dispositivo no encontrado'], 404);
+        if ($tipo->esPendiente()) {
+            return response()->json(['message' => 'El tipo "Por determinar" es interno del sistema y no se puede modificar.'], 409);
+        }
 
         $tipo->tdi_estado = $tipo->tdi_estado == 1 ? 0 : 1;
         $tipo->save();

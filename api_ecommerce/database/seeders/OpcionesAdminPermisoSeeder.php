@@ -26,7 +26,7 @@ class OpcionesAdminPermisoSeeder extends Seeder
         'metricas.dashboard.ver',
         'reportes.ventas.ver', 'reportes.compras.ver', 'reportes.inventario.ver',
         'reportes.servicio.ver', 'reportes.clientes.ver', 'reportes.promociones.ver',
-        'reportes.chatbot.ver',
+        'reportes.chatbot.ver', 'reportes.comportamiento.ver',
         // Recibir dinero: solo por asignación explícita
         'servicios.cobros.confirmar',
     ];

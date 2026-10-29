@@ -57,6 +57,22 @@ class ReporteServicioController extends Controller
         return $this->responder($this->servicio->presupuestos($f, $request->tipoDispositivoId()), $f);
     }
 
+    /** GET /api/admin/reportes/servicio/diagnostico-ia */
+    public function diagnosticoIa(ReporteServicioRequest $request): JsonResponse
+    {
+        $f = $request->filtros();
+
+        return $this->responder($this->servicio->diagnosticoIa($f, $request->tipoDispositivoId()), $f);
+    }
+
+    /** GET /api/admin/reportes/servicio/clasificacion (Punto 7) */
+    public function clasificacion(ReporteServicioRequest $request): JsonResponse
+    {
+        $f = $request->filtros();
+
+        return $this->responder($this->servicio->clasificacion($f, $request->tipoDispositivoId()), $f);
+    }
+
     private function responder(array $resultado, FiltrosReporte $f): JsonResponse
     {
         return response()->json([

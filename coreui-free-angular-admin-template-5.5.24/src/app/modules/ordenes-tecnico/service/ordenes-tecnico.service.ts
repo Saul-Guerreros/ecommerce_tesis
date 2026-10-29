@@ -6,6 +6,7 @@ import {
   ResolverGarantiaPayload, TableroResponse,
 } from '../models/orden-tecnico.model';
 import { environment } from '../../../../environments/environment';
+import { DiagnosticoIa } from '../../solicitudes-servicio/models/diagnostico-ia.model';
 
 type Respuesta = { message: string; data: OrdenTrabajo };
 
@@ -100,5 +101,9 @@ export class OrdenesTecnicoService {
 
   descartarComplementario(sseId: number): Observable<Respuesta> {
     return this.http.delete<Respuesta>(`${this.apiUrl}/${sseId}/presupuesto/complementario`);
+  }
+    
+  diagnosticoPreliminar(sseId: number): Observable<{ data: DiagnosticoIa | null }> {
+    return this.http.get<{ data: DiagnosticoIa | null }>(`${this.apiUrl}/${sseId}/diagnostico-preliminar`);
   }
 }

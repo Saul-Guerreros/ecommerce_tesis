@@ -27,6 +27,7 @@ export const navItems: INavData[] = [
       { name: 'Clientes', url: '/reportes/clientes' },
       { name: 'Promociones', url: '/reportes/promociones' },
       { name: 'Asistente virtual', url: '/reportes/chatbot' },
+      { name: 'Comportamiento de clientes', url: '/reportes/comportamiento' },
     ]
   },
 

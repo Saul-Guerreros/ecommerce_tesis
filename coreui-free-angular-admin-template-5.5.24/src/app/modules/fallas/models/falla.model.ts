@@ -4,12 +4,19 @@ export interface TipoDispositivoOpcion {
   tdi_descri: string;
 }
 
+export interface CategoriaFallaOpcion {
+  caf_id: number;
+  caf_codigo?: string;
+  caf_descri: string;
+}
+  
 export interface Falla {
   fll_id?: number;
   fll_codigo: string;
   fll_descri: string;
-  /** null = falla genérica (aplica a cualquier equipo) */
   fll_tdiid: number | null;
+   fll_cafid?: number | null;
+  categoria?: CategoriaFallaOpcion | null;
   fll_estado?: number;
   fll_creado?: string;
 
@@ -19,4 +26,5 @@ export interface Falla {
 
 export interface FallaConfig {
   tipos_dispositivo: TipoDispositivoOpcion[];
+  categorias: CategoriaFallaOpcion[];
 }

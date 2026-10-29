@@ -1,4 +1,5 @@
 import { PresupuestoResumen, UltimoContacto } from '../../panel-servicios/models/panel-servicio.model';
+import { Clasificacion } from './clasificacion.model';
 
 export type Canal = 'WEB' | 'MOSTRADOR';
 
@@ -22,6 +23,8 @@ export interface SolicitudServicioLista {
   estado_servicio: EstadoRef;
   estado_ingreso: EstadoRef;
   tecnico?: string | null;
+  clasificacion?: Clasificacion | null;
+
 }
 
 export interface SolicitudAdjunto {
@@ -119,6 +122,9 @@ export interface SolicitudesConfig {
   tecnicos: TecnicoOpcion[];
   sucursales: SucursalOpcion[];
   canales: Canal[];
+   tipos_dispositivo: { tdi_id: number; tdi_descri: string }[];
+  categorias: { caf_id: number; caf_descri: string }[];
+  urgencias: { urg_id: number; urg_codigo: string; urg_descri: string; urg_color: string }[];
 }
 
 export interface SolicitudFiltros {
@@ -132,6 +138,10 @@ export interface SolicitudFiltros {
   solo_pendientes?: boolean;
   page?: number;
   per_page?: number;
+  tdi_id?: string;
+  caf_id?: string;
+  urg_id?: string;
+  sin_clasificar?: boolean;
 }
 
 export interface SolicitudesPaginadas {

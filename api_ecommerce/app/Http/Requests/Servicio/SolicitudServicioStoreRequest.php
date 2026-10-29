@@ -5,6 +5,7 @@ namespace App\Http\Requests\Servicio;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Rules\FechaSinDomingo;
+use App\Models\Servicio\TipoDispositivo;
 
 /**
  * Wizard C2 (tienda). Llega como multipart/form-data por las fotos.
@@ -35,13 +36,13 @@ class SolicitudServicioStoreRequest extends FormRequest
         $max = (int) config('servicio.max_fotos_cliente');
 
         return [
-            'sse_tdiid'  => ['required', 'integer', Rule::exists('tipo_dispositivo', 'tdi_id')->where('tdi_estado', 1)],
+            'sse_tdiid'  => ['nullable', 'integer', Rule::exists('tipo_dispositivo', 'tdi_id')->where('tdi_estado', 1)->whereNot('tdi_codigo', TipoDispositivo::PENDIENTE)],
             'sse_marca'  => ['required', 'string', 'max:50'],
             'sse_modelo' => ['required', 'string', 'max:80'],
             'sse_nroser' => ['nullable', 'string', 'max:80'],
             'sse_proble' => ['required', 'string', 'min:10', 'max:500'],
             'sse_acceso' => ['nullable', 'string', 'max:255'],
-
+            'dpr_id' => ['nullable', 'integer'],
             'sse_garant' => ['required', 'boolean'],
             // Garantía de compra: exige la línea (producto) comprada; el pedido se deduce de ella.
             // Reclamo de un servicio anterior: exige sse_sseori.
@@ -63,7 +64,6 @@ class SolicitudServicioStoreRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'sse_tdiid.required'   => 'Seleccioná el tipo de equipo.',
             'sse_tdiid.exists'     => 'El tipo de equipo no es válido.',
             'sse_marca.required'   => 'Indicá la marca del equipo.',
             'sse_modelo.required'  => 'Indicá el modelo del equipo.',

@@ -2,6 +2,7 @@ import { DatosBilletera, DatosTransferencia, MetodoPagoOpcion, SucursalRetiro } 
 import { Direccion } from './direccion.model';
 
 export type ModalidadIngreso = 'sucursal' | 'domicilio';
+export type NivelIa = 'ALTA' | 'MEDIA' | 'BAJA';
 
 export interface TipoDispositivoOpcion {
   tdi_id: number;
@@ -151,4 +152,28 @@ export interface PresupuestoCliente {
   costo_retiro: number;
   puede_responder: boolean;
   lineas: { tipo: 'REPUESTO' | 'MANO_OBRA'; descri: string; cantid: number; precio: number; total: number }[];
+}
+
+export interface DiagnosticoIa {
+  dpr_id: number;
+  disponible: boolean;
+  garantia: boolean;
+  resumen: string | null;
+  confianza: NivelIa | null;
+  preguntas: string[];
+  fallas: { fll_id: number; descripcion: string; probabilidad: NivelIa }[];
+  trabajos: { trb_id: number; descripcion: string; precio: number | null }[];
+  estimacion: { costo_min: number; costo_max: number; dias: number | null } | null;
+  coincidencia: 'TOTAL' | 'PARCIAL' | 'NINGUNA' | null;
+  creado: string;
+  tipo_dispositivo?: { tdi_id: number; tdi_descri: string | null; detectado: boolean };
+}
+
+export interface DiagnosticoIaPayload {
+  sse_tdiid?: number | null;   // Punto 7: opcional
+  sse_marca: string;
+  sse_modelo: string;
+  sse_proble: string;
+  sse_garant: boolean;
+  
 }

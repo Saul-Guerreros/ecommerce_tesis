@@ -4,6 +4,7 @@ import { ToastrService } from 'ngx-toastr';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { URL_SERVICIOS } from '../../../config/config';
 import { AuthService } from './auth.service';
+import { ActividadTiendaService } from '../../../core/services/actividad-tienda.service';
 
 /**
  * Endpoints donde un 401 NO debe intentar renovar el token
@@ -27,9 +28,10 @@ const RUTAS_SIN_RENOVACION = [
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const toastr = inject(ToastrService);
+  const actividad = inject(ActividadTiendaService);
   const esBackend = req.url.startsWith(URL_SERVICIOS);
 
-  return next(conToken(req, authService.token)).pipe(
+  return next(conToken(req, authService.token, actividad.visitante())).pipe(
     catchError((error: HttpErrorResponse) => {
       const debeRenovar =
         error.status === 401 &&
@@ -52,7 +54,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         switchMap((renovado) => {
           if (renovado) {
             // Reintento único con el token nuevo (sin volver a capturar el 401).
-            return next(conToken(req, authService.token));
+            return next(conToken(req, authService.token, actividad.visitante()));
           }
           toastr.warning('Tu sesión expiró, iniciá sesión de nuevo.', 'Sesión expirada');
           authService.sesionExpirada();
@@ -63,7 +65,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   );
 };
 
-function conToken(req: HttpRequest<unknown>, token: string): HttpRequest<unknown> {
-  if (!token || !req.url.startsWith(URL_SERVICIOS)) return req;
-  return req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+/** Agrega el JWT (si hay sesión) y el id anónimo del visitante, solo hacia el backend. */
+function conToken(req: HttpRequest<unknown>, token: string, visitante: string): HttpRequest<unknown> {
+  if (!req.url.startsWith(URL_SERVICIOS)) return req;
+
+  const headers: Record<string, string> = { 'X-Visitante': visitante };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  return req.clone({ setHeaders: headers });
 }

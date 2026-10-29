@@ -10,6 +10,10 @@ import { PanelServiciosService } from '../../panel-servicios/service/panel-servi
 import {ClienteMostrador, LineaGarantia, MostradorConfig, MostradorRegistrado, ServicioReclamable, TipoServicioMostrador,} from '../models/mostrador.model';
 import { TecnicoOpcion } from '../models/solicitud-servicio.model';
 import { esDomingo, hoyIso } from '../../../core/validators/fecha-servicio';
+import { minLengthSinEspacios, requeridoSinEspacios } from '../../../core/validators/texto';
+import { DiagnosticoIa } from '../models/diagnostico-ia.model';
+import { DiagnosticoIaCardComponent } from '../diagnostico-ia-card/diagnostico-ia-card.component';
+
 interface FotoSeleccionada {
   archivo: File;
   preview: string;
@@ -32,7 +36,7 @@ const PASO_DE_CAMPO: Record<string, Paso> = {
 @Component({
   selector: 'app-mostrador-solicitud',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, BadgeModule, ButtonModule, CardModule, FormModule, SpinnerModule, TableModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, BadgeModule, ButtonModule, CardModule, FormModule, SpinnerModule, TableModule, DiagnosticoIaCardComponent],
   templateUrl: './mostrador-solicitud.component.html',
 })
 export class MostradorSolicitudComponent implements OnInit, OnDestroy {
@@ -73,6 +77,9 @@ export class MostradorSolicitudComponent implements OnInit, OnDestroy {
   reclamoBloqueado = false;
   private readonly camposEquipo = ['sse_tdiid', 'sse_marca', 'sse_modelo', 'sse_nroser'];
 
+  diagnosticoIa: DiagnosticoIa | null = null;
+  consultandoIa = false;
+  private readonly camposIa = ['sse_tdiid', 'sse_marca', 'sse_modelo', 'sse_proble'];
   // ----- Paso 3: recepción -----
   formRecepcion: FormGroup;
   fotos: FotoSeleccionada[] = [];
@@ -95,10 +102,10 @@ export class MostradorSolicitudComponent implements OnInit, OnDestroy {
   ) {
     this.formCliente = this.fb.group({
       per_tpdid: [null as number | null, Validators.required],
-      per_cedula: ['', [Validators.required, Validators.maxLength(20)]],
-      per_nombr1: ['', [Validators.required, Validators.maxLength(45)]],
+     per_cedula: ['', [requeridoSinEspacios, Validators.maxLength(20)]],
+     per_nombr1: ['', [requeridoSinEspacios, Validators.maxLength(45)]],
       per_nombr2: ['', Validators.maxLength(45)],
-      per_apell1: ['', [Validators.required, Validators.maxLength(50)]],
+     per_apell1: ['', [requeridoSinEspacios, Validators.maxLength(50)]],
       per_apell2: ['', Validators.maxLength(50)],
       celular: ['', [Validators.required, Validators.pattern(/^\+?[0-9\s\-]{6,20}$/)]],
       es_whatsapp: [true],
@@ -115,23 +122,27 @@ export class MostradorSolicitudComponent implements OnInit, OnDestroy {
       sse_sseori: [null as string | null],
       sse_garant: [false],
       sse_dpdid: [null as number | null],
-      sse_tdiid: [null as number | null, Validators.required],
-      sse_marca: ['', [Validators.required, Validators.maxLength(50)]],
-      sse_modelo: ['', [Validators.required, Validators.maxLength(80)]],
+      sse_tdiid: [null as number | null],   // Punto 7: opcional, la IA lo determina
+      sse_marca: ['', [requeridoSinEspacios, Validators.maxLength(50)]],
+      sse_modelo: ['', [requeridoSinEspacios, Validators.maxLength(80)]],
       sse_nroser: ['', Validators.maxLength(80)],
-      sse_proble: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(500)]],
+      sse_proble: ['', [Validators.required, minLengthSinEspacios(10), Validators.maxLength(500)]],
       sse_acceso: ['', Validators.maxLength(255)],
     });
 
     this.formRecepcion = this.fb.group({
       sse_sucid: [null as number | null, Validators.required],
       rse_tecid: [null as number | null, Validators.required],
-      rse_estfis: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(500)]],
+     rse_estfis: ['', [requeridoSinEspacios, minLengthSinEspacios(5), Validators.maxLength(500)]],
       rse_clave: ['', Validators.maxLength(100)],
       rse_obs: ['', Validators.maxLength(500)],
       accesorios: this.fb.array([]),
       acepta_condiciones: [false, Validators.requiredTrue],
     });
+
+        // Si cambia el equipo, el problema o el tipo de servicio, el diagnóstico IA deja de corresponder.
+    ['tipo', 'sse_garant', ...this.camposIa].forEach((c) =>
+      this.subs.push(this.formServicio.get(c)!.valueChanges.subscribe(() => (this.diagnosticoIa = null))));
   }
 
   ngOnInit(): void {
@@ -189,6 +200,57 @@ export class MostradorSolicitudComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.subs.forEach((s) => s.unsubscribe());
     this.limpiarFotos();
+  }
+
+  /**
+   * Punto 7: si el funcionario no eligió el tipo y la IA lo detectó, se precarga en el combo.
+   * emitEvent:false evita que el cambio borre el diagnóstico recién obtenido.
+   */
+  private aplicarTipoDetectado(d: DiagnosticoIa): void {
+    const ctrl = this.formServicio.get('sse_tdiid')!;
+    const tipo = d.tipo_dispositivo;
+    if (ctrl.value || !tipo?.detectado) return;
+    if (this.config?.tipos_dispositivo.some((t) => t.tdi_id === tipo.tdi_id)) {
+      ctrl.setValue(tipo.tdi_id, { emitEvent: false });
+      this.toastr.info(`La IA identificó el equipo como: ${tipo.tdi_descri}. Puede cambiarlo.`, 'Tipo de equipo');
+    }
+  }
+
+  consultarIa(): void {
+    if (this.consultandoIa) return;
+
+    const listos = this.camposIa.every((c) => {
+      const ctrl = this.formServicio.get(c)!;
+      return ctrl.disabled || ctrl.valid;
+    });
+    if (!listos) {
+      this.camposIa.forEach((c) => this.formServicio.get(c)!.markAsTouched());
+      this.toastr.warning('Complete la marca, el modelo y el problema.', 'Diagnóstico IA');
+      return;
+    }
+
+    const s = this.formServicio.getRawValue();
+    this.consultandoIa = true;
+    this.service.diagnosticoPreliminar({
+      sse_tdiid: s.sse_tdiid ?? null,
+      sse_marca: s.sse_marca.trim(),
+      sse_modelo: s.sse_modelo.trim(),
+      sse_proble: s.sse_proble.trim(),
+      sse_garant: !!s.sse_garant || s.tipo === 'RECLAMO',
+    }).subscribe({
+      next: (res) => {
+        this.aplicarTipoDetectado(res.data);
+        this.diagnosticoIa = res.data;
+        this.consultandoIa = false;
+      },
+      error: (err) => {
+        this.consultandoIa = false;
+        const msg = err.status === 429
+          ? 'Demasiadas consultas seguidas. Espere un minuto.'
+          : (err?.error?.message ?? 'No se pudo obtener el diagnóstico IA.');
+        this.toastr.warning(msg, 'Diagnóstico IA');
+      },
+    });
   }
 
   // ================= Paso 1: cliente =================
@@ -406,7 +468,7 @@ export class MostradorSolicitudComponent implements OnInit, OnDestroy {
 
   get nombreTipo(): string {
     const id = Number(this.formServicio.get('sse_tdiid')!.value);
-    return this.config?.tipos_dispositivo.find((t) => t.tdi_id === id)?.tdi_descri ?? '—';
+    return this.config?.tipos_dispositivo.find((t) => t.tdi_id === id)?.tdi_descri ?? 'Por determinar (IA)';
   }
 
   agregarAccesorio(valor = ''): void {
@@ -535,18 +597,19 @@ export class MostradorSolicitudComponent implements OnInit, OnDestroy {
     datos.append('sse_garant', s.sse_garant || s.tipo === 'RECLAMO' ? '1' : '0');
     if (s.tipo === 'RECLAMO' && s.sse_sseori) datos.append('sse_sseori', s.sse_sseori);
     if (s.sse_garant && s.sse_dpdid) datos.append('sse_dpdid', String(s.sse_dpdid));
-    datos.append('sse_tdiid', String(s.sse_tdiid));
-    datos.append('sse_marca', s.sse_marca);
-    datos.append('sse_modelo', s.sse_modelo);
-    if (s.sse_nroser) datos.append('sse_nroser', s.sse_nroser);
-    datos.append('sse_proble', s.sse_proble);
-    if (s.sse_acceso) datos.append('sse_acceso', s.sse_acceso);
+    if (s.sse_tdiid) datos.append('sse_tdiid', String(s.sse_tdiid));   // Punto 7: opcional
+    datos.append('sse_marca', s.sse_marca.trim());
+    datos.append('sse_modelo', s.sse_modelo.trim());
+    if (s.sse_nroser?.trim()) datos.append('sse_nroser', s.sse_nroser.trim());
+    datos.append('sse_proble', s.sse_proble.trim());
+    if (s.sse_acceso?.trim()) datos.append('sse_acceso', s.sse_acceso.trim());
     datos.append('rse_tecid', String(r.rse_tecid));
-    datos.append('rse_estfis', r.rse_estfis);
+    datos.append('rse_estfis', r.rse_estfis.trim());
     if (r.rse_clave) datos.append('rse_clave', r.rse_clave);
     if (r.rse_obs) datos.append('rse_obs', r.rse_obs);
     (r.accesorios as string[]).forEach((a) => datos.append('accesorios[]', a));
     datos.append('acepta_condiciones', '1');
+    if (this.diagnosticoIa?.disponible) datos.append('dpr_id', String(this.diagnosticoIa.dpr_id));
     this.fotos.forEach((f) => datos.append('fotos[]', f.archivo));
 
     this.guardando = true;

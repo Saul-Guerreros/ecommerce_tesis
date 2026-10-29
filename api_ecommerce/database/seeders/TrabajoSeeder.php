@@ -21,14 +21,14 @@ class TrabajoSeeder extends Seeder
         }
 
         $trabajos = [
-            ['trb_codigo' => 'REVISION',     'trb_descri' => 'Revisión y diagnóstico',              'trb_precio' => 50000],
-            ['trb_codigo' => 'FORMATEO',     'trb_descri' => 'Formateo e instalación de sistema',   'trb_precio' => 120000],
-            ['trb_codigo' => 'LIMPIEZA',     'trb_descri' => 'Limpieza interna y cambio de pasta térmica', 'trb_precio' => 100000],
-            ['trb_codigo' => 'CAMB_PANTAL',  'trb_descri' => 'Cambio de pantalla (mano de obra)',   'trb_precio' => 80000],
-            ['trb_codigo' => 'CAMB_TECLAD',  'trb_descri' => 'Cambio de teclado (mano de obra)',    'trb_precio' => 70000],
-            ['trb_codigo' => 'CAMB_DISCO',   'trb_descri' => 'Cambio de disco y migración de datos', 'trb_precio' => 90000],
-            ['trb_codigo' => 'REP_PLACA',    'trb_descri' => 'Reparación de placa madre',           'trb_precio' => 250000],
-            ['trb_codigo' => 'ELIM_VIRUS',   'trb_descri' => 'Eliminación de malware',              'trb_precio' => 80000],
+            ['trb_codigo' => 'REVISION',    'trb_descri' => 'Revisión y diagnóstico',                     'trb_precio' => 50000,  'trb_dias' => 1],
+            ['trb_codigo' => 'FORMATEO',    'trb_descri' => 'Formateo e instalación de sistema',          'trb_precio' => 120000, 'trb_dias' => 1],
+            ['trb_codigo' => 'LIMPIEZA',    'trb_descri' => 'Limpieza interna y cambio de pasta térmica', 'trb_precio' => 100000, 'trb_dias' => 1],
+            ['trb_codigo' => 'CAMB_PANTAL', 'trb_descri' => 'Cambio de pantalla (mano de obra)',          'trb_precio' => 80000,  'trb_dias' => 3],
+            ['trb_codigo' => 'CAMB_TECLAD', 'trb_descri' => 'Cambio de teclado (mano de obra)',           'trb_precio' => 70000,  'trb_dias' => 3],
+            ['trb_codigo' => 'CAMB_DISCO',  'trb_descri' => 'Cambio de disco y migración de datos',       'trb_precio' => 90000,  'trb_dias' => 2],
+            ['trb_codigo' => 'REP_PLACA',   'trb_descri' => 'Reparación de placa madre',                  'trb_precio' => 250000, 'trb_dias' => 5],
+            ['trb_codigo' => 'ELIM_VIRUS',  'trb_descri' => 'Eliminación de malware',                     'trb_precio' => 80000,  'trb_dias' => 1],
         ];
 
         foreach ($trabajos as $t) {
@@ -37,6 +37,7 @@ class TrabajoSeeder extends Seeder
                 [
                     'trb_descri' => $t['trb_descri'],
                     'trb_precio' => $t['trb_precio'],
+                    'trb_dias'   => $t['trb_dias'],
                     'trb_tivid'  => $iva10,
                     'trb_estado' => 1,
                     'trb_creado' => now(),

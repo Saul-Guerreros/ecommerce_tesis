@@ -30,6 +30,7 @@ export class FormTrabajoComponent implements OnChanges {
       trb_precio: [0, [Validators.required, Validators.min(0)]],
       trb_tivid: [null as number | null, Validators.required],
       trb_estado: [1],
+      trb_dias: [1, [Validators.required, Validators.min(1), Validators.max(60)]],
     });
   }
 
@@ -44,7 +45,7 @@ export class FormTrabajoComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible) {
-      this.form.reset({ trb_codigo: '', trb_descri: '', trb_precio: 0, trb_tivid: this.ivaPorDefecto(), trb_estado: 1 });
+     this.form.reset({ trb_codigo: '', trb_descri: '', trb_precio: 0, trb_dias: 1, trb_tivid: this.ivaPorDefecto(), trb_estado: 1 });
       if (this.esEdicion) {
         this.form.patchValue({
           trb_codigo: this.trabajo!.trb_codigo,
@@ -52,9 +53,11 @@ export class FormTrabajoComponent implements OnChanges {
           trb_precio: this.trabajo!.trb_precio,
           trb_tivid: this.trabajo!.trb_tivid,
           trb_estado: this.trabajo!.trb_estado ?? 1,
+          trb_dias: this.trabajo!.trb_dias ?? 1,
         });
       }
       this.guardando = false;
+      
     }
   }
 

@@ -8,7 +8,7 @@ import {
   ClienteMostrador, ClienteRapido, LineaGarantia, MostradorConfig, MostradorRegistrado, ServicioReclamable,
 } from '../models/mostrador.model';
 import { environment } from '../../../../environments/environment';
-
+import { DiagnosticoIa, DiagnosticoIaPayload } from '../models/diagnostico-ia.model';
 type Respuesta = { message: string; data: SolicitudServicioDetalle };
 
 @Injectable({ providedIn: 'root' })
@@ -87,5 +87,9 @@ export class SolicitudesServicioService {
   /** multipart/form-data (fotos de ingreso). */
   registrarMostrador(datos: FormData): Observable<{ message: string; data: MostradorRegistrado }> {
     return this.http.post<{ message: string; data: MostradorRegistrado }>(`${this.apiUrl}/mostrador`, datos);
+  }
+
+  diagnosticoPreliminar(datos: DiagnosticoIaPayload): Observable<{ message: string; data: DiagnosticoIa }> {
+    return this.http.post<{ message: string; data: DiagnosticoIa }>(`${this.apiUrl}/mostrador/diagnostico-preliminar`, datos);
   }
 }

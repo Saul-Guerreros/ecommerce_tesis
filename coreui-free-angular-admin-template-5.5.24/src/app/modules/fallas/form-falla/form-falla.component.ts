@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
-import { Falla, TipoDispositivoOpcion } from '../models/falla.model';
 import { FallasService } from '../service/fallas.service';
+import { CategoriaFallaOpcion, Falla, TipoDispositivoOpcion } from '../models/falla.model';
 
 @Component({
   selector: 'app-form-falla',
@@ -20,6 +20,7 @@ export class FormFallaComponent implements OnChanges {
 
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() guardado = new EventEmitter<void>();
+  @Input() categorias: CategoriaFallaOpcion[] = [];
 
   form: FormGroup;
   guardando = false;
@@ -29,6 +30,7 @@ export class FormFallaComponent implements OnChanges {
       fll_codigo: ['', [Validators.required, Validators.maxLength(20), Validators.pattern(/^[A-Za-z0-9_]+$/)]],
       fll_descri: ['', [Validators.required, Validators.maxLength(100)]],
       fll_tdiid: [null as number | null],
+      fll_cafid: [null as number | null],
       fll_estado: [1],
     });
   }
@@ -39,12 +41,13 @@ export class FormFallaComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible) {
-      this.form.reset({ fll_codigo: '', fll_descri: '', fll_tdiid: null, fll_estado: 1 });
+      this.form.reset({ fll_codigo: '', fll_descri: '', fll_tdiid: null, fll_cafid: null, fll_estado: 1 });
       if (this.esEdicion) {
         this.form.patchValue({
           fll_codigo: this.falla!.fll_codigo,
           fll_descri: this.falla!.fll_descri,
           fll_tdiid: this.falla!.fll_tdiid,
+          fll_cafid: this.falla!.fll_cafid ?? null,
           fll_estado: this.falla!.fll_estado ?? 1,
         });
       }

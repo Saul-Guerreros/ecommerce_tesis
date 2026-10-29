@@ -18,6 +18,9 @@ use App\Services\Servicio\RecepcionServicioService;
 use App\Services\Servicio\ServicioConsultaService;
 use App\Services\Servicio\TecnicoService;
 use Illuminate\Http\JsonResponse;
+use App\Models\Servicio\CategoriaFalla;
+use App\Models\Servicio\TipoDispositivo;
+use App\Models\Servicio\UrgenciaServicio;
 
 /**
  * Bandeja de solicitudes (A1) y recepción (A2). Módulo transaccional:
@@ -64,6 +67,9 @@ class SolicitudServicioController extends Controller
             'tecnicos'         => $this->tecnicos->activos(),
             'sucursales'       => Sucursal::where('suc_estado', 1)->orderBy('suc_nombre')->get(['suc_id', 'suc_nombre']),
             'canales'          => [SolicitudServicio::CANAL_WEB, SolicitudServicio::CANAL_MOSTRADOR],
+            'tipos_dispositivo' => TipoDispositivo::seleccionables()->orderBy('tdi_descri')->get(['tdi_id', 'tdi_descri']),
+            'categorias'       => CategoriaFalla::activas()->orderBy('caf_descri')->get(['caf_id', 'caf_descri']),
+            'urgencias'        => UrgenciaServicio::activas()->get(['urg_id', 'urg_codigo', 'urg_descri', 'urg_color']),
         ], 200);
     }
 

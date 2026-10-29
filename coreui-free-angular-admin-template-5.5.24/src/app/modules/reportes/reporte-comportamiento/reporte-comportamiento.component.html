@@ -1,0 +1,468 @@
+<app-pagina-reporte titulo="Análisis de comportamiento de clientes"
+                    descripcion="Qué buscan, cómo compran y qué prefieren los clientes. Una compra = factura vigente (pedido pagado).">
+
+  <app-filtros-reporte [mostrarFechas]="usaFechas()"
+                       [cargando]="cargando()"
+                       [errores]="errores()"
+                       (aplicar)="aplicarFiltros($event)">
+    <ng-container filtrosExtra>
+      @if (vista() === 'busquedas') {
+        <c-col md="6" lg="2">
+          <label cLabel for="cp-origen">Origen</label>
+          <select cSelect id="cp-origen" sizing="sm" (change)="cambiarExtra('origen', $any($event.target).value)">
+            <option value="">Tienda y chatbot</option>
+            <option value="TIENDA" [selected]="extra().origen === 'TIENDA'">Solo tienda</option>
+            <option value="CHATBOT" [selected]="extra().origen === 'CHATBOT'">Solo chatbot</option>
+          </select>
+        </c-col>
+      }
+      @if (vista() === 'patrones') {
+        <c-col md="6" lg="2">
+          <label cLabel for="cp-horas">Carrito abandonado después de (horas)</label>
+          <input cFormControl id="cp-horas" type="number" sizing="sm" min="1" max="720" [value]="extra().horas"
+                 (change)="cambiarExtra('horas', $any($event.target).value)" [class.is-invalid]="!!errores()?.['horas']" />
+          @if (errores()?.['horas']?.[0]; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+        </c-col>
+      }
+      @if (vista() === 'segmentos' || vista() === 'cliente') {
+        <c-col md="6" lg="2">
+          <label cLabel for="cp-meses">Período analizado</label>
+          <select cSelect id="cp-meses" sizing="sm" (change)="cambiarExtra('meses', $any($event.target).value)">
+            @for (m of opcionesMeses; track m) {
+              <option [value]="m" [selected]="extra().meses === m">Últimos {{ m }} meses</option>
+            }
+          </select>
+        </c-col>
+      }
+    </ng-container>
+  </app-filtros-reporte>
+
+  <c-card>
+    <c-card-body>
+      <c-nav variant="underline-border" class="mb-3">
+        @for (v of vistas; track v.clave) {
+          <c-nav-item>
+            <button cNavLink type="button" [active]="vista() === v.clave" (click)="cambiarVista(v.clave)">{{ v.etiqueta }}</button>
+          </c-nav-item>
+        }
+      </c-nav>
+
+      @switch (vista()) {
+
+        <!-- ================= A. PRODUCTOS MÁS BUSCADOS ================= -->
+        @case ('busquedas') {
+          <app-estado-bloque [estado]="busquedas().estado" [altura]="300" (reintentar)="cargar()"
+                             mensajeVacio="Todavía no hay búsquedas registradas en el período.">
+            @if (busquedas().data; as d) {
+              @let t = d.totales;
+              <c-row class="g-3 mb-3 text-center">
+                <c-col sm="6" lg="2"><div class="kpi">{{ t.busquedas }}</div><small class="text-body-secondary">Búsquedas</small></c-col>
+                <c-col sm="6" lg="2"><div class="kpi">{{ t.personas }}</div><small class="text-body-secondary">Personas</small></c-col>
+                <c-col sm="6" lg="2"><div class="kpi">{{ t.terminos }}</div><small class="text-body-secondary">Términos distintos</small></c-col>
+                <c-col sm="6" lg="2"><div class="kpi">{{ pct(t.tasa_clic) }}</div><small class="text-body-secondary">Abrieron un producto</small></c-col>
+                <c-col sm="6" lg="2"><div class="kpi text-danger">{{ pct(t.pct_sin_resultado) }}</div><small class="text-body-secondary">Sin resultado</small></c-col>
+                <c-col sm="6" lg="2"><div class="kpi">{{ pct(t.pct_con_ia) }}</div><small class="text-body-secondary">Resueltas con IA</small></c-col>
+              </c-row>
+
+              <c-row class="g-3">
+                <c-col lg="6">
+                  <h6>Términos más buscados</h6>
+                  <c-chart type="bar" height="360" [data]="graficoTerminos()" [options]="opcionesBarraH" />
+                </c-col>
+                <c-col lg="6">
+                  <h6>Productos más buscados <small class="text-body-secondary">(abiertos desde una búsqueda)</small></h6>
+                  <div class="table-responsive tabla-scroll">
+                    <table cTable hover small class="mb-0">
+                      <thead><tr><th>Producto</th><th class="text-end">Desde búsqueda</th><th class="text-end">Vistas</th><th class="text-end">Unid. vendidas</th><th class="text-end">Conversión</th></tr></thead>
+                      <tbody>
+                        @for (p of d.productos; track p.id) {
+                          <tr>
+                            <td>{{ p.producto }}</td>
+                            <td class="text-end fw-semibold">{{ p.desde_busqueda }}</td>
+                            <td class="text-end">{{ p.vistas }}</td>
+                            <td class="text-end">{{ numero(p.unidades) }}</td>
+                            <td class="text-end">{{ pct(p.conversion) }}</td>
+                          </tr>
+                        } @empty { <tr><td colspan="5" class="text-center text-body-secondary">Sin datos</td></tr> }
+                      </tbody>
+                    </table>
+                  </div>
+                </c-col>
+
+                <c-col lg="6">
+                  <h6>Detalle de términos</h6>
+                  <div class="table-responsive tabla-scroll">
+                    <table cTable hover small class="mb-0">
+                      <thead><tr><th>Término</th><th class="text-end">Veces</th><th class="text-end">Personas</th><th class="text-end">Tasa de clic</th><th class="text-end">Con IA</th></tr></thead>
+                      <tbody>
+                        @for (r of d.terminos; track r.termino) {
+                          <tr>
+                            <td>{{ r.termino }}</td><td class="text-end">{{ r.veces }}</td><td class="text-end">{{ r.personas }}</td>
+                            <td class="text-end">{{ pct(r.tasa_clic) }}</td><td class="text-end">{{ r.con_ia }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </c-col>
+                <c-col lg="6">
+                  <h6 class="text-danger">Demanda insatisfecha <small class="text-body-secondary">(búsquedas sin resultado)</small></h6>
+                  <div class="table-responsive tabla-scroll">
+                    <table cTable hover small class="mb-0">
+                      <thead><tr><th>Lo que buscaron</th><th class="text-end">Veces</th><th class="text-end">Personas</th><th>Última vez</th></tr></thead>
+                      <tbody>
+                        @for (r of d.sinResultados; track r.termino) {
+                          <tr><td>{{ r.termino }}</td><td class="text-end fw-semibold">{{ r.veces }}</td><td class="text-end">{{ r.personas }}</td><td>{{ fecha(r.ultima) | date: 'dd/MM/yyyy HH:mm' }}</td></tr>
+                        } @empty { <tr><td colspan="4" class="text-center text-body-secondary">Todas las búsquedas encontraron productos.</td></tr> }
+                      </tbody>
+                    </table>
+                  </div>
+                </c-col>
+              </c-row>
+            }
+          </app-estado-bloque>
+        }
+
+        <!-- ================= B. PATRONES DE COMPRA ================= -->
+        @case ('patrones') {
+          <app-estado-bloque [estado]="patrones().estado" [altura]="300" (reintentar)="cargar()"
+                             mensajeVacio="No hay compras ni actividad en el período seleccionado.">
+            @if (patrones().data; as d) {
+              <c-row class="g-3">
+                <!-- Embudo -->
+                <c-col lg="6">
+                  <h6>Embudo de conversión</h6>
+                  @for (e of d.embudo; track e.etapa) {
+                    <div class="mb-2">
+                      <div class="d-flex justify-content-between small">
+                        <span>{{ e.etapa }}</span>
+                        <span><strong>{{ e.cantidad }}</strong> @if (e.paso !== null) { <span class="text-body-secondary">({{ pct(e.paso) }} del paso anterior)</span> }</span>
+                      </div>
+                      <c-progress [value]="e.porcentaje ?? 0" thin color="primary" />
+                    </div>
+                  }
+                  <small class="text-body-secondary">
+                    Conversión global {{ pct(d.totEmbudo.conversion_global) }} · {{ d.totEmbudo.pedidos }} pedidos, {{ d.totEmbudo.pedidos_cancelados }} cancelados
+                  </small>
+                </c-col>
+
+                <!-- Modalidades y recompra -->
+                <c-col lg="6">
+                  <c-row class="g-3">
+                    @for (g of ['condicion', 'entrega']; track g) {
+                      <c-col sm="6">
+                        <h6>{{ g === 'condicion' ? 'Contado vs. crédito' : 'Envío vs. retiro' }}</h6>
+                        @for (m of modalidadesDe($any(g)); track m.etiqueta) {
+                          <div class="d-flex justify-content-between small"><span>{{ m.etiqueta }}</span><span>{{ m.compras }} · {{ pct(m.participacion) }}</span></div>
+                          <c-progress [value]="m.participacion ?? 0" thin [color]="g === 'condicion' ? 'info' : 'success'" class="mb-2" />
+                        }
+                      </c-col>
+                    }
+                    <c-col sm="12">
+                      <h6>Frecuencia de recompra</h6>
+                      <small class="text-body-secondary d-block mb-1">
+                        Promedio {{ d.totRecompra.promedio_dias ?? '—' }} días · mediana {{ d.totRecompra.mediana_dias ?? '—' }} días ·
+                        {{ pct(d.totRecompra.pct_recurrentes) }} de los compradores volvió a comprar
+                      </small>
+                      <c-chart type="bar" height="160" [data]="graficoRecompra()" [options]="opcionesBarra" />
+                    </c-col>
+                  </c-row>
+                </c-col>
+
+                <!-- Mapa de calor -->
+                <c-col sm="12">
+                  <h6>¿Cuándo compran? <small class="text-body-secondary">
+                    Pico: {{ d.totFranja.dia_pico ?? '—' }}{{ d.totFranja.hora_pico !== null ? ', ' + d.totFranja.hora_pico + ':00 h' : '' }}</small></h6>
+                  <div class="table-responsive">
+                    <table class="table table-bordered calor mb-0">
+                      <thead><tr><th></th>@for (h of horas; track h) { <th class="small text-center">{{ h }}</th> }</tr></thead>
+                      <tbody>
+                        @for (fila of matrizFranja(); track $index; let i = $index) {
+                          <tr>
+                            <th class="small">{{ diasSemana[i] }}</th>
+                            @for (v of fila; track $index) {
+                              <td [style.background]="fondoCelda(v)" [title]="v + ' compra(s)'">{{ v || '' }}</td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </c-col>
+
+                <!-- Comprados juntos -->
+                <c-col lg="6">
+                  <h6>Productos que se compran juntos</h6>
+                  <small class="text-body-secondary d-block mb-1">
+                    {{ pct(d.totJuntos.pct_multiproducto) }} de las compras lleva más de un producto · {{ d.totJuntos.productos_promedio }} productos por compra
+                  </small>
+                  <div class="table-responsive tabla-scroll">
+                    <table cTable hover small class="mb-0">
+                      <thead><tr><th>Producto A</th><th>Producto B</th><th class="text-end">Veces</th><th class="text-end" title="De quienes compraron A, % que llevó B">A→B</th></tr></thead>
+                      <tbody>
+                        @for (p of d.juntos; track $index) {
+                          <tr><td>{{ p.producto_a }}</td><td>{{ p.producto_b }}</td><td class="text-end fw-semibold">{{ p.veces }}</td><td class="text-end">{{ pct(p.confianza_ab) }}</td></tr>
+                        } @empty { <tr><td colspan="4" class="text-center text-body-secondary">Aún no hay compras con varios productos.</td></tr> }
+                      </tbody>
+                    </table>
+                  </div>
+                </c-col>
+
+                <!-- Carritos abandonados -->
+                <c-col lg="6">
+                  <h6>Carritos abandonados <small class="text-body-secondary">(sin actividad hace más de {{ d.totCarritos.horas }} h)</small></h6>
+                  <small class="text-body-secondary d-block mb-1">{{ d.totCarritos.carritos }} carritos · valor {{ d.totCarritos.valor | gs }}</small>
+                  <div class="table-responsive tabla-scroll">
+                    <table cTable hover small class="mb-0">
+                      <thead><tr><th>Cliente</th><th class="text-end">Ítems</th><th class="text-end">Total</th><th class="text-end">Días</th><th></th></tr></thead>
+                      <tbody>
+                        @for (c of d.carritos; track c.cuenta) {
+                          <tr>
+                            <td>{{ c.cliente }}<div class="small text-body-secondary">{{ c.cuenta }}</div></td>
+                            <td class="text-end">{{ c.items }}</td><td class="text-end">{{ c.total | gs }}</td><td class="text-end">{{ c.dias }}</td>
+                            <td class="text-end">
+                              @if (c.cliente_id) { <button cButton color="primary" size="sm" class="text-white" (click)="verCliente(c.cliente_id)">Ver perfil</button> }
+                            </td>
+                          </tr>
+                        } @empty { <tr><td colspan="5" class="text-center text-body-secondary">No hay carritos abandonados.</td></tr> }
+                      </tbody>
+                    </table>
+                  </div>
+                </c-col>
+              </c-row>
+            }
+          </app-estado-bloque>
+        }
+
+        <!-- ================= C. SEGMENTOS RFM ================= -->
+        @case ('segmentos') {
+          <app-estado-bloque [estado]="segmentos().estado" [altura]="300" (reintentar)="cargar()"
+                             mensajeVacio="No hay compras en el período para segmentar clientes.">
+            @if (segmentos().data; as d) {
+              <c-row class="g-3">
+                <c-col lg="5">
+                  <c-chart type="doughnut" height="260" [data]="graficoSegmentos()" [options]="opcionesDona" />
+                </c-col>
+                <c-col lg="7">
+                  <div class="table-responsive">
+                    <table cTable small class="mb-0">
+                      <thead><tr><th>Segmento</th><th class="text-end">Clientes</th><th class="text-end">Total</th><th>Acción sugerida</th></tr></thead>
+                      <tbody>
+                        @for (s of d.totales.segmentos; track s.clave) {
+                          <tr role="button" (click)="filtroSegmento.set(filtroSegmento() === s.clave ? '' : s.clave)"
+                              [class.table-active]="filtroSegmento() === s.clave">
+                            <td><c-badge [color]="s.color">{{ s.etiqueta }}</c-badge></td>
+                            <td class="text-end">{{ s.clientes }} <small class="text-body-secondary">({{ pct(s.participacion) }})</small></td>
+                            <td class="text-end">{{ s.total | gs }}</td>
+                            <td class="small">{{ s.accion }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <small class="text-body-secondary">Clic en un segmento para filtrar la lista.</small>
+                </c-col>
+
+                <c-col sm="12">
+                  <div class="table-responsive tabla-scroll">
+                    <table cTable hover small class="mb-0">
+                      <thead><tr><th>Cliente</th><th>Segmento</th><th class="text-end">Compras</th><th class="text-end">Total</th><th class="text-end">Ticket</th><th class="text-end">Días sin comprar</th><th class="text-center">R·F·M</th><th></th></tr></thead>
+                      <tbody>
+                        @for (c of segmentosFiltrados(); track c.id) {
+                          <tr>
+                            <td>{{ c.cliente }} @if (c.alto_valor) { <c-badge color="warning" class="ms-1">Alto valor</c-badge> }
+                              <div class="small text-body-secondary">{{ c.documento }}</div></td>
+                            <td><c-badge [color]="colorSegmento(c.segmento)">{{ etiquetaSegmento(c.segmento) }}</c-badge></td>
+                            <td class="text-end">{{ c.compras }}</td><td class="text-end">{{ c.total | gs }}</td>
+                            <td class="text-end">{{ c.ticket | gs }}</td><td class="text-end">{{ c.dias }}</td>
+                            <td class="text-center small">{{ c.r }}·{{ c.f }}·{{ c.m }}</td>
+                            <td class="text-end"><button cButton color="primary" size="sm" class="text-white" (click)="verCliente(c.id)">Ver perfil</button></td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </c-col>
+              </c-row>
+            }
+          </app-estado-bloque>
+        }
+
+        <!-- ================= D. PERFIL INDIVIDUAL ================= -->
+        @case ('cliente') {
+          <c-row class="mb-3">
+            <c-col md="6" lg="4" class="position-relative">
+              <label cLabel for="cp-cliente">Buscar cliente</label>
+              <input cFormControl id="cp-cliente" sizing="sm" placeholder="Nombre, cédula o RUC" autocomplete="off"
+                     (input)="buscarCliente($any($event.target).value)" />
+              @if (resultadosCliente().length) {
+                <div cListGroup class="position-absolute w-100 shadow" style="z-index: 10">
+                  @for (c of resultadosCliente(); track c.id) {
+                    <button cListGroupItem type="button" class="small" (click)="verCliente(c.id)">
+                      {{ c.nombre }} <span class="text-body-secondary">· {{ c.documento }}</span>
+                    </button>
+                  }
+                </div>
+              }
+            </c-col>
+          </c-row>
+
+          <app-estado-bloque [estado]="perfil().estado" [altura]="200" (reintentar)="cargar()"
+                             mensajeVacio="Buscá un cliente o abrí uno desde Segmentos para ver su comportamiento.">
+            @if (perfil().data; as p) {
+              <c-row class="g-3">
+                <!-- Encabezado -->
+                <c-col sm="12">
+                  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <div>
+                      <h5 class="mb-0">{{ p.cliente.nombre }}</h5>
+                      <small class="text-body-secondary">{{ p.cliente.documento }} · {{ p.cliente.tipo }} ·
+                        cliente desde {{ fecha(p.cliente.registrado) | date: 'dd/MM/yyyy' }}
+                        @if (!p.cliente.tiene_cuenta_web) { · <em>sin cuenta en la tienda web</em> }</small>
+                    </div>
+                    @if (p.segmento) {
+                      <div class="text-end">
+                        <c-badge [color]="p.segmento.color" class="fs-6">{{ p.segmento.etiqueta }}</c-badge>
+                        <div class="small text-body-secondary mt-1" style="max-width: 360px">{{ p.segmento.accion }}</div>
+                      </div>
+                    }
+                  </div>
+                </c-col>
+
+                <!-- KPIs -->
+                @if (p.rfm; as r) {
+                  <c-col sm="6" lg="2" class="text-center"><div class="kpi">{{ r.compras }}</div><small class="text-body-secondary">Compras</small></c-col>
+                  <c-col sm="6" lg="2" class="text-center"><div class="kpi">{{ r.total | gs }}</div><small class="text-body-secondary">Total</small></c-col>
+                  <c-col sm="6" lg="2" class="text-center"><div class="kpi">{{ r.ticket | gs }}</div><small class="text-body-secondary">Ticket promedio</small></c-col>
+                  <c-col sm="6" lg="2" class="text-center"><div class="kpi">{{ r.dias }}</div><small class="text-body-secondary">Días sin comprar</small></c-col>
+                  <c-col sm="6" lg="2" class="text-center"><div class="kpi">{{ p.recompra.promedio_dias ?? '—' }}</div><small class="text-body-secondary">Días entre compras</small></c-col>
+                  <c-col sm="6" lg="2" class="text-center"><div class="kpi">{{ p.recompra.proxima_estimada ? (fecha(p.recompra.proxima_estimada) | date: 'dd/MM') : '—' }}</div><small class="text-body-secondary">Próxima compra estimada</small></c-col>
+                } @else {
+                  <c-col sm="12"><div class="text-body-secondary small">Sin compras en el período analizado.</div></c-col>
+                }
+
+                <!-- Preferencias -->
+                <c-col md="6" lg="4">
+                  <c-card class="h-100"><c-card-header>Categorías preferidas</c-card-header><c-card-body>
+                    @for (c of p.categorias; track c.etiqueta) {
+                      <div class="d-flex justify-content-between small"><span>{{ c.etiqueta }}</span><span>{{ pct(c.participacion) }}</span></div>
+                      <c-progress [value]="c.participacion ?? 0" thin class="mb-2" />
+                    } @empty { <small class="text-body-secondary">Sin datos</small> }
+                  </c-card-body></c-card>
+                </c-col>
+                <c-col md="6" lg="4">
+                  <c-card class="h-100"><c-card-header>Marcas preferidas</c-card-header><c-card-body>
+                    @for (m of p.marcas; track m.etiqueta) {
+                      <div class="d-flex justify-content-between small"><span>{{ m.etiqueta }}</span><span>{{ pct(m.participacion) }}</span></div>
+                      <c-progress [value]="m.participacion ?? 0" thin color="info" class="mb-2" />
+                    } @empty { <small class="text-body-secondary">Sin datos</small> }
+                  </c-card-body></c-card>
+                </c-col>
+                <c-col md="12" lg="4">
+                  <c-card class="h-100"><c-card-header>Hábitos de compra</c-card-header><c-card-body class="small">
+                    <div>Condición: <strong>{{ p.habitos.condicion ?? '—' }}</strong></div>
+                    <div>Entrega: <strong>{{ p.habitos.entrega ?? '—' }}</strong></div>
+                    <div>Método de pago: <strong>{{ p.habitos.metodo_pago ?? '—' }}</strong></div>
+                    <div>Suele comprar: <strong>{{ p.habitos.dia ?? '—' }}{{ p.habitos.franja ? ', ' + p.habitos.franja : '' }}</strong></div>
+                    @if (p.precios; as pr) {
+                      <div class="mt-2">Rango de precios: <strong>{{ pr.minimo | gs }} – {{ pr.maximo | gs }}</strong> (prom. {{ pr.promedio | gs }})</div>
+                    }
+                  </c-card-body></c-card>
+                </c-col>
+
+                <!-- Productos comprados -->
+                <c-col lg="6">
+                  <h6>Productos que compra</h6>
+                  <div class="table-responsive tabla-scroll">
+                    <table cTable hover small class="mb-0">
+                      <thead><tr><th>Producto</th><th class="text-end">Veces</th><th class="text-end">Total</th><th>Última</th></tr></thead>
+                      <tbody>
+                        @for (x of p.productos; track x.producto) {
+                          <tr><td>{{ x.producto }}</td><td class="text-end">{{ x.veces }}</td><td class="text-end">{{ x.total | gs }}</td><td>{{ fecha(x.ultima) | date: 'dd/MM/yyyy' }}</td></tr>
+                        } @empty { <tr><td colspan="4" class="text-center text-body-secondary">Sin compras en el período.</td></tr> }
+                      </tbody>
+                    </table>
+                  </div>
+                </c-col>
+
+                <!-- Oportunidades -->
+                <c-col lg="6">
+                  <h6 class="text-success">Oportunidades de venta</h6>
+                  @if (p.carrito; as car) {
+                    <div class="alert alert-warning py-2 small mb-2">Tiene un carrito con {{ car.items }} ítem(s) por {{ car.total | gs }} sin terminar.</div>
+                  }
+                  <ul class="small ps-3 mb-2">
+                    @for (v of p.vistos_sin_comprar; track v.producto) {
+                      <li>Miró <strong>{{ v.producto }}</strong> {{ v.vistas }} vez/veces y no lo compró.</li>
+                    }
+                    @for (fv of p.favoritos; track fv.producto) {
+                      @if (!fv.comprado) { <li>Tiene en favoritos <strong>{{ fv.producto }}</strong>.</li> }
+                    }
+                    @for (s of p.sugeridos; track s.producto) {
+                      <li>Otros clientes que compraron lo mismo llevaron <strong>{{ s.producto }}</strong> ({{ s.veces }} veces).</li>
+                    }
+                  </ul>
+                  @if (p.busquedas.length) {
+                    <div class="small"><span class="text-body-secondary">Búsquedas recientes:</span>
+                      @for (b of p.busquedas; track b.termino) {
+                        <c-badge [color]="b.resultados ? 'light' : 'danger'" [textColor]="b.resultados ? 'dark' : 'white'" class="me-1">{{ b.termino }}</c-badge>
+                      }
+                    </div>
+                  }
+                  @if (!p.carrito && !p.vistos_sin_comprar.length && !p.sugeridos.length && !p.busquedas.length) {
+                    <small class="text-body-secondary">Sin actividad suficiente para sugerir oportunidades.</small>
+                  }
+                </c-col>
+
+                <!-- IA para este cliente -->
+                <c-col sm="12">
+                  <ng-container *ngTemplateOutlet="bloqueIa" />
+                </c-col>
+              </c-row>
+            }
+          </app-estado-bloque>
+        }
+
+        <!-- ================= E. RECOMENDACIONES IA (GENERAL) ================= -->
+        @case ('ia') {
+          <p class="small text-body-secondary">
+            La IA recibe solo datos agregados del período (sin nombres ni documentos de clientes) y propone acciones para el negocio.
+          </p>
+          <ng-container *ngTemplateOutlet="bloqueIa" />
+        }
+      }
+    </c-card-body>
+  </c-card>
+</app-pagina-reporte>
+
+<!-- Bloque reutilizable: recomendaciones de la IA (general o del cliente abierto) -->
+<ng-template #bloqueIa>
+  @let r = ia();
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    <button cButton color="primary" size="sm" class="text-white" [disabled]="r.estado === 'cargando'" (click)="generarIa(r.estado === 'ok')">
+      @if (r.estado === 'cargando') { <c-spinner size="sm" class="me-1" /> }
+      {{ r.estado === 'ok' ? 'Regenerar análisis con IA' : 'Generar análisis con IA' }}
+    </button>
+    @if (r.data; as d) {
+      <small class="text-body-secondary">Generado {{ fecha(d.generado) | date: 'dd/MM/yyyy HH:mm' }}{{ d.desde_cache ? ' (guardado)' : '' }}</small>
+    }
+  </div>
+  @if (r.estado === 'error') { <div class="alert alert-danger py-2 small">{{ r.mensaje }}</div> }
+  @if (r.data; as d) {
+    <p class="mb-2">{{ d.resumen }}</p>
+    <c-row class="g-2">
+      @for (h of d.hallazgos; track $index) {
+        <c-col md="6">
+          <c-card class="h-100"><c-card-body class="small">
+            <div class="d-flex justify-content-between mb-1">
+              <strong>{{ h.titulo }}</strong>
+              <c-badge [color]="colorPrioridad(h.prioridad)">{{ h.prioridad }}</c-badge>
+            </div>
+            <div class="text-body-secondary mb-1">{{ h.evidencia }}</div>
+            <div><span class="fw-semibold">Acción:</span> {{ h.accion }}</div>
+          </c-card-body></c-card>
+        </c-col>
+      }
+    </c-row>
+  }
+</ng-template>

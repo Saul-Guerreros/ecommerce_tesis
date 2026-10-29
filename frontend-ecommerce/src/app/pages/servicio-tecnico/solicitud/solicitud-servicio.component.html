@@ -89,15 +89,15 @@
               <h4 class="uk-card-title">Datos del equipo</h4>
               <div class="uk-grid-small" uk-grid>
                 <div class="uk-width-1-2@s">
-                  <label class="uk-form-label">Tipo de equipo <span class="uk-text-danger">*</span></label>
+                <label class="uk-form-label">Tipo de equipo <span class="uk-text-meta">(opcional)</span></label>
                   <select class="uk-select" formControlName="sse_tdiid" [class.uk-form-danger]="invalido(equipo, 'sse_tdiid')">
-                    <option [ngValue]="null" disabled>Seleccioná...</option>
+                    <option [ngValue]="null">No estoy seguro, que lo identifiquen</option>
                     @for (t of config.tipos_dispositivo; track t.tdi_id) {
                       <option [ngValue]="t.tdi_id">{{ t.tdi_descri }}</option>
                     }
                   </select>
                   @if (invalido(equipo, 'sse_tdiid')) {
-                    <div class="uk-text-danger uk-text-small">{{ errorBackend(equipo, 'sse_tdiid') ?? 'Seleccioná el tipo de equipo.' }}</div>
+                    <div class="uk-text-danger uk-text-small">{{ errorBackend(equipo, 'sse_tdiid') ?? 'El tipo de equipo no es válido.' }}</div>
                   }
                 </div>
                 <div class="uk-width-1-2@s">
@@ -128,11 +128,21 @@
                   <div class="uk-flex uk-flex-between">
                     <span class="uk-text-danger uk-text-small">
                       @if (invalido(equipo, 'sse_proble')) {
-                        {{ errorBackend(equipo, 'sse_proble') ?? 'Describí el problema (mínimo 10 caracteres).' }}
+                        {{ errorBackend(equipo, 'sse_proble') ?? 'Describí el problema (mínimo 10 caracteres, sin contar los espacios del inicio y del final).' }}
                       }
                     </span>
                     <span class="uk-text-meta">{{ equipo.value.sse_proble?.length || 0 }}/500</span>
                   </div>
+                </div>
+                <div class="uk-width-1-1">
+                  <button type="button" class="uk-button uk-button-default uk-button-small"
+                          [disabled]="consultandoIa" (click)="consultarIa()">
+                    {{ consultandoIa ? 'Analizando...' : (diagnosticoIa ? 'Volver a analizar' : 'Obtener diagnóstico preliminar (IA)') }}
+                  </button>
+                  <span class="uk-text-meta uk-margin-small-left">Opcional · te orienta sobre posibles causas y costos</span>
+                  @if (diagnosticoIa) {
+                    <app-diagnostico-ia [diagnostico]="diagnosticoIa" />
+                  }
                 </div>
                 <div class="uk-width-1-1">
                   <label class="uk-form-label">Accesorios que vas a entregar</label>
@@ -145,11 +155,17 @@
              <div class="uk-card uk-card-default uk-card-body uk-margin">
               <h4 class="uk-card-title">Fotos <span class="uk-text-meta uk-text-small">(opcional)</span></h4>
               <p class="uk-text-small uk-margin-small">Ayudan al técnico a entender el problema antes de recibir el equipo.</p>
-                <div>
-                <input type="file" accept="image/jpeg,image/png,image/webp" multiple
+               <div>
+                <input #inputFotos type="file" accept="image/jpeg,image/png,image/webp" multiple
                        [disabled]="procesandoFotos || fotos.length >= config.max_fotos"
                        (change)="onFotos($event)">
                 @if (procesandoFotos) { <span class="uk-text-meta uk-margin-small-left">Procesando...</span> }
+              </div>
+              <div class="uk-margin-small-top uk-hidden@m">
+                <button class="uk-button uk-button-default" type="button"
+                        [disabled]="procesandoFotos || fotos.length >= config.max_fotos" (click)="inputFotos.click()">
+                  <span uk-icon="icon: camera"></span> Agregar fotos
+                </button>
               </div>
               <span class="uk-text-meta uk-margin-small-left">{{ fotos.length }}/{{ config.max_fotos }} · se reducen solas</span>
               @if (errorFotos) { <div class="uk-text-danger uk-text-small uk-margin-small-top">{{ errorFotos }}</div> }

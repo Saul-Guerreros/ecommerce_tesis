@@ -38,42 +38,142 @@ class ClienteRapidoService
             ->first();
     }
 
-    /**
-     * Búsqueda del mostrador: documento, correo o celular (coincidencia exacta,
-     * para no exponer clientes por coincidencias parciales). Máximo 10 resultados.
+       /**
+     * Búsqueda del mostrador (mínimo 4 caracteres, máximo 10 resultados).
+     *
+     * 1.º las coincidencias EXACTAS: documento, correo o celular completos.
+     * 2.º si sobra lugar, las PARCIALES:
+     *    - nombre y apellido: cada palabra puede estar en cualquiera de los 4 campos y no
+     *      importan mayúsculas, tildes ni la ñ ("jose perez" encuentra a "José Luis Pérez");
+     *    - correo: alcanza con un pedazo ("marco.barr", "@gmail");
+     *    - documento y celular: por dígitos, aunque estén escritos con puntos o espacios.
      */
     public function buscar(string $termino): Collection
     {
         $termino = trim($termino);
+        $limite  = 10;
+
+        $exactos = $this->clientesConPersona()
+            ->whereHas('persona', fn ($p) => $this->coincidenciaExacta($p, $termino))
+            ->orderByDesc('cli_id')
+            ->limit($limite)
+            ->get();
+
+        $faltan = $limite - $exactos->count();
+
+        $parciales = $faltan > 0
+            ? $this->clientesConPersona()
+                ->whereNotIn('cli_id', $exactos->pluck('cli_id')->all())
+                ->whereHas('persona', fn ($p) => $this->coincidenciaParcial($p, $termino))
+                ->orderByDesc('cli_id')
+                ->limit($faltan)
+                ->get()
+            : collect();
+
+        return $exactos->concat($parciales)->map(fn (Cliente $c) => $this->resumen($c))->values();
+    }
+
+    private function clientesConPersona()
+    {
+        return Cliente::query()
+            ->with(['persona.tipoDocumento:tpd_id,tpd_codigo', 'persona.contactos', 'persona.usuario:usu_id,usu_perid']);
+    }
+
+    /** Documento, correo o celular COMPLETOS (la regla original del mostrador). */
+    private function coincidenciaExacta($persona, string $termino): void
+    {
         $digitos = preg_replace('/\D/', '', $termino);
         $correo  = mb_strtolower($termino);
 
-        return Cliente::query()
-            ->with(['persona.tipoDocumento:tpd_id,tpd_codigo', 'persona.contactos', 'persona.usuario:usu_id,usu_perid'])
-            ->whereHas('persona', function ($p) use ($termino, $digitos, $correo) {
-                $p->where(function ($w) use ($termino, $digitos, $correo) {
-                    $w->where('per_cedula', $termino);
+        $persona->where(function ($w) use ($termino, $digitos, $correo) {
+            $w->where('per_cedula', $termino);
 
-                    if (strlen($digitos) >= 5) {
-                        $w->orWhereRaw("regexp_replace(coalesce(per_cedula, ''), '\\D', '', 'g') = ?", [$digitos]);
-                        $w->orWhereHas('contactos', fn ($c) => $c
-                            ->whereIn('con_tipo', ['CELULAR', 'WHATSAPP', 'TELEFONO'])
-                            ->whereRaw("regexp_replace(con_valor, '\\D', '', 'g') = ?", [$digitos]));
-                    }
+            if (strlen($digitos) >= 5) {
+                $w->orWhereRaw("regexp_replace(coalesce(per_cedula, ''), '\\D', '', 'g') = ?", [$digitos]);
+                $w->orWhereHas('contactos', fn ($c) => $c
+                    ->whereIn('con_tipo', ['CELULAR', 'WHATSAPP', 'TELEFONO'])
+                    ->whereRaw("regexp_replace(con_valor, '\\D', '', 'g') = ?", [$digitos]));
+            }
 
-                    if (str_contains($termino, '@')) {
-                        $w->orWhereHas('contactos', fn ($c) => $c
-                            ->where('con_tipo', 'EMAIL')->whereRaw('LOWER(con_valor) = ?', [$correo]));
-                        $w->orWhereHas('usuario', fn ($u) => $u->whereRaw('LOWER(usu_login) = ?', [$correo]));
-                    }
-                });
-            })
-            ->orderByDesc('cli_id')
-            ->limit(10)
-            ->get()
-            ->map(fn (Cliente $c) => $this->resumen($c));
+            if (str_contains($termino, '@')) {
+                $w->orWhereHas('contactos', fn ($c) => $c
+                    ->where('con_tipo', 'EMAIL')->whereRaw('LOWER(con_valor) = ?', [$correo]));
+                $w->orWhereHas('usuario', fn ($u) => $u->whereRaw('LOWER(usu_login) = ?', [$correo]));
+            }
+        });
     }
 
+    /** Coincidencias PARCIALES por nombre, correo, documento o celular. */
+    private function coincidenciaParcial($persona, string $termino): void
+    {
+        $texto       = $this->sinTildes(mb_strtolower($termino));
+        $palabras    = preg_split('/\s+/', $texto, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $soloDigitos = (bool) preg_match('/^[\d\s.\-+()]+$/', $termino);   // "0981 123", "1.234.5"
+        $digitos     = preg_replace('/\D/', '', $termino);
+
+        $hayCondicion = false;
+
+        $persona->where(function ($w) use ($texto, $palabras, $soloDigitos, $digitos, &$hayCondicion) {
+            // Número: documento o celular por dígitos, sin importar puntos, espacios ni guiones.
+            if ($soloDigitos) {
+                if (strlen($digitos) >= 4) {
+                    $hayCondicion = true;
+                    $like = '%' . $digitos . '%';
+                    $w->orWhereRaw("regexp_replace(coalesce(per_cedula, ''), '\\D', '', 'g') LIKE ?", [$like]);
+                    $w->orWhereHas('contactos', fn ($c) => $c
+                        ->whereIn('con_tipo', ['CELULAR', 'WHATSAPP', 'TELEFONO'])
+                        ->whereRaw("regexp_replace(con_valor, '\\D', '', 'g') LIKE ?", [$like]));
+                }
+                return;
+            }
+
+            // Una sola palabra sin espacios: puede ser un pedazo de correo o un documento alfanumérico.
+            if (count($palabras) === 1) {
+                $hayCondicion = true;
+                $like = '%' . $this->escaparLike($texto) . '%';
+                $w->orWhereRaw("LOWER(coalesce(per_cedula, '')) LIKE ?", [$like]);
+                $w->orWhereHas('contactos', fn ($c) => $c
+                    ->where('con_tipo', 'EMAIL')->whereRaw('LOWER(con_valor) LIKE ?', [$like]));
+                $w->orWhereHas('usuario', fn ($u) => $u->whereRaw('LOWER(usu_login) LIKE ?', [$like]));
+            }
+
+            // Nombre y apellido: todas las palabras deben aparecer, en cualquier orden.
+            if (!str_contains($texto, '@') && $palabras !== [] && max(array_map('mb_strlen', $palabras)) >= 3) {
+                $hayCondicion = true;
+                $w->orWhere(function ($n) use ($palabras) {
+                    foreach (array_slice($palabras, 0, 4) as $palabra) {
+                        $like = '%' . $this->escaparLike($palabra) . '%';
+                        $n->where(function ($c) use ($like) {
+                            foreach (['per_nombr1', 'per_nombr2', 'per_apell1', 'per_apell2'] as $col) {
+                                $c->orWhereRaw(
+                                    "lower(translate(coalesce({$col}, ''), 'áéíóúüÁÉÍÓÚÜñÑ', 'aeiouuAEIOUUnn')) LIKE ?",
+                                    [$like]
+                                );
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        // Sin ninguna condición (p. ej. "a b c") Laravel descartaría el grupo vacío y devolvería
+        // a TODOS los clientes: en ese caso no debe encontrarse nada.
+        if (!$hayCondicion) {
+            $persona->whereRaw('1 = 0');
+        }
+    }
+
+    /** Minúsculas ya aplicadas: quita tildes y unifica ñ con n (igual que el translate() del SQL). */
+    private function sinTildes(string $texto): string
+    {
+        return strtr($texto, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n']);
+    }
+
+    /** Para que % y _ escritos por el usuario se busquen como texto y no como comodines de LIKE. */
+    private function escaparLike(string $texto): string
+    {
+        return addcslashes($texto, '%_\\');
+    }
     /** Forma única con la que el mostrador muestra a un cliente. */
     public function resumen(Cliente $cliente): array
     {

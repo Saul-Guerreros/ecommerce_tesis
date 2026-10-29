@@ -1,6 +1,6 @@
 /** Respuestas de /api/admin/reportes/servicio/* */
 
-export type VistaServicio = 'estados' | 'tecnicos' | 'tiempos' | 'fallas' | 'presupuestos';
+export type VistaServicio = 'estados' | 'tecnicos' | 'tiempos' | 'fallas' | 'presupuestos' | 'clasificacion';
 
 export interface FiltrosServicioExtra {
   tipo_dispositivo_id?: number | null;
@@ -96,4 +96,31 @@ export interface TotalesPresupuestos {
   monto_aprobado: number;
   monto_rechazado: number;
   horas_respuesta: number | null;
+}
+
+// ---------- clasificación IA (Punto 7) ----------
+export interface ClasificacionDistribucion {
+  dimension: 'categoria' | 'urgencia' | 'dispositivo';
+  id: number;
+  codigo: string;
+  descri: string;
+  color: string;
+  cantidad: number;
+  participacion: number | null;
+}
+export interface TotalesClasificacion {
+  solicitudes: number;
+  clasificadas: number;
+  pendientes: number;
+  no_disponibles: number;
+  corregidas: number;
+  confianza_baja: number;
+  dispositivo_por_ia: number;
+  inconsistentes: number;
+  revisadas: number;
+  disponibilidad: number | null;
+  acierto_dispositivo: number | null;
+  acierto_urgencia: number | null;
+  acierto_categoria: number | null;
+  latencia_ms: number | null;
 }

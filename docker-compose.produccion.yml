@@ -44,6 +44,47 @@ services:
       - "traefik.http.routers.zinformatica-api.service=zinformatica-api"
       - "traefik.http.services.zinformatica-api.loadbalancer.server.port=8080"
 
+  # Cola de trabajos (clasificación IA, factura electrónica). Usa la misma imagen que api.
+  worker:
+    image: zinformatica-api:release1
+    restart: unless-stopped
+    env_file:
+      - /opt/zinformatica/config/api.env
+    environment:
+      AUTORUN_ENABLED: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+    volumes:
+      - api_storage:/var/www/html/storage/app
+    command: ["php", "/var/www/html/artisan", "queue:work", "--tries=3", "--max-time=3600"]
+    stop_signal: SIGTERM
+    stop_grace_period: 120s
+    labels:
+      - "traefik.enable=false"
+
+  # Tareas programadas (reintentos de clasificación, vencimientos, etc.). Usa la misma imagen que api.
+  scheduler:
+    image: zinformatica-api:release1
+    restart: unless-stopped
+    env_file:
+      - /opt/zinformatica/config/api.env
+    environment:
+      AUTORUN_ENABLED: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+    volumes:
+      - api_storage:/var/www/html/storage/app
+    command: ["php", "/var/www/html/artisan", "schedule:work"]
+    stop_signal: SIGTERM
+    labels:
+      - "traefik.enable=false"
+
   admin:
     build:
       context: ./coreui-free-angular-admin-template-5.5.24

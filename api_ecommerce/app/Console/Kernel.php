@@ -15,6 +15,8 @@ class Kernel extends ConsoleKernel
         // $schedule->command('inspire')->hourly();
 		 $schedule->command('servicio:vencer-presupuestos')->dailyAt('00:10')->withoutOverlapping();
          $schedule->command('facturacion:reintentar')->everyTenMinutes()->withoutOverlapping();
+         $schedule->command('actividad:purgar')->monthlyOn(1, '03:00')->withoutOverlapping();
+         $schedule->command('servicio:clasificar-pendientes')->everyFifteenMinutes()->withoutOverlapping();
     }
 
     /**
