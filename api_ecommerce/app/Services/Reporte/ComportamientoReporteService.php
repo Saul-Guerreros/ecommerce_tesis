@@ -48,7 +48,7 @@ class ComportamientoReporteService extends ConsultaReporte
     private const FRECUENCIA = [5 => 5, 3 => 4, 2 => 3];                // compras >= clave → puntaje
 
     public const SEGMENTOS = [
-        'CAMPEON'   => ['etiqueta' => 'Campeones',          'color' => 'success',   'accion' => 'Fidelizar: acceso anticipado a novedades y beneficios exclusivos.'],
+        'CAMPEON'   => ['etiqueta' => 'Mejores clientes',          'color' => 'success',   'accion' => 'Fidelizar: acceso anticipado a novedades y beneficios exclusivos.'],
         'LEAL'      => ['etiqueta' => 'Leales',             'color' => 'primary',   'accion' => 'Ofrecer productos complementarios y planes en cuotas.'],
         'NUEVO'     => ['etiqueta' => 'Nuevos',             'color' => 'info',      'accion' => 'Acompañar la primera experiencia y motivar la segunda compra.'],
         'ATENCION'  => ['etiqueta' => 'Necesitan atención', 'color' => 'warning',   'accion' => 'Recordatorio con productos vistos o de su categoría preferida.'],
