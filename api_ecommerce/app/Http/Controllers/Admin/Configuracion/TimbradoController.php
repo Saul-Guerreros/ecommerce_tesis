@@ -118,7 +118,7 @@ class TimbradoController extends Controller
         ->value('suc_empid');
 
     $datos['tim_estado'] = $datos['tim_estado'] ?? 1;
-    $datos['tim_nroact'] = $datos['tim_nroini'];
+    $datos['tim_nroact'] = $datos['tim_nroini'] - 1;
 
     $timbrado = Timbrado::create($datos);
     $timbrado->load(['tipoComprobante', 'sucursal']);
@@ -164,7 +164,7 @@ class TimbradoController extends Controller
             return response()->json(['message' => 'Timbrado no encontrado'], 404);
         }
 
-        if ($timbrado->tim_nroact != $timbrado->tim_nroini) {
+        if ($timbrado->tim_nroact != $timbrado->tim_nroini -1) {
             return response()->json([
                 'message' => 'No se puede eliminar: este timbrado ya tiene numeración utilizada. Desactívelo en lugar de eliminarlo.',
             ], 409);

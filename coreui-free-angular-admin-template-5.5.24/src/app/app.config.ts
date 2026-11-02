@@ -12,11 +12,13 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { ToastrModule } from 'ngx-toastr';
 import { registerLocaleData } from '@angular/common';
 import localeEsPY from '@angular/common/locales/es-PY';
+import { QuillModule } from 'ngx-quill';
 
 registerLocaleData(localeEsPY, 'es-PY');
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    importProvidersFrom(QuillModule.forRoot()),
     provideRouter(routes,
       withRouterConfig({
         onSameUrlNavigation: 'reload'

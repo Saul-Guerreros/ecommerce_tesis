@@ -1,0 +1,13 @@
+<main class="tm-legal">
+  <div class="uk-container">
+    <article class="tm-legal-contenido">
+      <ul class="uk-breadcrumb uk-margin-remove">
+        <li><a routerLink="/">Inicio</a></li>
+        <li><span>Plazos y condiciones de Garantía</span></li>
+      </ul>
+
+      <div *ngIf="cargando" uk-spinner></div>
+      <div *ngIf="!cargando" class="tm-contenido-quill" [innerHTML]="contenido"></div>
+    </article>
+  </div>
+</main>

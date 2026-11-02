@@ -1,0 +1,38 @@
+<c-card class="mb-4">
+  <c-card-header><strong>{{ tituloCard || 'Atención al Cliente' }}</strong></c-card-header>
+
+  <c-card-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando">
+      <div class="mb-4">
+        <label cLabel for="pgi_titulo">Título visible en la tienda</label>
+        <input cFormControl type="text" id="pgi_titulo" formControlName="pgi_titulo" maxlength="150">
+        <div class="text-danger small" *ngIf="campoInvalido('pgi_titulo')">El título es obligatorio.</div>
+      </div>
+
+      <div class="mb-4">
+        <label cLabel class="mb-2 d-block">Contenido</label>
+        <quill-editor
+          formControlName="pgi_contenido"
+          [modules]="editorModulos"
+          placeholder="Escribí el contenido de la página..."
+          style="height: 420px;">
+        </quill-editor>
+        <p class="text-body-secondary small mt-2 mb-0">
+          Tip: podés usar <code>{{ '{{EMPRESA}}' }}</code>, <code>{{ '{{RAZON_SOCIAL}}' }}</code>, <code>{{ '{{RUC}}' }}</code>,
+          <code>{{ '{{DIRECCION}}' }}</code>, <code>{{ '{{EMAIL}}' }}</code>, <code>{{ '{{TELEFONO}}' }}</code>, <code>{{ '{{HORARIO}}' }}</code>
+          escribiéndolos tal cual en el texto — la tienda los reemplaza automáticamente por los datos reales.
+        </p>
+        <div class="text-danger small" *ngIf="campoInvalido('pgi_contenido')">El contenido es obligatorio.</div>
+      </div>
+
+      <div class="mt-4">
+        <button cButton color="primary" type="submit" [disabled]="guardando">
+          <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+          {{ guardando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </c-card-body>
+</c-card>

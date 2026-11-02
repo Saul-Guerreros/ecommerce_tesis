@@ -12,19 +12,22 @@ use App\Models\Venta\VentaDetalle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use App\Models\Pedido\EstadoPedido;
 
 use App\Jobs\DeclararFacturaElectronica;
 use App\Models\Venta\VentaFe;
 /**
  * Emision del comprobante fiscal a partir de un pedido.
  *
- * Dos puntos de emision, los mismos dos donde ya se descuenta stock
- * definitivo, porque factura y salida de mercaderia representan el mismo
- * hecho economico:
+ * Unico punto de emision: generarDesdePedido(), la accion [GENERAR
+ * FACTURA] del panel. Ni el cobro ni la entrega emiten nada; si lo
+ * hicieran, el mismo pedido podria facturarse por dos caminos distintos y
+ * con reglas distintas.
  *
- *   - PagoVerificacionService::cerrarCobro()      (entro la plata)
- *   - PedidoEstadoService, transicion a ENTREGADO (contra entrega y pago
- *                                                   dividido con efectivo)
+ * emitirDesdePedido() sigue siendo idempotente, igual que
+ * StockPedidoService::yaDescontado(): si el pedido ya tiene factura
+ * vigente devuelve esa y no consume un numero nuevo. Es la red de
+ * seguridad ante un doble clic o un reintento.)
  *
  * La idempotencia funciona igual que en StockPedidoService::yaDescontado():
  * si el pedido ya tiene factura vigente, se devuelve esa y no se consume
@@ -42,20 +45,105 @@ class VentaService
 
     // ---------- Emision ----------
 
-    /**
+        /**
      * Emite la factura del pedido. Idempotente.
      *
      * DEBE invocarse dentro de la transaccion del caller: el lock del
      * timbrado tiene que vivir hasta el commit.
      */
+
+        /**
+     * Accion [GENERAR FACTURA] del panel. Es el unico camino por el que el
+     * administrador emite una factura de pedido.
+     *
+     * A diferencia de emitirDesdePedido(), que es idempotente y silencioso,
+     * aca una factura ya existente es un ERROR: el admin apreto el boton
+     * creyendo que no habia documento, y devolverle la factura vieja sin
+     * decir nada esconde el malentendido.
+     */
+    public function generarDesdePedido(Pedido $pedido, Usuario $usuario): VentaCab
+    {
+        return DB::transaction(function () use ($pedido, $usuario) {
+            $pedido->loadMissing('estadoPedido', 'pagos.metodoPago', 'pagos.comprobante');
+
+            if ($pedido->estadoPedido?->est_codigo === EstadoPedido::CANCELADO) {
+                throw ValidationException::withMessages([
+                    'factura' => 'El pedido está cancelado: no se le puede generar factura.',
+                ]);
+            }
+
+            $existente = VentaCab::where('ven_pedid', $pedido->ped_id)
+                ->vigente()
+                ->lockForUpdate()
+                ->first();
+
+            if ($existente) {
+                throw ValidationException::withMessages([
+                    'factura' => "Este pedido ya tiene la factura {$existente->ven_nrodoc}.",
+                ]);
+            }
+
+            $this->validarHabilitacion($pedido);
+
+            return $this->emitirDesdePedido($pedido, $usuario);
+        });
+    }
+
+    /**
+     * Cuando se puede facturar un pedido. Dos condiciones, y la segunda
+     * solo aplica si hay dinero en efectivo de por medio:
+     *
+     *   1. Ningun comprobante sin validar. La factura se declara a la DNIT
+     *      con TODOS los medios de pago que eligio el cliente, asi que no
+     *      puede emitirse mientras quede uno sin mirar.
+     *
+     *   2. Si algun pago es contra entrega (efectivo), el pedido tiene que
+     *      estar LISTO. Esa plata entra al momento de la entrega, y la
+     *      factura se imprime y se entrega junto con la mercaderia: antes
+     *      de LISTO no hay nada que entregar.
+     *
+     * Un pedido mixto (parte transferencia, parte efectivo) cae en las dos
+     * y por lo tanto espera a LISTO, aunque su comprobante ya este
+     * validado hace dias.
+     */
+    private function validarHabilitacion(Pedido $pedido): void
+    {
+        $sinValidar = $pedido->pagos
+            ->filter(fn ($pago) => (bool) $pago->metodoPago?->mpa_requcom)
+            ->filter(fn ($pago) => !$pago->comprobante?->pco_verifi)
+            ->count();
+
+        if ($sinValidar > 0) {
+            throw ValidationException::withMessages([
+                'factura' => $sinValidar === 1
+                    ? 'Queda un comprobante sin validar. Validalo antes de generar la factura.'
+                    : "Quedan {$sinValidar} comprobantes sin validar. Validalos antes de generar la factura.",
+            ]);
+        }
+
+        $hayEfectivo = $pedido->pagos
+            ->contains(fn ($pago) => !$pago->metodoPago?->mpa_requcom);
+
+        if ($hayEfectivo && $pedido->estadoPedido?->est_codigo !== EstadoPedido::LISTO) {
+            throw ValidationException::withMessages([
+                'factura' => 'Este pedido tiene un pago en efectivo: la factura se genera cuando el pedido está LISTO para entregar.',
+            ]);
+        }
+    }
+
     public function emitirDesdePedido(Pedido $pedido, ?Usuario $usuario = null): VentaCab
     {
+        // lockForUpdate: dos confirmaciones simultaneas no pueden numerar
+        // dos veces el mismo pedido.
         $existente = VentaCab::where('ven_pedid', $pedido->ped_id)
-            ->where('ven_estado', '<>', VentaCab::ESTADO_ANULADA)
+            ->vigente()
+            ->lockForUpdate()
             ->first();
 
+        // Idempotente: si el pedido ya tiene factura vigente se devuelve
+        // esa y no se consume otro numero del talonario.
         if ($existente) {
-            return $existente;   // este pedido ya fue facturado
+            return $existente->load('detalle');
         }
 
         $usuario ??= auth()->user();
@@ -77,8 +165,7 @@ class VentaService
         ['timbrado' => $timbrado, 'numero' => $numero] = $this->numeracion->tomarNumero($sucursal->suc_id);
         $caja = $this->resolverCaja($sucursal, $timbrado->tim_puntexp);
 
-        // Emisor = la empresa duena del talonario usado, no la de la
-        // sucursal: es la que figura ante la SET en ese timbrado.
+        // Emisor = la empresa duena del talonario usado (la que figura ante la SET).
         $empresa = $timbrado->empresa;
 
         if (!$empresa) {
@@ -87,62 +174,34 @@ class VentaService
             );
         }
 
-        $lineas   = $this->construirLineas($pedido);
-        $totales  = $this->calcularTotales($lineas);
+        [$lineas, $totales] = $this->armarDocumento($pedido);
 
-        $this->verificarCoherencia($pedido, $totales['total']);
-
-        $venta = VentaCab::create([
-            'ven_timid'   => $timbrado->tim_id,
-            'ven_cajid'   => $caja->caj_id,
-            'ven_cliid'   => $pedido->ped_cliid,
-            'ven_usuid'   => $usuario->usu_id,
-            'ven_sucid'   => $sucursal->suc_id,
-            'ven_pedid'   => $pedido->ped_id,
-
-            // Snapshot del talonario: si manana alguien corrige el
-            // timbrado, la factura emitida sigue diciendo lo que decia.
+        $venta = VentaCab::create($this->datosComunes($pedido, $totales) + [
+            'ven_timid'       => $timbrado->tim_id,
+            'ven_cajid'       => $caja->caj_id,
+            'ven_usuid'       => $usuario->usu_id,
+            'ven_sucid'       => $sucursal->suc_id,
             'ven_timbrado'    => $timbrado->tim_numero,
             'ven_timb_inicio' => $timbrado->tim_fechin->toDateString(),
             'ven_timb_venc'   => $timbrado->tim_fechfn->toDateString(),
             'ven_emp_ruc'     => $empresa->emp_ruc,
             'ven_emp_razon'   => $empresa->emp_razonsocial,
-            'ven_establec'  => $timbrado->tim_establec,
-            'ven_puntoexp'  => $timbrado->tim_puntexp,
-            'ven_numero'    => $numero,
-            'ven_fchaem'    => now()->toDateString(),
-
-            ...$this->datosAdquirente($pedido),
-
-            // E-commerce al contado. La venta a credito de la casa tiene
-            // su propio flujo (solicitud_credito) y llenara ven_condicion
-            // = 2 con sus cuotas cuando se implemente.
-            'ven_condicion'   => VentaCab::CONDICION_CONTADO,
-            'ven_cant_cuotas' => null,
-
-            'ven_exenta'   => $totales['exenta'],
-            'ven_grav5'    => $totales['grav5'],
-            'ven_grav10'   => $totales['grav10'],
-            'ven_subtotal' => $totales['subtotal'],
-            'ven_total'    => $totales['total'],
-            'ven_iva5'     => $totales['iva5'],
-            'ven_iva10'    => $totales['iva10'],
-            'ven_totiva'   => $totales['totiva'],
-
-            'ven_estado' => VentaCab::ESTADO_EMITIDA,
-            'ven_obs'    => "Pedido {$pedido->ped_numero}",
+            'ven_establec'    => $timbrado->tim_establec,
+            'ven_puntoexp'    => $timbrado->tim_puntexp,
+            'ven_numero'      => $numero,
+            'ven_fchaem'      => now()->toDateString(),
+            'ven_estado'      => VentaCab::ESTADO_EMITIDA,
         ]);
 
-        foreach ($lineas as $linea) {
-            VentaDetalle::create(['vnd_venid' => $venta->ven_id] + $linea);
-        }
+        $this->guardarLineas($venta, $lineas);
 
         $this->programarDeclaracion($venta);
 
         return $venta->load('detalle');
     }
 
-        /**
+
+    /**
      * Deja la declaracion electronica programada. El registro venta_fe se crea
      * DENTRO de la transaccion (si el cobro se revierte, desaparece) y el job se
      * despacha DESPUES del commit: la llamada a la API nunca bloquea el cobro.
@@ -180,7 +239,11 @@ class VentaService
                 
             ]);
         }
-         $this->verificarSinDeclaracionElectronica($venta);
+
+        $this->verificarSinNotasCredito($venta);
+        $this->verificarSinDeclaracionElectronica($venta);
+
+        
 
         return DB::transaction(function () use ($venta, $usuario, $motivo) {
             $venta->update([
@@ -196,16 +259,62 @@ class VentaService
 
     // ---------- Armado del documento ----------
 
+
+    /** @return array{0: array<int, array<string, mixed>>, 1: array<string, float>} */
+    private function armarDocumento(Pedido $pedido): array
+    {
+        $lineas  = $this->construirLineas($pedido);
+        $totales = $this->calcularTotales($lineas);
+
+        $this->verificarCoherencia($pedido, $totales['total']);
+
+        return [$lineas, $totales];
+    }
+
+    /** Datos que NO dependen del timbrado: iguales en el borrador y en la emisión directa. */
+    private function datosComunes(Pedido $pedido, array $totales): array
+    {
+        return [
+            'ven_cliid' => $pedido->ped_cliid,
+            'ven_pedid' => $pedido->ped_id,
+
+            ...$this->datosAdquirente($pedido),
+
+            // E-commerce al contado (el crédito tiene su propio flujo).
+            'ven_condicion'   => VentaCab::CONDICION_CONTADO,
+            'ven_cant_cuotas' => null,
+
+            'ven_exenta'   => $totales['exenta'],
+            'ven_grav5'    => $totales['grav5'],
+            'ven_grav10'   => $totales['grav10'],
+            'ven_subtotal' => $totales['subtotal'],
+            'ven_total'    => $totales['total'],
+            'ven_iva5'     => $totales['iva5'],
+            'ven_iva10'    => $totales['iva10'],
+            'ven_totiva'   => $totales['totiva'],
+
+            'ven_obs' => "Pedido {$pedido->ped_numero}",
+        ];
+    }
+
+    private function guardarLineas(VentaCab $venta, array $lineas): void
+    {
+        foreach ($lineas as $linea) {
+            VentaDetalle::create(['vnd_venid' => $venta->ven_id] + $linea);
+        }
+    }
+
     /**
-     * Una linea por producto del pedido, mas la linea del costo de envio
-     * si lo hubo.
-     *
-     * El envio se factura porque forma parte de ped_total: omitirlo
-     * dejaria una factura por menos de lo que el cliente pago. Es la
-     * unica linea con vnd_prdid NULL.
-     *
-     * @return array<int, array<string, mixed>>
-     */
+    * Una linea por producto del pedido, mas la linea del costo de envio
+    * si lo hubo.
+    *
+    * El envio se factura porque forma parte de ped_total: omitirlo
+    * dejaria una factura por menos de lo que el cliente pago. Es la
+    * unica linea con vnd_prdid NULL.
+    *
+    * @return array<int, array<string, mixed>>
+    */
+
     private function construirLineas(Pedido $pedido): array
     {
         $lineas = [];
@@ -422,17 +531,34 @@ class VentaService
         return $caja;
     }
 
-        /**
-     * Una factura declarada (o en proceso de declararse) ante la DNIT no se anula
-     * internamente: el sistema quedaria en desacuerdo con la DNIT. Se corrige con
-     * una nota de credito.
-     */
+    /**
+    * Una factura declarada (o en proceso de declararse) ante la DNIT no se anula
+    * internamente: el sistema quedaria en desacuerdo con la DNIT. Se corrige con
+    * una nota de credito.
+    */
     private function verificarSinDeclaracionElectronica(VentaCab $venta): void
     {
         if ($venta->fe?->bloqueaAnulacion()) {
             throw ValidationException::withMessages([
                 'factura' => 'Esta factura ya fue declarada (o está en proceso de declararse) ante la DNIT. '
                            . 'No se anula desde acá: se corrige con una nota de crédito.',
+            ]);
+        }
+    }
+
+    /**
+    * Una factura con notas de crédito vigentes no se anula: la NC ya
+    * corrigió parte de su importe, y anular la factura dejaría una NC
+    * apuntando a un documento que dejó de valer. Primero se anulan las NC.
+    */
+    private function verificarSinNotasCredito(VentaCab $venta): void
+    {
+        $cantidad = $venta->notasCreditoVigentes()->count();
+
+        if ($cantidad > 0) {
+            throw ValidationException::withMessages([
+                'factura' => "Esta factura tiene {$cantidad} nota(s) de crédito vigente(s). "
+                           . 'Anulá primero las notas de crédito y después la factura.',
             ]);
         }
     }

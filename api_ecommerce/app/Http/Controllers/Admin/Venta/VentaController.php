@@ -30,7 +30,7 @@ use Symfony\Component\HttpFoundation\Response;
 class VentaController extends Controller
 {
     private const RELACIONES_LISTA   = ['sucursal', 'fe'];
-    private const RELACIONES_DETALLE = ['sucursal', 'caja', 'pedido', 'detalle', 'fe'];
+    private const RELACIONES_DETALLE = ['sucursal', 'caja', 'pedido', 'detalle', 'fe', 'notasCredito', 'cobros'];
 
     public function __construct(private VentaService $service) {}
 
@@ -41,7 +41,9 @@ class VentaController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = VentaCab::with(self::RELACIONES_LISTA);
+        // Solo facturas que alguna vez tuvieron número fiscal. Los borradores
+        // (pendientes o cancelados sin emitir) se ven desde Gestión de Pedidos.
+                $query = VentaCab::with(self::RELACIONES_LISTA)->withCount('notasCreditoVigentes');
 
         if ($request->filled('search')) {
             $search = '%' . strtolower(trim($request->search)) . '%';
@@ -115,7 +117,7 @@ class VentaController extends Controller
     // GET /api/admin/facturas-venta/{id}
     public function show(int $id): JsonResponse
     {
-        $venta = VentaCab::with(self::RELACIONES_DETALLE)->find($id);
+        $venta = VentaCab::with(self::RELACIONES_DETALLE)->withCount('notasCreditoVigentes')->find($id);
 
         if (!$venta) {
             return response()->json(['message' => 'Factura no encontrada'], 404);

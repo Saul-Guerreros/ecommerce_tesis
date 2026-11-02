@@ -76,7 +76,11 @@ export const navItems: INavData[] = [
     url: '/facturas-venta',
     iconComponent: { name: 'cil-description' }
   },
-  
+  {
+    name: 'Notas de Crédito',
+    url: '/notas-credito-venta',
+    iconComponent: { name: 'cil-file' }
+  },
   // ==========================================
   // SERVICIO TÉCNICO
   // ==========================================
@@ -302,13 +306,25 @@ export const navItems: INavData[] = [
       { name: 'Depósitos', url: '/depositos' }
     ]
   },
-  {
+    {
     name: 'Comprobantes',
     iconComponent: { name: 'cil-spreadsheet' },
     children: [
       { name: 'Timbrados', url: '/timbrados' },
       { name: 'Tipos de comprobante', url: '/tipos-comprobante' },
       { name: 'Tipos de IVA', url: '/tipos-iva' }
+    ]
+  },
+  {
+    name: 'Atención al Cliente y Legal',
+    iconComponent: { name: 'cil-description' },
+    children: [
+      { name: 'Cómo comprar', url: '/atencion-cliente/como-comprar' },
+      { name: 'Plazos y condiciones de Garantía', url: '/atencion-cliente/garantia' },
+      { name: 'Términos y Condiciones', url: '/atencion-cliente/terminos-y-condiciones' },
+      { name: 'Condiciones de compra', url: '/atencion-cliente/condiciones-compra' },
+      { name: 'Política de Privacidad', url: '/atencion-cliente/politica-privacidad' },
+      { name: 'Preguntas frecuentes', url: '/chatbot/informacion' }
     ]
   },
 

@@ -34,13 +34,13 @@ class DatabaseSeeder extends Seeder
             EstadoPedidoSeeder::class,
             EstadoPagoSeeder::class,
        
-		// Servicio técnico (M5)
-		TipoDispositivoSeeder::class,
-		FallaSeeder::class,          // depende de TipoDispositivo
-		TrabajoSeeder::class,        // depende de TipoIva
-		EstadoServicioSeeder::class,
-		EstadoLogisticaSeeder::class,
-		EstadoPresupuestoSeeder::class,
+            // Servicio técnico (M5)
+            TipoDispositivoSeeder::class,
+            FallaSeeder::class,          // depende de TipoDispositivo
+            TrabajoSeeder::class,        // depende de TipoIva
+            EstadoServicioSeeder::class,
+            EstadoLogisticaSeeder::class,
+            EstadoPresupuestoSeeder::class,
 
             // Tienda y catálogo de productos
             ConfiguracionTiendaSeeder::class,
@@ -63,6 +63,8 @@ class DatabaseSeeder extends Seeder
             // Modulo de Credito (solicitud de credito del cliente)
             EstadoSolicitudSeeder::class,
             ProfesionSeeder::class,
+
+            PaginaInformativaSeeder::class,
         ]);
 
 		

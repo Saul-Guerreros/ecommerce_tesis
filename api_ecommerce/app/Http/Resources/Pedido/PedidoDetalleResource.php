@@ -6,6 +6,7 @@ use App\Models\Pedido\EstadoPago;
 use App\Models\Pedido\TipoEntrega;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Models\Pedido\EstadoPedido;
 
 /**
  * Pantalla completa de Gestión del Pedido.
@@ -25,11 +26,33 @@ class PedidoDetalleResource extends JsonResource
     {
         $pagos = $this->relationLoaded('pagos') ? $this->pagos : collect();
 
+        // El monto realmente cobrado sale de cobro_venta. ppa_montver es el
+        // respaldo para los pedidos cobrados con el flujo anterior.
         $montoVerificado = (float) $pagos
             ->filter(fn ($p) => $p->estadoPago?->epa_codigo === EstadoPago::CONFIRMADO)
-            ->sum(fn ($p) => (float) ($p->ppa_montver ?? $p->ppa_monto));
+            ->sum(fn ($p) => (float) ($p->cobro?->cob_monto ?? $p->ppa_montver ?? $p->ppa_monto));
+
+        // Cuantos comprobantes faltan validar: con uno pendiente, la factura
+        // del pedido todavia no se puede emitir y el cobro queda bloqueado.
+        $comprobantesPendientes = $pagos
+            ->filter(fn ($p) => (bool) $p->metodoPago?->mpa_requcom)
+            ->filter(fn ($p) => !$p->comprobante?->pco_verifi)
+            ->count();
 
         $total = (float) $this->ped_total;
+
+                // Un pago contra entrega (efectivo) obliga a esperar a LISTO: la
+        // factura se imprime y se entrega junto con la mercaderia.
+        $hayEfectivo = $pagos->contains(fn ($p) => !$p->metodoPago?->mpa_requcom);
+        $estaListo   = $this->estadoPedido?->est_codigo === EstadoPedido::LISTO;
+
+        $tieneFactura = $this->factura !== null;
+
+        // Regla de habilitacion de [GENERAR FACTURA]. La pantalla la repite;
+        // la que manda es VentaService::validarHabilitacion().
+        $puedeGenerarFactura = !$tieneFactura
+            && $comprobantesPendientes === 0
+            && (!$hayEfectivo || $estaListo);
 
         return [
             // ---------- 1. Encabezado ----------
@@ -82,7 +105,7 @@ class PedidoDetalleResource extends JsonResource
             // ---------- 3.2 Tarjeta DATOS DE FACTURACIÓN ----------
             // Solo la cabecera declarada por el cliente en el Paso 2.
             // El comprobante fiscal (venta + detalle) es otra instrucción.
-            'facturacion' => $this->armarFacturacion(),
+            'facturacion' => $this->armarFacturacion($puedeGenerarFactura),
 
             // ---------- 3.3 Tarjeta PAGO / PAGOS ----------
             'pago' => [
@@ -93,6 +116,12 @@ class PedidoDetalleResource extends JsonResource
                 'monto_pendiente'   => max(0.0, $total - $montoVerificado),
                 'porcentaje'        => $total > 0 ? (int) round($montoVerificado / $total * 100) : 0,
                 'items'             => PedidoPagoDetalleResource::collection($pagos),
+                'comprobantes_pendientes' => $comprobantesPendientes,
+                // [Realizar cobro] queda deshabilitado hasta que exista la
+                // factura: el cobro se aplica contra el documento fiscal.
+                'rechazos'                => (int) $this->ped_rechaz,
+                'rechazos_restantes'      => $this->rechazosRestantes(),
+                'cobro_habilitado'  => $tieneFactura,
             ],
         ];
     }
@@ -120,6 +149,7 @@ class PedidoDetalleResource extends JsonResource
             // que el sistema tiene.
             'cliente_desde'     => $this->additional['cliente_desde'] ?? null,
             'pedidos_anteriores' => $this->additional['pedidos_anteriores'] ?? 0,
+
         ];
     }
 
@@ -187,7 +217,7 @@ class PedidoDetalleResource extends JsonResource
         return $titular !== '' && $receptor !== '' && $titular !== $receptor;
     }
 
-    private function armarFacturacion(): ?array
+     private function armarFacturacion(bool $puedeGenerar): ?array
     {
         $facturacion = $this->facturacion;
 
@@ -211,13 +241,23 @@ class PedidoDetalleResource extends JsonResource
                 ? $facturacion->pfa_telefono
                 : $facturacion->pfa_correo,
 
-            'comprobante_emitido' => $this->factura !== null,
+            // Emitida de verdad = ya tiene número fiscal (estados 1 o 2).
+            'comprobante_emitido' => $this->factura !== null
+                && in_array((int) $this->factura->ven_estado, [1, 2], true),
 
-            // Factura emitida a partir de este pedido (null si aun no se emitio).
+            // Emitida de verdad = ya tiene número fiscal (estados 1 o 2).
+                        'comprobante_emitido' => $this->factura !== null
+                && in_array((int) $this->factura->ven_estado, [1, 2], true),
+
+            // Habilitacion del boton [GENERAR FACTURA].
+            'puede_generar' => $puedeGenerar,
+
+            // Factura del pedido: la genera el admin con [GENERAR FACTURA].
             'factura' => $this->factura ? [
                 'ven_id'         => $this->factura->ven_id,
+                'estado'         => (int) $this->factura->ven_estado,  // 1 Emitida, 2 Cobrada, 9 Anulada
                 'numero'         => $this->factura->ven_nrodoc,
-                'fe_estado'      => $this->factura->fe?->vfe_estado,   // 1 Pendiente, 2 Enviada, 3 Rechazada
+                'fe_estado'      => $this->factura->fe?->vfe_estado,
                 'puede_reenviar' => $this->factura->fe?->estaEnviado() === true
                                     && !empty($this->factura->fe->vfe_xml_ruta),
                 'correo_enviado' => $this->factura->fe?->vfe_correo_enviado,

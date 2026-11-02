@@ -35,7 +35,7 @@ export class MisPedidosComponent implements OnInit {
     {
       valor: 'pendiente_pago', etiqueta: 'Pendientes de pago',
       descripcion: 'Pedidos que todavía no pagaste, o con un comprobante rechazado que podés corregir. '
-        + 'Tenés 24 h antes de que la reserva se libere.',
+        + 'Tenés 24 h antes de que la reserva se libere. Al tercer comprobante rechazado el pedido se cancela.',
     },
     {
       valor: 'en_proceso', etiqueta: 'En proceso',

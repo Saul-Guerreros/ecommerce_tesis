@@ -158,16 +158,31 @@
       </app-datos-entrega-card>
     </div>
   </div>
+  
+  <div class="uk-card uk-card-default uk-card-body uk-margin uk-text-center">
+  <label class="uk-flex uk-flex-middle uk-flex-center" style="gap: 8px; cursor: pointer;">
+    <input class="uk-checkbox" type="checkbox"
+           [(ngModel)]="aceptaCondiciones" name="aceptaCondiciones">
+    <span>
+      He leído y acepto las
+      <a href="#" (click)="abrirCondiciones($event)">condiciones de compra</a>
+      y los
+      <a routerLink="/terminos-y-condiciones">Términos y Condiciones</a>
+    </span>
+  </label>
+</div>
 
-  <div class="ck-barra-botones uk-margin-medium-top">
+</div>
+
+
+    <div class="ck-barra-botones uk-margin-medium-top">
     <button type="button" class="uk-button ck-btn-volver" [disabled]="confirmando" (click)="volver()">Volver</button>
     <button type="button" class="uk-button uk-button-primary ck-btn-continuar"
-            [disabled]="confirmando" (click)="confirmar()">
+            [disabled]="confirmando || !aceptaCondiciones" (click)="confirmar()">
       <span *ngIf="!confirmando">Confirmar Pedido</span>
       <span *ngIf="confirmando"><span uk-spinner="ratio: 0.6"></span> Confirmando...</span>
     </button>
   </div>
-</div>
 
 <app-form-dato-fiscal
   [visible]="modalVisible"
@@ -177,3 +192,8 @@
   (visibleChange)="modalVisible = $event"
   (guardado)="onGuardado($event)">
 </app-form-dato-fiscal>
+
+<app-modal-condiciones-compra
+  [visible]="modalCondicionesVisible"
+  (visibleChange)="modalCondicionesVisible = $event">
+</app-modal-condiciones-compra>

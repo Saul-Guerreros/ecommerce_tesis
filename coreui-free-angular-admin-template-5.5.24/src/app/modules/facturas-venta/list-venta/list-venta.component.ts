@@ -10,12 +10,16 @@ import { EstadoOption, FeEstadoOption, Venta } from '../models/venta.model';
 import { VentasService } from '../service/ventas.service';
 import { VerVentaComponent } from '../ver-venta/ver-venta.component';
 
+import { FormNotaCreditoVentaComponent } from '../../notas-credito-venta/form-nota-credito-venta/form-nota-credito-venta.component';
+import { NotaCreditoVenta } from '../../notas-credito-venta/models/nota-credito-venta.model';
+import { NotasCreditoVentaService } from '../../notas-credito-venta/service/notas-credito-venta.service';
+
 @Component({
   selector: 'app-list-venta',
   standalone: true,
   imports: [
     CommonModule, FormsModule, CardModule, TableModule, ButtonModule,
-    BadgeModule, SpinnerModule, FormModule, ModalModule, VerVentaComponent,
+    BadgeModule, SpinnerModule, FormModule, ModalModule, VerVentaComponent,FormNotaCreditoVentaComponent,
   ],
   templateUrl: './list-venta.component.html',
 })
@@ -45,7 +49,16 @@ export class ListVentaComponent implements OnInit {
   // Ids con un reintento de factura electronica en curso (evita doble clic).
   reintentando = new Set<number>();
 
-  constructor(private service: VentasService, private toastr: ToastrService) {}
+  //Miembros para la Nota Crédito Venta
+  notasCredito: NotaCreditoVenta[] = [];
+  ncFormVisible = false;
+  ncVenId: number | null = null;
+  
+
+  constructor(
+    private service: VentasService,
+    private ncService: NotasCreditoVentaService,
+    private toastr: ToastrService) {}
 
   ngOnInit(): void {
     this.cargar();
@@ -108,6 +121,7 @@ export class ListVentaComponent implements OnInit {
         this.ventaSeleccionada = completa;
         this.verModalVisible = true;
         this.cargandoVer = false;
+        this.cargarNotasCredito(completa.ven_id);
       },
       error: () => {
         this.toastr.error('No se pudo cargar el detalle de la factura', 'Error');
@@ -230,7 +244,9 @@ export class ListVentaComponent implements OnInit {
    * solo evita mostrar un boton que siempre fallaria.
    */
   puedeAnular(v: Venta): boolean {
-    return v.ven_estado !== 9 && !v.fe?.bloquea_anulacion;
+    return v.ven_estado !== 9
+      && !v.fe?.bloquea_anulacion
+      && !(v.nc_vigentes && v.nc_vigentes > 0);
   }
 
   colorEstado(estado: number): string {
@@ -247,4 +263,24 @@ export class ListVentaComponent implements OnInit {
   identificacion(v: Venta): string {
     return v.ven_ruc ? `RUC ${v.ven_ruc}` : `CI ${v.ven_ci}`;
   }
+
+    private cargarNotasCredito(venId: number): void {
+    this.ncService.getPorFactura(venId).subscribe({
+      next: (res) => (this.notasCredito = res),
+      error: () => (this.notasCredito = []),
+    });
+  }
+
+  abrirNuevaNotaCredito(v: Venta): void {
+    this.ncVenId = v.ven_id;
+    this.ncFormVisible = true;
+  }
+
+  /** Tras emitir la NC cambia el saldo de la factura: se recarga todo. */
+  notaCreditoGuardada(): void {
+    this.cargar();
+    if (this.ncVenId) this.cargarNotasCredito(this.ncVenId);
+  }
+
 }
+

@@ -3,9 +3,12 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import { PedidoFiltros, PedidosConfig, PedidosPaginados } from '../models/pedido.model';
+
 import {
-  ConfirmarPagoPayload, MotivoRechazo, PedidoDetalle, RechazarPagoPayload,
+  MotivoRechazo, PedidoDetalle, RechazarPagoPayload,
+  RegistrarCobroPayload, ValidarComprobantePayload,
 } from '../models/pedido-detalle.model';
+
 import { environment } from '../../../../environments/environment';
 
 /**
@@ -50,13 +53,37 @@ export class PedidosService {
     return this.http.get<{ motivos_rechazo: MotivoRechazo[] }>(`${this.apiUrl}/gestion/config`);
   }
 
-  confirmarPago(
+  /** Paso 1: el admin da por bueno el comprobante. No mueve dinero. */
+  validarComprobante(
     pedidoId: number,
     pagoId: number,
-    payload: ConfirmarPagoPayload,
+    payload: ValidarComprobantePayload,
   ): Observable<{ message: string; data: PedidoDetalle }> {
     return this.http.post<{ message: string; data: PedidoDetalle }>(
-      `${this.apiUrl}/${pedidoId}/pagos/${pagoId}/confirmar`,
+      `${this.apiUrl}/${pedidoId}/pagos/${pagoId}/comprobante/validar`,
+      payload,
+    );
+  }
+
+  /**
+  * Paso 2: emite la factura del pedido y programa su declaración a la
+  * DNIT. Sin payload: los datos fiscales salen del pedido.
+  */
+  generarFactura(pedidoId: number): Observable<{ message: string; data: PedidoDetalle }> {
+    return this.http.post<{ message: string; data: PedidoDetalle }>(
+      `${this.apiUrl}/${pedidoId}/factura/generar`,
+      {},
+    );
+  }
+
+  /** Paso 3: entra la plata. Se registra contra la factura del pedido. */
+  registrarCobro(
+    pedidoId: number,
+    pagoId: number,
+    payload: RegistrarCobroPayload,
+  ): Observable<{ message: string; data: PedidoDetalle }> {
+    return this.http.post<{ message: string; data: PedidoDetalle }>(
+      `${this.apiUrl}/${pedidoId}/pagos/${pagoId}/cobrar`,
       payload,
     );
   }

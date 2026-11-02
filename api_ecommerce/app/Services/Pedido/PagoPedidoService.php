@@ -204,8 +204,11 @@ class PagoPedidoService
 
                 if ($pago->comprobante) {
                     $pago->comprobante->update([
-                        'pco_archiv' => $rutaNueva,
-                        'pco_verifi' => false,
+                        'pco_archiv'  => $rutaNueva,
+                        'pco_verifi'  => false,
+                        'pco_observ'  => null,
+                        'pco_usuver'  => null,
+                        'pco_fechver' => null,
                     ]);
                 } else {
                     PagoComprobante::create([

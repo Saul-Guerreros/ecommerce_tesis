@@ -31,35 +31,38 @@ use App\Models\Configuracion\Timbrado;
  */
 class NumeracionVentaService
 {
-    /**
-     * Toma el siguiente numero del talonario activo de la sucursal y lo
-     * marca como consumido.
+        /**
+     * Toma el siguiente número del talonario activo de la sucursal para el
+     * tipo de comprobante pedido, y lo marca como consumido.
      *
-     * DEBE invocarse dentro de una transaccion ya abierta: el lock vive
-     * hasta el commit. Si se llamara suelto, el bloqueo se liberaria al
-     * instante y no serviria de nada.
+     * El segundo parámetro existe porque la Nota de Crédito de venta es un
+     * documento fiscal propio con su PROPIO talonario: no comparte
+     * numeración con la factura. uq_tim_activo_punto ya permite un
+     * timbrado activo por (sucursal, tipo, establecimiento, punto), así
+     * que ambos conviven sin chocar.
+     *
+     * DEBE invocarse dentro de una transacción ya abierta: el lock vive
+     * hasta el commit.
      *
      * @return array{timbrado: Timbrado, numero: int}
      *
      * @throws EmisionFacturaException si no hay talonario utilizable
      */
-    public function tomarNumero(int $sucursalId): array
+    public function tomarNumero(int $sucursalId, string $codigoTipo = TipoComprobante::CODIGO_FACTURA): array
     {
-        $tcoId = TipoComprobante::idFactura();
+        $tipo = TipoComprobante::where('tco_codigo', $codigoTipo)
+            ->where('tco_estado', 1)
+            ->first();
 
-        if (!$tcoId) {
+        if (!$tipo) {
             throw new EmisionFacturaException(
-                'No hay un tipo de comprobante "Factura" activo en el sistema. '
+                "No hay un tipo de comprobante activo con el código {$codigoTipo}. "
                 . 'Revisá Configuración → Tipos de comprobante.'
             );
         }
 
-        // uq_tim_activo_punto ya garantiza un solo timbrado activo por
-        // (sucursal, tipo, establecimiento, punto de expedicion). El
-        // orderBy fija un criterio estable para el caso de una sucursal
-        // con mas de un punto habilitado.
         $timbrado = Timbrado::where('tim_sucid', $sucursalId)
-            ->where('tim_tcoid', $tcoId)
+            ->where('tim_tcoid', $tipo->tco_id)
             ->where('tim_estado', 1)
             ->orderBy('tim_puntexp')
             ->lockForUpdate()
@@ -67,8 +70,8 @@ class NumeracionVentaService
 
         if (!$timbrado) {
             throw new EmisionFacturaException(
-                'La sucursal no tiene un timbrado de Factura activo. '
-                . 'Cargalo en Configuración → Timbrados antes de confirmar pagos.'
+                "La sucursal no tiene un timbrado de \"{$tipo->tco_descri}\" activo. "
+                . 'Cargalo en Configuración → Timbrados antes de emitir este comprobante.'
             );
         }
 
@@ -76,7 +79,7 @@ class NumeracionVentaService
         $this->validarRango($timbrado);
 
         // tim_nroact arranca en tim_nroini - 1 (lo garantiza ck_tim_nroact),
-        // asi que el primer numero emitido es exactamente tim_nroini.
+        // así que el primer número emitido es exactamente tim_nroini.
         $numero = $timbrado->tim_nroact + 1;
 
         $timbrado->update(['tim_nroact' => $numero]);

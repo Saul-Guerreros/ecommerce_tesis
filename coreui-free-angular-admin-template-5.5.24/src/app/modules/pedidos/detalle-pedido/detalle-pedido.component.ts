@@ -5,21 +5,20 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import {
   AlertModule, BadgeModule, ButtonModule, CardModule, FormModule,
-  ProgressModule, SpinnerModule, TableModule, TooltipModule,ModalModule,
+  ProgressModule, SpinnerModule, TableModule, TooltipModule, ModalModule,
 } from '@coreui/angular';
 
 import { PagoItem, PedidoDetalle } from '../models/pedido-detalle.model';
 import { PedidosService } from '../service/pedidos.service';
-import { ConfirmarPagoComponent } from '../confirmar-pago/confirmar-pago.component';
+import { ValidarComprobanteComponent } from '../validar-comprobante/validar-comprobante.component';
+import { RealizarCobroComponent } from '../realizar-cobro/realizar-cobro.component';
 import { RechazarPagoComponent } from '../rechazar-pago/rechazar-pago.component';
-
-import { HttpClient } from '@angular/common/http';
 
 /**
  * Pantalla de Gestión del Pedido.
  *
- * Todas las respuestas de confirmar/rechazar/cambiar estado devuelven el
- * pedido completo, así que la pantalla se refresca con ese payload en
+ * Todas las respuestas de validar/cobrar/rechazar/cambiar estado devuelven
+ * el pedido completo, así que la pantalla se refresca con ese payload en
  * lugar de volver a pedir el detalle. Evita un segundo request y, sobre
  * todo, evita que la pantalla quede un instante mostrando datos viejos.
  */
@@ -29,7 +28,8 @@ import { HttpClient } from '@angular/common/http';
   imports: [
     CommonModule, FormsModule, CardModule, TableModule, ButtonModule,
     BadgeModule, SpinnerModule, FormModule, AlertModule, ProgressModule,
-    TooltipModule, ConfirmarPagoComponent, RechazarPagoComponent,ModalModule,
+    TooltipModule, ValidarComprobanteComponent, RealizarCobroComponent,
+    RechazarPagoComponent, ModalModule,
   ],
   templateUrl: './detalle-pedido.component.html',
 })
@@ -42,9 +42,14 @@ export class DetallePedidoComponent implements OnInit {
   notaInterna = '';
 
   // Modales
-  confirmarVisible = false;
+  validarVisible = false;
+  cobrarVisible = false;
   rechazarVisible = false;
   pagoSeleccionado: PagoItem | null = null;
+
+  // Generación de factura
+  generandoFactura = false;
+
   // Reenvío de factura
   reenvioVisible = false;
   reenviando = false;
@@ -55,13 +60,12 @@ export class DetallePedidoComponent implements OnInit {
   readonly whatsappDisponible = true;
   descargandoPdf = false;
 
-constructor(
-  private service: PedidosService,
-  private route: ActivatedRoute,
-  private router: Router,
-  private toastr: ToastrService,
-
-) {}
+  constructor(
+    private service: PedidosService,
+    private route: ActivatedRoute,
+    private router: Router,
+    private toastr: ToastrService,
+  ) {}
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -103,9 +107,14 @@ constructor(
 
   // ---------- Pagos ----------
 
-  abrirConfirmar(pago: PagoItem): void {
+  abrirValidar(pago: PagoItem): void {
     this.pagoSeleccionado = pago;
-    this.confirmarVisible = true;
+    this.validarVisible = true;
+  }
+
+  abrirCobrar(pago: PagoItem): void {
+    this.pagoSeleccionado = pago;
+    this.cobrarVisible = true;
   }
 
   abrirRechazar(pago: PagoItem): void {
@@ -119,17 +128,83 @@ constructor(
   }
 
   /**
-   * Un pago confirmado no se vuelve a tocar desde acá: revertirlo exige
-   * devolver stock y, si hubo factura, una nota de crédito.
+   * Las reglas de validar y cobrar las calcula la API (puede_validar /
+   * puede_cobrar) y acá sólo se les suma el estado del pedido. La pantalla
+   * repite la regla, no la define: si alguien llama la API por fuera del
+   * panel, la que manda es la del service.
+   *
+   * Un pago cobrado no se vuelve a tocar desde acá: revertirlo exige
+   * devolver stock y, como la factura ya está declarada, una nota de
+   * crédito.
    */
-  puedeValidar(pago: PagoItem): boolean {
-    if (!this.pedido) return false;
-    if (this.pedido.estado_pedido.codigo === 'CANCELADO') return false;
-    return pago.estado.codigo !== 'CONFIRMADO';
+  private pedidoOperable(): boolean {
+    return !!this.pedido && this.pedido.estado_pedido.codigo !== 'CANCELADO';
   }
 
+  puedeValidar(pago: PagoItem): boolean {
+    return this.pedidoOperable() && pago.puede_validar;
+  }
 
-    // ---------- Reenvío de factura ----------
+  /**
+   * El cobro exige, además, que la factura exista: se aplica contra el
+   * documento fiscal, no contra el pedido.
+   */
+  puedeCobrar(pago: PagoItem): boolean {
+    return this.pedidoOperable()
+      && pago.puede_cobrar
+      && !!this.pedido?.pago.cobro_habilitado;
+  }
+
+  // ---------- Factura ----------
+
+  /**
+   * Por qué [GENERAR FACTURA] está deshabilitado. La API decide con
+   * VentaService::validarHabilitacion(); acá sólo se explica, para que el
+   * admin no quede mirando un botón gris sin saber qué le falta.
+   */
+  motivoFactura(): string {
+    const pago = this.pedido?.pago;
+    if (!pago || this.pedido?.facturacion?.puede_generar) return '';
+
+    if (pago.comprobantes_pendientes > 0) {
+      return pago.comprobantes_pendientes === 1
+        ? 'Queda un comprobante sin validar.'
+        : `Quedan ${pago.comprobantes_pendientes} comprobantes sin validar.`;
+    }
+
+    return 'Este pedido tiene un pago en efectivo: la factura se genera cuando el pedido está LISTO.';
+  }
+
+  generarFactura(): void {
+    if (!this.pedido || this.generandoFactura) return;
+
+    this.generandoFactura = true;
+
+    this.service.generarFactura(this.pedido.ped_id).subscribe({
+      next: (res) => {
+        this.toastr.success(res.message, 'Factura generada');
+        this.aplicar(res.data);
+        this.generandoFactura = false;
+      },
+      error: (err) => {
+        this.generandoFactura = false;
+        const mensaje =
+          err?.error?.errors?.factura?.[0] ??
+          err?.error?.message ??
+          'No se pudo generar la factura';
+        this.toastr.error(mensaje, 'Error');
+      },
+    });
+  }
+
+  /** Rechazar es la otra salida de la tarjeta Comprobante. */
+  puedeRechazar(pago: PagoItem): boolean {
+    if (!this.pedidoOperable()) return false;
+    if (!pago.metodo.requcom) return false;
+    return pago.estado.codigo !== 'CONFIRMADO' && pago.estado.codigo !== 'RECHAZADO';
+  }
+
+  // ---------- Reenvío de factura ----------
 
   /** El canal que eligió el cliente en el checkout. */
   get canalDelCliente(): 'CORREO' | 'WHATSAPP' {
@@ -173,8 +248,7 @@ constructor(
       });
   }
 
-
-    // ---------- Envío asistido por WhatsApp ----------
+  // ---------- Envío asistido por WhatsApp ----------
 
   /**
    * Celular paraguayo en formato internacional y sin "+", que es lo que exige wa.me.
@@ -245,7 +319,6 @@ constructor(
       },
     });
   }
-    
 
   // ---------- Estado del pedido ----------
 
@@ -284,22 +357,22 @@ constructor(
 
   colorEstadoPago(codigo: string | null | undefined): string {
     switch (codigo) {
-      case 'CONFIRMADO': return 'success';
-      case 'PARCIAL':    return 'info';
-      case 'RECHAZADO':     return 'danger';
+      case 'CONFIRMADO':     return 'success';
+      case 'PARCIAL':        return 'info';
+      case 'RECHAZADO':      return 'danger';
       case 'PAGO_VERIFICAR': return 'warning';
-      default:           return 'secondary';
+      default:               return 'secondary';
     }
   }
 
   colorEstadoPedido(codigo: string | null | undefined): string {
     switch (codigo) {
-      case 'ENTREGADO':      return 'success';
-      case 'LISTO':          return 'primary';
-      case 'EN_PREPARACION': return 'info';
-      case 'CANCELADO':      return 'danger';
+      case 'ENTREGADO':        return 'success';
+      case 'LISTO':            return 'primary';
+      case 'EN_PREPARACION':   return 'info';
+      case 'CANCELADO':        return 'danger';
       case 'PENDIENTE_PEDIDO': return 'warning';
-      default:               return 'secondary';
+      default:                 return 'secondary';
     }
   }
 
@@ -308,33 +381,32 @@ constructor(
   }
 
     /**
-     * Ver y descargar usan la misma descarga por blob: la ruta del
-     * comprobante exige token JWT, así que un <a href> directo daría 401.
-     */
-    verComprobante(pago: PagoItem): void {
+   * Ver y descargar usan la misma descarga por blob: la ruta del
+   * comprobante exige token JWT, así que un <a href> directo daría 401.
+   */
+  verComprobante(pago: PagoItem): void {
     this.obtenerComprobante(pago, (blobUrl) => {
-        window.open(blobUrl, '_blank');
-        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+      window.open(blobUrl, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
     });
-    }
+  }
 
-    descargarComprobante(pago: PagoItem): void {
+  descargarComprobante(pago: PagoItem): void {
     this.obtenerComprobante(pago, (blobUrl) => {
-        const enlace = document.createElement('a');
-        enlace.href = blobUrl;
-        enlace.download = pago.comprobante?.archivo ?? 'comprobante';
-        enlace.click();
-        window.URL.revokeObjectURL(blobUrl);
+      const enlace = document.createElement('a');
+      enlace.href = blobUrl;
+      enlace.download = pago.comprobante?.archivo ?? 'comprobante';
+      enlace.click();
+      window.URL.revokeObjectURL(blobUrl);
     });
-    }
+  }
 
-    private obtenerComprobante(pago: PagoItem, accion: (blobUrl: string) => void): void {
+  private obtenerComprobante(pago: PagoItem, accion: (blobUrl: string) => void): void {
     if (!this.pedido) return;
 
     this.service.comprobante(this.pedido.ped_id, pago.ppa_id).subscribe({
-        next: (blob) => accion(window.URL.createObjectURL(blob)),
-        error: () => this.toastr.error('No se pudo obtener el comprobante', 'Error'),
+      next: (blob) => accion(window.URL.createObjectURL(blob)),
+      error: () => this.toastr.error('No se pudo obtener el comprobante', 'Error'),
     });
-    }
-
+  }
 }

@@ -1,0 +1,229 @@
+<c-modal size="xl" [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>
+      Emitir Nota de Crédito
+      <span class="text-muted fs-6" *ngIf="factura"> — Factura {{ factura.ven_nrodoc }}</span>
+    </h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <!-- ============ PASO 1: elegir la factura ============ -->
+        <!-- ============ PASO 1: elegir la factura ============ -->
+    <div *ngIf="paso === 'factura'">
+      <div class="mb-3">
+        <label class="form-label">Buscar la factura a corregir</label>
+        <input cFormControl placeholder="N° de factura, cliente o RUC/CI..."
+               [(ngModel)]="buscarFactura" (ngModelChange)="onBuscarChange()" />
+      </div>
+
+      <div class="text-center py-3" *ngIf="buscandoFacturas">
+        <c-spinner color="primary"></c-spinner>
+      </div>
+
+      <!-- DESDE ACÁ ES LO NUEVO (reemplaza la tabla anterior) -->
+      <div class="form-text mb-2" *ngIf="!buscandoFacturas">Haga clic en una factura para seleccionarla.</div>
+
+      <table cTable small hover *ngIf="!buscandoFacturas">
+        <thead>
+          <tr>
+            <th>Factura</th><th>Cliente</th><th>Fecha</th><th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let v of facturas" style="cursor: pointer" tabindex="0"
+              (click)="elegirFactura(v)" (keydown.enter)="elegirFactura(v)">
+            <td>{{ v.ven_nrodoc }}</td>
+            <td>{{ v.ven_razonsocial }}</td>
+            <td>{{ v.ven_fchaem }}</td>
+            <td class="text-end">{{ v.ven_total | number:'1.0-2' }}</td>
+          </tr>
+          <tr *ngIf="facturas.length === 0">
+            <td colspan="4" class="text-center text-muted">No hay facturas que coincidan</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ============ PASO 2: motivo, fecha y detalle ============ -->
+    <div class="text-center py-4" *ngIf="paso === 'detalle' && cargandoConfig">
+      <c-spinner color="primary"></c-spinner>
+    </div>
+
+    <form [formGroup]="form" *ngIf="paso === 'detalle' && !cargandoConfig && factura">
+      <!-- Factura asociada: el documento que la NC corrige -->
+      <fieldset class="border rounded p-3 mb-3">
+        <legend class="float-none w-auto px-2 fs-6 text-muted">Documento asociado</legend>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Factura</label>
+            <input cFormControl [value]="factura.ven_nrodoc" readonly />
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">Cliente</label>
+            <input cFormControl [value]="factura.ven_razonsocial" readonly />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Total facturado</label>
+            <input cFormControl [value]="factura.ven_total | number:'1.0-2'" readonly />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Saldo acreditable</label>
+            <input cFormControl [value]="saldoFactura | number:'1.0-2'" readonly />
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-5">
+          <label class="form-label">Motivo <span class="text-danger">*</span></label>
+          <select cSelect formControlName="ncv_mncid" (change)="onMotivoChange()"
+                  [class.is-invalid]="campoInvalido('ncv_mncid')">
+            <option [ngValue]="null">Seleccione un motivo</option>
+            <option *ngFor="let m of motivos" [ngValue]="m.mnc_id">
+              {{ m.mnc_codigo }} — {{ m.mnc_descri }}
+            </option>
+          </select>
+          <div class="invalid-feedback d-block" *ngIf="errorMotivo">{{ errorMotivo }}</div>
+          <div class="form-text" *ngIf="motivoSeleccionado">
+            <c-badge [color]="afectaStock ? 'warning' : 'info'" [class.text-dark]="afectaStock">
+              {{ afectaStock ? 'Devolución: la mercadería vuelve al cliente → stock'
+                             : 'Ajuste de importe: no mueve stock' }}
+            </c-badge>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Fecha <span class="text-danger">*</span></label>
+          <input cFormControl type="date" formControlName="ncv_fecha"
+                 [min]="fechaMinima" [max]="hoy"
+                 [class.is-invalid]="campoInvalido('ncv_fecha')" />
+          <div class="invalid-feedback d-block" *ngIf="errorFecha">{{ errorFecha }}</div>
+        </div>
+
+        <!-- Destino de la mercadería: solo en motivos que la mueven -->
+        <div class="col-md-4" *ngIf="afectaStock">
+          <label class="form-label">Destino de la mercadería <span class="text-danger">*</span></label>
+          <select cSelect formControlName="ncv_destino" [class.is-invalid]="campoInvalido('ncv_destino')">
+            <option [ngValue]="null">Seleccione el destino</option>
+            <option *ngFor="let d of depositos" [ngValue]="d.dpo_id">
+              {{ d.dpo_nombre }}{{ d.dpo_princi === 1 ? ' (principal)' : '' }}
+            </option>
+            <option [ngValue]="0">No reingresar al stock (baja / merma)</option>
+          </select>
+          <div class="invalid-feedback d-block" *ngIf="errorDestino">{{ errorDestino }}</div>
+          <div class="form-text" *ngIf="motivoSeleccionado?.mnc_destex === 1">
+            Producto defectuoso: elija un depósito aparte del stock vendible, o no reingresar.
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">
+          Observación <span class="text-danger" *ngIf="exigeObs">*</span>
+        </label>
+        <input cFormControl formControlName="ncv_obs" maxlength="255"
+               [class.is-invalid]="campoInvalido('ncv_obs')"
+               [placeholder]="exigeObs ? 'Obligatoria: explique el caso' : 'Opcional'" />
+        <div class="invalid-feedback d-block" *ngIf="errorObs">{{ errorObs }}</div>
+      </div>
+
+      <!-- El número y el timbrado no se piden: los asigna el sistema -->
+      <div class="alert alert-light border small">
+        El <strong>número</strong> y el <strong>timbrado</strong> de la nota de crédito los asigna
+        el sistema desde el talonario activo de Nota de Crédito de la sucursal, igual que con la factura.
+      </div>
+
+      <div class="alert alert-warning py-2 small" *ngIf="!detalleHabilitado">
+        Seleccione primero el <strong>motivo</strong>: define si el importe de cada ítem es
+        fijo (devolución) o editable (descuento / error de precio).
+      </div>
+
+      <fieldset class="border-0 p-0 m-0" style="min-width: 0"
+                [disabled]="!detalleHabilitado" [class.opacity-50]="!detalleHabilitado">
+        <table cTable small striped>
+          <thead>
+            <tr>
+              <th style="width: 40px"></th>
+              <th>Ítem</th>
+              <th class="text-center">IVA</th>
+              <th class="text-end">Precio facturado</th>
+              <th class="text-end">Saldo acreditable</th>
+              <th class="text-end" style="width: 140px">Cantidad</th>
+              <th class="text-end" style="width: 160px">Importe unitario</th>
+              <th class="text-end">Subtotal</th>
+              <th class="text-end">IVA contenido</th>
+            </tr>
+          </thead>
+          <tbody formArrayName="detalle">
+            <tr *ngFor="let fila of detalle.controls; let i = index" [formGroupName]="i">
+              <td class="text-center">
+                <input class="form-check-input" type="checkbox" formControlName="incluir"
+                       (change)="onIncluirChange(fila)" />
+              </td>
+              <td>
+                <div>{{ fila.value.vnd_descripcion }}</div>
+                <small class="text-muted">{{ fila.value.vnd_codigo }}</small>
+              </td>
+              <td class="text-center">{{ fila.value.vnd_tasa }}%</td>
+              <td class="text-end">{{ fila.value.vnd_precio | number:'1.0-2' }}</td>
+              <td class="text-end">{{ fila.value.saldo_acreditable | number:'1.0-4' }}</td>
+              <td>
+                <input cFormControl type="number" class="text-end" formControlName="cantidad"
+                       [attr.min]="fila.value.admite_decimales ? 0 : 1"
+                       [attr.step]="fila.value.admite_decimales ? 'any' : 1"
+                       [placeholder]="'Máx. ' + (fila.value.saldo_acreditable | number:'1.0-4')"
+                       (input)="onCantidadChange(fila)" />
+                <small class="text-danger d-block" *ngIf="fila.value.aviso">{{ fila.value.aviso }}</small>
+              </td>
+              <td>
+                <input cFormControl type="number" class="text-end" formControlName="precio"
+                       min="0" step="any"
+                       [placeholder]="'Máx. ' + (fila.value.vnd_precio | number:'1.0-2')"
+                       (input)="onPrecioChange(fila)" />
+                <small class="text-danger d-block" *ngIf="fila.value.avisoPrecio">{{ fila.value.avisoPrecio }}</small>
+                <small class="text-muted d-block"
+                       *ngIf="fila.value.incluir && tieneDescuentoPrevio(fila.value)">
+                  Neto de descuentos previos
+                </small>
+              </td>
+              <td class="text-end">{{ fila.value.importe | number:'1.0-2' }}</td>
+              <td class="text-end">{{ ivaLinea(fila.getRawValue()) | number:'1.0-2' }}</td>
+            </tr>
+            <tr *ngIf="detalle.length === 0">
+              <td colspan="9" class="text-center text-muted fst-italic">
+                Esta factura ya está acreditada por completo
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </fieldset>
+
+      <div class="row justify-content-end mt-3">
+        <div class="col-md-4">
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">IVA contenido</span>
+            <span>{{ totalIva | number:'1.0-2' }}</span>
+          </div>
+          <div class="d-flex justify-content-between fw-bold fs-5 border-top pt-2">
+            <span>Total a acreditar</span>
+            <span>{{ totalGravado | number:'1.0-2' }}</span>
+          </div>
+        </div>
+      </div>
+    </form>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" type="button" (click)="cerrar()">Cancelar</button>
+    <button cButton color="secondary" variant="outline" type="button"
+            *ngIf="paso === 'detalle' && !venId" (click)="volverAFacturas()">
+      Cambiar factura
+    </button>
+    <button cButton color="primary" class="text-white" type="button"
+            *ngIf="paso === 'detalle'"
+            [disabled]="guardando || cargandoConfig || detalle.length === 0 || !detalleHabilitado"
+            (click)="guardar()">
+      {{ guardando ? 'Emitiendo...' : 'Emitir nota de crédito' }}
+    </button>
+  </c-modal-footer>
+</c-modal>

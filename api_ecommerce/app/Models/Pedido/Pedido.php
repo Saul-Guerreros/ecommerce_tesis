@@ -17,6 +17,15 @@ class Pedido extends Model
     const CREATED_AT = 'ped_creado';
     const UPDATED_AT = 'ped_actual';
 
+        /**
+     * Rechazos de comprobante que tolera un pedido antes de cancelarse.
+     *
+     * Tres intentos es el limite entre darle margen al cliente que se
+     * equivoco de archivo y dejar stock reservado indefinidamente por
+     * alguien que nunca va a pagar.
+     */
+    public const MAX_RECHAZOS_PAGO = 3;
+
     protected $fillable = [
         'ped_numero', 'ped_cliid', 'ped_subtot', 'ped_impues', 'ped_cosenv', 'ped_total',
         'ped_tenid', 'ped_sucid', 'ped_mpaid', 'ped_pagdiv', 'ped_estid', 'ped_epaid',
@@ -29,6 +38,7 @@ class Pedido extends Model
         'ped_cosenv' => 'decimal:2',
         'ped_total'  => 'decimal:2',
         'ped_pagdiv' => 'boolean',
+        'ped_rechaz' => 'integer',
         'ped_vence'  => 'datetime',
         'ped_vencret' => 'datetime',
         'ped_creado' => 'datetime',
@@ -126,6 +136,12 @@ class Pedido extends Model
         return $this->ped_vencret !== null && $this->ped_vencret->isPast();
     }
 
+    /** Intentos que le quedan al cliente antes de que el pedido se cancele. */
+    public function rechazosRestantes(): int
+    {
+        return max(0, self::MAX_RECHAZOS_PAGO - (int) $this->ped_rechaz);
+    }
+
     public function tienePagoConfirmado(): bool
     {
         return $this->pagos()
@@ -212,10 +228,10 @@ class Pedido extends Model
         return $this->hasOne(PedidoFacturacion::class, 'pfa_pedid', 'ped_id');
     }
     
-        /** Factura de venta emitida a partir de este pedido (null hasta que se cobre o entregue). */
+    /** Factura VIGENTE de este pedido (null hasta que el admin la genere). */
     public function factura(): HasOne
     {
-        return $this->hasOne(\App\Models\Venta\VentaCab::class, 'ven_pedid', 'ped_id');
+        return $this->hasOne(\App\Models\Venta\VentaCab::class, 'ven_pedid', 'ped_id')->vigente();
     }
 
     public function historial(): HasMany

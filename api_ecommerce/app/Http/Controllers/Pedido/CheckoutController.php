@@ -18,6 +18,8 @@ use App\Services\Pedido\CheckoutResumenService;
 use App\Services\Pedido\PedidoService;
 use Illuminate\Http\JsonResponse;
 
+use App\Http\Requests\Pedido\CheckoutConfirmarRequest;
+
 /**
  * Checkout de la tienda web, lado cliente.
  *
@@ -118,7 +120,7 @@ class CheckoutController extends Controller
      * Devuelve ped_vence para que la pantalla de pago pueda mostrar el plazo
      * ("vence en 24 h") sin tener que calcularlo por su cuenta.
      */
-    public function confirmar(): JsonResponse
+  public function confirmar(CheckoutConfirmarRequest $request): JsonResponse
     {
         $usuario = $this->clienteAutenticado();
         $pedido  = $this->servicioPedido->confirmar($usuario);

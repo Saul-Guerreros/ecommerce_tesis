@@ -1,0 +1,28 @@
+<div class="uk-modal" [class.uk-open]="visible" [style.display]="visible ? 'block' : 'none'">
+  <div class="uk-modal-dialog uk-modal-body">
+    <button class="uk-modal-close-default" type="button" uk-close (click)="cerrar()"></button>
+    <h3 class="uk-modal-title">{{ titulo }}</h3>
+
+    <div class="mcc-cuerpo uk-overflow-auto">
+      <div *ngIf="cargando" class="uk-text-center uk-padding-small"><span uk-spinner></span></div>
+
+      <p *ngIf="error && !cargando" class="uk-text-danger">
+        No pudimos cargar el contenido.
+        <button type="button" class="uk-button uk-button-link" (click)="cargar()">Reintentar</button>
+      </p>
+
+      <div *ngIf="!cargando && !error" class="tm-legal tm-legal-modal">
+        <div class="tm-contenido-quill" [innerHTML]="contenido"></div>
+      </div>
+    </div>
+
+    <p class="uk-text-small uk-margin-small-top uk-margin-remove-bottom">
+      Este es un resumen. El documento completo está en nuestros
+      <a routerLink="/terminos-y-condiciones" target="_blank" rel="noopener">Términos y Condiciones</a>.
+    </p>
+
+    <div class="uk-text-right uk-margin-top">
+      <button type="button" class="uk-button uk-button-primary" (click)="cerrar()">Entendido</button>
+    </div>
+  </div>
+</div>

@@ -258,7 +258,103 @@
         </c-card-footer>
       </c-card>
 
-      <!-- ====== 3.2 DATOS DE FACTURACIÓN ====== -->
+            <!-- ====== 3.2 COMPROBANTE ====== -->
+      <c-card class="mb-3">
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <strong>COMPROBANTE</strong>
+          <span class="small text-muted">
+            {{ pedido.pago.comprobantes_pendientes === 0
+                ? 'Todos validados'
+                : pedido.pago.comprobantes_pendientes + ' sin validar' }}
+          </span>
+        </c-card-header>
+
+        <c-card-body>
+          <div class="border rounded p-3 mb-3" *ngFor="let pago of pedido.pago.items">
+
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div>
+                <div class="small text-muted" *ngIf="pedido.pago.dividido">PAGO {{ pago.orden }}</div>
+                <div class="fw-semibold">{{ pago.metodo.descri }}</div>
+              </div>
+              <div class="text-end small">
+                Monto asignado: <strong>Gs. {{ formatoGs(pago.monto_asignado) }}</strong>
+              </div>
+            </div>
+
+            <!-- Contra entrega: no hay nada que validar acá. -->
+            <div class="small text-muted" *ngIf="!pago.metodo.requcom">
+              No aplica: contra entrega.
+            </div>
+
+            <ng-container *ngIf="pago.metodo.requcom">
+              <div class="small mb-2" *ngIf="pago.comprobante as comp">
+                <span class="text-muted">Archivo:</span>
+                <span class="ms-1 text-break">{{ comp.archivo }}</span>
+                <div class="text-muted" *ngIf="comp.subido">Subido: {{ comp.subido }}</div>
+
+                                <div class="mt-2" *ngIf="comp.validado">
+                  <c-badge color="success">Validado</c-badge>
+                  <span class="ms-2 text-muted" *ngIf="comp.validacion as val">
+                    {{ val.por }} · {{ val.fecha }}
+                  </span>
+                  <div class="text-muted mt-1" *ngIf="comp.validacion?.observacion">
+                    Observación: {{ comp.validacion?.observacion }}
+                  </div>
+
+                  <!-- Recién validado: el comprobante ya no se revisa en el modal,
+                       pero tiene que seguir consultable (auditoría, reclamos). -->
+                  <div class="d-flex flex-wrap gap-2 mt-2">
+                    <button type="button" cButton color="secondary" variant="outline" size="sm"
+                            (click)="verComprobante(pago)">Ver comprobante</button>
+                    <button type="button" cButton color="secondary" variant="outline" size="sm"
+                            (click)="descargarComprobante(pago)">Descargar comprobante</button>
+                  </div>
+                </div>
+
+                <div class="mt-2" *ngIf="!comp.validado && !pago.rechazo">
+                  <c-badge color="warning">Sin validar</c-badge>
+                </div>
+              </div>
+
+              <div class="small text-muted mb-2" *ngIf="!pago.comprobante">
+                Sin comprobante cargado.
+              </div>
+
+              <!-- ===== RECHAZADO ===== -->
+              <div *ngIf="pago.rechazo as rech">
+                <div class="small"><span class="text-muted">Motivo:</span> {{ rech.detalle || rech.motivo }}</div>
+                <div class="small mt-2">
+                  <span *ngIf="rech.faltante">
+                    Esperando que el cliente suba un nuevo comprobante completando lo faltante
+                    (Gs. {{ formatoGs(rech.faltante) }}).
+                  </span>
+                  <span *ngIf="!rech.faltante">
+                    Esperando que el cliente suba un nuevo comprobante para esta operación.
+                  </span>
+                </div>
+              </div>
+
+              <div class="text-end mt-3" *ngIf="puedeValidar(pago) || puedeRechazar(pago)">
+                <button cButton color="danger" size="sm" class="me-2 text-white"
+                        *ngIf="puedeRechazar(pago)"
+                        (click)="abrirRechazar(pago)">Rechazar pago</button>
+                <button cButton color="success" size="sm" class="text-white"
+                        *ngIf="puedeValidar(pago)"
+                        (click)="abrirValidar(pago)">Validar pago</button>
+              </div>
+            </ng-container>
+          </div>
+
+          <c-alert color="info" class="py-2 small mb-0"
+                   *ngIf="pedido.pago.comprobantes_pendientes > 0">
+            La factura no se emite hasta que todos los comprobantes estén validados:
+            se declara a la DNIT con los montos que el cliente asignó a cada medio de pago.
+          </c-alert>
+        </c-card-body>
+      </c-card>
+
+      <!-- ====== 3.3 DATOS DE FACTURACIÓN ====== -->
       <c-card class="mb-3" *ngIf="pedido.facturacion as fac">
         <c-card-header>
           <strong>DATOS DE FACTURACIÓN</strong>
@@ -315,29 +411,46 @@
             </div>
           </div>
 
+          <c-alert color="warning" class="py-2 small mt-3 mb-0"
+                   *ngIf="!fac.factura && !fac.puede_generar">
+            {{ motivoFactura() }}
+          </c-alert>
+
         </c-card-body>
 
-        <c-card-footer class="d-flex justify-content-between">
-          
-          <div>
+                <c-card-footer class="d-flex justify-content-between flex-wrap gap-2">
+
+          <div class="d-flex flex-wrap gap-2">
+            <!-- Acto fiscal: una vez generada, la factura se declara a la
+                 DNIT y sólo se corrige con nota de crédito. -->
+            <button cButton color="success" size="sm" class="text-white"
+                    *ngIf="!fac.factura"
+                    [disabled]="!fac.puede_generar || generandoFactura"
+                    [title]="motivoFactura()"
+                    (click)="generarFactura()">
+              <c-spinner size="sm" *ngIf="generandoFactura" class="me-1"></c-spinner>
+              GENERAR FACTURA
+            </button>
+
             <button cButton color="primary" variant="outline" size="sm"
                     (click)="pendiente('Ver factura')">Ver factura</button>
-            <button cButton color="primary" variant="outline" size="sm" class="ms-2"
+            <button cButton color="primary" variant="outline" size="sm"
                     *ngIf="fac.factura?.puede_reenviar" (click)="abrirReenvio()">
               Reenviar factura
             </button>
           </div>
 
-          <div>
-            <button cButton color="secondary" variant="outline" size="sm" class="me-2"
+          <div class="d-flex flex-wrap gap-2">
+            <button cButton color="secondary" variant="outline" size="sm"
                     (click)="pendiente('Editar datos')">Editar datos</button>
             <button cButton color="secondary" variant="outline" size="sm"
                     (click)="pendiente('Guardar cambios')">Guardar cambios</button>
           </div>
         </c-card-footer>
+
       </c-card>
 
-      <!-- ====== 3.3 PAGO / PAGOS ====== -->
+      <!-- ====== 3.4 PAGO / PAGOS ====== -->
       <c-card class="mb-3">
         <c-card-header class="d-flex justify-content-between align-items-center">
           <strong>{{ pedido.pago.dividido ? 'PAGOS' : 'PAGO' }}</strong>
@@ -369,7 +482,7 @@
             <div class="text-end small text-muted">{{ pedido.pago.porcentaje }}%</div>
           </div>
 
-          <!-- ===== Tarjeta por pago ===== -->
+                   <!-- ===== Tarjeta por pago ===== -->
           <div class="border rounded p-3 mb-3" *ngFor="let pago of pedido.pago.items">
 
             <div class="d-flex justify-content-between align-items-start mb-2">
@@ -390,82 +503,81 @@
 
             <hr class="my-2" />
 
-           <!-- Comprobante -->
-            <div class="small mb-2" *ngIf="pago.comprobante as comp">
-            <span class="text-muted">Comprobante:</span>
-            <span class="ms-1">{{ comp.archivo }}</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary ms-2 py-0"
-                    (click)="verComprobante(pago)">Ver</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary ms-1 py-0"
-                    (click)="descargarComprobante(pago)">Descargar</button>
-            <div class="text-muted" *ngIf="comp.subido">Subido: {{ comp.subido }}</div>
-            </div>
-
-            <div class="small text-muted mb-2" *ngIf="!pago.comprobante && pago.metodo.requcom">
-              Sin comprobante cargado.
-            </div>
-
-            <!-- ===== RECHAZADO ===== -->
-            <div *ngIf="pago.rechazo as rech">
-              <div class="small"><span class="text-muted">Motivo:</span> {{ rech.detalle || rech.motivo }}</div>
-              <div class="small text-muted mt-1" *ngIf="pago.verificacion as ver">
-                Rechazado por: {{ ver.por }} · {{ ver.fecha }}
+            <!-- ===== COBRO REGISTRADO ===== -->
+            <div class="row g-2 small" *ngIf="pago.cobro as cob">
+              <div class="col-md-6">
+                <span class="text-muted">Monto cobrado:</span>
+                <span class="ms-1 fw-semibold">Gs. {{ formatoGs(cob.monto) }}</span>
               </div>
-              <div class="small mt-2">
-                <span *ngIf="rech.faltante">
-                  Esperando que el cliente suba un nuevo comprobante completando lo faltante
-                  (Gs. {{ formatoGs(rech.faltante) }}).
-                </span>
-                <span *ngIf="!rech.faltante">
-                  Esperando que el cliente suba un nuevo comprobante para esta operación.
-                </span>
-              </div>
-            </div>
-
-            <!-- ===== DATOS DE LA VERIFICACIÓN ===== -->
-            <div class="row g-2 small" *ngIf="!pago.rechazo">
               <div class="col-md-6">
                 <span class="text-muted">N° transacción:</span>
-                <span class="ms-1">{{ pago.verificacion?.nro_transaccion || '—' }}</span>
+                <span class="ms-1">{{ cob.nro_transaccion || '—' }}</span>
               </div>
               <div class="col-md-6">
                 <span class="text-muted">Banco / Billetera:</span>
-                <span class="ms-1">{{ pago.verificacion?.banco || '—' }}</span>
+                <span class="ms-1">{{ cob.banco || '—' }}</span>
               </div>
               <div class="col-md-6">
-                <span class="text-muted">Fecha del pago:</span>
-                <span class="ms-1">{{ pago.verificacion?.fecha_pago || '—' }}</span>
+                <span class="text-muted">Fecha del cobro:</span>
+                <span class="ms-1">{{ cob.fecha || '—' }}</span>
+              </div>
+              <div class="col-12" *ngIf="cob.por">
+                <span class="text-muted">Cobrado por:</span>
+                <span class="ms-1">{{ cob.por }} · {{ cob.registrado }}</span>
+              </div>
+              <div class="col-12" *ngIf="cob.observacion">
+                <span class="text-muted">Observación:</span>
+                <span class="ms-1">{{ cob.observacion }}</span>
+              </div>
+            </div>
+
+            <!-- ===== PEDIDOS DEL FLUJO ANTERIOR ===== -->
+            <div class="row g-2 small" *ngIf="!pago.cobro && pago.verificacion as ver">
+              <div class="col-12 text-muted mb-1">
+                Verificación registrada antes del ciclo factura → cobro.
               </div>
               <div class="col-md-6">
                 <span class="text-muted">Monto verificado:</span>
                 <span class="ms-1">
-                  {{ pago.verificacion?.monto_verificado
-                      ? 'Gs. ' + formatoGs(pago.verificacion!.monto_verificado!)
-                      : '—' }}
+                  {{ ver.monto_verificado ? 'Gs. ' + formatoGs(ver.monto_verificado) : '—' }}
                 </span>
               </div>
-
-              <div class="col-12" *ngIf="pago.verificacion?.por">
-                <span class="text-muted">Verificado por:</span>
-                <span class="ms-1">{{ pago.verificacion?.por }} · {{ pago.verificacion?.fecha }}</span>
+              <div class="col-md-6">
+                <span class="text-muted">N° transacción:</span>
+                <span class="ms-1">{{ ver.nro_transaccion || '—' }}</span>
               </div>
-
-              <div class="col-12" *ngIf="pago.observacion">
-                <span class="text-muted">Observación:</span>
-                <span class="ms-1">{{ pago.observacion }}</span>
+              <div class="col-12" *ngIf="ver.por">
+                <span class="text-muted">Verificado por:</span>
+                <span class="ms-1">{{ ver.por }} · {{ ver.fecha }}</span>
               </div>
             </div>
 
-            <div class="text-end mt-3" *ngIf="puedeValidar(pago)">
+            <!-- ===== SIN COBRAR ===== -->
+            <div class="small text-muted" *ngIf="!pago.cobro && !pago.verificacion">
+              <span *ngIf="pago.metodo.requcom && !pago.comprobante?.validado">
+                El cobro se habilita cuando el comprobante esté validado.
+              </span>
+              <span *ngIf="(!pago.metodo.requcom || pago.comprobante?.validado)
+                            && !pedido.pago.cobro_habilitado">
+                Falta generar la factura: el cobro se registra contra ella.
+              </span>
+              <span *ngIf="(!pago.metodo.requcom || pago.comprobante?.validado)
+                            && pedido.pago.cobro_habilitado">
+                Sin cobro registrado.
+              </span>
+            </div>
+
+            <div class="text-end mt-3" *ngIf="puedeCobrar(pago)">
               <button cButton color="success" size="sm" class="text-white"
-                      (click)="abrirConfirmar(pago)">Validar pago</button>
+                      (click)="abrirCobrar(pago)">Realizar cobro</button>
             </div>
           </div>
 
           <c-alert color="info" class="py-2 small mb-0" *ngIf="pedido.pago.dividido">
-            El stock se descuenta y la factura se emite cuando los
-            {{ pedido.pago.cantidad }} pagos estén confirmados.
+            El stock se descuenta y el pedido avanza cuando los
+            {{ pedido.pago.cantidad }} pagos estén cobrados.
           </c-alert>
+
         </c-card-body>
       </c-card>
     </div>
@@ -473,11 +585,6 @@
 </div>
 
 <!-- ====== MODALES ====== -->
-<app-confirmar-pago
-  [visible]="confirmarVisible" [pedido]="pedido" [pago]="pagoSeleccionado"
-  (visibleChange)="confirmarVisible = $event"
-  (rechazar)="abrirRechazar($event)"
-  (guardado)="onPagoActualizado($event)"></app-confirmar-pago>
 
 <app-rechazar-pago
   [visible]="rechazarVisible" [pedido]="pedido" [pago]="pagoSeleccionado"
@@ -560,3 +667,14 @@
     </ng-template>
   </c-modal-footer>
 </c-modal>
+
+<app-validar-comprobante
+  [visible]="validarVisible" [pedido]="pedido" [pago]="pagoSeleccionado"
+  (visibleChange)="validarVisible = $event"
+  (rechazar)="abrirRechazar($event)"
+  (guardado)="onPagoActualizado($event)"></app-validar-comprobante>
+
+<app-realizar-cobro
+  [visible]="cobrarVisible" [pedido]="pedido" [pago]="pagoSeleccionado"
+  (visibleChange)="cobrarVisible = $event"
+  (guardado)="onPagoActualizado($event)"></app-realizar-cobro>

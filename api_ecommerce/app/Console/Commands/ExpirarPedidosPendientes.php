@@ -41,6 +41,7 @@ class ExpirarPedidosPendientes extends Command
 
     protected $description = 'Cancela los pedidos vencidos sin cobrar (sin pago o con comprobante rechazado) y libera el stock reservado';
 
+
     public function handle(StockPedidoService $stock): int
     {
         $simulacion = (bool) $this->option('dry-run');

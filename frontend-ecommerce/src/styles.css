@@ -297,6 +297,7 @@ body .tm-vitrina .tm-product-card-body > .tm-product-card-add {
     line-height: 18px;
     max-height: 36px; /* 2 líneas */
     -webkit-line-clamp: 2;
+     line-clamp: 2;
     margin-bottom: 8px;
   }
 
@@ -548,6 +549,7 @@ body .tm-vitrina .tm-product-card-body > .tm-product-card-add {
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
   color: #444;
   line-height: 1.7;
+  overflow-wrap: anywhere;   /* ← nuevo: nada vuelve a salirse del cuadro */
 }
 
 .tm-legal h1 {
@@ -596,4 +598,48 @@ body .tm-vitrina .tm-product-card-body > .tm-product-card-add {
   .tm-legal h1 {
     font-size: 1.5rem;
   }
+}
+
+
+/* =========================================================
+   CONTENIDO EDITABLE (Quill): se ve igual que en el panel admin
+   ========================================================= */
+.tm-legal .tm-contenido-quill p,
+.tm-legal .tm-contenido-quill h1,
+.tm-legal .tm-contenido-quill h2,
+.tm-legal .tm-contenido-quill h3,
+.tm-legal .tm-contenido-quill ol,
+.tm-legal .tm-contenido-quill ul,
+.tm-legal .tm-contenido-quill blockquote {
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+/* Las líneas en blanco reales (Enter x2 en el editor) sí deben verse */
+.tm-legal .tm-contenido-quill p:empty {
+  min-height: 1.6em;
+}
+
+/* Respeta espacios repetidos y líneas en blanco, como el editor */
+.tm-legal .tm-contenido-quill p,
+.tm-legal .tm-contenido-quill li,
+.tm-legal .tm-contenido-quill h1,
+.tm-legal .tm-contenido-quill h2,
+.tm-legal .tm-contenido-quill h3 {
+  white-space: pre-wrap;
+}
+
+/* Mismos tamaños de título que el editor */
+.tm-legal .tm-contenido-quill h1 { font-size: 2em; }
+.tm-legal .tm-contenido-quill h2 { font-size: 1.5em; }
+.tm-legal .tm-contenido-quill h3 { font-size: 1.17em; }
+
+/* Listas */
+.tm-legal .tm-contenido-quill ol,
+.tm-legal .tm-contenido-quill ul {
+  padding-left: 1.5em;
+}
+.tm-legal .tm-contenido-quill li {
+  margin-bottom: 0;
 }

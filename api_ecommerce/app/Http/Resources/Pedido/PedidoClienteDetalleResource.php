@@ -12,7 +12,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Detalle de un pedido en "Mis Pedidos" (lado cliente).
  *
- * Contraparte de PedidoDetalleResource (Panel Admin). No lo reutiliza:
  * ese resource trae 'nota_interna' (la observación que el admin se deja
  * a sí mismo) y 'transiciones' (el combo de cambio de estado), que son
  * herramientas de gestión y no deben llegar nunca a la tienda.
@@ -41,6 +40,9 @@ class PedidoClienteDetalleResource extends JsonResource
                 true,
             ) ? $this->ped_vence?->toIso8601String() : null,
             'pagable'    => $this->pagable(),
+
+            // Intentos que le quedan antes de que el pedido se cancele solo.
+            'rechazos_restantes' => $this->rechazosRestantes(),
 
             // Fecha límite para pasar a buscar el pedido. Sólo existe
             // mientras está LISTO y es retiro en sucursal.

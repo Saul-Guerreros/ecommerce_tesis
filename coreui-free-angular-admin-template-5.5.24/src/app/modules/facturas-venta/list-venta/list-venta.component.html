@@ -104,13 +104,22 @@
 <app-ver-venta
   [visible]="verModalVisible"
   [venta]="ventaSeleccionada"
+  [notasCredito]="notasCredito"
   [reintentando]="ventaSeleccionada ? reintentando.has(ventaSeleccionada.ven_id) : false"
   (visibleChange)="verModalVisible = $event"
   (anular)="pedirAnular($event)"
+  (nuevaNotaCredito)="abrirNuevaNotaCredito($event)"
   (descargarKude)="abrirKude($event)"
   (descargarXml)="descargarXml($event)"
   (reintentarFe)="reintentarFe($event)">
 </app-ver-venta>
+
+<app-form-nota-credito-venta
+  [visible]="ncFormVisible"
+  [venId]="ncVenId"
+  (visibleChange)="ncFormVisible = $event"
+  (guardado)="notaCreditoGuardada()">
+</app-form-nota-credito-venta>
 
 <!-- Confirmacion de anulacion: mismo modal se dispare desde el listado o
      desde el footer del modal Ver. -->
