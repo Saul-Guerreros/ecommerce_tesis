@@ -13,13 +13,19 @@ use App\Services\Cliente\ClienteRapidoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Services\Cliente\VinculacionPresencialService;
+use App\Services\Servicio\NotificadorServicio;
 
 class ClienteController extends Controller
 {
     private const TIPOS_CONTACTO  = ['CELULAR','TELEFONO','WHATSAPP','EMAIL'];
     private const ESTADOS_CIVILES = ['SOLTERO','CASADO','DIVORCIADO','VIUDO','UNION_LIBRE'];
 
-    public function __construct(private ClienteRapidoService $clientes) {}
+       public function __construct(
+        private ClienteRapidoService $clientes,
+        private VinculacionPresencialService $vinculacion,
+        private NotificadorServicio $notificador,
+    ) {}
 
     /** Catálogos que necesita el formulario */
     public function config()
@@ -40,6 +46,7 @@ class ClienteController extends Controller
     {
         $clientes = Cliente::with([
                 'persona',
+                'persona.usuario:usu_id,usu_perid',
                 'persona.contactos:con_id,con_perid,con_tipo,con_valor',
                 'tipoCliente:tpc_id,tpc_descri',
             ])
@@ -58,9 +65,16 @@ class ClienteController extends Controller
             ->orderBy('cli_id', 'desc')
             ->paginate(25);
 
+        $items  = $clientes->items();
+        $conMov = Cliente::idsConMovimientos(collect($items)->pluck('cli_id')->all());
+
+        foreach ($items as $c) {
+            $c->setAttribute('tiene_movimientos', in_array($c->cli_id, $conMov));
+        }
+
         return response()->json([
             'total' => $clientes->total(),
-            'data'  => ClienteResource::collection($clientes->items()),
+            'data'  => ClienteResource::collection($items),
         ], 200);
     }
 
@@ -138,9 +152,13 @@ class ClienteController extends Controller
             $this->clientes->sincronizarContactos($cliente->persona, $data['contactos']);
         });
 
-        return response()->json([
-            'data' => ClienteResource::make($cliente->fresh()->load('persona.contactos','tipoCliente')),
-        ], 200);
+        $cliente = $cliente->fresh()->load('persona.contactos', 'tipoCliente');
+        $cliente->setAttribute(
+            'tiene_movimientos',
+            in_array($cliente->cli_id, Cliente::idsConMovimientos([$cliente->cli_id]))
+        );
+
+        return response()->json(['data' => ClienteResource::make($cliente)], 200);
     }
 
     public function destroy(string $id)
@@ -148,10 +166,13 @@ class ClienteController extends Controller
         $cliente = Cliente::with('persona')->findOrFail($id);
         $persona = $cliente->persona;
 
-        if ($cliente->pedidos()->exists()) {
-            return response()->json([
-                'message' => 'No se puede eliminar el cliente porque tiene pedidos asociados. Desactívelo en su lugar.',
-            ], 409);
+        // Cualquier movimiento asociado impide eliminar (las FK son RESTRICT): se desactiva en su lugar.
+        foreach (Cliente::MOVIMIENTOS as $descripcion => [$tabla, $columna]) {
+            if (DB::table($tabla)->where($columna, $cliente->cli_id)->exists()) {
+                return response()->json([
+                    'message' => "No se puede eliminar el cliente porque tiene {$descripcion} asociadas. Desactívelo en su lugar.",
+                ], 409);
+            }
         }
 
         // Cliente registrado desde la tienda: tiene cuenta de acceso (usuario)
@@ -186,6 +207,34 @@ class ClienteController extends Controller
         return response()->json([
             'data'    => ['cli_id' => $cliente->cli_id, 'cli_estado' => $cliente->cli_estado],
             'message' => $cliente->cli_estado == 1 ? 'Cliente activado' : 'Cliente desactivado',
+        ], 200);
+    }
+
+        /**
+     * POST /api/admin/clientes/{cliente}/codigo-vinculacion
+     * Devuelve el código vigente (lo crea si no existe). Con nuevo=true anula el anterior y emite otro.
+     */
+    public function codigoVinculacion(Request $request, string $id)
+    {
+        $cliente = Cliente::with('persona')->findOrFail($id);
+
+        $vinculo = $request->boolean('nuevo')
+            ? $this->vinculacion->reemitir($cliente->persona)
+            : $this->vinculacion->codigoVigente($cliente->persona);
+
+        if ($vinculo === null) {
+            return response()->json([
+                'message' => 'El cliente ya tiene cuenta en la tienda o está inactivo.',
+            ], 422);
+        }
+
+        return response()->json([
+            'data' => [
+                'codigo'       => $vinculo['codigo'],
+                'vence'        => $vinculo['vence']->format('d/m/Y'),
+                'enlace'       => $vinculo['enlace'],
+                'whatsapp_url' => $this->notificador->enlaceWhatsappVinculacionPersona($cliente->persona, $vinculo),
+            ],
         ], 200);
     }
 }

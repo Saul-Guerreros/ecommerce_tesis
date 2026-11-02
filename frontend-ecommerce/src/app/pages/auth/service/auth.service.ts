@@ -235,6 +235,10 @@ export class AuthService {
   register(data: any) {
     return this.http.post(URL_SERVICIOS + '/auth/register', data);
   }
+  /** Crea la cuenta sobre una ficha cargada en el mostrador (cédula + código de la constancia). */
+  vincularCuenta(data: any) {
+    return this.http.post(URL_SERVICIOS + '/auth/vincular_cuenta', data);
+  }
 
   verifiedAuth(data: any) {
     return this.http.post(URL_SERVICIOS + '/auth/verified_auth', data);

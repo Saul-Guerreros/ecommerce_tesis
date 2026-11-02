@@ -24,9 +24,15 @@
     </c-header-nav>
 
     <c-header-nav class="d-none d-md-flex ms-auto ">
-      <a cNavLink>
-        <svg cIcon class="my-1" name="cilBell" size="lg"></svg>
-      </a>
+      @if (puedeVerInventario) {
+        <a cNavLink routerLink="/inventario/inteligente" class="position-relative"
+           [title]="alertasInventario() + ' alerta(s) de reposición pendientes'">
+          <svg cIcon class="my-1" name="cilBell" size="lg"></svg>
+          @if (alertasInventario() > 0) {
+            <c-badge color="danger" shape="rounded-pill" position="top-end">{{ alertasInventario() }}</c-badge>
+          }
+        </a>
+      }
       <a cNavLink>
         <svg cIcon class="my-1" name="cilList" size="lg"></svg>
       </a>

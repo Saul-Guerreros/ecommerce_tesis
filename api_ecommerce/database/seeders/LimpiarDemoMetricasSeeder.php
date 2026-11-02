@@ -16,6 +16,7 @@ class LimpiarDemoMetricasSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(LimpiarDemoInventarioSeeder::class);
         $marca = DemoMetricasSeeder::MARCA;
 
         DB::transaction(function () use ($marca) {

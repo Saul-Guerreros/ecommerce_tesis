@@ -16,7 +16,7 @@ class ConfiguracionTienda extends Model
     'ctn_retactivo', 'ctn_retdias', 'ctn_retaviso',
     'ctn_pago_banco', 'ctn_pago_banco_titular', 'ctn_pago_banco_cuenta',
     'ctn_pago_tigo_titular', 'ctn_pago_tigo_numero', 'ctn_pago_tigo_referencia',
-    'ctn_pago_efectivo_mensaje',
+    'ctn_pago_efectivo_mensaje','ctn_nivserv', 'ctn_horizonte', 'ctn_leadtime', 'ctn_cobmax',
     ];
 
     protected $casts = [
@@ -27,6 +27,10 @@ class ConfiguracionTienda extends Model
         'ctn_retdias'       => 'integer',
         'ctn_retaviso'      => 'integer',
         'ctn_creado'        => 'datetime',
+        'ctn_nivserv'       => 'integer',
+        'ctn_horizonte'     => 'integer',
+        'ctn_leadtime'      => 'integer',
+        'ctn_cobmax'         => 'integer',
     ];
 
     public const VALORES_INICIALES = [
@@ -35,6 +39,10 @@ class ConfiguracionTienda extends Model
     'ctn_retactivo'     => true,
     'ctn_retdias'       => 5,
     'ctn_retaviso'      => 1,
+    'ctn_nivserv'   => 95,
+    'ctn_horizonte' => 4,
+    'ctn_leadtime'  => 7,
+    'ctn_cobmax'    => 12,
     'ctn_pago_efectivo_mensaje' => 'Pago en efectivo al momento de la entrega. Confirmar pedido por WhatsApp.',
     ];
 

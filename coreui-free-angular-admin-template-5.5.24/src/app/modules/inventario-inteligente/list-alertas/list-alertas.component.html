@@ -1,0 +1,91 @@
+<div class="row g-2 mb-3">
+  <div class="col-md-4">
+    <input cFormControl placeholder="Buscar por producto o código..." [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+  </div>
+  <div class="col-md-3">
+    <select cSelect [ngModel]="tipo" (ngModelChange)="cambiarTipo($event)">
+      <option [ngValue]="null">Todos los tipos</option>
+      <option *ngFor="let t of tiposLista" [ngValue]="t">{{ TIPOS[t].etiqueta }}</option>
+    </select>
+  </div>
+  <div class="col-md-3">
+    <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+      <option [ngValue]="1">Pendientes</option>
+      <option [ngValue]="2">Atendidas</option>
+      <option [ngValue]="3">Descartadas</option>
+    </select>
+  </div>
+  <div class="col-md-2">
+    <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+  </div>
+</div>
+
+<div class="text-muted small mb-2" *ngIf="!cargando">{{ alertas.length }} alerta(s) encontrada(s)</div>
+<div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+<div class="table-responsive" *ngIf="!cargando">
+  <table cTable striped hover class="align-middle">
+    <thead>
+      <tr>
+        <th>Tipo</th><th>Producto</th><th>Depósito</th>
+        <th class="text-end">Disponible</th>
+        <th class="text-end" title="Demanda diaria prevista">Dem./día</th>
+        <th class="text-end" title="Stock de seguridad">SS</th>
+        <th class="text-end" title="Punto de reorden">ROP</th>
+        <th class="text-end" title="Días que alcanza el stock actual">Cobertura</th>
+        <th class="text-end">Sugerido</th>
+        <th class="text-end">Inversión</th>
+        <th *ngIf="!esPendiente">Cierre</th>
+        <th class="text-end">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let a of alertasPagina">
+        <td><c-badge [color]="TIPOS[a.tipo].color">{{ TIPOS[a.tipo].etiqueta }}</c-badge></td>
+        <td>
+          {{ a.producto }}
+          <div class="text-muted small">{{ a.codigo }} · {{ MODELOS[a.modelo ?? ''] ?? a.modelo }}</div>
+        </td>
+        <td>{{ a.deposito }}</td>
+        <td class="text-end">{{ a.disponible | number: '1.0-2' }}</td>
+        <td class="text-end">{{ a.demanda_diaria | number: '1.0-2' }}</td>
+        <td class="text-end">{{ a.stock_seguridad | number: '1.0-1' }}</td>
+        <td class="text-end">{{ a.punto_reorden | number: '1.0-1' }}</td>
+        <td class="text-end">{{ a.cobertura_dias !== null ? (a.cobertura_dias | number: '1.0-0') + ' d' : '-' }}</td>
+        <td class="text-end fw-semibold">{{ a.sugerido > 0 ? (a.sugerido | number: '1.0-0') : '-' }}</td>
+        <td class="text-end">{{ a.costo_sugerido > 0 ? (a.costo_sugerido | gs) : '-' }}</td>
+        <td *ngIf="!esPendiente" class="small">
+          {{ a.usuario ?? 'Sistema' }} · {{ a.cerrado | date: 'dd/MM/yy HH:mm' }}
+          <div class="text-muted" *ngIf="a.observacion">{{ a.observacion }}</div>
+        </td>
+        <td class="text-end text-nowrap">
+          <button cButton size="sm" color="info" class="me-2 text-white" (click)="verPronostico(a)">Pronóstico</button>
+          <ng-container *ngIf="esPendiente && puedeGestionar">
+            <button cButton size="sm" color="success" class="me-2 text-white" (click)="abrirCierre(a, 'atender')">Atender</button>
+            <button cButton size="sm" color="warning" class="text-white" (click)="abrirCierre(a, 'descartar')">Descartar</button>
+          </ng-container>
+        </td>
+      </tr>
+      <tr *ngIf="alertas.length === 0">
+        <td [attr.colspan]="esPendiente ? 11 : 12" class="text-center">No hay alertas para los filtros seleccionados</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<nav *ngIf="!cargando && totalPaginas > 1">
+  <ul cPagination>
+    <li cPageItem [disabled]="paginaActual === 1"><a cPageLink (click)="irAPagina(paginaActual - 1)">Anterior</a></li>
+    <li cPageItem *ngFor="let p of paginas" [active]="p === paginaActual">
+      <a cPageLink (click)="irAPagina(p)">{{ p }}</a>
+    </li>
+    <li cPageItem [disabled]="paginaActual === totalPaginas"><a cPageLink (click)="irAPagina(paginaActual + 1)">Siguiente</a></li>
+  </ul>
+</nav>
+
+<app-cerrar-alerta [visible]="cierreVisible" [alerta]="seleccionada" [modo]="modoCierre"
+  (visibleChange)="cierreVisible = $event" (confirmar)="confirmarCierre($event)"></app-cerrar-alerta>
+
+<app-detalle-pronostico [visible]="detalleVisible" [productoId]="seleccionada?.producto_id ?? null"
+  [depositoId]="seleccionada?.deposito_id ?? null" [puedeGestionar]="puedeGestionar"
+  (visibleChange)="detalleVisible = $event" (actualizado)="onDetalleActualizado()"></app-detalle-pronostico>

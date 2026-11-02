@@ -249,6 +249,11 @@ export const routes: Routes = [
         data: { title: 'Stock Actual' },
       },
 	  {
+        path: 'inventario/inteligente',
+        loadChildren: () => import('./modules/inventario-inteligente/inventario-inteligente.module').then(m => m.InventarioInteligenteModule),
+        data: { title: 'Inventario inteligente' },
+      },
+	  {
         path: 'seguridad',
         loadChildren: () => import('./modules/seguridad/seguridad.routes').then(m => m.routes),
         data: { title: 'Seguridad' },

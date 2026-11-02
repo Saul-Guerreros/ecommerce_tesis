@@ -32,6 +32,7 @@ export const PERMISO_POR_RUTA: Record<string, string> = {
   '/inventario/tipos-ajuste': 'tipos-ajuste.ver',
   '/inventario/kardex': 'kardex.ver',
   '/inventario/stock-actual': 'stock.ver',
+  '/inventario/inteligente': 'inventario-inteligente.ver',
   '/gestion-cuotas': 'cuotas.ver',
   '/configuracion-tienda': 'alertas-stock.ver',
   '/configuracion-pago': 'metodos-pago.ver',

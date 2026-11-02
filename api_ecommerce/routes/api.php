@@ -105,6 +105,8 @@ use App\Http\Controllers\Admin\Reporte\ReporteComportamientoController;
 use App\Http\Controllers\Api\ActividadController;
 use App\Http\Controllers\Admin\Venta\VentaController;
 use App\Http\Controllers\Admin\Servicio\ClasificacionSolicitudController;
+use App\Http\Controllers\Admin\Inventario\InventarioInteligenteController;
+use App\Http\Controllers\VinculacionPresencialController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -133,6 +135,7 @@ Route::group([
     Route::post('/refresh', [AuthController::class, 'refresh'])->name('refresh');
     Route::post('/me', [AuthController::class, 'me'])->name('me');
     Route::post('/verified_auth', [AuthController::class, 'verified_auth'])->name('verified_auth');
+    Route::post('/vincular_cuenta', [VinculacionPresencialController::class, 'vincular'])->middleware('throttle:6,1')->name('vincular_cuenta');
 
     Route::post('/verified_email', [AuthController::class, 'verified_email'])->name('verified_email');
     Route::post('/verified_code', [AuthController::class, 'verified_code'])->name('verified_code');
@@ -302,6 +305,7 @@ Route::prefix('admin/servicios/solicitudes')->middleware('auth:api')->group(func
             Route::post('/diagnostico-preliminar', [DiagnosticoPreliminarController::class, 'mostrador'])->middleware('throttle:20,1');
             Route::post('/clientes', [MostradorServicioController::class, 'crearCliente']);
             Route::put('/clientes/{cliId}/documento', [MostradorServicioController::class, 'completarDocumento'])->whereNumber('cliId');
+            Route::post('/clientes/{cliId}/codigo-vinculacion', [MostradorServicioController::class, 'reemitirCodigo'])->whereNumber('cliId')->middleware('throttle:10,1');
             Route::get('/clientes/{cliId}/garantias', [MostradorServicioController::class, 'garantias'])->whereNumber('cliId');
             Route::get('/clientes/{cliId}/reclamables', [MostradorServicioController::class, 'reclamables'])->whereNumber('cliId');
             Route::get('/reclamo/{numero}', [MostradorServicioController::class, 'reclamo'])->where('numero', 'SS-[0-9]{4}-[0-9]+');
@@ -401,6 +405,8 @@ Route::group([
     Route::patch("clientes/{cliente}/estado", [ClienteController::class, "cambiarEstado"]);
     Route::resource("clientes", ClienteController::class)
     ->only(['index','store','update','destroy']);
+    Route::post("clientes/{cliente}/codigo-vinculacion", [ClienteController::class, "codigoVinculacion"])
+        ->whereNumber('cliente')->middleware('throttle:20,1');
 
     // --- Tipos de cliente ---
     Route::get('tipos-cliente/select', [TipoClienteController::class, 'select']);
@@ -892,6 +898,29 @@ Route::prefix('admin')->middleware('auth:api')->group(function () {
 			
 			Route::get('{vista}/exportar', [ReporteExportacionController::class, 'inventario'])
                 ->whereIn('vista', ['valorizado', 'critico', 'sin-movimiento', 'margen']);
+        });
+
+    // --- Gestión inteligente de inventario ---
+    Route::prefix('inventario-inteligente')
+        ->name('inventario-inteligente.')
+        ->controller(InventarioInteligenteController::class)
+        ->group(function () {
+            Route::middleware('permiso:inventario-inteligente.ver')->group(function () {
+                Route::get('resumen', 'resumen');
+                Route::get('alertas', 'alertas');
+                Route::get('productos/{id}/pronostico', 'pronostico')->whereNumber('id');
+                Route::get('metricas', 'metricas');
+                Route::get('config', 'config');
+                Route::post('insights', 'insights')->middleware('throttle:10,1');
+            });
+
+            Route::middleware('permiso:inventario-inteligente.gestionar')->group(function () {
+                Route::patch('alertas/{id}/atender', 'atender')->whereNumber('id')->name('atender');
+                Route::patch('alertas/{id}/descartar', 'descartar')->whereNumber('id')->name('descartar');
+                Route::patch('productos/{id}/lead-time', 'leadTime')->whereNumber('id');
+                Route::put('config', 'actualizarConfig');
+                Route::post('recalcular', 'recalcular')->middleware('throttle:3,1');
+            });
         });
 
     // --- Reporte de compras ---

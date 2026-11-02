@@ -43,6 +43,7 @@ class Producto extends Model
         'prd_gardia',
         'prd_proid',
         'prd_estado',
+        'prd_ltdias',
     ];
 
     protected $casts = [
@@ -63,6 +64,7 @@ class Producto extends Model
         'prd_gardia'      => 'integer',
         'prd_proid'       => 'integer',
         'prd_estado'      => 'integer',
+        'prd_ltdias'      => 'integer',
         'prd_creado'      => 'datetime',
     ];
 

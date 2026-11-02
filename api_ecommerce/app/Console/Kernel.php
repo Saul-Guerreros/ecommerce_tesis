@@ -17,6 +17,10 @@ class Kernel extends ConsoleKernel
          $schedule->command('facturacion:reintentar')->everyTenMinutes()->withoutOverlapping();
          $schedule->command('actividad:purgar')->monthlyOn(1, '03:00')->withoutOverlapping();
          $schedule->command('servicio:clasificar-pendientes')->everyFifteenMinutes()->withoutOverlapping();
+
+        // Gestión inteligente de inventario
+         $schedule->command('inventario:pronosticar')->weeklyOn(1, '02:00')->withoutOverlapping();
+         $schedule->command('inventario:alertas')->dailyAt('06:00')->withoutOverlapping();
     }
 
     /**

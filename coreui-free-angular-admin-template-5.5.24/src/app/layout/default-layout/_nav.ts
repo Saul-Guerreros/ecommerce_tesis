@@ -233,6 +233,12 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-bell' }
   },
   {
+    name: 'Inventario inteligente',
+    url: '/inventario/inteligente',
+    iconComponent: { name: 'cil-chart' },
+    badge: { color: 'info', text: 'IA' }
+  },
+  {
     name: 'Métodos de Pago',
     url: '/configuracion-pago',
     iconComponent: { name: 'cil-credit-card' }

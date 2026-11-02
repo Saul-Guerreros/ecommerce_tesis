@@ -29,6 +29,7 @@ class OpcionesAdminPermisoSeeder extends Seeder
         'reportes.chatbot.ver', 'reportes.comportamiento.ver',
         // Recibir dinero: solo por asignación explícita
         'servicios.cobros.confirmar',
+        'inventario-inteligente.ver', 'inventario-inteligente.gestionar',
     ];
 
     public function run(): void

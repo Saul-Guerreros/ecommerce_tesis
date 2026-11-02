@@ -9,6 +9,7 @@ use App\Models\Servicio\EstadoServicio;
 use App\Models\Servicio\SolicitudServicio;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use App\Models\Persona;
 
 /**
  * RF-033 - Notificaciones al cliente.
@@ -154,6 +155,61 @@ class NotificadorServicio
                 . "{$s->sse_numero}. {$cuerpo}";
 
         return 'https://wa.me/' . $numero . '?text=' . rawurlencode(trim($texto));
+    }
+
+    /**
+     * Enlace wa.me con el enlace y el código de vinculación para que el cliente cree su cuenta web.
+     * Mismo criterio de número que enlaceWhatsapp (prioriza WHATSAPP sobre CELULAR).
+     *
+     * @param array{codigo:string, vence:\Illuminate\Support\Carbon, enlace:string} $vinculo
+     */
+    public function enlaceWhatsappVinculacion(SolicitudServicio $s, array $vinculo): ?string
+    {
+        $s->loadMissing(['cliente.persona.contactos']);
+        $contactos = $s->cliente?->persona?->contactos?->where('con_estado', 1) ?? collect();
+
+        $numero = $this->numeroInternacional(
+            $contactos->where('con_tipo', 'WHATSAPP')->first()?->con_valor
+            ?? $contactos->where('con_tipo', 'CELULAR')->first()?->con_valor
+        );
+        if (!$numero) {
+            return null;
+        }
+
+        $nombre = $s->cliente?->persona?->per_nombr1;
+        $texto  = 'Hola' . ($nombre ? " {$nombre}" : '') . ', te escribimos de Z Informática. '
+            . "Para ver tu servicio {$s->sse_numero} desde nuestra tienda, creá tu cuenta con este enlace: {$vinculo['enlace']} "
+            . "Vas a necesitar tu cédula y este código de vinculación: {$vinculo['codigo']} "
+            . "(vigente hasta el {$vinculo['vence']->format('d/m/Y')}).";
+
+        return 'https://wa.me/' . $numero . '?text=' . rawurlencode($texto);
+    }
+
+        /**
+     * Igual que enlaceWhatsappVinculacion, pero a nivel de cliente (sin solicitud):
+     * lo usa el CRUD de clientes del panel.
+     *
+     * @param array{codigo:string, vence:\Illuminate\Support\Carbon, enlace:string} $vinculo
+     */
+    public function enlaceWhatsappVinculacionPersona(Persona $persona, array $vinculo): ?string
+    {
+        $persona->loadMissing('contactos');
+        $contactos = $persona->contactos->where('con_estado', 1);
+
+        $numero = $this->numeroInternacional(
+            $contactos->where('con_tipo', 'WHATSAPP')->first()?->con_valor
+            ?? $contactos->where('con_tipo', 'CELULAR')->first()?->con_valor
+        );
+        if (!$numero) {
+            return null;
+        }
+
+        $texto = 'Hola' . ($persona->per_nombr1 ? " {$persona->per_nombr1}" : '') . ', te escribimos de Z Informática. '
+            . "Para ver tus servicios desde nuestra tienda, creá tu cuenta con este enlace: {$vinculo['enlace']} "
+            . "Vas a necesitar tu cédula y este código de vinculación: {$vinculo['codigo']} "
+            . "(vigente hasta el {$vinculo['vence']->format('d/m/Y')}).";
+
+        return 'https://wa.me/' . $numero . '?text=' . rawurlencode($texto);
     }
 
     /** El login del usuario es su correo; si no, el contacto EMAIL de la persona. */

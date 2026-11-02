@@ -34,6 +34,8 @@ export interface Cliente {
   cli_id: number;
   cli_ruc: string | null;
   cli_estado: number;
+  tiene_cuenta?: boolean;
+  tiene_movimientos?: boolean;
   persona: Persona;
   tipo_cliente?: TipoCliente;
   contactos: Contacto[];
@@ -74,4 +76,11 @@ export interface BusquedaPersona {
 export interface ListaClientes {
   total: number;
   data: Cliente[];
+}
+
+export interface CodigoVinculacion {
+  codigo: string;
+  vence: string;
+  enlace: string;
+  whatsapp_url: string | null;
 }

@@ -64,6 +64,9 @@ class OpcionesAdmin
                     ['permiso' => 'tipos-ajuste.ver', 'nombre' => 'Tipos de ajuste', 'urls' => ['/inventario/tipos-ajuste'], 'fijo' => false],
                     ['permiso' => 'kardex.ver', 'nombre' => 'Movimientos de stock (Kardex)', 'urls' => ['/inventario/kardex'], 'fijo' => false],
                     ['permiso' => 'stock.ver', 'nombre' => 'Stock actual', 'urls' => ['/inventario/stock-actual'], 'fijo' => false],
+                    ['permiso' => 'inventario-inteligente.ver', 'nombre' => 'Inventario inteligente (predicción y alertas)', 'urls' => ['/inventario/inteligente'], 'fijo' => false],
+                    // Acción sin pantalla propia: atender/descartar alertas, recalcular y configurar parámetros.
+                    ['permiso' => 'inventario-inteligente.gestionar', 'nombre' => 'Gestionar inventario inteligente', 'urls' => [], 'fijo' => false],
                 ],
             ],
             [

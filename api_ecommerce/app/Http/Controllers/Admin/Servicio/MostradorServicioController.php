@@ -15,6 +15,7 @@ use App\Services\Servicio\SolicitudServicioService;
 use App\Services\Servicio\TecnicoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\Cliente\VinculacionPresencialService;
 
 /**
  * Ingreso presencial ("mostrador"): segundo canal de entrada al flujo de servicio técnico.
@@ -28,6 +29,7 @@ class MostradorServicioController extends Controller
         private ClienteRapidoService $clientes,
         private TecnicoService $tecnicos,
         private NotificadorServicio $notificador,
+        private VinculacionPresencialService $vinculacion,
     ) {}
 
     // GET /api/admin/servicios/solicitudes/mostrador/config
@@ -118,7 +120,25 @@ class MostradorServicioController extends Controller
         ], 200);
     }
 
-    // POST /api/admin/servicios/solicitudes/mostrador   (multipart/form-data)
+    // POST /api/admin/servicios/solicitudes/mostrador/clientes/{cliId}/codigo-vinculacion
+    // Anula el código anterior y emite uno nuevo (pérdida o sospecha de filtración).
+    public function reemitirCodigo(int $cliId): JsonResponse
+    {
+        $cliente = Cliente::with('persona')->findOrFail($cliId);
+        $vinculo = $this->vinculacion->reemitir($cliente->persona);
+
+        abort_if($vinculo === null, 422, 'El cliente ya tiene cuenta en la tienda o está inactivo.');
+
+        return response()->json([
+            'data' => [
+                'codigo' => $vinculo['codigo'],
+                'vence'  => $vinculo['vence']->format('Y-m-d'),
+                'enlace' => $vinculo['enlace'],
+            ],
+        ], 200);
+    }
+
+        // POST /api/admin/servicios/solicitudes/mostrador   (multipart/form-data)
     public function store(RegistrarMostradorRequest $request): JsonResponse
     {
         $s = $this->solicitudes->registrarMostrador(
@@ -126,6 +146,9 @@ class MostradorServicioController extends Controller
         );
 
         $s->load(['cliente.persona.contactos', 'cliente.persona.usuario', 'estadoServicio']);
+
+        // Código de vinculación (null si el cliente ya tiene cuenta en la tienda).
+        $vinculo = $s->cliente?->persona ? $this->vinculacion->codigoVigente($s->cliente->persona) : null;
 
         return response()->json([
             'message' => "Solicitud {$s->sse_numero} registrada y recibida correctamente",
@@ -136,6 +159,8 @@ class MostradorServicioController extends Controller
                 'tiene_correo' => $s->cliente?->persona?->contactos?->where('con_tipo', 'EMAIL')->isNotEmpty()
                     || $s->cliente?->persona?->usuario !== null,
                 'whatsapp_url' => $this->notificador->enlaceWhatsapp($s),
+                'vinculable'   => $vinculo !== null,
+                'whatsapp_vinculacion_url' => $vinculo ? $this->notificador->enlaceWhatsappVinculacion($s, $vinculo) : null,
             ],
         ], 201);
     }

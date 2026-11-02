@@ -338,14 +338,14 @@ class ClienteRapidoService
     // ---------- Auxiliares ----------
 
     /** C.I.: solo dígitos ("1.234.567" y "1234567" son la misma cédula). Pasaporte: en mayúsculas. */
-    private function normalizarDocumento(string $tpdCodigo, string $documento): string
+    public function normalizarDocumento(string $tpdCodigo, string $documento): string
     {
         $documento = trim($documento);
 
         return $tpdCodigo === 'CI' ? preg_replace('/\D/', '', $documento) : mb_strtoupper($documento);
     }
 
-    private function personaConDocumento(int $tpdId, string $documento): ?Persona
+    public function personaConDocumento(int $tpdId, string $documento): ?Persona
     {
         return Persona::with('cliente')
             ->where('per_tpdid', $tpdId)

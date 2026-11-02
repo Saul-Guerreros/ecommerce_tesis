@@ -60,6 +60,27 @@
     <td><div class="linea">Firma y sello del taller</div></td>
   </tr></table>
 
+    @if(!empty($vinculacion))
+    <h2>Tu cuenta en la tienda en línea</h2>
+    <table class="datos">
+      <tr>
+        <td style="width:72%; vertical-align:top;">
+          <p style="margin:0 0 4px 0;">
+            Para seguir este servicio desde tu perfil, creá tu cuenta en
+            <strong>{{ $vinculacion['pagina'] }}</strong> o escaneá el código QR.
+            Vas a necesitar tu documento y este código:
+          </p>
+          <div style="font-size:20px; font-weight:bold; letter-spacing:3px; margin:6px 0;">{{ $vinculacion['codigo'] }}</div>
+          <div class="muted">Vigente hasta el {{ $vinculacion['vence']->format('d/m/Y') }}. Es personal: no lo compartas.</div>
+        </td>
+        <td style="text-align:center; vertical-align:middle;">
+          @if(!empty($vinculacion['qr']))
+            <img src="{{ $vinculacion['qr'] }}" width="110" height="110" alt="QR de vinculación">
+          @endif
+        </td>
+      </tr>
+    </table>
+  @endif
   <div class="pie">
     @if($s->cliente?->persona?->usuario)
       El diagnóstico se informa mediante presupuesto, que el cliente aprueba o rechaza desde su perfil o comunicándose con la sucursal.

@@ -67,4 +67,6 @@ export interface MostradorRegistrado {
   cliente: string | null;
   tiene_correo: boolean;
   whatsapp_url: string | null;
+  vinculable: boolean;
+  whatsapp_vinculacion_url: string | null;
 }

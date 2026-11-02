@@ -21,10 +21,14 @@
         <p class="text-muted mb-1">El equipo quedó <strong>recibido</strong> y asignado al técnico.</p>
         <p class="small text-muted mb-4" *ngIf="r.tiene_correo">Se envió un aviso al correo del cliente.</p>
         <p class="small text-warning mb-4" *ngIf="!r.tiene_correo">El cliente no tiene correo: avísele por WhatsApp.</p>
+        <p class="small text-muted mb-4" *ngIf="r.vinculable">La constancia incluye el código y el QR para que el cliente cree su cuenta en la tienda.</p>
         <div class="d-flex flex-wrap justify-content-center gap-2">
           <button cButton color="secondary" class="text-white" (click)="imprimirConstancia()">Imprimir constancia de recepción</button>
           <a cButton color="success" class="text-white" *ngIf="r.whatsapp_url" [href]="r.whatsapp_url" target="_blank" rel="noopener">
             Avisar por WhatsApp
+          </a>
+          <a cButton color="success" class="text-white" *ngIf="r.whatsapp_vinculacion_url" [href]="r.whatsapp_vinculacion_url" target="_blank" rel="noopener">
+            Enviar código de vinculación por WhatsApp
           </a>
           <button cButton color="primary" class="text-white" (click)="nuevaSolicitud()">Nueva solicitud</button>
           <button cButton color="info" class="text-white" (click)="volverABandeja()">Ir a la bandeja</button>

@@ -37,4 +37,8 @@ return [
 
     // Punto 7 - Clasificación automática de solicitudes (IA). false = quedan NO_DISPONIBLE.
     'clasificacion_ia' => (bool) env('SERVICIO_CLASIFICACION_IA', true),
+
+     // Vinculación presencial de cuenta web (código impreso en la constancia de recepción)
+    'vinculacion_dias'         => (int) env('SERVICIO_VINCULACION_DIAS', 30),
+    'vinculacion_max_intentos' => (int) env('SERVICIO_VINCULACION_INTENTOS', 5),
 ];

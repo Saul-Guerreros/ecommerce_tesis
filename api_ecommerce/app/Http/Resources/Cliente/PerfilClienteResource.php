@@ -27,6 +27,7 @@ class PerfilClienteResource extends JsonResource
                 'per_apell2'      => $persona?->per_apell2,
                 'per_cedula'      => $persona?->per_cedula,
                 'tipo_documento'  => $persona?->tipoDocumento?->tpd_descri,
+                'tpd_codigo'      => $persona?->tipoDocumento?->tpd_codigo,
                 'per_fechna'      => $persona?->per_fechna?->format('Y-m-d'),
                 'avatar_url'      => $persona?->per_avatar
                     ? rtrim(config('app.url'), '/') . '/storage/' . $persona->per_avatar

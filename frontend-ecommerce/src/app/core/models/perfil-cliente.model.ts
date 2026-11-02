@@ -7,6 +7,7 @@ export interface PerfilPersona {
   per_apell2: string | null;
   per_cedula: string | null;
   tipo_documento: string | null;
+    tpd_codigo: string | null;
   per_fechna: string | null;
   avatar_url: string | null;
 }

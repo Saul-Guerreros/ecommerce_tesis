@@ -27,10 +27,20 @@ export class DatosPersonalesComponent implements OnChanges {
   celular = '';
   cli_ruc = '';
   per_cedula = '';
+  tipoDocumento: 'CI' | 'PAS' = 'CI';
 
-  /** La cédula solo se puede cargar si todavía no está registrada. */
+  /** El documento solo se puede cargar si todavía no está registrado. */
   get cedulaEditable(): boolean {
     return !this.perfil?.persona?.per_cedula;
+  }
+
+  get esPasaporte(): boolean {
+    return this.tipoDocumento === 'PAS';
+  }
+
+  /** Etiqueta del documento ya registrado (solo lectura). */
+  get etiquetaDocumento(): string {
+    return this.perfil?.persona?.tpd_codigo === 'PAS' ? 'Pasaporte' : 'Cédula';
   }
 
   avatarPreview: string | null = null;
@@ -59,7 +69,8 @@ export class DatosPersonalesComponent implements OnChanges {
       this.celular = this.perfil.celular ?? '';
       this.cli_ruc = this.perfil.cliente?.cli_ruc ?? '';
       this.avatarPreview = this.perfil.persona.avatar_url;
-	  this.per_cedula = this.perfil.persona.per_cedula ?? '';
+      this.per_cedula = this.perfil.persona.per_cedula ?? '';
+      this.tipoDocumento = this.perfil.persona.tpd_codigo === 'PAS' ? 'PAS' : 'CI';
     }
   }
 
@@ -74,9 +85,36 @@ export class DatosPersonalesComponent implements OnChanges {
     lector.readAsDataURL(file);
   }
 
+  /** C.I.: solo números (se quitan los puntos). Pasaporte: letras y números en mayúsculas. */
+  private documentoNormalizado(): string {
+    return this.esPasaporte
+      ? this.per_cedula.toUpperCase().replace(/[^A-Z0-9]/g, '')
+      : this.per_cedula.replace(/\D/g, '');
+  }
+
+  private errorDocumento(valor: string): string | null {
+    if (!valor) return null;
+    if (this.esPasaporte) {
+      return /^[A-Z0-9]{4,20}$/.test(valor) ? null : 'El pasaporte debe tener entre 4 y 20 letras o números.';
+    }
+    return /^\d{4,10}$/.test(valor) ? null : 'La cédula debe tener entre 4 y 10 números.';
+  }
+
   guardar(): void {
     if (!this.per_nombr1 || !this.per_apell1) {
       this.toastr.warning('Completá al menos nombre y apellido.', 'Faltan datos');
+      return;
+    }
+
+    if (this.errorFecha) {
+      this.toastr.warning(this.errorFecha, 'Fecha de nacimiento');
+      return;
+    }
+
+    const documento = this.cedulaEditable ? this.documentoNormalizado() : '';
+    const errorDoc = this.cedulaEditable ? this.errorDocumento(documento) : null;
+    if (errorDoc) {
+      this.toastr.warning(errorDoc, this.esPasaporte ? 'Pasaporte' : 'Cédula');
       return;
     }
 
@@ -89,7 +127,10 @@ export class DatosPersonalesComponent implements OnChanges {
     if (this.celular) formData.append('celular', this.celular);
     if (this.cli_ruc) formData.append('cli_ruc', this.cli_ruc);
     if (this.avatarFile) formData.append('avatar', this.avatarFile);
-	if (this.cedulaEditable && this.per_cedula) formData.append('per_cedula', this.per_cedula);
+    if (documento) {
+      formData.append('tipo_documento', this.tipoDocumento);
+      formData.append('per_cedula', documento);
+    }
 
     this.guardando = true;
     this.perfilClienteService.actualizar(formData).subscribe({
@@ -101,21 +142,11 @@ export class DatosPersonalesComponent implements OnChanges {
       },
       error: (err) => {
         this.guardando = false;
-        const mensaje = err.error?.message || 'No se pudo actualizar el perfil.';
-        this.toastr.error(mensaje, 'Error');
+        // En validaciones (422) se muestra el primer error concreto, no el mensaje genérico.
+        const errores = err.error?.errors;
+        const primero = errores ? (Object.values(errores)[0] as string[] | undefined)?.[0] : null;
+        this.toastr.error(primero || err.error?.message || 'No se pudo actualizar el perfil.', 'Error');
       },
     });
-
-    if (this.errorFecha) {
-      this.toastr.warning(this.errorFecha, 'Fecha de nacimiento');
-      return;
-    }
-	
-	// Solo números: se quitan los puntos que algunos clientes escriben (1.234.567)
-    this.per_cedula = this.per_cedula.replace(/\D/g, '');
-    if (this.cedulaEditable && this.per_cedula && !/^\d{4,10}$/.test(this.per_cedula)) {
-      this.toastr.warning('La cédula debe tener entre 4 y 10 números.', 'Cédula');
-      return;
-    }
   }
 }
