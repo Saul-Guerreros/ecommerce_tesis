@@ -79,6 +79,8 @@ export interface PedidoDetalle {
   ped_creado: string;
   ped_vence: string | null;
   pagable: boolean;
+  /** Intentos que le quedan antes de que el pedido se cancele solo. */
+  rechazos_restantes: number;
   /** Fecha límite de retiro en sucursal. Sólo tiene valor con el pedido en LISTO y entrega RETIRO. */
   ped_vencret: string | null;
   estado_pedido: EstadoEtiquetado;

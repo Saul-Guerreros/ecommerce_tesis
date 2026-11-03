@@ -18,6 +18,7 @@ export const PERMISO_POR_RUTA: Record<string, string> = {
   '/chatbot/informacion': 'chatbot.gestionar',
   '/pedidos': 'pedidos.ver',
   '/facturas-venta': 'facturas-venta.ver',
+  '/notas-credito-venta': 'notas-credito-venta.ver',
   '/proveedores': 'proveedores.ver',
   '/tipos-proveedor': 'tipos-proveedor.ver',
   '/facturas-compra': 'facturas-compra.ver',

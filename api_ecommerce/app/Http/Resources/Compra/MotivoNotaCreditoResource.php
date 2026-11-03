@@ -13,6 +13,10 @@ class MotivoNotaCreditoResource extends JsonResource
             'mnc_codigo' => $this->mnc_codigo,
             'mnc_descri' => $this->mnc_descri,
             'mnc_afesto' => $this->mnc_afesto,
+            'mnc_canfij' => $this->mnc_canfij,
+            'mnc_obsreq' => $this->mnc_obsreq,
+            'mnc_destex' => $this->mnc_destex,
+            'mnc_dnit'   => $this->mnc_dnit,
             'mnc_estado' => $this->mnc_estado,
         ];
     }

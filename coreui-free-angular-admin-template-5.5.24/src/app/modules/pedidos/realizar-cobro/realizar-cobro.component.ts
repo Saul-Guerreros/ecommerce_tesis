@@ -10,15 +10,17 @@ import { FaltanteStock, PagoItem, PedidoDetalle } from '../models/pedido-detalle
 import { PedidosService } from '../service/pedidos.service';
 
 /**
- * Modal «Confirmar pago».
+ * Modal «Realizar cobro».
  *
- * Toda la carga de datos de la verificación ocurre acá: la tarjeta del
- * pago sólo muestra el resultado. Por eso el formulario arranca vacío
- * salvo el monto, que se precarga con el monto asignado (el caso normal
- * es que coincida).
+ * Segundo paso del ciclo: acá entra la plata. Se registra un cobro_venta
+ * contra la factura del pedido, con su número de transacción, banco y
+ * fecha. Sólo se habilita con el comprobante ya validado.
+ *
+ * El botón de rechazar NO vive acá: se decide al mirar el comprobante,
+ * en la tarjeta Comprobante.
  *
  * La validación del monto es asimétrica a propósito:
- *   - Monto MENOR al asignado  → bloqueado. Confirmarlo dejaría el pedido
+ *   - Monto MENOR al asignado  → bloqueado. Cobrarlo dejaría el pedido
  *     como pagado cuando el cliente todavía debe la diferencia; lo que
  *     corresponde es rechazar el pago.
  *   - Monto MAYOR al asignado  → permitido con confirmación explícita.
@@ -28,26 +30,23 @@ import { PedidosService } from '../service/pedidos.service';
  * el campo pasa por 1, 10, 100... y mostrar la alerta en cada paso es
  * ruido que entrena al usuario a ignorarla.
  */
+
 @Component({
-  selector: 'app-confirmar-pago',
+  selector: 'app-realizar-cobro',
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, ModalModule, ButtonModule,
     FormModule, AlertModule, SpinnerModule,
   ],
-  templateUrl: './confirmar-pago.component.html',
+  templateUrl: './realizar-cobro.component.html',
 })
-export class ConfirmarPagoComponent implements OnChanges {
+export class RealizarCobroComponent implements OnChanges {
   @Input() visible = false;
   @Input() pedido: PedidoDetalle | null = null;
   @Input() pago: PagoItem | null = null;
 
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() guardado = new EventEmitter<PedidoDetalle>();
-
-  /** El modal de rechazo se abre desde acá, como indica el flujo: el
-   *  administrador entra a validar y recién ahí decide si rechaza. */
-  @Output() rechazar = new EventEmitter<PagoItem>();
 
   form!: FormGroup;
   guardando = false;
@@ -165,7 +164,7 @@ export class ConfirmarPagoComponent implements OnChanges {
 
   // ---------- Acciones ----------
 
-  confirmar(): void {
+  cobrar(): void {
     if (!this.pedido || !this.pago || !this.puedeGuardar) {
       this.form.markAllAsTouched();
       return;
@@ -177,7 +176,7 @@ export class ConfirmarPagoComponent implements OnChanges {
     const valor = this.form.value;
 
     this.service
-      .confirmarPago(this.pedido.ped_id, this.pago.ppa_id, {
+      .registrarCobro(this.pedido.ped_id, this.pago.ppa_id, {
         monto_verificado: Number(valor.monto_verificado),
         nro_transaccion: valor.nro_transaccion || null,
         banco: valor.banco || null,
@@ -187,7 +186,7 @@ export class ConfirmarPagoComponent implements OnChanges {
       })
       .subscribe({
         next: (res) => {
-          this.toastr.success(res.message, 'Pago confirmado');
+          this.toastr.success(res.message, 'Cobro registrado');
           this.guardado.emit(res.data);
           this.guardando = false;
           this.cerrar();
@@ -210,22 +209,14 @@ export class ConfirmarPagoComponent implements OnChanges {
             });
             this.toastr.error(
               (Object.values(errores)[0] as string[])[0],
-              'No se pudo confirmar',
+              'No se pudo cobrar',
             );
             return;
           }
 
-          this.toastr.error(err?.error?.message ?? 'No se pudo confirmar el pago', 'Error');
+          this.toastr.error(err?.error?.message ?? 'No se pudo registrar el cobro', 'Error');
         },
       });
-  }
-
-  /** Cierra este modal y pide al contenedor que abra el de rechazo. */
-  pedirRechazo(): void {
-    if (!this.pago) return;
-    const pago = this.pago;
-    this.cerrar();
-    this.rechazar.emit(pago);
   }
 
   cerrar(): void {

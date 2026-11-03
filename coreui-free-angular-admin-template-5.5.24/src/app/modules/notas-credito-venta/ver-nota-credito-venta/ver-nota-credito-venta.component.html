@@ -1,0 +1,232 @@
+<c-modal size="xl" [visible]="visible" (visibleChange)="visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>
+      Nota de Crédito {{ nota?.ncv_nrodoc }}
+      <c-badge color="secondary" class="ms-2" *ngIf="esAnulada">ANULADA</c-badge>
+    </h5>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="nota">
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Empresa emisora</legend>
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">Razón social</label>
+          <input cFormControl [value]="nota.ncv_emp_razon" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">RUC</label>
+          <input cFormControl [value]="nota.ncv_emp_ruc" readonly />
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Datos del comprobante</legend>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">N° de nota de crédito</label>
+          <input cFormControl [value]="nota.ncv_nrodoc" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Timbrado N°</label>
+          <input cFormControl [value]="nota.ncv_timbrado" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Fecha</label>
+          <input cFormControl [value]="nota.ncv_fecha" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Inicio de vigencia</label>
+          <input cFormControl [value]="nota.ncv_timb_inicio" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Fin de vigencia</label>
+          <input cFormControl [value]="nota.ncv_timb_venc" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Sucursal</label>
+          <input cFormControl [value]="nota.suc_nombre || '—'" readonly />
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Documento asociado: es lo que la DNIT exige como referencia -->
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Documento asociado y motivo</legend>
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Factura corregida</label>
+          <input cFormControl [value]="nota.factura?.ven_nrodoc || '—'" readonly />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Fecha de la factura</label>
+          <input cFormControl [value]="nota.factura?.ven_fchaem || '—'" readonly />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Motivo</label>
+          <input cFormControl
+                 [value]="(nota.motivo?.mnc_codigo || '') + ' — ' + (nota.motivo?.mnc_descri || '')"
+                 readonly />
+        </div>
+      </div>
+            <div class="mt-2" *ngIf="nota.motivo">
+        <c-badge color="info" *ngIf="nota.motivo.mnc_afesto !== 1">
+          Ajuste de importe, sin movimiento de stock
+        </c-badge>
+        <c-badge color="warning" class="text-dark"
+                 *ngIf="nota.motivo.mnc_afesto === 1 && nota.ncv_depid">
+          Reingresó mercadería al depósito {{ nota.dpo_nombre }}
+        </c-badge>
+        <c-badge color="secondary"
+                 *ngIf="nota.motivo.mnc_afesto === 1 && !nota.ncv_depid">
+          La mercadería no reingresó al stock (baja)
+        </c-badge>
+      </div>
+    </fieldset>
+
+        <!-- Nota de crédito electrónica: estado de la declaración ante la DNIT -->
+    <fieldset class="border rounded p-3 mb-3" *ngIf="fe">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Nota de crédito electrónica</legend>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label d-block">Estado</label>
+          <c-badge [color]="feColor">{{ feTexto }}</c-badge>
+          <c-badge color="light" class="ms-1 text-dark" *ngIf="esPrueba">PRUEBA · sin valor fiscal</c-badge>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Aprobada el</label>
+          <input cFormControl [value]="fe.aprobado || '—'" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Intentos de envío</label>
+          <input cFormControl [value]="fe.intentos" readonly />
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">CDC (código de control)</label>
+          <input cFormControl [value]="fe.cdc || '—'" readonly />
+        </div>
+      </div>
+
+      <!-- Rechazo o pendiente con error: la causa que devolvió la API/DNIT -->
+      <div class="alert mb-0 mt-3" [ngClass]="'alert-' + feColor" *ngIf="fe.estado !== 2 && fe.mensaje">
+        <div>{{ fe.mensaje }}</div>
+        <div class="small mt-1" *ngIf="fe.error">Código: {{ fe.error }}</div>
+      </div>
+
+      <div class="small mt-2" *ngIf="fe.qr">
+        <a [href]="fe.qr" target="_blank" rel="noopener noreferrer">Consultar en e-Kuatia</a>
+      </div>
+
+      <div class="small mt-2" *ngIf="fe.correo_enviado !== null && fe.correo_enviado !== undefined">
+        <span class="text-success" *ngIf="fe.correo_enviado">Correo enviado a {{ fe.correo_detalle }}</span>
+        <span class="text-danger" *ngIf="!fe.correo_enviado">
+          El correo no se pudo enviar: {{ fe.correo_detalle }}
+        </span>
+      </div>
+
+      <div class="text-muted small mt-2" *ngIf="!esAnulada && fe.bloquea_anulacion">
+        Esta nota ya fue declarada o está en proceso de declararse ante la DNIT: no se anula
+        desde el sistema.
+      </div>
+    </fieldset>
+
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Adquirente</legend>
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">Razón social / Nombre</label>
+          <input cFormControl [value]="nota.ncv_razonsocial" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Documento</label>
+          <input cFormControl [value]="identificacion" readonly />
+        </div>
+      </div>
+    </fieldset>
+
+    <table cTable small striped class="mb-3">
+      <thead>
+        <tr>
+          <th>#</th><th>Código</th><th>Descripción</th>
+          <th class="text-end">Cant.</th><th class="text-end">Precio unit.</th>
+          <th class="text-end">Exentas</th><th class="text-end">5%</th><th class="text-end">10%</th>
+          <th class="text-end">Reingresado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let d of detalle">
+          <td>{{ d.dnv_nroitem }}</td>
+          <td>{{ d.dnv_codigo }}</td>
+          <td>{{ d.dnv_descripcion }}</td>
+          <td class="text-end">{{ d.dnv_cantidad | number:'1.0-4' }}</td>
+          <td class="text-end">{{ d.dnv_precio | number:'1.0-2' }}</td>
+          <td class="text-end">{{ columna(d, 0) | number:'1.0-2' }}</td>
+          <td class="text-end">{{ columna(d, 5) | number:'1.0-2' }}</td>
+          <td class="text-end">{{ columna(d, 10) | number:'1.0-2' }}</td>
+          <td class="text-end">{{ d.dnv_canrei | number:'1.0-4' }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Liquidación</legend>
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Exentas</label>
+          <input cFormControl [value]="nota.ncv_exenta | number:'1.0-2'" readonly />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Gravado 5%</label>
+          <input cFormControl [value]="nota.ncv_grav5 | number:'1.0-2'" readonly />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Gravado 10%</label>
+          <input cFormControl [value]="nota.ncv_grav10 | number:'1.0-2'" readonly />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">TOTAL</label>
+          <input cFormControl [value]="nota.ncv_total | number:'1.0-2'" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">IVA 5%</label>
+          <input cFormControl [value]="nota.ncv_iva5 | number:'1.0-2'" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">IVA 10%</label>
+          <input cFormControl [value]="nota.ncv_iva10 | number:'1.0-2'" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">TOTAL IVA</label>
+          <input cFormControl [value]="nota.ncv_totiva | number:'1.0-2'" readonly />
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="mb-2">
+      <label class="form-label">Observaciones</label>
+      <textarea cFormControl rows="2" readonly>{{ nota.ncv_obs || '' }}</textarea>
+    </div>
+
+    <div class="alert alert-secondary mb-0" *ngIf="esAnulada">
+      Anulada el {{ nota.ncv_anulado }}<span *ngIf="nota.ncv_motanu"> — {{ nota.ncv_motanu }}</span>
+    </div>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cerrar</button>
+    <button cButton color="secondary" class="text-white" *ngIf="fe?.tiene_xml" (click)="pedirXml()">
+      XML
+    </button>
+    <button cButton color="info" class="text-white" *ngIf="fe?.tiene_pdf" (click)="pedirKude()">
+      KuDE (PDF)
+    </button>
+    <button cButton color="warning" class="text-white" *ngIf="puedeReintentar"
+            [disabled]="reintentando" (click)="pedirReintento()">
+      {{ reintentando ? 'Reintentando...' : 'Reintentar' }}
+    </button>
+    <button cButton color="danger" class="text-white" *ngIf="puedeAnular" (click)="pedirAnular()">
+      Anular
+    </button>
+  </c-modal-footer>
+</c-modal>

@@ -36,6 +36,30 @@ export const routes: Routes = [
             import('./pages/legal/terminos/terminos.component').then((m) => m.TerminosComponent),
         title: 'Términos y Condiciones | Z Informática',
     },
+
+    
+    {
+        path: 'como-comprar',
+        loadComponent: () =>
+            import('./pages/legal/como-comprar/como-comprar.component').then((m) => m.ComoComprarComponent),
+        title: 'Cómo comprar | Z Informática',
+    },
+    
+    {
+        path: 'garantia',
+        loadComponent: () =>
+            import('./pages/legal/garantia/garantia.component').then((m) => m.GarantiaComponent),
+        title: 'Garantía | Z Informática',
+    },
+    
+   
+    {
+        path: 'preguntas-frecuentes',
+        loadComponent: () =>
+            import('./pages/legal/preguntas-frecuentes/preguntas-frecuentes.component').then((m) => m.PreguntasFrecuentesComponent),
+        title: 'Preguntas frecuentes | Z Informática',
+    },
+
     {
         path: 'politica-de-privacidad',
         loadComponent: () =>

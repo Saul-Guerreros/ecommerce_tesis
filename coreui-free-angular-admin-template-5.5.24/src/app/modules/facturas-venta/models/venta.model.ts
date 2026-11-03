@@ -87,6 +87,10 @@ export interface Venta {
   detalle?: VentaDetalle[];
 
   fe?: VentaFe | null;
+
+  nc_vigentes?: number;        // cantidad de notas de crédito vigentes (listado y detalle)
+  ven_acreditado?: number;     // solo en el detalle
+  ven_saldo?: number;          // solo en el detalle: total - acreditado - cobrado
 }
 
 export interface EstadoOption {

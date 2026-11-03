@@ -16,6 +16,8 @@ import { DatoFiscalClienteService } from '../../../core/services/dato-fiscal-cli
 import { FormDatoFiscalComponent } from '../form-dato-fiscal/form-dato-fiscal.component';
 import { ProductosCarritoCardComponent } from '../../../shared/components/productos-carrito-card/productos-carrito-card.component';
 import { DatosEntregaCardComponent } from '../../../shared/components/datos-entrega-card/datos-entrega-card.component';
+import { ModalCondicionesCompraComponent } from '../modal-condiciones-compra/modal-condiciones-compra.component';
+import { FormsModule } from '@angular/forms';
 
 /**
  * Paso 2 del checkout: Facturación + [CONFIRMAR PEDIDO].
@@ -33,10 +35,11 @@ import { DatosEntregaCardComponent } from '../../../shared/components/datos-entr
 @Component({
   selector: 'app-paso-facturacion',
   standalone: true,
-  imports: [
-    CommonModule, CurrencyPipe, ReactiveFormsModule, RouterModule, FormDatoFiscalComponent,
-    ProductosCarritoCardComponent, DatosEntregaCardComponent,
-  ],
+imports: [
+  CommonModule, CurrencyPipe, ReactiveFormsModule, RouterModule, FormDatoFiscalComponent,
+  ProductosCarritoCardComponent, DatosEntregaCardComponent, ModalCondicionesCompraComponent,FormsModule ,
+],
+
   templateUrl: './paso-facturacion.component.html',
   styleUrl: './paso-facturacion.component.css',
 })
@@ -79,6 +82,19 @@ export class PasoFacturacionComponent implements OnInit {
    * corrige cada campo (son getters, no un snapshot fijo).
    */
   intentoConfirmar = false;
+
+  /** Casilla obligatoria. El backend la vuelve a validar (acepta_condiciones). */
+  aceptaCondiciones = false;
+  modalCondicionesVisible = false;
+
+  onCambioAceptacion(event: Event): void {
+    this.aceptaCondiciones = (event.target as HTMLInputElement).checked;
+  }
+
+  abrirCondiciones(event: Event): void {
+    event.preventDefault();
+    this.modalCondicionesVisible = true;
+  }
 
   get medioInvalido(): boolean {
     return this.intentoConfirmar && !this.medioRecepcion;
@@ -260,7 +276,7 @@ export class PasoFacturacionComponent implements OnInit {
    */
   confirmar(): void {
     if (this.confirmando) return;
-
+    if (!this.aceptaCondiciones) return;   // <- nuevo
     this.intentoConfirmar = true;
     this.errorStock = null;
 
@@ -280,7 +296,7 @@ export class PasoFacturacionComponent implements OnInit {
     this.confirmando = true;
 
     this.checkoutService.guardarFacturacion(payload).pipe(
-      switchMap(() => this.checkoutService.confirmarPedido()),
+    switchMap(() => this.checkoutService.confirmarPedido(this.aceptaCondiciones)),  // <- cambia
     ).subscribe({
       next: (resp) => {
         this.confirmando = false;

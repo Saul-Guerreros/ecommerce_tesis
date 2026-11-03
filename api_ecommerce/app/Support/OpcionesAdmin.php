@@ -41,6 +41,7 @@ class OpcionesAdmin
                 'opciones' => [
                     ['permiso' => 'pedidos.ver', 'nombre' => 'Pedidos', 'urls' => ['/pedidos'], 'fijo' => false],
                     ['permiso' => 'facturas-venta.ver', 'nombre' => 'Facturas de venta', 'urls' => ['/facturas-venta'], 'fijo' => false],
+                    ['permiso' => 'notas-credito-venta.ver', 'nombre' => 'Notas de crédito de venta', 'urls' => ['/notas-credito-venta'], 'fijo' => false],
                 ],
             ],
             [

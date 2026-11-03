@@ -2,6 +2,7 @@
 
 namespace App\Models\Pedido;
 
+use App\Models\Venta\CobroVenta;
 use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -57,5 +58,11 @@ class PedidoPago extends Model
     public function usuarioVerificador(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'ppa_usuver', 'usu_id');
+    }
+
+        /** Cobro activo registrado contra la factura para este pago (null hasta cobrarlo). */
+    public function cobro(): HasOne
+    {
+        return $this->hasOne(CobroVenta::class, 'cob_ppaid', 'ppa_id')->activo();
     }
 }

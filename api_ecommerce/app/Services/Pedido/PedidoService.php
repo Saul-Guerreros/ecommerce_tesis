@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+
 use App\Models\Persona;
 
 /**
@@ -52,9 +53,10 @@ class PedidoService
      */
     public const HORAS_PARA_PAGAR = 24;
 
-    public function __construct(
-        private CheckoutResumenService $resumen,
-    ) {}
+
+        public function __construct(
+            private CheckoutResumenService $resumen) 
+        {}
 
     // ---------- Paso 2: POST (Confirmar Pedido) ----------
 
@@ -113,6 +115,7 @@ class PedidoService
             $this->crearFacturacion($pedido, $facturacion);
             $this->reservarStock($carritoItems, $entrega);
 
+
             PedidoHistorialEstado::create([
                 'peh_pedid'  => $pedido->ped_id,
                 'peh_usuid'  => $usuario->usu_id,
@@ -147,11 +150,11 @@ class PedidoService
      * ser un requisito para crear el pedido.
      */
     private function guardarCedulaSiCorresponde(Persona $persona, array $entrega): void
-{
-    if ($entrega['receptor'] === 'titular' && blank($persona->per_cedula)) {
-        $persona->update(['per_cedula' => $entrega['rec_nrodoc']]);
+    {
+        if ($entrega['receptor'] === 'titular' && blank($persona->per_cedula)) {
+            $persona->update(['per_cedula' => $entrega['rec_nrodoc']]);
+        }
     }
-}
 
     private function temporalCompleto(Usuario $usuario): PedidoTemporal
     {
@@ -228,6 +231,7 @@ class PedidoService
             'pfa_recibe'   => $f['pfa_recibe'],
         ]);
     }
+
 
     /**
      * Reserva (sto_reserv), no descuenta (sto_cantid): el descuento

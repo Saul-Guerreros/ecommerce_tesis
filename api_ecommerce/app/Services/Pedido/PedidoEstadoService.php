@@ -43,10 +43,20 @@ class PedidoEstadoService
      */
     private const REQUIEREN_PAGO_CONFIRMADO = [EstadoPedido::EN_PREPARACION];
 
+        /**
+     * Estados que exigen que TODOS los pagos esten cobrados.
+     *
+     * Es mas estricto que REQUIEREN_PAGO_CONFIRMADO: ahi alcanza con que
+     * esten cobrados los pagos con comprobante, porque el efectivo entra
+     * recien al entregar. Aca ya no hay un despues: la mercaderia sale
+     * del local, asi que el efectivo tiene que estar registrado.
+     */
+    private const REQUIEREN_COBRO_COMPLETO = [EstadoPedido::ENTREGADO];
+
     public function __construct(
         private StockPedidoService $stock,
         private PlazoRetiroService $plazoRetiro,
-        private \App\Services\Venta\VentaService $venta,   // ← NUEVO
+       
     ) {}
 
     /**
@@ -64,27 +74,59 @@ class PedidoEstadoService
             return [];
         }
 
-        $pagoCumplido = $this->pagoCumplido($pedido);
+               $pagoCumplido  = $this->pagoCumplido($pedido);
+        $cobroCompleto = $this->cobroCompleto($pedido);
+        $facturado     = $this->tieneFactura($pedido);
 
         return EstadoPedido::whereIn('est_codigo', $destinos)
             ->where('est_estado', 1)
             ->orderBy('est_id')
             ->get()
-            ->map(function (EstadoPedido $estado) use ($pagoCumplido) {
-                $requierePago = in_array($estado->est_codigo, self::REQUIEREN_PAGO_CONFIRMADO, true);
-                $bloqueado    = $requierePago && !$pagoCumplido;
+            ->map(function (EstadoPedido $estado) use ($pagoCumplido, $cobroCompleto, $facturado) {
+                $motivo = $this->motivoDeBloqueo(
+                    $estado->est_codigo,
+                    $pagoCumplido,
+                    $cobroCompleto,
+                    $facturado,
+                );
 
                 return [
                     'codigo'      => $estado->est_codigo,
                     'descripcion' => $estado->est_descri,
-                    'habilitado'  => !$bloqueado,
-                    'motivo'      => $bloqueado
-                        ? 'Primero hay que confirmar todos los pagos del pedido.'
-                        : null,
+                    'habilitado'  => $motivo === null,
+                    'motivo'      => $motivo,
                 ];
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Un unico lugar decide por que una transicion esta bloqueada, y tanto
+     * el combo como la validacion lo consultan. Si el motivo viviera dos
+     * veces, el panel y el backend terminarian discrepando.
+     */
+    private function motivoDeBloqueo(
+        string $codigoDestino,
+        bool $pagoCumplido,
+        bool $cobroCompleto,
+        bool $facturado,
+    ): ?string {
+        if (in_array($codigoDestino, self::REQUIEREN_PAGO_CONFIRMADO, true) && !$pagoCumplido) {
+            return 'Primero hay que cobrar todos los pagos con comprobante del pedido.';
+        }
+
+        if (in_array($codigoDestino, self::REQUIEREN_COBRO_COMPLETO, true) && !$cobroCompleto) {
+            return 'Falta registrar el cobro: el pedido no se entrega sin la plata registrada.';
+        }
+
+        // Una factura declarada no se deshace con un cambio de estado: la
+        // correccion de un comprobante ya declarado es por nota de credito.
+        if ($codigoDestino === EstadoPedido::CANCELADO && $facturado) {
+            return 'El pedido ya tiene factura declarada: la cancelación requiere nota de crédito.';
+        }
+
+        return null;
     }
 
     /**
@@ -115,13 +157,15 @@ class PedidoEstadoService
                 ]);
             }
 
-            if (
-                in_array($codigoDestino, self::REQUIEREN_PAGO_CONFIRMADO, true)
-                && !$this->pagoCumplido($pedido)
-            ) {
-                throw ValidationException::withMessages([
-                    'estado' => 'No se puede preparar un pedido cuyo pago todavía no está confirmado.',
-                ]);
+            $motivo = $this->motivoDeBloqueo(
+                $codigoDestino,
+                $this->pagoCumplido($pedido),
+                $this->cobroCompleto($pedido),
+                $this->tieneFactura($pedido),
+            );
+
+            if ($motivo !== null) {
+                throw ValidationException::withMessages(['estado' => $motivo]);
             }
 
             // Efecto sobre stock, ANTES de mover el estado: si algo falla
@@ -196,15 +240,13 @@ class PedidoEstadoService
         return [];
     }
 
-    private function aplicarEfectoDeStock(Pedido $pedido, string $codigoDestino, ?Usuario $usuario): void
+        private function aplicarEfectoDeStock(Pedido $pedido, string $codigoDestino, ?Usuario $usuario): void
     {
         if ($codigoDestino === EstadoPedido::ENTREGADO) {
+            // Solo stock. Ni factura ni cobro: para llegar aca los dos ya
+            // tienen que estar hechos (motivoDeBloqueo lo exige), y en
+            // contra entrega el cobro se registra desde la tarjeta Pago.
             $this->stock->descontarDefinitivo($pedido, $usuario);
-
-            // Misma guarda que descontarDefinitivo(): si el pedido ya se
-            // facturó al confirmar el pago, emitirDesdePedido() devuelve esa
-            // factura y no consume un número nuevo.
-            $this->venta->emitirDesdePedido($pedido, $usuario);
 
             return;
         }
@@ -243,5 +285,19 @@ class PedidoEstadoService
         return $pedido->pagos
             ->filter(fn ($pago) => (bool) $pago->metodoPago?->mpa_requcom)
             ->every(fn ($pago) => $pago->estadoPago?->epa_codigo === EstadoPago::CONFIRMADO);
+    }
+
+    /** TODOS los pagos cobrados, incluido el efectivo contra entrega. */
+    private function cobroCompleto(Pedido $pedido): bool
+    {
+        $pedido->loadMissing('pagos.estadoPago');
+
+        return $pedido->pagos
+            ->every(fn ($pago) => $pago->estadoPago?->epa_codigo === EstadoPago::CONFIRMADO);
+    }
+
+    private function tieneFactura(Pedido $pedido): bool
+    {
+        return $pedido->factura()->exists();
     }
 }

@@ -18,10 +18,17 @@ use Illuminate\Support\Facades\Http;
  */
 class FacturacionApiClient
 {
-    /** POST /facturas */
-    public function emitirFactura(array $payload): RespuestaApi
+    /**
+    * POST /documentos: nota de credito, nota de debito, autofactura y
+    * nota de remision. La factura tiene su propia ruta (/facturas); el
+    * resto se distingue por el campo "tipo" del cuerpo (guia 11).
+    *
+    * Las rutas de consulta (/facturas/{cdc}, /archivos) sirven para
+    * CUALQUIER documento de la empresa, asi que no hace falta duplicarlas.
+    */
+    public function emitirDocumento(array $payload): RespuestaApi
     {
-        return $this->enviar('POST', '/facturas', $payload);
+        return $this->enviar('POST', '/documentos', $payload);
     }
 
     /** GET /facturas/{cdc}: lo registrado de un comprobante, sin archivos. */

@@ -1,0 +1,8 @@
+/* Reutiliza los estilos de .tm-legal / .tm-contenido-quill sin su padding de página */
+.tm-legal-modal {
+  padding: 0;
+}
+
+.mcc-cuerpo {
+  max-height: 60vh;
+}

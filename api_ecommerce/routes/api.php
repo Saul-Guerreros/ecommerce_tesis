@@ -107,6 +107,12 @@ use App\Http\Controllers\Admin\Venta\VentaController;
 use App\Http\Controllers\Admin\Servicio\ClasificacionSolicitudController;
 use App\Http\Controllers\Admin\Inventario\InventarioInteligenteController;
 use App\Http\Controllers\VinculacionPresencialController;
+use App\Http\Controllers\Admin\Configuracion\PaginaInformativaController;
+use App\Http\Controllers\Api\PaginaInformativaPublicaController;
+use App\Http\Controllers\Api\FaqPublicoController;
+
+use App\Http\Controllers\Admin\Venta\NotaCreditoVentaController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -155,7 +161,11 @@ Route::group([
     Route::get('producto/{slug}', [VitrinaController::class, 'detalle']);
     Route::get('producto/{slug}/stock-sucursales', [VitrinaController::class, 'stockSucursales']);   // <-- nueva
 
-     // NUEVO — filtro avanzado / catálogo con búsqueda:
+    // Atención al Cliente (público)
+    Route::get('paginas/{slug}', [PaginaInformativaPublicaController::class, 'show']);
+    Route::get('faq', [FaqPublicoController::class, 'index']);
+
+    // NUEVO — filtro avanzado / catálogo con búsqueda:
     Route::get('productos/filtros', [VitrinaController::class, 'configFiltros']);
     Route::get('productos/buscar', [VitrinaController::class, 'buscar']);
     Route::get('categorias/menu', [VitrinaController::class, 'menuCategorias']);
@@ -359,6 +369,11 @@ Route::group([
     // Módulo Configuracion: Fase 1 ---
     Route::patch('empresas/{id}/estado', [EmpresaController::class, 'toggleEstado']);
     Route::apiResource('empresas', EmpresaController::class);
+
+    // Atención al Cliente (páginas informativas)
+    Route::get('paginas-informativas', [PaginaInformativaController::class, 'index']);
+    Route::get('paginas-informativas/{id}', [PaginaInformativaController::class, 'show']);
+    Route::patch('paginas-informativas/{id}', [PaginaInformativaController::class, 'update']);
 
     //Sucursales
     Route::get('sucursales/config', [SucursalController::class, 'config']);
@@ -801,14 +816,25 @@ Route::prefix('admin/pedidos')->middleware('auth:api')->group(function () {
     Route::get('/{pedido}',        [PedidoGestionController::class, 'show'])
         ->middleware('permiso:pedidos.ver');
 
-    // Confirmar un pago mueve dinero y stock: permiso propio.
-    Route::post('/{pedido}/pagos/{pago}/confirmar', [PedidoGestionController::class, 'confirmarPago'])
+    // Validar el comprobante no mueve plata: solo habilita el cobro.
+    Route::post('/{pedido}/pagos/{pago}/comprobante/validar', [PedidoGestionController::class, 'validarComprobante'])
+        ->middleware('permiso:pedidos.pago.verificar');
+
+    // Generar la factura: acto fiscal, va antes de cualquier cobro.
+    Route::post('/{pedido}/factura/generar', [PedidoGestionController::class, 'generarFactura'])
+        ->middleware('permiso:pedidos.pago.verificar');
+
+    // Cobrar mueve dinero y stock: mismo permiso, accion separada.
+    Route::post('/{pedido}/pagos/{pago}/cobrar',    [PedidoGestionController::class, 'registrarCobro'])
         ->middleware('permiso:pedidos.pago.verificar');
     Route::post('/{pedido}/pagos/{pago}/rechazar',  [PedidoGestionController::class, 'rechazarPago'])
         ->middleware('permiso:pedidos.pago.verificar');
 
     Route::patch('/{pedido}/estado', [PedidoGestionController::class, 'cambiarEstado'])
         ->middleware('permiso:pedidos.gestionar');
+
+    Route::get('/{pedido}/factura', [PedidoGestionController::class, 'factura'])
+    ->middleware('permiso:pedidos.ver');
 
     Route::post('/{pedido}/factura/reenviar', [PedidoGestionController::class, 'reenviarFactura'])
         ->middleware(['permiso:pedidos.gestionar', 'throttle:5,1']);
@@ -844,6 +870,48 @@ Route::prefix('admin/facturas-venta')->middleware('auth:api')->group(function ()
 
     Route::post('/{id}/fe/reintentar', [VentaController::class, 'reintentarFe'])
         ->middleware(['permiso:facturas-venta.ver', 'throttle:10,1']);
+    
+    // Atajo de consulta y creación desde el detalle de la factura. Las NC
+    // no se guardan acá: viven en su propio módulo.
+    Route::get('/{id}/notas-credito/config', [NotaCreditoVentaController::class, 'configPorFactura'])
+        ->middleware('permiso:notas-credito-venta.ver');
+
+    Route::get('/{id}/notas-credito', [NotaCreditoVentaController::class, 'porFactura'])
+        ->middleware('permiso:notas-credito-venta.ver');
+        
+});
+
+
+// Notas de Crédito de Venta. Documento fiscal propio: se emite con el
+// timbrado de la empresa y se anula, nunca se edita ni se borra.
+Route::prefix('admin/notas-credito-venta')->middleware('auth:api')->group(function () {
+    Route::get('/config', [NotaCreditoVentaController::class, 'config'])
+        ->middleware('permiso:notas-credito-venta.ver');
+
+    Route::get('/', [NotaCreditoVentaController::class, 'index'])
+        ->middleware('permiso:notas-credito-venta.ver');
+
+    // ---------- Nota de crédito electrónica ----------
+    // Antes de /{id}: si fueran después, "/{id}" capturaría igual porque es
+    // GET con un solo segmento, pero mantener las rutas específicas arriba
+    // es la convención segura.
+    Route::get('/{id}/fe/kude', [NotaCreditoVentaController::class, 'kude'])
+        ->middleware('permiso:notas-credito-venta.ver');
+
+    Route::get('/{id}/fe/xml', [NotaCreditoVentaController::class, 'xml'])
+        ->middleware('permiso:notas-credito-venta.ver');
+
+    Route::post('/{id}/fe/reintentar', [NotaCreditoVentaController::class, 'reintentarFe'])
+        ->middleware(['permiso:notas-credito-venta.ver', 'throttle:10,1']);
+
+    Route::get('/{id}', [NotaCreditoVentaController::class, 'show'])
+        ->middleware('permiso:notas-credito-venta.ver');
+
+    Route::post('/', [NotaCreditoVentaController::class, 'store'])
+        ->middleware('permiso:notas-credito-venta.ver');
+
+    Route::patch('/{id}/anular', [NotaCreditoVentaController::class, 'anular'])
+        ->middleware('permiso:notas-credito-venta.ver');
 });
 
 /*

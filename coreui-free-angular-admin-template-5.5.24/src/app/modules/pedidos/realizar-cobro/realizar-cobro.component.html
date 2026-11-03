@@ -1,7 +1,7 @@
 <c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" size="lg" backdrop="static">
   <c-modal-header>
     <h5 cModalTitle *ngIf="pago && pedido">
-      CONFIRMAR PAGO {{ pago.orden }} — {{ pedido.numero }}
+      REALIZAR COBRO {{ pago.orden }} — {{ pedido.numero }}
     </h5>
     <button cButtonClose (click)="cerrar()"></button>
   </c-modal-header>
@@ -11,7 +11,7 @@
     <!-- ===== BLOQUEO POR STOCK (409) ===== -->
     <div *ngIf="faltantes.length > 0">
       <c-alert color="danger">
-        <strong>No se pudo confirmar el pago</strong>
+        <strong>No se pudo registrar el cobro</strong>
         <p class="mb-2 mt-2">El stock reservado ya no está disponible:</p>
         <ul class="mb-2">
           <li *ngFor="let f of faltantes">
@@ -20,9 +20,9 @@
         </ul>
         <p class="mb-1 small">
           Es posible que se haya vendido en el local o en un pedido anterior a este.
-          Regularizá el inventario antes de confirmar este pago.
+          Regularizá el inventario antes de registrar este cobro.
         </p>
-        <p class="mb-0 small fw-semibold">El pago NO fue confirmado. No se modificó nada.</p>
+        <p class="mb-0 small fw-semibold">El cobro NO se registró. No se modificó nada.</p>
       </c-alert>
     </div>
 
@@ -35,14 +35,14 @@
           <div class="fw-semibold">{{ pago.metodo.descri }}</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label small text-muted mb-1">Monto esperado</label>
+          <label class="form-label small text-muted mb-1">Monto asignado</label>
           <div class="fw-semibold">Gs. {{ formatoGs(montoEsperado) }}</div>
         </div>
       </div>
 
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label">Monto verificado <span class="text-danger">*</span></label>
+          <label class="form-label">Monto cobrado <span class="text-danger">*</span></label>
           <input cFormControl type="number" min="1" formControlName="monto_verificado"
                  (blur)="onMontoBlur()"
                  [class.is-invalid]="campoInvalido('monto_verificado')
@@ -76,7 +76,7 @@
         </div>
 
         <div class="col-md-6">
-          <label class="form-label">Fecha del pago</label>
+          <label class="form-label">Fecha del cobro</label>
           <input cFormControl type="date" formControlName="fecha_pago"
                  [class.is-invalid]="errorBackend('fecha_pago')" />
           <div class="invalid-feedback d-block" *ngIf="errorBackend('fecha_pago')">
@@ -116,7 +116,7 @@
           <input class="form-check-input" type="checkbox" id="confirmarDif"
                  formControlName="confirmar_diferencia" />
           <label class="form-check-label" for="confirmarDif">
-            Confirmo el excedente y autorizo el pago.
+            Confirmo el excedente y autorizo el cobro.
           </label>
         </div>
       </c-alert>
@@ -124,7 +124,7 @@
       <!-- ===== EFECTOS AUTOMÁTICOS ===== -->
       <div class="border-top mt-3 pt-3" *ngIf="quedaraTotalmentePagado && !montoInsuficiente">
         <p class="mb-2 small">
-          Al confirmar este pago el pedido quedará <strong>TOTALMENTE PAGADO</strong>.
+          Con este cobro el pedido quedará <strong>TOTALMENTE PAGADO</strong>.
           Se ejecutará automáticamente:
         </p>
         <ul class="small mb-0">
@@ -140,15 +140,9 @@
       {{ faltantes.length > 0 ? 'Entendido' : 'Cancelar' }}
     </button>
 
-    <button cButton color="danger" variant="outline"
-            *ngIf="faltantes.length === 0"
-            [disabled]="guardando" (click)="pedirRechazo()">
-      Rechazar pago
-    </button>
-
     <button cButton color="success" class="text-white"
             *ngIf="faltantes.length === 0"
-            [disabled]="!puedeGuardar" (click)="confirmar()">
+            [disabled]="!puedeGuardar" (click)="cobrar()">
       <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
       Confirmar pago
     </button>

@@ -104,6 +104,21 @@
                 {{ p.motivo_rechazo.fecha | date:'dd/MM/yyyy HH:mm' }}
               </div>
 
+              <!-- El plazo y los intentos restantes: las dos cosas que el
+              cliente necesita saber para no perder el pedido. -->
+              <div class="uk-text-small uk-margin-small-top" *ngIf="p.reemplazable">
+                <span *ngIf="pedido.ped_vence">
+                  Tenés hasta el {{ pedido.ped_vence | date:'dd/MM/yyyy HH:mm' }}
+                  para subir un comprobante nuevo.
+                </span>
+                <span class="uk-text-danger" *ngIf="pedido && pedido.rechazos_restantes <= 1">
+                  Es tu último intento: con un rechazo más el pedido se cancela.
+                </span>
+                <span *ngIf="pedido && pedido.rechazos_restantes > 1">
+                  Te quedan {{ pedido.rechazos_restantes }} intentos antes de que el pedido se cancele.
+                </span>
+              </div>
+
               <div class="pd-rechazo-form" *ngIf="p.reemplazable">
                 <label class="uk-form-label">Adjuntar un comprobante nuevo</label>
                 <input type="file" class="uk-input" accept=".jpg,.jpeg,.png,.pdf"

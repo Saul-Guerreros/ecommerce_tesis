@@ -28,11 +28,21 @@ class TimbradoRequest extends FormRequest
         return [
             'tim_tcoid'    => ['required', 'integer', 'exists:tipo_comprobante,tco_id'],
             'tim_sucid'    => ['required', 'integer', 'exists:sucursal,suc_id'],
-            'tim_numero'   => [
+             'tim_numero'   => [
                 'required',
                 'string',
                 'size:8',
-                Rule::unique('timbrado', 'tim_numero')->ignore($id, 'tim_id'),
+                // El número de timbrado es UNO por empresa y se comparte entre
+                // todos los tipos de documento electrónico (factura, NC...).
+                // Lo que no puede repetirse es la combinación completa: el mismo
+                // número + tipo + establecimiento + punto. Es la misma clave que
+                // ya impone la base (uq_tim_emp_num_tco_est_pex).
+                Rule::unique('timbrado', 'tim_numero')
+                    ->where(fn ($q) => $q
+                        ->where('tim_tcoid', $this->input('tim_tcoid'))
+                        ->where('tim_establec', $this->input('tim_establec'))
+                        ->where('tim_puntexp', $this->input('tim_puntexp')))
+                    ->ignore($id, 'tim_id'),
             ],
             'tim_establec' => ['required', 'string', 'size:3', 'regex:/^[0-9]{3}$/'],
             'tim_puntexp'  => ['required', 'string', 'size:3', 'regex:/^[0-9]{3}$/'],
@@ -88,7 +98,7 @@ class TimbradoRequest extends FormRequest
             'tim_sucid.exists'      => 'La sucursal seleccionada no existe.',
             'tim_numero.required'   => 'El número de timbrado es obligatorio.',
             'tim_numero.size'       => 'El número de timbrado debe tener exactamente 8 caracteres.',
-            'tim_numero.unique'     => 'Ese número de timbrado ya está registrado.',
+            'tim_numero.unique'     => 'Ya existe un timbrado con ese número para este tipo de comprobante, establecimiento y punto de expedición.',
             'tim_establec.required' => 'El establecimiento es obligatorio.',
             'tim_establec.size'     => 'El establecimiento debe tener exactamente 3 dígitos.',
             'tim_establec.regex'    => 'El establecimiento debe ser numérico (ej: 001).',

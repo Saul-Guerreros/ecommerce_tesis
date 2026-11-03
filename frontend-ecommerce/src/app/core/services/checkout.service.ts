@@ -66,9 +66,12 @@ export class CheckoutService {
    * Un 422 con la clave 'stock' significa que alguien se adelantó: el
    * cliente no pagó nada y vuelve al carrito.
    */
-  confirmarPedido(): Observable<{ message: string; data: PedidoConfirmado }> {
-    return this.http.post<{ message: string; data: PedidoConfirmado }>(`${this.URL}/confirmar`, {});
-  }
+  confirmarPedido(aceptaCondiciones: boolean): Observable<{ message: string; data: PedidoConfirmado }> {
+    return this.http.post<{ message: string; data: PedidoConfirmado }>(
+      `${this.URL}/confirmar`,
+      { acepta_condiciones: aceptaCondiciones },
+    );
+}
 
   reiniciar(): void {
     this.entrega.set(null);

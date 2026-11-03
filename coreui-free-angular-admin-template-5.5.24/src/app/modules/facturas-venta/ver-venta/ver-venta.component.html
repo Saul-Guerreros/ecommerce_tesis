@@ -208,6 +208,52 @@
       </div>
     </fieldset>
 
+        <!-- Atajo de consulta y creación. Las NC no viven acá: se leen de su
+         propia tabla y se gestionan en el módulo Notas de Crédito. -->
+    <fieldset class="border rounded p-3 mb-3">
+      <legend class="float-none w-auto px-2 fs-6 text-muted">Notas de crédito</legend>
+
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-muted small">
+          Acreditado: <strong>{{ totalAcreditado | number:'1.0-2' }}</strong>
+          de {{ venta.ven_total | number:'1.0-2' }}
+        </span>
+        <button cButton size="sm" color="primary" class="text-white"
+                *ngIf="puedeEmitirNota" (click)="pedirNuevaNota()">
+          + Emitir nota de crédito
+        </button>
+      </div>
+
+      <table cTable small striped *ngIf="notasCredito.length > 0">
+        <thead>
+          <tr>
+            <th>N° NC</th><th>Fecha</th><th>Motivo</th>
+            <th class="text-center">Electrónica</th>
+            <th class="text-end">Total</th><th class="text-center">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let n of notasCredito">
+            <td>{{ n.ncv_nrodoc }}</td>
+            <td>{{ n.ncv_fecha }}</td>
+            <td>{{ n.motivo?.mnc_descri }}</td>
+            <td class="text-end">{{ n.ncv_total | number:'1.0-2' }}</td>
+            <td class="text-center">
+              <c-badge *ngIf="n.fe"
+                       [color]="n.fe.estado === 2 ? 'success' : n.fe.estado === 3 ? 'danger' : 'warning'">
+                {{ n.fe.estado === 2 ? 'Enviada' : n.fe.estado === 3 ? 'Rechazada' : 'Pendiente' }}
+              </c-badge>
+              <span class="text-muted" *ngIf="!n.fe">—</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="text-muted fst-italic small" *ngIf="notasCredito.length === 0">
+        Esta factura no tiene notas de crédito
+      </div>
+    </fieldset>
+
     <div class="mb-2">
       <label class="form-label">Observaciones</label>
       <textarea cFormControl rows="2" readonly>{{ venta.ven_obs || '' }}</textarea>

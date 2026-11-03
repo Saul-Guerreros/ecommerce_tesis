@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BadgeModule, ButtonModule, FormModule, ModalModule, TableModule } from '@coreui/angular';
 import { Venta, VentaDetalle, VentaFe } from '../models/venta.model';
-
+import { NotaCreditoVenta } from '../../notas-credito-venta/models/nota-credito-venta.model';
 /**
  * Vista de solo lectura de una factura emitida, con el mismo esquema que
  * el detalle de Facturas de Compra.
@@ -61,9 +61,10 @@ export class VerVentaComponent {
     return !this.esAnulada && this.fe?.estado === 1;
   }
 
-  /** Una factura aprobada (o en proceso) ante la DNIT no se anula: se corrige con una nota de credito. */
+  /** Con notas de crédito vigentes (o factura declarada) no se anula: se anulan primero las NC. */
   get puedeAnular(): boolean {
-    return !this.esAnulada && !this.fe?.bloquea_anulacion;
+    const tieneNotas = this.notasCredito.some((n) => n.ncv_estado !== 9);
+    return !this.esAnulada && !this.fe?.bloquea_anulacion && !tieneNotas;
   }
 
   get condicion(): string {
@@ -111,4 +112,29 @@ export class VerVentaComponent {
       this.reintentarFe.emit(this.venta);
     }
   }
+
+  /** Las NC de esta factura. Las carga el padre; acá solo se muestran. */
+  @Input() notasCredito: NotaCreditoVenta[] = [];
+
+  @Output() nuevaNotaCredito = new EventEmitter<Venta>();
+
+  get totalAcreditado(): number {
+    return this.notasCredito
+      .filter((n) => n.ncv_estado !== 9)
+      .reduce((s, n) => s + Number(n.ncv_total), 0);
+  }
+
+  /**
+   * Una factura anulada no admite NC, y una ya acreditada por completo
+   * tampoco. El backend lo valida igual; esto evita mostrar un botón que
+   * siempre fallaría.
+   */
+  get puedeEmitirNota(): boolean {
+    return !this.esAnulada && this.totalAcreditado < Number(this.venta?.ven_total ?? 0);
+  }
+
+  pedirNuevaNota(): void {
+    if (this.venta) this.nuevaNotaCredito.emit(this.venta);
+  }
+
 }

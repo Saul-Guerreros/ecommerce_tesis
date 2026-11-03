@@ -1,0 +1,23 @@
+<main class="tm-legal">
+  <div class="uk-container">
+    <article class="tm-legal-contenido">
+      <ul class="uk-breadcrumb uk-margin-remove">
+        <li><a routerLink="/">Inicio</a></li>
+        <li><span>Preguntas frecuentes</span></li>
+      </ul>
+      <h1>Preguntas frecuentes</h1>
+
+      <div *ngIf="cargando" uk-spinner></div>
+
+      <div *ngFor="let grupo of grupos" class="uk-margin-medium-top">
+        <h2>{{ grupo.etiqueta }}</h2>
+        <ul uk-accordion>
+          <li *ngFor="let p of grupo.preguntas">
+            <a class="uk-accordion-title" href="#">{{ p.pregunta }}</a>
+            <div class="uk-accordion-content"><p>{{ p.respuesta }}</p></div>
+          </li>
+        </ul>
+      </div>
+    </article>
+  </div>
+</main>

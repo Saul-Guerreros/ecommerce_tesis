@@ -199,3 +199,32 @@
   background: #fff;
   flex: 0 0 48px;
 }
+
+.ck-aceptacion {
+  padding: 14px 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.ck-aceptacion-label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.ck-aceptacion .uk-checkbox {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* El botón-enlace hereda el aspecto del texto que lo rodea */
+.ck-aceptacion-link {
+  font-size: inherit;
+  line-height: inherit;
+  text-transform: none;
+  vertical-align: baseline;
+}

@@ -94,14 +94,37 @@ export interface FacturacionDetalle {
   destino: string | null;
   factura: FacturaPedido | null;
   comprobante_emitido: boolean;
+  /** Habilitación de [GENERAR FACTURA]; la regla real vive en la API. */
+  puede_generar: boolean;
+}
+
+export interface ValidacionComprobante {
+  observacion: string | null;
+  por: string | null;
+  fecha: string | null;
 }
 
 export interface ComprobantePago {
   pco_id: number;
   archivo: string;
   url: string;
-  verificado: boolean;
   subido: string | null;
+  /** El admin lo comparó con el banco y lo dio por bueno. Habilita el cobro. */
+  validado: boolean;
+  validacion: ValidacionComprobante | null;
+}
+
+/** Entrada de dinero registrada contra la factura (cobro_venta). */
+export interface CobroPago {
+  cob_id: number;
+  monto: number;
+  metodo: string | null;
+  nro_transaccion: string | null;
+  banco: string | null;
+  fecha: string | null;
+  observacion: string | null;
+  por: string | null;
+  registrado: string | null;
 }
 
 export interface VerificacionPago {
@@ -133,6 +156,11 @@ export interface PagoItem {
   monto_asignado: number;
   estado: { codigo: string | null; descripcion: string | null };
   comprobante: ComprobantePago | null;
+  cobro: CobroPago | null;
+  /** Reglas calculadas por la API: la pantalla las repite, no las decide. */
+  puede_validar: boolean;
+  puede_cobrar: boolean;
+  /** Sólo con datos: pedidos cobrados con el flujo anterior a cobro_venta. */
   verificacion: VerificacionPago | null;
   rechazo: RechazoPago | null;
   observacion: string | null;
@@ -145,6 +173,12 @@ export interface BloquePago {
   monto_verificado: number;
   monto_pendiente: number;
   porcentaje: number;
+  /** Con alguno pendiente la factura no se puede emitir y el cobro queda bloqueado. */
+  comprobantes_pendientes: number;
+  /** El cobro se aplica contra la factura: sin factura no hay cobro. */
+  cobro_habilitado: boolean;
+  rechazos: number;
+  rechazos_restantes: number;
   items: PagoItem[];
 }
 
@@ -172,8 +206,21 @@ export interface PedidoDetalle {
 }
 
 // ---------- Payloads ----------
+export interface ValidarComprobantePayload {
+  confirma_monto: boolean;
+  observacion?: string | null;
+}
 
-export interface ConfirmarPagoPayload {
+export interface RegistrarCobroPayload {
+  monto_verificado: number;
+  nro_transaccion?: string | null;
+  banco?: string | null;
+  fecha_pago?: string | null;
+  observacion?: string | null;
+  confirmar_diferencia?: boolean;
+}
+
+export interface RegistrarCobroPayload {
   monto_verificado: number;
   nro_transaccion?: string | null;
   banco?: string | null;

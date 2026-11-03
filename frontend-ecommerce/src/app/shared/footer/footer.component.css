@@ -1,0 +1,6 @@
+/* Subtítulos de las columnas del footer: sin mayúsculas forzadas */
+.tm-footer-titulo {
+  margin-bottom: 12px;
+  font-size: 0.9375rem;
+  text-transform: none;
+}

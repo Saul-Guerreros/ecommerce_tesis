@@ -2,6 +2,7 @@
 
 namespace App\Models\Venta;
 
+use Illuminate\Database\Eloquent\Builder;
 use App\Models\Cliente;
 use App\Models\Configuracion\Sucursal;
 use App\Models\Configuracion\Timbrado;
@@ -20,7 +21,7 @@ class VentaCab extends Model
     public const ESTADO_ANULADA = 9;
 
     public const CONDICION_CONTADO = 1;
-    public const CONDICION_CREDITO = 2;
+    public const CONDICION_CREDITO = 2;    
 
     protected $table      = 'venta_cab';
     protected $primaryKey = 'ven_id';
@@ -67,8 +68,13 @@ class VentaCab extends Model
      * Se arma, no se guarda: sus tres partes ya estan en columnas propias
      * y duplicarlas abriria la puerta a que queden desincronizadas.
      */
-    public function getVenNrodocAttribute(): string
+    public function getVenNrodocAttribute(): ?string
     {
+        // Un borrador todavía no tiene número fiscal.
+        if ($this->ven_numero === null) {
+            return null;
+        }
+
         return sprintf(
             '%s-%s-%s',
             $this->ven_establec,
@@ -80,6 +86,21 @@ class VentaCab extends Model
     public function anulada(): bool
     {
         return $this->ven_estado === self::ESTADO_ANULADA;
+    }
+
+    /**
+     * Una factura vigente es la que NO esta anulada (Emitida o Cobrada).
+     * Es la condicion del indice uq_venta_pedido: un pedido puede tener
+     * como maximo una factura vigente.
+     */
+    public function scopeVigente(Builder $query): Builder
+    {
+        return $query->where('ven_estado', '<>', self::ESTADO_ANULADA);
+    }
+
+    public function esVigente(): bool
+    {
+        return $this->ven_estado !== self::ESTADO_ANULADA;
     }
 
     // ---------- Relaciones ----------
@@ -122,6 +143,46 @@ class VentaCab extends Model
     public function fe(): HasOne
     {
         return $this->hasOne(VentaFe::class, 'vfe_venid', 'ven_id');
+    }
+
+        public function cobros(): HasMany
+    {
+        return $this->hasMany(CobroVenta::class, 'cob_venid', 'ven_id')->orderBy('cob_id');
+    }
+
+    /** Suma de los cobros activos. Cuando alcanza ven_total la factura pasa a Cobrada. */
+    public function totalCobrado(): float{
+        return (float) $this->cobros()->activo()->sum('cob_monto');
+    }
+
+    public function notasCredito(): HasMany{
+        return $this->hasMany(NotaCreditoVenta::class, 'ncv_venid', 'ven_id')->orderByDesc('ncv_id');
+    }
+
+    /**
+     * Solo las NC no anuladas. Relación aparte y SIN orderBy a propósito: así
+     * sirve para withCount() en el listado (un ORDER BY dentro de un COUNT
+     * rompe en PostgreSQL) y para el chequeo de anulación.
+     */
+    public function notasCreditoVigentes(): HasMany{
+        return $this->hasMany(NotaCreditoVenta::class, 'ncv_venid', 'ven_id')
+            ->where('ncv_estado', '<>', NotaCreditoVenta::ESTADO_ANULADA);
+    }
+
+    /**
+     * Total acreditado por notas de crédito VIGENTES. Se calcula, no se
+     * acumula en una columna: mismo criterio que totalCobrado(), porque un
+     * saldo guardado se desincroniza en cuanto se anula una NC.
+     */
+    public function totalAcreditado(): float
+    {
+        return (float) $this->notasCredito()->vigente()->sum('ncv_total');
+    }
+
+    /** Lo que la factura todavía representa como deuda del cliente. */
+    public function saldo(): float
+    {
+        return round((float) $this->ven_total - $this->totalAcreditado() - $this->totalCobrado(), 2);
     }
 
 }

@@ -195,6 +195,14 @@ export const routes: Routes = [
       },
 
       {
+        path: 'notas-credito-venta',
+        loadChildren: () =>
+          import('./modules/notas-credito-venta/notas-credito-venta.module')
+            .then(m => m.NotasCreditoVentaModule),
+        data: { title: 'Notas de Crédito de Venta' },
+      },
+
+      {
         path: 'precios',
         loadChildren: () => import('./modules/precios/precios.module').then(m => m.PreciosModule),
         data: { title: 'Gestión de Precios' },
@@ -342,7 +350,7 @@ export const routes: Routes = [
         data: { title: 'Pedidos' },
       },
 
-	  {
+	    {
         path: 'servicios/tipos-dispositivo',
         loadChildren: () => import('./modules/tipos-dispositivo/tipos-dispositivo.module').then(m => m.TiposDispositivoModule),
         data: { title: 'Tipos de Dispositivo' },
@@ -382,6 +390,12 @@ export const routes: Routes = [
         path: 'servicios/cobros',
         loadChildren: () => import('./modules/cobros-servicio/cobros-servicio.module').then(m => m.CobrosServicioModule),
         data: { title: 'Cobros de servicios' },
+      },
+      {
+        path: 'atencion-cliente/:slug',
+        loadChildren: () =>
+          import('./modules/paginas-informativas/paginas-informativas.module').then(m => m.PaginasInformativasModule),
+        data: { title: 'Atención al Cliente' },
       },
     {
       //Fuera del FrontEnd

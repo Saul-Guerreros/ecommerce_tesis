@@ -4,11 +4,25 @@ namespace App\Http\Resources\Venta;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Models\Venta\CobroVenta;
+use App\Models\Venta\NotaCreditoVenta;
 
 class VentaCabResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Importes de NC y cobros: SOLO si el controlador cargó esas relaciones
+        // (el detalle). En el listado no se calculan: serían consultas por fila.
+        $acreditado = $this->relationLoaded('notasCredito')
+            ? round((float) $this->notasCredito
+                ->where('ncv_estado', '!=', NotaCreditoVenta::ESTADO_ANULADA)->sum('ncv_total'), 2)
+            : null;
+
+        $cobrado = $this->relationLoaded('cobros')
+            ? round((float) $this->cobros
+                ->where('cob_estado', CobroVenta::ESTADO_ACTIVO)->sum('cob_monto'), 2)
+            : null;
+
         return [
             'ven_id'     => $this->ven_id,
             'ven_pedid'  => $this->ven_pedid,
@@ -54,6 +68,15 @@ class VentaCabResource extends JsonResource
             'ven_creado'  => $this->ven_creado,
             'ven_anulado' => $this->ven_anulado,
             'ven_motanu'  => $this->ven_motanu,
+
+            // Efecto de las notas de crédito vigentes sobre la factura.
+            'nc_vigentes'    => $this->whenCounted('notasCreditoVigentes'),
+            'ven_acreditado' => $this->when($acreditado !== null, $acreditado),
+            // Negativo = a favor del cliente (se acreditó más de lo pendiente de cobro).
+            'ven_saldo'      => $this->when(
+                $acreditado !== null && $cobrado !== null,
+                fn () => round((float) $this->ven_total - $acreditado - $cobrado, 2)
+            ),
 
             'suc_nombre' => $this->whenLoaded('sucursal', fn () => $this->sucursal->suc_nombre),
             'caj_descri' => $this->whenLoaded('caja', fn () => $this->caja->caj_descri),

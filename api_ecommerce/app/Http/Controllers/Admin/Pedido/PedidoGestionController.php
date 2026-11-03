@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin\Pedido;
 
+
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Pedido\CambiarEstadoPedidoRequest;
-use App\Http\Requests\Pedido\ConfirmarPagoRequest;
+use App\Http\Requests\Pedido\RegistrarCobroRequest;
+use App\Http\Requests\Pedido\ValidarComprobanteRequest;
 use App\Http\Requests\Pedido\RechazarPagoRequest;
 use App\Http\Resources\Pedido\PedidoDetalleResource;
 use App\Models\Pedido\MotivoRechazoPago;
@@ -21,6 +23,10 @@ use App\Models\Venta\VentaCab;
 use App\Services\Facturacion\FacturaEnvioService;
 use Illuminate\Http\Request;
 use RuntimeException;
+
+use App\Http\Resources\Venta\VentaCabResource;
+
+use App\Services\Venta\VentaService;
 
 /**
  * Gestión del Pedido: detalle, verificación de pagos y cambio de estado.
@@ -54,12 +60,16 @@ class PedidoGestionController extends Controller
         'pagos.comprobante',
         'pagos.motivoRechazo',
         'pagos.usuarioVerificador.persona',
+        'pagos.comprobante.usuarioValidador.persona',
+        'pagos.cobro.usuario.persona',
+        'pagos.cobro.metodoPago',
         'factura.fe',
     ];
 
     public function __construct(
         private PagoVerificacionService $verificacion,
         private PedidoEstadoService $estados,
+        private VentaService $ventas,
     ) {}
 
     /**
@@ -85,16 +95,15 @@ class PedidoGestionController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/admin/pedidos/{pedido}/pagos/{pago}/confirmar
+       /**
+     * POST /api/admin/pedidos/{pedido}/pagos/{pago}/comprobante/validar
      *
-     * Si con este pago el pedido queda totalmente cobrado, el service
-     * descuenta stock y lo pasa a En preparación en la misma transacción.
-     * Un StockInsuficienteException revierte todo y responde 409.
+     * Primer paso del ciclo: el admin da por bueno el comprobante. No
+     * mueve dinero ni stock, solo habilita el cobro.
      */
-    public function confirmarPago(ConfirmarPagoRequest $request, Pedido $pedido, int $pago): JsonResponse
+    public function validarComprobante(ValidarComprobanteRequest $request, Pedido $pedido, int $pago): JsonResponse
     {
-        $actualizado = $this->verificacion->confirmar(
+        $actualizado = $this->verificacion->validarComprobante(
             $pedido,
             $pago,
             $request->validated(),
@@ -102,7 +111,48 @@ class PedidoGestionController extends Controller
         );
 
         return response()->json([
-            'message' => 'Pago confirmado correctamente.',
+            'message' => 'Comprobante validado. Ya se puede registrar el cobro.',
+            'data'    => $this->serializar($actualizado),
+        ]);
+    }
+
+
+        /**
+     * POST /api/admin/pedidos/{pedido}/factura/generar
+     *
+     * Segundo paso: con los comprobantes validados, el admin emite la
+     * factura y queda programada su declaración a la DNIT. Sin payload:
+     * los datos fiscales salen del pedido, no del formulario.
+     */
+    public function generarFactura(Pedido $pedido): JsonResponse
+    {
+        $this->ventas->generarDesdePedido($pedido, auth('api')->user());
+
+        return response()->json([
+            'message' => 'Factura generada. Ya se puede registrar el cobro.',
+            'data'    => $this->serializar($pedido->refresh()),
+        ]);
+    }
+
+    /**
+     * POST /api/admin/pedidos/{pedido}/pagos/{pago}/cobrar
+     *
+     * Registra el cobro contra la factura del pedido. Si con este cobro el
+     * pedido queda totalmente pagado, el service descuenta stock y lo pasa
+     * a En preparación en la misma transacción. Un
+     * StockInsuficienteException revierte todo y responde 409.
+     */
+    public function registrarCobro(RegistrarCobroRequest $request, Pedido $pedido, int $pago): JsonResponse
+    {
+        $actualizado = $this->verificacion->registrarCobro(
+            $pedido,
+            $pago,
+            $request->validated(),
+            auth('api')->user(),
+        );
+
+        return response()->json([
+            'message' => 'Cobro registrado correctamente.',
             'data'    => $this->serializar($actualizado),
         ]);
     }
@@ -284,4 +334,23 @@ class PedidoGestionController extends Controller
 
         return $disco->response($comprobante->pco_archiv, basename($comprobante->pco_archiv));
     }
+
+    /**
+     * GET /api/admin/pedidos/{pedido}/factura
+     * Factura completa (pendiente, emitida o anulada) para el botón "Ver factura".
+     */
+    public function factura(Pedido $pedido): JsonResponse
+    {
+        $venta = VentaCab::with(['sucursal', 'caja', 'pedido', 'detalle', 'fe'])
+            ->where('ven_pedid', $pedido->ped_id)
+            ->orderByDesc('ven_id')
+            ->first();
+
+        if (!$venta) {
+            return response()->json(['message' => 'Este pedido todavía no tiene factura asociada.'], 404);
+        }
+
+        return response()->json(['data' => new VentaCabResource($venta)]);
+    }
+
 }

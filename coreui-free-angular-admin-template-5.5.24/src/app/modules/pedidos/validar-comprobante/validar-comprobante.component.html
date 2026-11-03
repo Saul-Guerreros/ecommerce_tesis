@@ -1,0 +1,88 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" size="lg"
+         backdrop="static" alignment="center" [scrollable]="true">
+  <c-modal-header>
+    <h5 cModalTitle class="text-break" *ngIf="pago && pedido">
+      VALIDAR COMPROBANTE {{ pago.orden }} — {{ pedido.numero }}
+    </h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="pago">
+    <form [formGroup]="form">
+
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-sm-6">
+          <label class="form-label small text-muted mb-1">Método</label>
+          <div class="fw-semibold">{{ pago.metodo.descri }}</div>
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label small text-muted mb-1">Monto asignado</label>
+          <div class="fw-semibold">Gs. {{ formatoGs(montoAsignado) }}</div>
+        </div>
+      </div>
+
+            <div class="border rounded p-3 mb-3" *ngIf="pago.comprobante as comp">
+        <!-- flex-wrap: en pantallas angostas los botones bajan debajo del nombre.
+             min-width:0 + text-break: un nombre de archivo largo no desborda. -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div class="flex-grow-1" style="min-width: 0;">
+            <div class="small text-muted">Comprobante cargado</div>
+            <div class="fw-semibold text-break">{{ comp.archivo }}</div>
+            <div class="small text-muted" *ngIf="comp.subido">Subido: {{ comp.subido }}</div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" cButton color="secondary" variant="outline" size="sm"
+                    [disabled]="descargando" (click)="verComprobante()">Ver comprobante</button>
+            <button type="button" cButton color="secondary" variant="outline" size="sm"
+                    [disabled]="descargando" (click)="descargarComprobante()">
+              <c-spinner size="sm" *ngIf="descargando" class="me-1"></c-spinner>
+              Descargar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Observación (opcional)</label>
+        <textarea cFormControl rows="2" formControlName="observacion"
+                  placeholder="Coincide con el extracto del 30/10"
+                  [class.is-invalid]="errorBackend('observacion')"></textarea>
+        <div class="invalid-feedback d-block" *ngIf="errorBackend('observacion')">
+          {{ errorBackend('observacion') }}
+        </div>
+      </div>
+
+      <c-alert color="warning" class="mb-0">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="confirmaMonto"
+                 formControlName="confirma_monto" />
+          <label class="form-check-label" for="confirmaMonto">
+            Confirmo que el comprobante cubre los
+            <strong>Gs. {{ formatoGs(montoAsignado) }}</strong> asignados a este pago.
+          </label>
+        </div>
+        <p class="mb-0 mt-2 small">
+          Ese monto es el que se declara a la DNIT. Una vez declarada, la factura
+          sólo se corrige con nota de crédito.
+        </p>
+      </c-alert>
+    </form>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" variant="outline" (click)="cerrar()">Cancelar</button>
+
+    <button cButton color="danger" variant="outline"
+            [disabled]="guardando" (click)="pedirRechazo()">
+      Rechazar pago
+    </button>
+
+    <button cButton color="success" class="text-white"
+            [disabled]="!puedeGuardar" (click)="validar()">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      Validar pago
+    </button>
+  </c-modal-footer>
+    <c-modal-footer class="flex-wrap gap-2"></c-modal-footer>
+</c-modal>
