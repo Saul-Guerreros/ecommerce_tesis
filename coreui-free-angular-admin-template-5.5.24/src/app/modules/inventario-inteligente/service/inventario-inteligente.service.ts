@@ -4,24 +4,23 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
-import {AlertaStock, ConfigInventario, FiltrosAlertas, InsightsInventario, MetricaModelo, PronosticoProducto, ResumenInventario,} from '../models/inventario-inteligente.model';
-
+import {
+  AlertaStock, ConfigInventario, FiltrosAlertas, InsightsInventario, MetricaModelo, NotificacionesInventario,
+  PronosticoProducto, ResumenInventario,
+} from '../models/inventario-inteligente.model';
 
 @Injectable({ providedIn: 'root' })
 export class InventarioInteligenteService {
   private apiUrl = `${environment.apiUrl}/admin/inventario-inteligente`;
 
-  /** Alertas de reposición pendientes (agotado + crítico + reponer): la usa el badge del header. */
-  private readonly pendientesReposicion$ = new BehaviorSubject<number>(0);
-  readonly pendientesReposicion = this.pendientesReposicion$.asObservable();
+  /** Estado de la campana del header; se refresca tras cada acción que cambia alertas. */
+  private readonly notificaciones$ = new BehaviorSubject<NotificacionesInventario | null>(null);
+  readonly notificaciones = this.notificaciones$.asObservable();
 
   constructor(private http: HttpClient) {}
 
   getResumen(): Observable<ResumenInventario> {
-    return this.http.get<{ data: ResumenInventario }>(`${this.apiUrl}/resumen`).pipe(
-      map((res) => res.data),
-      tap((r) => this.pendientesReposicion$.next(r.alertas.agotado + r.alertas.critico + r.alertas.reponer)),
-    );
+    return this.http.get<{ data: ResumenInventario }>(`${this.apiUrl}/resumen`).pipe(map((res) => res.data));
   }
 
   getAlertas(filtros: FiltrosAlertas): Observable<AlertaStock[]> {
@@ -33,12 +32,27 @@ export class InventarioInteligenteService {
     return this.http.get<{ data: AlertaStock[] }>(`${this.apiUrl}/alertas`, { params }).pipe(map((res) => res.data));
   }
 
+  /** Campana del header: conteos y las 5 alertas más urgentes. */
+  getNotificaciones(): Observable<NotificacionesInventario> {
+    return this.http.get<{ data: NotificacionesInventario }>(`${this.apiUrl}/notificaciones`).pipe(
+      map((res) => res.data),
+      tap((n) => this.notificaciones$.next(n)),
+    );
+  }
+
+  /** Vuelve a consultar la campana (se llama después de cada acción que cambia alertas). */
+  refrescarNotificaciones(): void {
+    this.getNotificaciones().subscribe({ error: () => {} });
+  }
+
   atender(id: number, observacion: string | null): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/alertas/${id}/atender`, { observacion });
+    return this.http.patch(`${this.apiUrl}/alertas/${id}/atender`, { observacion })
+      .pipe(tap(() => this.refrescarNotificaciones()));
   }
 
   descartar(id: number, observacion: string): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/alertas/${id}/descartar`, { observacion });
+    return this.http.patch(`${this.apiUrl}/alertas/${id}/descartar`, { observacion })
+      .pipe(tap(() => this.refrescarNotificaciones()));
   }
 
   getPronostico(productoId: number, depositoId?: number): Observable<PronosticoProducto> {
@@ -51,7 +65,8 @@ export class InventarioInteligenteService {
   }
 
   actualizarLeadTime(productoId: number, leadTime: number | null): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/productos/${productoId}/lead-time`, { lead_time: leadTime });
+    return this.http.patch(`${this.apiUrl}/productos/${productoId}/lead-time`, { lead_time: leadTime })
+      .pipe(tap(() => this.refrescarNotificaciones()));
   }
 
   getMetricas(): Observable<MetricaModelo[]> {
@@ -63,11 +78,12 @@ export class InventarioInteligenteService {
   }
 
   actualizarConfig(config: ConfigInventario): Observable<{ message: string; data: ConfigInventario }> {
-    return this.http.put<{ message: string; data: ConfigInventario }>(`${this.apiUrl}/config`, config);
+    return this.http.put<{ message: string; data: ConfigInventario }>(`${this.apiUrl}/config`, config)
+      .pipe(tap(() => this.refrescarNotificaciones()));
   }
 
   recalcular(): Observable<any> {
-    return this.http.post(`${this.apiUrl}/recalcular`, {});
+    return this.http.post(`${this.apiUrl}/recalcular`, {}).pipe(tap(() => this.refrescarNotificaciones()));
   }
 
   /** Análisis con IA. forzar = true ignora el caché y vuelve a consultar a Gemini. */

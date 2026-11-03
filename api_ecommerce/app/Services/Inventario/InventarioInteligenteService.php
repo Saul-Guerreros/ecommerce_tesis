@@ -60,6 +60,50 @@ class InventarioInteligenteService
         ];
     }
 
+        /** Campana del header: conteos de reposición y las 5 alertas más urgentes. */
+    public function notificaciones(): array
+    {
+        $porTipo = AlertaStock::pendientes()
+            ->selectRaw('ast_tipo, COUNT(*) AS n')
+            ->groupBy('ast_tipo')
+            ->pluck('n', 'ast_tipo');
+
+        $urgentes = DB::table('alerta_stock as a')
+            ->join('producto as pr', 'pr.prd_id', '=', 'a.ast_prdid')
+            ->leftJoin('publicacion_web as pw', 'pw.pub_prdid', '=', 'pr.prd_id')
+            ->join('deposito as d', 'd.dpo_id', '=', 'a.ast_depid')
+            ->where('a.ast_estado', AlertaStock::ESTADO_PENDIENTE)
+            ->whereIn('a.ast_tipo', self::TIPOS_REPOSICION)
+            ->selectRaw('a.ast_id AS id, a.ast_tipo AS tipo, ' . self::NOMBRE_PRODUCTO . ' AS producto,
+                         d.dpo_nombre AS deposito, a.ast_dispon AS disponible, a.ast_sugeri AS sugerido,
+                         a.ast_cobert AS cobertura_dias')
+            ->orderByRaw("CASE a.ast_tipo WHEN 'agotado' THEN 1 WHEN 'critico' THEN 2 ELSE 3 END")
+            ->orderBy('a.ast_cobert')
+            ->limit(5)
+            ->get()
+            ->map(fn ($a) => [
+                'id'             => (int) $a->id,
+                'tipo'           => $a->tipo,
+                'producto'       => $a->producto,
+                'deposito'       => $a->deposito,
+                'disponible'     => (float) $a->disponible,
+                'sugerido'       => (float) $a->sugerido,
+                'cobertura_dias' => $a->cobertura_dias !== null ? (float) $a->cobertura_dias : null,
+            ]);
+
+        $agotado = (int) ($porTipo[AlertaStock::TIPO_AGOTADO] ?? 0);
+        $critico = (int) ($porTipo[AlertaStock::TIPO_CRITICO] ?? 0);
+        $reponer = (int) ($porTipo[AlertaStock::TIPO_REPONER] ?? 0);
+
+        return [
+            'agotado'          => $agotado,
+            'critico'          => $critico,
+            'reponer'          => $reponer,
+            'total_reposicion' => $agotado + $critico + $reponer,
+            'urgentes'         => $urgentes,
+        ];
+    }
+
     /** Listado de alertas con filtros. */
     public function alertas(array $filtros): array
     {

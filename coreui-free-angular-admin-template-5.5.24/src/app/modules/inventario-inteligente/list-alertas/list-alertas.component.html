@@ -73,15 +73,30 @@
   </table>
 </div>
 
-<nav *ngIf="!cargando && totalPaginas > 1">
-  <ul cPagination>
-    <li cPageItem [disabled]="paginaActual === 1"><a cPageLink (click)="irAPagina(paginaActual - 1)">Anterior</a></li>
-    <li cPageItem *ngFor="let p of paginas" [active]="p === paginaActual">
-      <a cPageLink (click)="irAPagina(p)">{{ p }}</a>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mt-3"
+     *ngIf="!cargando && alertas.length > 0">
+  <div class="text-body-secondary small">
+    Mostrando <strong>{{ desde }}–{{ hasta }}</strong> de <strong>{{ alertas.length }}</strong> alerta(s)
+  </div>
+
+  <c-pagination *ngIf="totalPaginas > 1" align="end" size="sm" aria-label="Paginación de alertas">
+    <li cPageItem [disabled]="paginaActual === 1">
+      <a cPageLink role="button" aria-label="Primera página" (click)="irAPagina(1)">&laquo;</a>
     </li>
-    <li cPageItem [disabled]="paginaActual === totalPaginas"><a cPageLink (click)="irAPagina(paginaActual + 1)">Siguiente</a></li>
-  </ul>
-</nav>
+    <li cPageItem [disabled]="paginaActual === 1">
+      <a cPageLink role="button" (click)="irAPagina(paginaActual - 1)">&lsaquo; Anterior</a>
+    </li>
+    <li cPageItem *ngFor="let p of paginas" [active]="p === paginaActual" [attr.aria-current]="p === paginaActual ? 'page' : null">
+      <a cPageLink role="button" (click)="irAPagina(p)">{{ p }}</a>
+    </li>
+    <li cPageItem [disabled]="paginaActual === totalPaginas">
+      <a cPageLink role="button" (click)="irAPagina(paginaActual + 1)">Siguiente &rsaquo;</a>
+    </li>
+    <li cPageItem [disabled]="paginaActual === totalPaginas">
+      <a cPageLink role="button" aria-label="Última página" (click)="irAPagina(totalPaginas)">&raquo;</a>
+    </li>
+  </c-pagination>
+</div>
 
 <app-cerrar-alerta [visible]="cierreVisible" [alerta]="seleccionada" [modo]="modoCierre"
   (visibleChange)="cierreVisible = $event" (confirmar)="confirmarCierre($event)"></app-cerrar-alerta>

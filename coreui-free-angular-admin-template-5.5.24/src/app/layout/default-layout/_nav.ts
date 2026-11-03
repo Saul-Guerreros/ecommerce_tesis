@@ -187,6 +187,11 @@ export const navItems: INavData[] = [
     ]
   },
   {
+    name: 'Inventario inteligente',
+    url: '/inventario/inteligente',
+    iconComponent: { name: 'cil-chart' },
+  },
+  {
     name: 'Configuración de Margen',
     url: '/configuracion-precio',
     iconComponent: { name: 'cil-settings' }
@@ -231,12 +236,6 @@ export const navItems: INavData[] = [
     name: 'Alertas de Stock',
     url: '/configuracion-tienda',
     iconComponent: { name: 'cil-bell' }
-  },
-  {
-    name: 'Inventario inteligente',
-    url: '/inventario/inteligente',
-    iconComponent: { name: 'cil-chart' },
-    badge: { color: 'info', text: 'IA' }
   },
   {
     name: 'Métodos de Pago',

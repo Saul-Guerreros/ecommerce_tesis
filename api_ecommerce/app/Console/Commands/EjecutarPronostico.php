@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\Inventario\PronosticoService;
 use App\Services\Inventario\ReposicionService;
 use Illuminate\Console\Command;
+use App\Services\Inventario\NotificadorInventario;
 
 /**
  * Proceso completo: pronostica la demanda de todo el catálogo y luego
@@ -17,11 +18,12 @@ class EjecutarPronostico extends Command
 
     protected $description = 'Pronostica la demanda (5 modelos, selección por backtesting) y actualiza las alertas';
 
-    public function handle(PronosticoService $pronostico, ReposicionService $reposicion): int
+    public function handle(PronosticoService $pronostico, ReposicionService $reposicion, NotificadorInventario $notificador): int
     {
         $inicio   = microtime(true);
         $resumen  = $pronostico->ejecutar();
         $alertas  = $reposicion->sincronizarAlertas();
+        $avisadas = $notificador->avisarUrgentes();
         $segundos = round(microtime(true) - $inicio, 1);
 
         $this->info("Completado en {$segundos} s · {$resumen['series']} series · horizonte {$resumen['horizonte']} semanas");
@@ -43,6 +45,7 @@ class EjecutarPronostico extends Command
         $this->table(['Tipo', 'Pendientes'], collect($alertas['por_tipo'])
             ->map(fn ($n, $tipo) => [$tipo, $n])->values()->all());
 
+        $this->line("Avisos por correo: {$avisadas} alerta(s) urgente(s) notificada(s)");    
         return self::SUCCESS;
     }
 }

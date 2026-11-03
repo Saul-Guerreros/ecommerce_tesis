@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\Inventario\ReposicionService;
 use Illuminate\Console\Command;
+use App\Services\Inventario\NotificadorInventario;
 
 /**
  * Recalcula las alertas de reposición con el stock actual y el último
@@ -18,17 +19,19 @@ class GenerarAlertasStock extends Command
 
     protected $description = 'Genera/actualiza las alertas de reposición según stock y pronóstico';
 
-    public function handle(ReposicionService $servicio): int
+    public function handle(ReposicionService $servicio, NotificadorInventario $notificador): int
     {
         if ($productoId = $this->option('producto')) {
             return $this->detalle($servicio, (int) $productoId);
         }
 
         $res = $servicio->sincronizarAlertas();
+        $avisadas = $notificador->avisarUrgentes();
 
         $this->info("Alertas: {$res['creadas']} creadas · {$res['actualizadas']} actualizadas · {$res['cerradas']} cerradas automáticamente");
         $this->table(['Tipo', 'Pendientes'], collect($res['por_tipo'])
             ->map(fn ($n, $tipo) => [$tipo, $n])->values()->all());
+        $this->line("Avisos por correo: {$avisadas} alerta(s) urgente(s) notificada(s)");
 
         return self::SUCCESS;
     }

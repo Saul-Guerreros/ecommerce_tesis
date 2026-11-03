@@ -907,6 +907,7 @@ Route::prefix('admin')->middleware('auth:api')->group(function () {
         ->group(function () {
             Route::middleware('permiso:inventario-inteligente.ver')->group(function () {
                 Route::get('resumen', 'resumen');
+                Route::get('notificaciones', 'notificaciones');
                 Route::get('alertas', 'alertas');
                 Route::get('productos/{id}/pronostico', 'pronostico')->whereNumber('id');
                 Route::get('metricas', 'metricas');

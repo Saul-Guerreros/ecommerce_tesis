@@ -1,18 +1,9 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, DestroyRef, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { switchMap, timer } from 'rxjs';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-
-import {
-  AvatarComponent,
-  BadgeComponent,
-  BreadcrumbRouterComponent,
-  ColorModeService,
-  ContainerComponent,
-  DropdownComponent,
-  DropdownDividerDirective,
-  DropdownItemDirective,
+import { AvatarComponent, BadgeComponent,BreadcrumbRouterComponent,ColorModeService,ContainerComponent,DropdownComponent,DropdownDividerDirective,DropdownItemDirective,
   DropdownMenuDirective,
   DropdownToggleDirective,
   HeaderComponent,
@@ -25,12 +16,12 @@ import {
 
 import { IconDirective } from '@coreui/icons-angular';
 import { AuthService } from '../../../auth/services/auth.service';
-import { InventarioInteligenteService } from '../../../modules/inventario-inteligente/service/inventario-inteligente.service';
+import { CampanaInventarioComponent } from '../../../modules/inventario-inteligente/campana-inventario/campana-inventario.component';
 
 @Component({
   selector: 'app-default-header',
   templateUrl: './default-header.component.html',
- imports: [ContainerComponent, HeaderTogglerDirective, SidebarToggleDirective, IconDirective, HeaderNavComponent, NavItemComponent, NavLinkDirective, RouterLink, RouterLinkActive, NgTemplateOutlet, BreadcrumbRouterComponent, DropdownComponent, DropdownToggleDirective, AvatarComponent, DropdownMenuDirective, DropdownItemDirective, BadgeComponent, DropdownDividerDirective]
+ imports: [ContainerComponent, HeaderTogglerDirective, SidebarToggleDirective, IconDirective, HeaderNavComponent, NavItemComponent, NavLinkDirective, RouterLink, RouterLinkActive, NgTemplateOutlet, BreadcrumbRouterComponent, DropdownComponent, DropdownToggleDirective, AvatarComponent, DropdownMenuDirective, DropdownItemDirective, BadgeComponent, DropdownDividerDirective,CampanaInventarioComponent]
 })
 export class DefaultHeaderComponent extends HeaderComponent {
 
@@ -39,13 +30,6 @@ export class DefaultHeaderComponent extends HeaderComponent {
 
   private authService = inject(AuthService);
   
-  private inventarioService = inject(InventarioInteligenteService);
-  private destroyRef = inject(DestroyRef);
-
-  /** Alertas de reposición pendientes (agotado + crítico + reponer) para el badge de la campana. */
-  readonly puedeVerInventario = this.authService.tienePermiso('inventario-inteligente.ver');
-  readonly alertasInventario = signal(0);
-
   // Usuario logueado (persona.nombre_completo, email, rol) - viene de /auth/login o /auth/me
   readonly currentUser = this.authService.currentUser;
   /** Iniciales para el avatar cuando el usuario no subió foto. */
@@ -66,19 +50,8 @@ export class DefaultHeaderComponent extends HeaderComponent {
     return this.colorModes.find(mode => mode.name === currentMode)?.icon ?? 'cilSun';
   });
 
- constructor() {
+   constructor() {
     super();
-
-    if (this.puedeVerInventario) {
-      // Se actualiza al entrar y cada 5 minutos; el panel también lo refresca al atender alertas.
-      this.inventarioService.pendientesReposicion
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((n) => this.alertasInventario.set(n));
-
-      timer(0, 5 * 60 * 1000)
-        .pipe(switchMap(() => this.inventarioService.getResumen()), takeUntilDestroyed(this.destroyRef))
-        .subscribe({ error: () => {} });
-    }
   }
 
   sidebarId = input('sidebar1');

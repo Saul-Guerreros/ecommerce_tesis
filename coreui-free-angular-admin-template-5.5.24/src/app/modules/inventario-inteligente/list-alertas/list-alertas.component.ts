@@ -21,6 +21,7 @@ import { DetallePronosticoComponent } from '../detalle-pronostico/detalle-pronos
   imports: [CommonModule, FormsModule, TableModule, ButtonModule, BadgeModule, SpinnerModule, FormModule,
     PaginationModule, GsPipe, CerrarAlertaComponent, DetallePronosticoComponent],
   templateUrl: './list-alertas.component.html',
+  styles: [`.page-link { cursor: pointer; user-select: none; } .page-item.disabled .page-link { cursor: default; }`],
 })
 export class ListAlertasComponent implements OnInit, OnChanges {
   @Input() tipo: TipoAlerta | null = null;
@@ -99,6 +100,15 @@ export class ListAlertasComponent implements OnInit, OnChanges {
   get alertasPagina(): AlertaStock[] {
     const inicio = (this.paginaActual - 1) * this.porPagina;
     return this.alertas.slice(inicio, inicio + this.porPagina);
+  }
+
+  /** Rango de registros visibles ("Mostrando 16–30 de 144"). */
+  get desde(): number {
+    return this.alertas.length ? (this.paginaActual - 1) * this.porPagina + 1 : 0;
+  }
+
+  get hasta(): number {
+    return Math.min(this.paginaActual * this.porPagina, this.alertas.length);
   }
 
   /** Hasta 7 números de página alrededor de la actual. */

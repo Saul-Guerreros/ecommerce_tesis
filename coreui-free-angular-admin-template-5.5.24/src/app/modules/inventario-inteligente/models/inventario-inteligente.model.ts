@@ -150,3 +150,24 @@ export const TIPOS_ACCION: Record<TipoAccion, string> = {
   revisar_parametros: 'Revisar parámetros',
   monitorear: 'Monitorear',
 };
+
+
+// ---------------- Notificaciones (campana del header) ----------------
+
+export interface AlertaUrgente {
+  id: number;
+  tipo: TipoAlerta;
+  producto: string;
+  deposito: string;
+  disponible: number;
+  sugerido: number;
+  cobertura_dias: number | null;
+}
+
+export interface NotificacionesInventario {
+  agotado: number;
+  critico: number;
+  reponer: number;
+  total_reposicion: number;
+  urgentes: AlertaUrgente[];
+}

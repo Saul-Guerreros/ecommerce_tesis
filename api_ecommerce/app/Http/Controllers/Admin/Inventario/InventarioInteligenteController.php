@@ -30,6 +30,12 @@ class InventarioInteligenteController extends Controller
         return response()->json(['data' => $this->servicio->resumen()]);
     }
 
+    /** GET /api/admin/inventario-inteligente/notificaciones */
+    public function notificaciones(): JsonResponse
+    {
+        return response()->json(['data' => $this->servicio->notificaciones()]);
+    }
+
     /** GET /api/admin/inventario-inteligente/alertas?estado=1&tipo=&deposito=&search= */
     public function alertas(FiltroAlertasRequest $request): JsonResponse
     {

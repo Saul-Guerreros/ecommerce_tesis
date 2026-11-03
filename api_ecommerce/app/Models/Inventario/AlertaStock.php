@@ -32,7 +32,7 @@ class AlertaStock extends Model
     protected $fillable = [
         'ast_prdid', 'ast_depid', 'ast_tipo', 'ast_dispon', 'ast_demdia', 'ast_ss',
         'ast_rop', 'ast_sugeri', 'ast_cobert', 'ast_ltdias', 'ast_modelo', 'ast_estado',
-        'ast_usuid', 'ast_obs', 'ast_creado', 'ast_actual', 'ast_cerrado',
+        'ast_usuid', 'ast_obs', 'ast_ntipo', 'ast_creado', 'ast_actual', 'ast_cerrado',
     ];
 
     protected $casts = [
