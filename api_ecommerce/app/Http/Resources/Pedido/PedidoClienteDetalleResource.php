@@ -9,6 +9,7 @@ use App\Models\Pedido\TipoEntrega;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+
 /**
  * Detalle de un pedido en "Mis Pedidos" (lado cliente).
  *
@@ -24,6 +25,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class PedidoClienteDetalleResource extends JsonResource
 {
     use DescribeEstadoPago;
+    use DescribePlazoCheque;
+    use DescribeEstadoCheque;
 
     public function toArray(Request $request): array
     {
@@ -48,11 +51,16 @@ class PedidoClienteDetalleResource extends JsonResource
             // mientras está LISTO y es retiro en sucursal.
             'ped_vencret' => $this->ped_vencret?->toIso8601String(),
 
+            // Plazo para entregar el cheque en la sucursal. Independiente
+            // de los dos anteriores.
+            'cheque' => $this->plazoCheque(),
+
             'estado_pedido' => [
                 'codigo'      => $this->estadoPedido?->est_codigo,
                 'descripcion' => $this->estadoPedido?->est_descri,
             ],
             'estado_pago' => [
+                'estado_cheque' => $this->estadoCheque(),
                 'codigo'      => $this->estadoPago?->epa_codigo,
                 'descripcion' => $this->descripcionEstadoPago(),
             ],
@@ -89,6 +97,19 @@ class PedidoClienteDetalleResource extends JsonResource
                 'comprobante_url'   => $p->comprobante
                     ? url("/api/tienda/pedidos/{$this->ped_numero}/pagos/{$p->ppa_id}/comprobante")
                     : null,
+
+                // El cheque es la "evidencia" de este método: no hay archivo
+                // que mostrar, pero sí lo que el cliente declaró y en qué
+                // estado está el papel.
+                'cheque' => $p->cheque ? [
+                    'tipo'         => $p->cheque->pch_tipo,
+                    'tipo_descri'  => $p->cheque->descripcionTipo(),
+                    'banco'        => $p->cheque->pch_banco,
+                    'nro'          => $p->cheque->pch_nro,
+                    'fecha_cobro'  => $p->cheque->pch_fecobr?->format('d/m/Y'),
+                    'estado'       => $p->cheque->pch_estado,
+                    'estado_label' => $p->cheque->descripcionEstado(),
+                ] : null,
 
                 // Por qué se lo rechazaron. Sin esto el cliente vería
                 // "Pago rechazado" sin saber qué corregir, y volvería a

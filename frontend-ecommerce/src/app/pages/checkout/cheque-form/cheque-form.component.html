@@ -1,0 +1,115 @@
+<div>
+
+  <!-- Tipos admitidos -->
+  <label class="uk-form-label">Tipos de cheques admitidos <span class="uk-text-danger">*</span></label>
+
+  <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+    <div *ngFor="let tipo of datos.tipos">
+      <button type="button" class="chq-opcion"
+              [class.chq-opcion--activa]="cheque.tipo === tipo.codigo"
+              (click)="elegirTipo(tipo.codigo)">
+        {{ tipo.descri }}
+      </button>
+    </div>
+  </div>
+
+  <p class="uk-text-danger uk-text-small uk-margin-small-top uk-margin-remove-bottom" *ngIf="tipoInvalido">
+    Elegí el tipo de cheque.
+  </p>
+
+  <!-- Descripción (sólo con un único método de pago) -->
+  <p class="uk-margin-small-top uk-margin-remove-bottom" *ngIf="mostrarDescripcion">
+    {{ datos.descripcion }}
+  </p>
+
+  <!-- Mensaje del proceso de verificación (editable por el admin) -->
+  <p class="chq-texto uk-margin-small-top uk-margin-remove-bottom" *ngIf="datos.mensaje">
+    {{ datos.mensaje }}
+  </p>
+
+    <!-- Datos del cheque -->
+  <div class="uk-grid-small uk-child-width-1-3@m uk-margin-top" uk-grid>
+
+    <div>
+      <label class="uk-form-label" [attr.for]="idBase + '-banco'">
+        Nombre del banco <span class="uk-text-danger">*</span>
+      </label>
+      <input class="uk-input" type="text" maxlength="80" autocomplete="off"
+             [id]="idBase + '-banco'"
+             [value]="cheque.banco"
+             (input)="onTexto('banco', $event)"
+             (blur)="tocar('banco')">
+      <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="errorEn('banco')">
+        Ingresá el nombre del banco.
+      </p>
+    </div>
+
+    <!-- Identifica el papel: es lo que la sucursal compara al recibirlo. -->
+    <div>
+      <label class="uk-form-label" [attr.for]="idBase + '-nro'">
+        N° de cheque <span class="uk-text-danger">*</span>
+      </label>
+      <input class="uk-input" type="text" inputmode="numeric" maxlength="20" autocomplete="off"
+             [id]="idBase + '-nro'"
+             [value]="cheque.nro"
+             (input)="onTexto('nro', $event)"
+             (blur)="tocar('nro')">
+      <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="errorEn('nro')">
+        Ingresá el número del cheque.
+      </p>
+    </div>
+
+    <div>
+      <label class="uk-form-label" [attr.for]="idBase + '-nrodoc'">
+        CI del titular <span class="uk-text-danger">*</span>
+      </label>
+      <input class="uk-input" type="text" inputmode="numeric" maxlength="20" autocomplete="off"
+             [id]="idBase + '-nrodoc'"
+             [value]="cheque.nrodoc"
+             (input)="onTexto('nrodoc', $event)"
+             (blur)="tocar('nrodoc')">
+      <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="errorEn('nrodoc')">
+        Ingresá la CI del titular.
+      </p>
+    </div>
+
+    <div>
+      <label class="uk-form-label" [attr.for]="idBase + '-nombre'">
+        Nombre del titular <span class="uk-text-danger">*</span>
+      </label>
+      <input class="uk-input" type="text" maxlength="150" autocomplete="off"
+             [id]="idBase + '-nombre'"
+             [value]="cheque.nombre"
+             (input)="onTexto('nombre', $event)"
+             (blur)="tocar('nombre')">
+      <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="errorEn('nombre')">
+        Ingresá el nombre del titular.
+      </p>
+    </div>
+
+    <!-- Sólo en el diferido: en un cheque a la vista no hay fecha futura. -->
+    <div *ngIf="esDiferido">
+      <label class="uk-form-label" [attr.for]="idBase + '-fecobr'">
+        Fecha de cobro <span class="uk-text-danger">*</span>
+      </label>
+      <input class="uk-input" type="date" [min]="fechaMinima"
+             [id]="idBase + '-fecobr'"
+             [value]="cheque.fecha_cobro"
+             (input)="onTexto('fecha_cobro', $event)"
+             (blur)="tocar('fecha_cobro')">
+      <p class="uk-text-meta uk-text-small uk-margin-remove-top" *ngIf="!errorEn('fecha_cobro')">
+        A partir de esta fecha el banco acredita el cheque.
+      </p>
+      <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="errorEn('fecha_cobro')">
+        Ingresá la fecha de cobro del cheque.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- Aviso del plazo (editable por el admin), destacado al pie -->
+  <div class="chq-aviso uk-margin-top" role="note" *ngIf="datos.aviso">
+    {{ datos.aviso }}
+  </div>
+
+</div>

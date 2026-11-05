@@ -35,6 +35,7 @@ class PedidoClienteService
         // El cliente necesita ver POR QUÉ se le rechazó un pago; sin esto
         // sólo vería "Pago rechazado" y volvería a subir el mismo archivo.
         'pagos.motivoRechazo',
+        'pagos.cheque',
     ];
 
     public const FILTRO_TODOS = 'todos';
@@ -66,9 +67,17 @@ class PedidoClienteService
             self::FILTRO_PENDIENTE_PAGO => $query->conPagoExpirable(),
 
             self::FILTRO_EN_PROCESO => $query
-                ->whereHas('estadoPago', fn ($q) => $q->whereIn('epa_codigo', [
-                    EstadoPago::PAGO_VERIFICAR, EstadoPago::CONFIRMADO, EstadoPago::PARCIAL,
-                ]))
+                ->where(function ($q) {
+                    $q->whereHas('estadoPago', fn ($e) => $e->whereIn('epa_codigo', [
+                        EstadoPago::PAGO_VERIFICAR, EstadoPago::CONFIRMADO, EstadoPago::PARCIAL,
+                    ]))
+                    // Cheque declarado: sigue en PENDIENTE_PAGO, pero ya no
+                    // es algo que el cliente tenga que hacer en el Paso 3.
+                    ->orWhere(function ($c) {
+                        $c->whereHas('estadoPago', fn ($e) => $e->where('epa_codigo', EstadoPago::PENDIENTE_PAGO))
+                          ->whereHas('pagos');
+                    });
+                })
                 ->whereHas('estadoPedido', fn ($q) => $q->whereNotIn('est_codigo', [
                     EstadoPedido::ENTREGADO, EstadoPedido::CANCELADO,
                 ])),

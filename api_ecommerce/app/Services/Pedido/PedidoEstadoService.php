@@ -9,6 +9,9 @@ use App\Models\Pedido\PedidoHistorialEstado;
 use App\Models\Usuario;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\Pedido\PagoCheque;
+
+use App\Models\Configuracion\ConfiguracionTienda;
 
 /**
  * Maquina de estados del pedido.
@@ -27,11 +30,15 @@ class PedidoEstadoService
      * una nota de credito.
      */
     private const TRANSICIONES = [
-        EstadoPedido::PENDIENTE_PEDIDO      => [EstadoPedido::EN_PREPARACION, EstadoPedido::CANCELADO],
-        EstadoPedido::EN_PREPARACION => [EstadoPedido::LISTO, EstadoPedido::CANCELADO],
-        EstadoPedido::LISTO          => [EstadoPedido::ENTREGADO, EstadoPedido::CANCELADO],
-        EstadoPedido::ENTREGADO      => [],
-        EstadoPedido::CANCELADO      => [],
+        // LISTO directo desde PENDIENTE_PEDIDO es el camino del cheque:
+        // la mercadería ya está en la sucursal, así que "En preparación"
+        // no describe ningún trabajo real. La guarda de abajo impide que
+        // ese atajo se use en un pedido sin cheque recibido.
+        EstadoPedido::PENDIENTE_PEDIDO => [EstadoPedido::EN_PREPARACION, EstadoPedido::LISTO, EstadoPedido::CANCELADO],
+        EstadoPedido::EN_PREPARACION   => [EstadoPedido::LISTO, EstadoPedido::CANCELADO],
+        EstadoPedido::LISTO            => [EstadoPedido::ENTREGADO, EstadoPedido::CANCELADO],
+        EstadoPedido::ENTREGADO        => [],
+        EstadoPedido::CANCELADO        => [],
     ];
 
     /**
@@ -65,7 +72,7 @@ class PedidoEstadoService
      *
      * @return array<int, array{codigo: string, descripcion: string, habilitado: bool, motivo: ?string}>
      */
-    public function transicionesPermitidas(Pedido $pedido): array
+        public function transicionesPermitidas(Pedido $pedido): array
     {
         $actual   = $pedido->estadoPedido?->est_codigo;
         $destinos = self::TRANSICIONES[$actual] ?? [];
@@ -74,20 +81,26 @@ class PedidoEstadoService
             return [];
         }
 
-               $pagoCumplido  = $this->pagoCumplido($pedido);
-        $cobroCompleto = $this->cobroCompleto($pedido);
-        $facturado     = $this->tieneFactura($pedido);
+        $pagoCumplido    = $this->pagoCumplido($pedido);
+        $cobroCompleto   = $this->cobroCompleto($pedido);
+        $facturado       = $this->tieneFactura($pedido);
+        $actualCodigo    = $actual;
+        $chequesListos   = $this->chequesRecibidos($pedido);
+        $esperaAcredit   = $this->esperaAcreditacionCheque($pedido);
 
         return EstadoPedido::whereIn('est_codigo', $destinos)
             ->where('est_estado', 1)
             ->orderBy('est_id')
             ->get()
-            ->map(function (EstadoPedido $estado) use ($pagoCumplido, $cobroCompleto, $facturado) {
+            ->map(function (EstadoPedido $estado) use ($pagoCumplido, $cobroCompleto, $facturado, $actualCodigo, $chequesListos, $esperaAcredit) {
                 $motivo = $this->motivoDeBloqueo(
                     $estado->est_codigo,
                     $pagoCumplido,
                     $cobroCompleto,
                     $facturado,
+                    $actualCodigo,
+                    $chequesListos,
+                    $esperaAcredit,
                 );
 
                 return [
@@ -106,12 +119,28 @@ class PedidoEstadoService
      * el combo como la validacion lo consultan. Si el motivo viviera dos
      * veces, el panel y el backend terminarian discrepando.
      */
-    private function motivoDeBloqueo(
+          private function motivoDeBloqueo(
         string $codigoDestino,
         bool $pagoCumplido,
         bool $cobroCompleto,
         bool $facturado,
+        ?string $codigoActual = null,
+        bool $chequesListos = false,
+        bool $esperaAcreditacion = false,
     ): ?string {
+        // El atajo PENDIENTE_PEDIDO -> LISTO existe sólo para el cheque.
+        if ($codigoDestino === EstadoPedido::LISTO
+            && $codigoActual === EstadoPedido::PENDIENTE_PEDIDO
+            && !$chequesListos) {
+            return 'Este pedido todavía no tiene el cheque recibido en la sucursal.';
+        }
+
+        // Política ACREDITACION: con un cheque sin acreditar el pedido no
+        // queda listo. Lo libera el registro del cobro, no un cambio manual.
+        if ($codigoDestino === EstadoPedido::LISTO && $esperaAcreditacion) {
+            return 'El cheque todavía no fue acreditado: el pedido queda listo cuando se registre el cobro.';
+        }
+
         if (in_array($codigoDestino, self::REQUIEREN_PAGO_CONFIRMADO, true) && !$pagoCumplido) {
             return 'Primero hay que cobrar todos los pagos con comprobante del pedido.';
         }
@@ -120,14 +149,25 @@ class PedidoEstadoService
             return 'Falta registrar el cobro: el pedido no se entrega sin la plata registrada.';
         }
 
-        // Una factura declarada no se deshace con un cambio de estado: la
-        // correccion de un comprobante ya declarado es por nota de credito.
         if ($codigoDestino === EstadoPedido::CANCELADO && $facturado) {
             return 'El pedido ya tiene factura declarada: la cancelación requiere nota de crédito.';
         }
 
         return null;
+    }  
+
+    /** El pedido tiene cheques y todos llegaron a la sucursal. */
+    private function chequesRecibidos(Pedido $pedido): bool
+    {
+        $pedido->loadMissing('pagos.cheque');
+
+        $cheques = $pedido->pagos->pluck('cheque')->filter();
+
+        return $cheques->isNotEmpty()
+            && $cheques->every(fn (PagoCheque $c) => $c->fueRecibido());
     }
+
+    
 
     /**
      * Aplica el cambio de estado. Abre su propia transaccion: no se puede
@@ -157,11 +197,12 @@ class PedidoEstadoService
                 ]);
             }
 
-            $motivo = $this->motivoDeBloqueo(
+                $motivo = $this->motivoDeBloqueo(
                 $codigoDestino,
                 $this->pagoCumplido($pedido),
                 $this->cobroCompleto($pedido),
                 $this->tieneFactura($pedido),
+                esperaAcreditacion: $this->esperaAcreditacionCheque($pedido),
             );
 
             if ($motivo !== null) {
@@ -285,13 +326,47 @@ class PedidoEstadoService
             ->every(fn ($pago) => $pago->estadoPago?->epa_codigo === EstadoPago::CONFIRMADO);
     }
 
-    /** TODOS los pagos cobrados, incluido el efectivo contra entrega. */
+       /**
+     * TODOS los pagos cobrados, salvo el cheque recibido cuando la política
+     * es RECEPCION.
+     *
+     * Con RECEPCION el cheque en la sucursal basta para entregar: el
+     * riesgo del cheque rebotado lo asume la tienda. Con ACREDITACION no:
+     * el pedido ni siquiera llega a LISTO hasta que el banco acredite, que
+     * es justamente lo que ese criterio protege.
+     *
+     * El pedido sí pasa a LISTO en ambos casos: la factura sólo se puede
+     * generar desde LISTO y el cobro se aplica contra la factura, así que
+     * retener también ese estado dejaría el flujo en un círculo.
+     */
     private function cobroCompleto(Pedido $pedido): bool
     {
-        $pedido->loadMissing('pagos.estadoPago');
+        $pedido->loadMissing('pagos.estadoPago', 'pagos.cheque');
 
-        return $pedido->pagos
-            ->every(fn ($pago) => $pago->estadoPago?->epa_codigo === EstadoPago::CONFIRMADO);
+        $chequeBasta = ConfiguracionTienda::actual()->chequeDescuentaEnRecepcion();
+
+        return $pedido->pagos->every(
+            fn ($pago) => $pago->estadoPago?->epa_codigo === EstadoPago::CONFIRMADO
+                || ($chequeBasta && $pago->cheque?->fueRecibido() === true)
+        );
+    }
+
+        /**
+     * Política ACREDITACION y al menos un cheque todavía sin cobrar.
+     * Se consulta fresco a la base: se usa justo después de registrar un
+     * cobro, cuando las relaciones ya cargadas podrían estar desactualizadas.
+     */
+    private function esperaAcreditacionCheque(Pedido $pedido): bool
+    {
+        if (ConfiguracionTienda::actual()->chequeDescuentaEnRecepcion()) {
+            return false;
+        }
+
+        return $pedido->pagos()
+            ->with('estadoPago', 'cheque')
+            ->get()
+            ->contains(fn ($pago) => $pago->cheque !== null
+                && $pago->estadoPago?->epa_codigo !== EstadoPago::CONFIRMADO);
     }
 
     private function tieneFactura(Pedido $pedido): bool

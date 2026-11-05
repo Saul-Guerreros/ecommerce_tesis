@@ -130,6 +130,17 @@ export class MisPedidosComponent implements OnInit {
     }[codigo ?? ''] ?? 'uk-label';
   }
 
+    claseEstadoCheque(codigo: string | null): string {
+    return {
+      EN_ESPERA: 'uk-label-warning',
+      DESCARTADO: 'uk-label-warning',
+      RECIBIDO: 'uk-label-primary',
+      ACREDITADO: 'uk-label-success',
+      NO_ENTREGADO: 'uk-label-danger',
+      RECHAZADO: 'uk-label-danger',
+    }[codigo ?? ''] ?? 'uk-label';
+  }
+
   restante(vence: string | null): string {
     if (!vence) return '';
 
@@ -165,6 +176,26 @@ export class MisPedidosComponent implements OnInit {
     return `venció hace ${transcurridos} día${transcurridos === 1 ? '' : 's'}`;
   }
 
+    /**
+   * Plazo del cheque. En horas y minutos como el plazo de pago, no en días
+   * como el de retiro: son 48 horas, y "vence en 2 días" leería como si
+   * hubiera tiempo de sobra el último día.
+   */
+  restanteCheque(vence: string): string {
+    const faltan = new Date(vence).getTime() - Date.now();
+
+    if (faltan <= 0) return 'plazo vencido';
+
+    const horas = Math.floor(faltan / 3_600_000);
+    const minutos = Math.floor((faltan % 3_600_000) / 60_000);
+
+    return horas > 0 ? `${horas} h restantes` : `${minutos} min restantes`;
+  }
+
+  vencidoCheque(vence: string): boolean {
+    return new Date(vence).getTime() < Date.now();
+  }
+
   vencidoRetiro(vence: string | null): boolean {
     return !!vence && new Date(vence).getTime() < Date.now();
   }
@@ -179,4 +210,5 @@ export class MisPedidosComponent implements OnInit {
     evento.stopPropagation();
     this.router.navigate(['/proceso-de-pago/pago', numero]);
   }
+
 }

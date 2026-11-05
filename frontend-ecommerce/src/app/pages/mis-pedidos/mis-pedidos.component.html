@@ -49,10 +49,24 @@
               {{ p.estado_pedido.descripcion }}
             </span>
           </span>
+
+          <span class="mp-badge-grupo" *ngIf="p.estado_cheque as chq">
+            <span class="mp-badge-etiqueta">Cheque:</span>
+            <span class="uk-label" [ngClass]="claseEstadoCheque(chq.codigo)">
+              {{ chq.descripcion }}
+            </span>
+          </span>
+
           <span class="mp-badge-grupo">
             <span class="mp-badge-etiqueta">Pago:</span>
             <span class="uk-label" [ngClass]="claseEstadoPago(p.estado_pago.codigo)">
               {{ p.estado_pago.descripcion }}
+            </span>
+          </span>
+          <span class="mp-badge-grupo" *ngIf="p.estado_cheque as chq">
+            <span class="mp-badge-etiqueta">Cheque:</span>
+            <span class="uk-label" [ngClass]="claseEstadoCheque(chq.codigo)">
+              {{ chq.descripcion }}
             </span>
           </span>
           <span class="uk-text-meta uk-text-small" *ngIf="p.pagable">
@@ -66,6 +80,17 @@
                 [class.uk-text-danger]="vencidoRetiro(p.ped_vencret)"
                 [class.uk-text-meta]="!vencidoRetiro(p.ped_vencret)">
             Retiro: {{ restanteRetiro(p.ped_vencret) }}
+          </span>
+
+          <!-- Plazo de entrega del cheque. Es un tercer reloj: con cheque
+               p.pagable es false (ya declaró su pago) y ped_vencret todavía
+               no existe, así que no compite con ninguno de los otros dos. -->
+          <span class="uk-text-small" *ngIf="p.cheque as chq"
+                [class.uk-text-danger]="vencidoCheque(chq.vence)"
+                [class.uk-text-warning]="!vencidoCheque(chq.vence)">
+            <span uk-icon="icon: clock; ratio: 0.7"></span>
+            {{ chq.cantidad > 1 ? 'Cheques' : 'Cheque' }} a entregar en sucursal ·
+            {{ restanteCheque(chq.vence) }}
           </span>
         </div>
 

@@ -70,37 +70,50 @@
         </div>
       </div>
 
-      <!-- Comprobante -->
+      <!-- Comprobante o datos del cheque, según el método del bloque -->
       <div class="uk-margin-small-top" *ngIf="metodoDe(i)">
 
-        <ng-container *ngIf="requiereComprobante(i); else sinComprobante">
-          <label class="uk-form-label">Adjuntar comprobante <span class="uk-text-danger">*</span></label>
-
-          <div class="ck-upload">
-            <button type="button" class="uk-button uk-button-default" (click)="inputArchivo.click()">
-              <span uk-icon="icon: upload"></span> Seleccionar archivo
-            </button>
-            <span class="ck-upload-nombre" [class.ck-upload-nombre--vacio]="!tieneComprobante(i)">
-              {{ nombreArchivo(i) }}
-            </span>
-            <input #inputArchivo type="file" hidden accept=".jpg,.jpeg,.png,.pdf"
-                   (change)="onArchivo(i, $event)">
-          </div>
-
-          <p class="uk-text-meta uk-margin-small-top">JPG, PNG o PDF. Máximo 5 MB.</p>
-
-          <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="erroresArchivo[i]">
-            {{ erroresArchivo[i] }}
-          </p>
-
-          <p class="uk-text-danger uk-text-small uk-margin-remove-top"
-             *ngIf="comprobanteInvalido(i) && !erroresArchivo[i]">
-            Adjuntá el comprobante del Pago {{ i + 1 }}.
-          </p>
+        <!-- Cheque: reemplaza a "Adjuntar comprobante" -->
+        <ng-container *ngIf="esCheque(i); else sinCheque">
+          <app-cheque-form *ngIf="datosCheque"
+                           [datos]="datosCheque"
+                           [cheque]="chequeDe(i)"
+                           [intentoContinuar]="intentoContinuar"
+                           [idBase]="'chq-' + i"
+                           (chequeChange)="onCheque(i, $event)">
+          </app-cheque-form>
         </ng-container>
 
-        <ng-template #sinComprobante>
-          <p class="uk-text-meta uk-margin-remove">El pago en efectivo es contra entrega.</p>
+        <ng-template #sinCheque>
+          <ng-container *ngIf="requiereComprobante(i); else sinComprobante">
+            <label class="uk-form-label">Adjuntar comprobante <span class="uk-text-danger">*</span></label>
+
+            <div class="ck-upload">
+              <button type="button" class="uk-button uk-button-default" (click)="inputArchivo.click()">
+                <span uk-icon="icon: upload"></span> Seleccionar archivo
+              </button>
+              <span class="ck-upload-nombre" [class.ck-upload-nombre--vacio]="!tieneComprobante(i)">
+                {{ nombreArchivo(i) }}
+              </span>
+              <input #inputArchivo type="file" hidden accept=".jpg,.jpeg,.png,.pdf"
+                     (change)="onArchivo(i, $event)">
+            </div>
+
+            <p class="uk-text-meta uk-margin-small-top">JPG, PNG o PDF. Máximo 5 MB.</p>
+
+            <p class="uk-text-danger uk-text-small uk-margin-remove-top" *ngIf="erroresArchivo[i]">
+              {{ erroresArchivo[i] }}
+            </p>
+
+            <p class="uk-text-danger uk-text-small uk-margin-remove-top"
+               *ngIf="comprobanteInvalido(i) && !erroresArchivo[i]">
+              Adjuntá el comprobante del Pago {{ i + 1 }}.
+            </p>
+          </ng-container>
+
+          <ng-template #sinComprobante>
+            <p class="uk-text-meta uk-margin-remove">El pago en efectivo es contra entrega.</p>
+          </ng-template>
         </ng-template>
       </div>
     </div>

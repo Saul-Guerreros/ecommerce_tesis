@@ -5,6 +5,7 @@ namespace App\Http\Resources\Pedido;
 use App\Models\Pedido\EstadoPago;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Models\Pedido\PagoCheque;
 
 /**
  * Un pago del detalle, servido para las DOS tarjetas que lo muestran:
@@ -26,6 +27,9 @@ class PedidoPagoDetalleResource extends JsonResource
         $estado      = $this->estadoPago?->epa_codigo;
         $requcom     = (bool) $this->metodoPago?->mpa_requcom;
         $validado    = (bool) $comprobante?->pco_verifi;
+
+        $cheque = $this->whenLoaded('cheque');
+        $chq    = $cheque instanceof PagoCheque ? $cheque : null;
 
         return [
             'ppa_id' => $this->ppa_id,
@@ -82,6 +86,60 @@ class PedidoPagoDetalleResource extends JsonResource
                 ]
                 : null,
 
+                        // ---------- Tarjeta Recepción de Cheque ----------
+            'cheque' => $chq
+                ? [
+                    'pch_id'       => $chq->pch_id,
+                    'tipo'         => $chq->pch_tipo,
+                    'tipo_label'   => $chq->descripcionTipo(),
+                    'diferido'     => $chq->esDiferido(),
+
+                    // Lo que el admin compara contra el papel.
+                    'banco'        => $chq->pch_banco,
+                    'nombre'       => $chq->pch_nombre,
+                    'nrodoc'       => $chq->pch_nrodoc,
+                    'nro'          => $chq->pch_nro,
+                    'fecha_cobro'  => $chq->pch_fecobr?->format('d/m/Y'),
+
+                    'estado'       => $chq->pch_estado,
+                    'estado_label' => $chq->descripcionEstado(),
+
+                    // El plazo en ISO: la cuenta regresiva y el rojo de
+                    // vencido los pinta Angular, pero el "ya venció" lo
+                    // decide el backend para que no dependa del reloj del
+                    // navegador del administrador.
+                    'vence'        => $chq->pch_fevcto?->toIso8601String(),
+                    'vence_label'  => $chq->pch_fevcto?->format('d/m H:i'),
+                    'vencido'      => $chq->vencido(),
+
+                    'recepcion' => $chq->pch_frecep
+                        ? [
+                            'fecha'       => $chq->pch_frecep->format('d/m/Y H:i'),
+                            'por'         => $this->nombre($chq->usuarioReceptor),
+                            'observacion' => $chq->pch_motdet,
+                        ]
+                        : null,
+
+                    'rechazo' => $chq->pch_mrpid
+                        ? [
+                            'motivo'  => $chq->motivoRechazo?->mrp_descri,
+                            'detalle' => $chq->pch_motdet,
+                        ]
+                        : null,
+
+                    // Habilitación de los cuatro botones. La pantalla repite
+                    // la regla; la que manda es ChequeGestionService.
+                    'puede_editar'    => $chq->estaPendiente(),
+                    'puede_descartar' => $chq->pch_estado === PagoCheque::EN_ESPERA,
+                    'puede_recibir'   => $chq->estaPendiente() && $chq->datosCompletos(),
+                    'puede_rechazar'  => $chq->estaPendiente(),
+
+                    // Por qué [Confirmar recepción] está deshabilitado.
+                    'falta_datos'     => $chq->estaPendiente() && !$chq->datosCompletos(),
+                ]
+                : null,
+
+
             // ---------- Habilitación de los botones ----------
             // La pantalla no decide la regla: la repite. La regla real vive
             // en PagoVerificacionService y es la que manda si alguien llama
@@ -91,8 +149,11 @@ class PedidoPagoDetalleResource extends JsonResource
                 && !$validado
                 && !in_array($estado, [EstadoPago::CONFIRMADO, EstadoPago::RECHAZADO], true),
 
+            // Con cheque, lo que habilita el cobro no es un comprobante
+            // validado sino el papel recibido en la sucursal.
             'puede_cobrar' => $estado !== EstadoPago::CONFIRMADO
-                && (!$requcom || $validado),
+                && (!$requcom || $validado)
+                && ($chq === null || $chq->fueRecibido()),
 
             // ---------- Compatibilidad: pedidos del flujo anterior ----------
             'verificacion' => $this->ppa_fechver !== null && $cobro === null

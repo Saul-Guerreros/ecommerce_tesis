@@ -30,6 +30,25 @@ export interface EstadoEtiquetado {
   descripcion: string | null;
 }
 
+/**
+ * Plazo para entregar el cheque físico en la sucursal. null si el pedido
+ * no tiene cheques o si ya se recibieron todos.
+ */
+export interface PlazoCheque {
+  vence: string;
+  horas_plazo: number;
+  /** Cheques todavía sin entregar (pago dividido). */
+  cantidad: number;
+}
+
+/** Eje "Cheque" de la cabecera. null si el pedido no tiene cheques. */
+export interface EstadoChequePedido {
+  codigo: string;
+  descripcion: string;
+  total: number;
+  recibidos: number;
+}
+
 // ---------- Listado ----------
 
 export interface PedidoListaItem {
@@ -39,11 +58,16 @@ export interface PedidoListaItem {
   entrega: { codigo: string | null; etiqueta: string };
   estado_pedido: EstadoEtiquetado;
   estado_pago: EstadoEtiquetado;
+  estado_cheque: EstadoChequePedido | null;
+  
   /** true -> mostrar el botón "Pagar ahora". Lo decide el backend. */
   pagable: boolean;
   ped_vence: string | null;
   /** Fecha límite de retiro en sucursal. Sólo tiene valor con el pedido en LISTO y entrega RETIRO. */
   ped_vencret: string | null;
+
+  /** Tercer reloj: plazo de entrega del cheque. Independiente de los dos anteriores. */
+  cheque: PlazoCheque | null;
 }
 
 export interface PedidosPaginados {
@@ -72,6 +96,16 @@ export interface PagoDetalle {
   motivo_rechazo: MotivoRechazoPago | null;
   /** true -> mostrar el formulario de comprobante nuevo. Lo decide el backend. */
   reemplazable: boolean;
+    /** Datos del cheque declarado. null en los demás métodos. */
+  cheque: {
+    tipo: 'VISTA' | 'DIFERIDO';
+    tipo_descri: string;
+    banco: string | null;
+    nro: string | null;
+    fecha_cobro: string | null;
+    estado: string;
+    estado_label: string;
+  } | null;
 }
 
 export interface PedidoDetalle {
@@ -83,8 +117,11 @@ export interface PedidoDetalle {
   rechazos_restantes: number;
   /** Fecha límite de retiro en sucursal. Sólo tiene valor con el pedido en LISTO y entrega RETIRO. */
   ped_vencret: string | null;
+  /** Tercer reloj: plazo de entrega del cheque. Independiente de los dos anteriores. */
+  cheque: PlazoCheque | null;
   estado_pedido: EstadoEtiquetado;
   estado_pago: EstadoEtiquetado;
+  estado_cheque: EstadoChequePedido | null;
   entrega: EntregaResumenCard | null;
   productos: ProductoResumenCardItem[];
   totales: { subtotal: number; impuestos: number; costo_envio: number; total: number };
@@ -109,3 +146,4 @@ export interface PedidoPendienteItem {
   producto: { imagen: string | null; nombre: string; cantidad: number } | null;
   productos_adicionales: number;
 }
+

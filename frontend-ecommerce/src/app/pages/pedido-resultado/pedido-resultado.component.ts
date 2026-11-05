@@ -73,6 +73,11 @@ export class PedidoResultadoComponent implements OnInit {
     return this.resultado.pagos.filter((p) => p.tiene_comprobante).length > 1;
   }
 
+  /** Pago dividido con más de un cheque: se detalla cada monto. */
+  get variosCheques(): boolean {
+    return (this.resultado?.cheque?.cheques.length ?? 0) > 1;
+  }
+
   get pagosConComprobante() {
     return this.resultado.pagos.filter((p) => p.tiene_comprobante);
   }

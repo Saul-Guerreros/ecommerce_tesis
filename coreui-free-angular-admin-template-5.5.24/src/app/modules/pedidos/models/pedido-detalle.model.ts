@@ -144,6 +144,57 @@ export interface RechazoPago {
   faltante: number | null;
 }
 
+/** Confirmación de que el papel llegó a la sucursal. */
+export interface RecepcionCheque {
+  fecha: string | null;
+  por: string | null;
+  observacion: string | null;
+}
+
+export interface RechazoCheque {
+  motivo: string | null;
+  detalle: string | null;
+}
+
+/**
+ * Cheque de un pago. Espeja el bloque `cheque` de
+ * PedidoPagoDetalleResource.
+ *
+ * `vencido` lo decide el backend y no el navegador: el reloj de la máquina
+ * del administrador puede estar corrido, y de ese dato depende que el
+ * pedido se anule.
+ */
+export interface ChequePago {
+  pch_id: number;
+  tipo: 'VISTA' | 'DIFERIDO';
+  tipo_label: string;
+  diferido: boolean;
+
+  banco: string | null;
+  nombre: string | null;
+  nrodoc: string | null;
+  nro: string | null;
+  fecha_cobro: string | null;
+
+  estado: 'EN_ESPERA' | 'DESCARTADO' | 'RECIBIDO' | 'ACREDITADO' | 'NO_ENTREGADO' | 'RECHAZADO';
+  estado_label: string;
+
+  /** ISO del plazo de 48 h, para la cuenta regresiva. */
+  vence: string | null;
+  vence_label: string | null;
+  vencido: boolean;
+
+  recepcion: RecepcionCheque | null;
+  rechazo: RechazoCheque | null;
+
+  puede_editar: boolean;
+  puede_descartar: boolean;
+  puede_recibir: boolean;
+  puede_rechazar: boolean;
+  /** Por qué [Confirmar recepción] está deshabilitado. */
+  falta_datos: boolean;
+}
+
 export interface PagoItem {
   ppa_id: number;
   orden: number;
@@ -156,6 +207,8 @@ export interface PagoItem {
   monto_asignado: number;
   estado: { codigo: string | null; descripcion: string | null };
   comprobante: ComprobantePago | null;
+  /** Sólo en los pagos con método CHEQUE. */
+  cheque: ChequePago | null;
   cobro: CobroPago | null;
   /** Reglas calculadas por la API: la pantalla las repite, no las decide. */
   puede_validar: boolean;
@@ -175,11 +228,22 @@ export interface BloquePago {
   porcentaje: number;
   /** Con alguno pendiente la factura no se puede emitir y el cobro queda bloqueado. */
   comprobantes_pendientes: number;
+  /** Contador del encabezado: «1 de 2 cheques recibidos». */
+  cheques_total: number;
+  cheques_recibidos: number;
   /** El cobro se aplica contra la factura: sin factura no hay cobro. */
   cobro_habilitado: boolean;
   rechazos: number;
   rechazos_restantes: number;
   items: PagoItem[];
+}
+
+/** Eje "Cheque" de la cabecera. null si el pedido no tiene cheques. */
+export interface EstadoChequePedido {
+  codigo: string;
+  descripcion: string;
+  total: number;
+  recibidos: number;
 }
 
 export interface PedidoDetalle {
@@ -189,6 +253,7 @@ export interface PedidoDetalle {
   actualizado: string | null;
   estado_pago: { codigo: string | null; descripcion: string | null };
   estado_pedido: { codigo: string | null; descripcion: string | null };
+  estado_cheque: EstadoChequePedido | null;
   /** Plazo de PAGO. Nunca coincide con ped_vencret: son los dos relojes del documento, nunca corren a la vez. */
   ped_vence: string | null;
   /** Plazo de RETIRO en sucursal. Sólo con el pedido en LISTO y entrega RETIRO. */
@@ -247,4 +312,51 @@ export interface FaltanteStock {
   producto: string;
   requiere: number;
   disponible: number;
+}
+
+// ---------- Cheques ----------
+
+export interface ActualizarChequePayload {
+  tipo: 'VISTA' | 'DIFERIDO';
+  banco: string;
+  nombre: string;
+  nrodoc: string;
+  nro: string;
+  fecha_cobro?: string | null;
+}
+
+export interface DescartarChequePayload {
+  confirma: boolean;
+  motivo?: string | null;
+}
+
+export interface RecibirChequePayload {
+  confirma_monto: boolean;
+  fecha_recepcion?: string | null;
+  observacion?: string | null;
+}
+
+export interface RechazarChequePayload {
+  motivo_id: number;
+  detalle?: string | null;
+  confirma: boolean;
+}
+
+/**
+ * Respuesta de /gestion/config.
+ *
+ * Los motivos vienen separados por ámbito desde la API: el modal del
+ * comprobante no debe ofrecer «No entregado en plazo» ni el del cheque
+ * «El comprobante es ilegible».
+ */
+export interface GestionConfig {
+  motivos_rechazo: MotivoRechazo[];
+  motivos_rechazo_cheque: MotivoRechazo[];
+  cheque: {
+    tipos: Record<string, string>;
+    estados: Record<string, string>;
+    horas_plazo: number;
+    /** Si true, confirmar la recepción descuenta stock ahora mismo. */
+    stock_al_recibir: boolean;
+  };
 }

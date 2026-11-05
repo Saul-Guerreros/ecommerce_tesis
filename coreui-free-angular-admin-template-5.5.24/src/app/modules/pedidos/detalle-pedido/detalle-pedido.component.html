@@ -33,11 +33,15 @@
         </div>
 
         <div class="d-flex gap-2">
-          <c-badge [color]="colorEstadoPago(pedido.estado_pago.codigo)">
-            Pago: {{ pedido.estado_pago.descripcion }}
-          </c-badge>
           <c-badge [color]="colorEstadoPedido(pedido.estado_pedido.codigo)">
             Pedido: {{ pedido.estado_pedido.descripcion }}
+          </c-badge>
+          <c-badge *ngIf="pedido.estado_cheque as chq"
+                   [color]="colorEstadoCheque(chq.codigo)">
+            Cheque: {{ chq.descripcion }}
+          </c-badge>
+          <c-badge [color]="colorEstadoPago(pedido.estado_pago.codigo)">
+            Pago: {{ pedido.estado_pago.descripcion }}
           </c-badge>
         </div>
       </div>
@@ -259,7 +263,7 @@
       </c-card>
 
             <!-- ====== 3.2 COMPROBANTE ====== -->
-      <c-card class="mb-3">
+      <c-card class="mb-3" *ngIf="!soloCheques">
         <c-card-header class="d-flex justify-content-between align-items-center">
           <strong>COMPROBANTE</strong>
           <span class="small text-muted">
@@ -282,9 +286,12 @@
               </div>
             </div>
 
-            <!-- Contra entrega: no hay nada que validar acá. -->
+            <!-- Contra entrega y cheque: no hay archivo que validar acá. -->
             <div class="small text-muted" *ngIf="!pago.metodo.requcom">
-              No aplica: contra entrega.
+              <span *ngIf="pago.cheque">
+                Este pago se gestiona en la tarjeta <strong>Recepción de Cheque</strong>.
+              </span>
+              <span *ngIf="!pago.cheque">No aplica: contra entrega.</span>
             </div>
 
             <ng-container *ngIf="pago.metodo.requcom">
@@ -354,7 +361,216 @@
         </c-card-body>
       </c-card>
 
-      <!-- ====== 3.3 DATOS DE FACTURACIÓN ====== -->
+            <!-- ====== 3.3 RECEPCIÓN DE CHEQUE ====== -->
+      <c-card class="mb-3" *ngIf="pedido.pago.cheques_total > 0">
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <strong>RECEPCIÓN DE CHEQUE</strong>
+          <span class="small text-muted">{{ contadorCheques }}</span>
+        </c-card-header>
+
+        <c-card-body>
+          <ng-container *ngFor="let pago of pedido.pago.items">
+            <div class="border rounded p-3 mb-3" *ngIf="pago.cheque as chq">
+
+              <!-- ===== 1. CABECERA DEL BLOQUE ===== -->
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                  <div class="small text-muted" *ngIf="pedido.pago.dividido">PAGO {{ pago.orden }}</div>
+                  <div class="fw-semibold">{{ chq.tipo_label }}</div>
+                </div>
+                <div class="text-end small">
+                  Monto asignado: <strong>Gs. {{ formatoGs(pago.monto_asignado) }}</strong>
+                </div>
+              </div>
+
+              <hr class="my-2" />
+
+              <!-- ===== 2. DATOS DECLARADOS (lectura) ===== -->
+              <ng-container *ngIf="!editando(pago)">
+                <div class="small text-muted mb-2">
+                  Datos declarados por el cliente — compará contra el papel.
+                </div>
+
+                <div class="row g-2 small" *ngIf="chq.banco || chq.nro">
+                  <div class="col-md-6">
+                    <span class="text-muted">Banco:</span>
+                    <span class="ms-1 fw-semibold text-break">{{ chq.banco || '—' }}</span>
+                  </div>
+                  <div class="col-md-6">
+                    <span class="text-muted">N° de cheque:</span>
+                    <span class="ms-1 fw-semibold">{{ chq.nro || '—' }}</span>
+                  </div>
+                  <div class="col-md-6">
+                    <span class="text-muted">Titular:</span>
+                    <span class="ms-1 fw-semibold text-break">{{ chq.nombre || '—' }}</span>
+                  </div>
+                  <div class="col-md-6">
+                    <span class="text-muted">CI del titular:</span>
+                    <span class="ms-1 fw-semibold">{{ chq.nrodoc || '—' }}</span>
+                  </div>
+                  <div class="col-md-6" *ngIf="chq.diferido">
+                    <span class="text-muted">Fecha de cobro:</span>
+                    <span class="ms-1 fw-semibold">{{ chq.fecha_cobro || '—' }}</span>
+                  </div>
+                </div>
+
+                <!-- Descartado: los datos del checkout ya no están. -->
+                <c-alert color="info" class="py-2 small mb-0 mt-2"
+                         *ngIf="chq.estado === 'DESCARTADO'">
+                  Los datos declarados fueron descartados. Usá <strong>Editar</strong> para
+                  cargar los del cheque que presentó el cliente.
+                </c-alert>
+
+                <!-- Falta el N° o la fecha de cobro: el checkout todavía no los pide. -->
+                <c-alert color="warning" class="py-2 small mb-0 mt-2"
+                         *ngIf="chq.falta_datos && chq.estado !== 'DESCARTADO'">
+                  Faltan datos para confirmar la recepción. Completalos con
+                  <strong>Editar</strong>.
+                </c-alert>
+              </ng-container>
+
+              <!-- ===== 2.b EDICIÓN EN LÍNEA ===== -->
+              <form [formGroup]="formCheque" *ngIf="editando(pago)">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label small">Tipo de cheque</label>
+                    <select cSelect formControlName="tipo">
+                      <option value="VISTA">Cheque a la vista</option>
+                      <option value="DIFERIDO">Cheque diferido</option>
+                    </select>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label small">N° de cheque</label>
+                    <input cFormControl formControlName="nro" placeholder="00123456"
+                           [class.is-invalid]="errorCheque('nro')" />
+                    <div class="invalid-feedback d-block" *ngIf="errorCheque('nro')">
+                      {{ errorCheque('nro') }}
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label small">Banco emisor</label>
+                    <input cFormControl formControlName="banco" placeholder="Ingrese el Banco Emisor"
+                           [class.is-invalid]="errorCheque('banco')" />
+                    <div class="invalid-feedback d-block" *ngIf="errorCheque('banco')">
+                      {{ errorCheque('banco') }}
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label small">Titular del cheque</label>
+                    <input cFormControl formControlName="nombre" placeholder="Juan Pérez"
+                           [class.is-invalid]="errorCheque('nombre')" />
+                    <div class="invalid-feedback d-block" *ngIf="errorCheque('nombre')">
+                      {{ errorCheque('nombre') }}
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label small">CI del titular</label>
+                    <input cFormControl formControlName="nrodoc" placeholder="1234567"
+                           [class.is-invalid]="errorCheque('nrodoc')" />
+                    <div class="invalid-feedback d-block" *ngIf="errorCheque('nrodoc')">
+                      {{ errorCheque('nrodoc') }}
+                    </div>
+                  </div>
+
+                  <!-- Sólo en el diferido: en un cheque a la vista no existe. -->
+                  <div class="col-md-6" *ngIf="chequeEsDiferido">
+                    <label class="form-label small">Fecha de cobro</label>
+                    <input cFormControl type="date" formControlName="fecha_cobro"
+                           [class.is-invalid]="errorCheque('fecha_cobro')" />
+                    <div class="form-text">Define cuándo se deposita el cheque.</div>
+                    <div class="invalid-feedback d-block" *ngIf="errorCheque('fecha_cobro')">
+                      {{ errorCheque('fecha_cobro') }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="text-end mt-3">
+                  <button type="button" cButton color="secondary" variant="outline" size="sm"
+                          class="me-2" [disabled]="guardandoCheque"
+                          (click)="cancelarEdicion()">Cancelar</button>
+                  <button type="button" cButton color="primary" size="sm" class="text-white"
+                          [disabled]="!puedeGuardarCheque" (click)="guardarCheque(pago)">
+                    <c-spinner size="sm" *ngIf="guardandoCheque" class="me-1"></c-spinner>
+                    Guardar datos
+                  </button>
+                </div>
+              </form>
+
+              <hr class="my-3" *ngIf="!editando(pago)" />
+
+              <!-- ===== 3. ESTADO Y PLAZO ===== -->
+              <div *ngIf="!editando(pago)">
+                <c-badge [color]="colorEstadoCheque(chq.estado)">{{ chq.estado_label }}</c-badge>
+
+                <!-- Lo que más le sirve a sucursal: pasado el plazo el pedido se anula. -->
+                <span class="small ms-2" *ngIf="chq.estado === 'EN_ESPERA' || chq.estado === 'DESCARTADO'"
+                      [class.text-danger]="chq.vencido"
+                      [class.fw-semibold]="chq.vencido"
+                      [class.text-muted]="!chq.vencido">
+                  <ng-container *ngIf="!chq.vencido">
+                    Entregar antes del {{ chq.vence_label }} · {{ plazoRestante(chq) }}
+                  </ng-container>
+                  <ng-container *ngIf="chq.vencido">
+                    Venció el {{ chq.vence_label }} — el pedido se anula automáticamente
+                  </ng-container>
+                </span>
+
+                <!-- Recepción confirmada -->
+                <div class="small text-muted mt-2" *ngIf="chq.recepcion as rec">
+                  Recibido el {{ rec.fecha }}<span *ngIf="rec.por"> · {{ rec.por }}</span>
+                  <div *ngIf="rec.observacion">Observación: {{ rec.observacion }}</div>
+                </div>
+
+                <!-- Rechazo -->
+                <div class="small mt-2" *ngIf="chq.rechazo as rech">
+                  <span class="text-muted">Motivo:</span> {{ rech.detalle || rech.motivo }}
+                </div>
+              </div>
+
+              <!-- ===== BOTONES ===== -->
+              <!-- Descartar va a la izquierda, separado: borra lo que declaró el
+                   cliente y no es parte del flujo normal de recepción. -->
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"
+                   *ngIf="!editando(pago) && (chq.puede_editar || chq.puede_descartar || chq.puede_rechazar || chq.puede_recibir)">
+                <div>
+                  <button cButton color="warning" size="sm" class="text-white"
+                          *ngIf="chq.puede_descartar"
+                          (click)="abrirDescartar(pago)">Descartar cheque</button>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                  <button cButton color="info" size="sm" class="text-white"
+                          *ngIf="chq.puede_editar"
+                          (click)="iniciarEdicion(pago)">Editar</button>
+
+                  <button cButton color="danger" size="sm" class="text-white"
+                          *ngIf="chq.puede_rechazar"
+                          (click)="abrirRechazarCheque(pago)">Rechazar cheque</button>
+
+                  <button cButton color="success" size="sm" class="text-white"
+                          *ngIf="chq.puede_recibir"
+                          (click)="abrirRecibirCheque(pago)">Confirmar recepción</button>
+                </div>
+              </div>
+            </div>
+          </ng-container>
+
+          <c-alert color="info" class="py-2 small mb-0"
+                   *ngIf="pedido.pago.cheques_recibidos < pedido.pago.cheques_total">
+            La factura no se emite hasta que el cheque esté recibido en la sucursal.
+            <span *ngIf="pedido.pago.cheques_total > 1">
+              Con pago dividido, el pedido avanza cuando los {{ pedido.pago.cheques_total }}
+              cheques estén recibidos.
+            </span>
+          </c-alert>
+        </c-card-body>
+      </c-card>
+
+      <!-- ====== 3.4 DATOS DE FACTURACIÓN ====== -->
       <c-card class="mb-3" *ngIf="pedido.facturacion as fac">
         <c-card-header>
           <strong>DATOS DE FACTURACIÓN</strong>
@@ -450,7 +666,7 @@
 
       </c-card>
 
-      <!-- ====== 3.4 PAGO / PAGOS ====== -->
+      <!-- ====== 3.5 PAGO / PAGOS ====== -->
       <c-card class="mb-3">
         <c-card-header class="d-flex justify-content-between align-items-center">
           <strong>{{ pedido.pago.dividido ? 'PAGOS' : 'PAGO' }}</strong>
@@ -554,14 +770,19 @@
 
             <!-- ===== SIN COBRAR ===== -->
             <div class="small text-muted" *ngIf="!pago.cobro && !pago.verificacion">
-              <span *ngIf="pago.metodo.requcom && !pago.comprobante?.validado">
+              <!-- Con cheque, lo que habilita el cobro no es un comprobante
+                   validado sino el papel recibido en la sucursal. -->
+              <span *ngIf="pago.cheque && !pago.cheque.recepcion">
+                El cobro se habilita cuando el cheque esté recibido en la sucursal.
+              </span>
+              <span *ngIf="!pago.cheque && pago.metodo.requcom && !pago.comprobante?.validado">
                 El cobro se habilita cuando el comprobante esté validado.
               </span>
-              <span *ngIf="(!pago.metodo.requcom || pago.comprobante?.validado)
+              <span *ngIf="(pago.cheque ? !!pago.cheque.recepcion : (!pago.metodo.requcom || pago.comprobante?.validado))
                             && !pedido.pago.cobro_habilitado">
                 Falta generar la factura: el cobro se registra contra ella.
               </span>
-              <span *ngIf="(!pago.metodo.requcom || pago.comprobante?.validado)
+              <span *ngIf="(pago.cheque ? !!pago.cheque.recepcion : (!pago.metodo.requcom || pago.comprobante?.validado))
                             && pedido.pago.cobro_habilitado">
                 Sin cobro registrado.
               </span>
@@ -665,6 +886,54 @@
         {{ reenviando ? 'Enviando...' : 'Enviar factura' }}
       </button>
     </ng-template>
+  </c-modal-footer>
+</c-modal>
+
+<!-- Modales de cheque: van FUERA del modal de reenvío, al mismo nivel que los demás. -->
+<app-recibir-cheque
+  [visible]="recibirChequeVisible" [pedido]="pedido" [pago]="pagoSeleccionado"
+  [stockAlRecibir]="stockAlRecibir"
+  (visibleChange)="recibirChequeVisible = $event"
+  (rechazar)="abrirRechazarCheque($event)"
+  (guardado)="onPagoActualizado($event)"></app-recibir-cheque>
+
+<app-rechazar-cheque
+  [visible]="rechazarChequeVisible" [pedido]="pedido" [pago]="pagoSeleccionado"
+  (visibleChange)="rechazarChequeVisible = $event"
+  (guardado)="onPagoActualizado($event)"></app-rechazar-cheque>
+
+<!-- Descartar: confirmación chica, porque borra lo que declaró el cliente. -->
+<c-modal [visible]="descartarVisible" (visibleChange)="descartarVisible = $event"
+         backdrop="static" alignment="center">
+  <c-modal-header>
+    <h5 cModalTitle>Descartar cheque</h5>
+    <button cButtonClose (click)="descartarVisible = false"></button>
+  </c-modal-header>
+
+  <c-modal-body>
+    <p class="mb-3">
+      Esto <strong>borra los datos del cheque</strong> que el cliente declaró en el
+      checkout. Usalo sólo si el cheque que presentó en la tienda es otro distinto.
+    </p>
+
+    <div class="mb-0">
+      <label class="form-label small">Motivo (opcional)</label>
+      <textarea cFormControl rows="2" [(ngModel)]="motivoDescarte"
+                placeholder="Trajo un cheque de otro banco"></textarea>
+      <div class="form-text">
+        Queda registrado junto con los datos descartados.
+      </div>
+    </div>
+  </c-modal-body>
+
+  <c-modal-footer class="flex-wrap gap-2">
+    <button cButton color="secondary" variant="outline"
+            [disabled]="descartando" (click)="descartarVisible = false">Cancelar</button>
+    <button cButton color="warning" class="text-white"
+            [disabled]="descartando" (click)="confirmarDescarte()">
+      <c-spinner size="sm" *ngIf="descartando" class="me-1"></c-spinner>
+      Descartar cheque
+    </button>
   </c-modal-footer>
 </c-modal>
 

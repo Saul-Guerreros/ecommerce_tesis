@@ -32,6 +32,13 @@
         </div>
       </div>
 
+      <!-- Aviso del método Cheque. Su texto y si se muestra dependen de en qué
+      modalidades de entrega lo acepta la tienda (Panel Admin > Datos de
+      Pago). El backend vuelve a exigir la regla al registrar el pago. -->
+      <p class="uk-text-danger uk-text-small uk-margin" *ngIf="avisoCheque">
+        <strong>AVISO:</strong> {{ avisoCheque }}
+      </p>
+
       <div *ngIf="esRetiro" class="uk-card uk-card-default uk-card-body uk-margin">
         <h4 class="uk-card-title">Elegí la sucursal</h4>
 

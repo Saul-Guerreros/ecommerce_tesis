@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+use App\Models\Pedido\PagoCheque;
+
 class Pedido extends Model
 {
     protected $table = 'pedido';
@@ -47,14 +49,23 @@ class Pedido extends Model
 
     // ---------- Vigencia de la reserva ----------
 
-    /**
-     * El pedido existe y reservo stock, pero el cliente todavia no declaro
-     * su pago. Es el unico estado en el que el Paso 3 del checkout puede
+       /**
+     * El pedido existe y reservó stock, pero el cliente todavía no declaró
+     * su pago. Es el único estado en el que el Paso 3 del checkout puede
      * operar sobre el pedido.
+     *
+     * "Declaró su pago" ya no se deduce del estado: un pedido con cheque
+     * queda en PENDIENTE_PAGO después de declararlo, porque el dinero
+     * recién entra cuando el banco acredita. Lo que distingue a un pedido
+     * abandonado de uno con cheque declarado es que éste ya tiene filas en
+     * pedido_pago. Los demás métodos salen de PENDIENTE_PAGO al declarar,
+     * así que para ellos la regla da exactamente el mismo resultado de
+     * siempre.
      */
     public function pendienteDePago(): bool
     {
-        return $this->estadoPago?->epa_codigo === EstadoPago::PENDIENTE_PAGO;
+        return $this->estadoPago?->epa_codigo === EstadoPago::PENDIENTE_PAGO
+            && !$this->pagos()->exists();
     }
 
     /**
@@ -76,14 +87,13 @@ class Pedido extends Model
             && $this->estadoPedido?->est_codigo !== EstadoPedido::CANCELADO;
     }
 
-    public function scopePendienteDePago($query)
+  public function scopePendienteDePago($query)
     {
-        return $query->whereHas(
-            'estadoPago',
-            fn ($q) => $q->where('epa_codigo', EstadoPago::PENDIENTE_PAGO)
-        );
+        return $query
+            ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', EstadoPago::PENDIENTE_PAGO))
+            ->whereDoesntHave('pagos');
     }
-
+    
     /**
      * Estados de pago en los que la reserva sigue viva pero el pedido
      * todavia no se cobro, y por lo tanto puede vencer:
@@ -99,12 +109,20 @@ class Pedido extends Model
         EstadoPago::RECHAZADO,
     ];
 
+    /**
+     * Pedidos con la reserva viva y el pago todavía de parte del cliente.
+     *
+     * PENDIENTE_PAGO sólo cuenta si el cliente no declaró nada. Con cheque
+     * el pedido se queda en ese estado después de declarar, pero su plazo
+     * no es el del pago: es el de entrega del papel (pch_fevcto), y lo
+     * barre su propia pasada, no ésta.
+     */
     public function scopeConPagoExpirable($query)
     {
-        return $query->whereHas(
-            'estadoPago',
-            fn ($q) => $q->whereIn('epa_codigo', self::ESTADOS_PAGO_EXPIRABLES)
-        );
+        return $query->where(function ($q) {
+            $q->whereHas('estadoPago', fn ($e) => $e->where('epa_codigo', EstadoPago::PENDIENTE_PAGO))
+              ->whereDoesntHave('pagos');
+        })->orWhereHas('estadoPago', fn ($e) => $e->where('epa_codigo', EstadoPago::RECHAZADO));
     }
 
     /**
@@ -142,10 +160,19 @@ class Pedido extends Model
         return max(0, self::MAX_RECHAZOS_PAGO - (int) $this->ped_rechaz);
     }
 
-    public function tienePagoConfirmado(): bool
+    /**
+     * Hay un cheque del cliente en poder de la tienda.
+     *
+     * Cuenta como "hay algo del cliente acá" igual que un pago confirmado,
+     * aunque todavía no haya entrado dinero: el papel está físicamente en
+     * la sucursal y la tienda es responsable de él. Es lo que impide que
+     * una tarea automática cancele un pedido cuyo cheque ya fue recibido y
+     * está esperando que el banco acredite — en un diferido, semanas.
+    */
+    public function tieneChequeRecibido(): bool
     {
         return $this->pagos()
-            ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', EstadoPago::CONFIRMADO))
+            ->whereHas('cheque', fn ($q) => $q->enPoderTienda())
             ->exists();
     }
 
@@ -164,6 +191,25 @@ class Pedido extends Model
             && $this->estadoPedido?->est_codigo !== EstadoPedido::ENTREGADO
             && !$this->tienePagoConfirmado();
     }
+
+    
+
+        /**
+     * Hay plata del cliente en el pedido: al menos un pago ya confirmado.
+     *
+     * Es la condición que impide que una tarea automática cancele el
+     * pedido. Pasa con el pago dividido: se confirmó la transferencia y
+     * se rechazó el segundo comprobante. Cancelarlo solo dejaría a la
+     * tienda con el dinero Y la mercadería; eso necesita que una persona
+     * contacte al cliente.
+     */
+    public function tienePagoConfirmado(): bool
+    {
+        return $this->pagos()
+            ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', EstadoPago::CONFIRMADO))
+            ->exists();
+    }
+
 
     // ---------- Relaciones ----------
 

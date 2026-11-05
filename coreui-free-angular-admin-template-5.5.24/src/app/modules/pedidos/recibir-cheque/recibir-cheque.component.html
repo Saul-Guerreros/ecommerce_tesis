@@ -1,0 +1,114 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" size="lg"
+         backdrop="static" alignment="center" [scrollable]="true">
+  <c-modal-header>
+    <h5 cModalTitle class="text-break" *ngIf="pago && pedido">
+      CONFIRMAR RECEPCIÓN DEL CHEQUE {{ pago.orden }} — {{ pedido.numero }}
+    </h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="pago && cheque as chq">
+    <form [formGroup]="form">
+
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-sm-6">
+          <label class="form-label small text-muted mb-1">Tipo</label>
+          <div class="fw-semibold">{{ chq.tipo_label }}</div>
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label small text-muted mb-1">Monto asignado</label>
+          <div class="fw-semibold">Gs. {{ formatoGs(montoAsignado) }}</div>
+        </div>
+      </div>
+
+      <!-- Lo que el admin tiene que comparar contra el papel. -->
+      <div class="border rounded p-3 mb-3">
+        <div class="small text-muted mb-2">Datos registrados del cheque</div>
+        <div class="row g-2 small">
+          <div class="col-12 col-sm-6">
+            <span class="text-muted">Banco:</span>
+            <span class="ms-1 fw-semibold text-break">{{ chq.banco }}</span>
+          </div>
+          <div class="col-12 col-sm-6">
+            <span class="text-muted">N° de cheque:</span>
+            <span class="ms-1 fw-semibold">{{ chq.nro }}</span>
+          </div>
+          <div class="col-12 col-sm-6">
+            <span class="text-muted">Titular:</span>
+            <span class="ms-1 fw-semibold text-break">{{ chq.nombre }}</span>
+          </div>
+          <div class="col-12 col-sm-6">
+            <span class="text-muted">CI:</span>
+            <span class="ms-1 fw-semibold">{{ chq.nrodoc }}</span>
+          </div>
+          <div class="col-12 col-sm-6" *ngIf="chq.diferido">
+            <span class="text-muted">Fecha de cobro:</span>
+            <span class="ms-1 fw-semibold">{{ chq.fecha_cobro }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Fecha y hora de recepción</label>
+        <input cFormControl type="datetime-local" formControlName="fecha_recepcion" />
+        <div class="form-text">
+          Fecha y hora autocompletado al momento de recepción. Si hubo una demora, explícala en la observación.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Observación (opcional)</label>
+        <textarea cFormControl rows="2" formControlName="observacion"
+                  placeholder="Coincide con lo declarado"
+                  [class.is-invalid]="errorBackend('observacion')"></textarea>
+        <div class="invalid-feedback d-block" *ngIf="errorBackend('observacion')">
+          {{ errorBackend('observacion') }}
+        </div>
+      </div>
+
+      <!-- Aviso de efectos: una recepción no es reversible sin devolver stock. -->
+      <c-alert [color]="stockAlRecibir ? 'info' : 'secondary'" class="py-2 small">
+        <span *ngIf="stockAlRecibir">
+          Al confirmar, el stock de los productos se descuenta del inventario y el
+          pedido pasa a <strong>Listo para entrega/retiro</strong>.
+        </span>
+         <span *ngIf="!stockAlRecibir">
+          El stock todavía no se descuenta y el pedido sigue en
+          <strong>Pedido recibido</strong>. Pasa a
+          <strong>Listo para entrega/retiro</strong> cuando se registre el cobro
+          del cheque: así está configurado en Métodos de Pago.
+        </span>
+      </c-alert>
+
+      <c-alert color="warning" class="mb-0">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="confirmaMontoCheque"
+                 formControlName="confirma_monto" />
+          <label class="form-check-label" for="confirmaMontoCheque">
+            Confirmo que el cheque físico coincide con lo declarado y está emitido
+            por <strong>Gs. {{ formatoGs(montoAsignado) }}</strong>.
+          </label>
+        </div>
+        <p class="mb-0 mt-2 small">
+          Ese monto es el que se factura después. Una vez declarada, la factura
+          sólo se corrige con nota de crédito.
+        </p>
+      </c-alert>
+    </form>
+  </c-modal-body>
+
+  <c-modal-footer class="flex-wrap gap-2">
+    <button cButton color="secondary" variant="outline" (click)="cerrar()">Cancelar</button>
+
+    <button cButton color="danger" variant="outline"
+            [disabled]="guardando" (click)="pedirRechazo()">
+      Rechazar cheque
+    </button>
+
+    <button cButton color="success" class="text-white"
+            [disabled]="!puedeGuardar" (click)="confirmar()">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      Confirmar recepción
+    </button>
+  </c-modal-footer>
+</c-modal>

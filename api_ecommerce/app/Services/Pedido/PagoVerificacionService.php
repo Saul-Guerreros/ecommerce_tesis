@@ -15,6 +15,10 @@ use App\Services\Venta\CobroVentaService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+use App\Models\Configuracion\ConfiguracionTienda;
+
+use App\Models\Pedido\PagoCheque;
+
 /**
  * Verificacion de los pagos de un pedido: la accion mas sensible del
  * modulo, porque toca dinero y stock a la vez.
@@ -134,6 +138,13 @@ class PagoVerificacionService
             $this->validarPedidoOperable($pedido);
             $this->validarTransicionDePago($pago, EstadoPago::CONFIRMADO);
             $this->validarComprobanteValidado($pago);
+
+            $this->validarPedidoOperable($pedido);
+            $this->validarTransicionDePago($pago, EstadoPago::CONFIRMADO);
+            $this->validarComprobanteValidado($pago);
+            $this->validarChequeRecibido($pago);      // <-- nueva
+            $this->validarMonto($pago, $datos);
+
             $this->validarMonto($pago, $datos);
 
             // La factura tiene que existir ANTES del cobro: el cobro se
@@ -148,6 +159,12 @@ class PagoVerificacionService
                 'ppa_epaid' => EstadoPago::porCodigo(EstadoPago::CONFIRMADO)->epa_id,
                 'ppa_mrpid' => null,   // un pago cobrado no conserva motivo de rechazo
             ]);
+            // El cheque cierra su ciclo acá: el banco pagó. Se actualiza en
+            // la misma transacción que el cobro para que los dos datos no
+            // puedan quedar desfasados.
+            if ($pago->cheque && !$pago->cheque->fueAcreditado()) {
+                $pago->cheque->update(['pch_estado' => PagoCheque::ACREDITADO]);
+            }
 
             $this->registrarEnHistorial(
                 $pedido,
@@ -163,7 +180,7 @@ class PagoVerificacionService
 
             $quedoTotalmentePagado = $this->estadoPago->recalcular($pedido);
 
-            if ($quedoTotalmentePagado) {
+            if ($quedoTotalmentePagado || $this->chequeAcreditadoLibera($pedido)) {
                 $this->cerrarPedido($pedido, $usuario);
             }
 
@@ -193,6 +210,32 @@ class PagoVerificacionService
         return $factura;
     }
 
+        /**
+     * Política ACREDITACION con pago mixto (cheque + efectivo contra
+     * entrega): el efectivo recién se cobra al entregar, así que el pedido
+     * nunca queda "totalmente pagado" antes de salir. Sin esta regla,
+     * acreditar el cheque no descontaría stock ni dejaría el pedido listo.
+     *
+     * Libera cuando todo pago que se verifica antes de entregar (cheque o
+     * comprobante) ya está cobrado.
+     */
+    private function chequeAcreditadoLibera(Pedido $pedido): bool
+    {
+        if (ConfiguracionTienda::actual()->chequeDescuentaEnRecepcion()) {
+            return false;
+        }
+
+        $pagos = $pedido->pagos()->with('metodoPago', 'estadoPago', 'cheque')->get();
+
+        if ($pagos->pluck('cheque')->filter()->isEmpty()) {
+            return false;
+        }
+
+        return $pagos
+            ->filter(fn ($pago) => $pago->metodoPago?->requiereVerificacion())
+            ->every(fn ($pago) => $pago->estadoPago?->epa_codigo === EstadoPago::CONFIRMADO);
+    }
+
     /**
      * Efectos que se disparan una unica vez, cuando el pedido entero queda
      * cobrado. Cualquiera de los dos que falle revierte toda la operacion:
@@ -200,19 +243,39 @@ class PagoVerificacionService
      *
      * La factura no se toca aca: ya existe desde antes del primer cobro.
      */
+        /**
+     * Efectos que se disparan una única vez, cuando el pedido entero queda
+     * cobrado.
+     *
+     * Con cheque, buena parte de esto ya ocurrió antes: con política
+     * RECEPCION el stock se descontó al recibir el papel y el pedido ya
+     * pasó a LISTO (o incluso a ENTREGADO). Por eso los dos efectos se
+     * aplican de forma condicional en vez de incondicional: repetirlos
+     * dejaría el inventario descontado dos veces y haría fallar una
+     * transición hacia un estado anterior.
+     */
     private function cerrarPedido(Pedido $pedido, Usuario $usuario): void
     {
-        // 1. Descuento definitivo de stock + kardex.
-        //    Lanza StockInsuficienteException (409) si ya no hay existencias.
-        $this->stock->descontarDefinitivo($pedido, $usuario);
+        if (!$this->stock->yaDescontado($pedido)) {
+            $this->stock->descontarDefinitivo($pedido, $usuario);
+        }
 
-        // 2. Avance automatico del pedido. Pasa por la misma maquina de
-        //    estados que el combo manual, no la saltea.
+        $actual = $pedido->estadoPedido?->est_codigo;
+
+        if (in_array($actual, [EstadoPedido::LISTO, EstadoPedido::ENTREGADO, EstadoPedido::CANCELADO], true)) {
+            return;   // el cheque ya lo adelantó; no hay nada que avanzar
+        }
+
+        $pedido->loadMissing('pagos.cheque');
+        $hayCheque = $pedido->pagos->pluck('cheque')->filter()->isNotEmpty();
+
         $this->estados->cambiar(
             $pedido->refresh(),
-            EstadoPedido::EN_PREPARACION,
+            $hayCheque ? EstadoPedido::LISTO : EstadoPedido::EN_PREPARACION,
             $usuario,
-            'Pago cobrado — el pedido pasa a preparación automáticamente',
+            $hayCheque
+                ? 'Cheque acreditado — el pedido queda listo para entrega/retiro'
+                : 'Pago cobrado — el pedido pasa a preparación automáticamente',
         );
     }
 
@@ -400,6 +463,18 @@ class PagoVerificacionService
         if (!$pago->comprobante->pco_verifi) {
             throw ValidationException::withMessages([
                 'cobro' => 'Primero validá el comprobante de este pago. El cobro se registra después.',
+            ]);
+        }
+    }
+
+        private function validarChequeRecibido(PedidoPago $pago): void
+    {
+        $pago->loadMissing('cheque');
+
+        if ($pago->cheque && !$pago->cheque->fueRecibido()) {
+            throw ValidationException::withMessages([
+                'cobro' => 'El cheque de este pago todavía no fue recibido en la sucursal. '
+                    . 'Confirmá la recepción antes de registrar el cobro.',
             ]);
         }
     }

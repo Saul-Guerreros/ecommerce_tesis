@@ -5,15 +5,21 @@ namespace App\Services\Pedido;
 use App\Models\Pedido\EstadoPago;
 use App\Models\Pedido\EstadoPedido;
 use App\Models\Pedido\MetodoPago;
+use App\Models\Pedido\PagoCheque;
 use App\Models\Pedido\PagoComprobante;
 use App\Models\Pedido\Pedido;
 use App\Models\Pedido\PedidoHistorialEstado;
 use App\Models\Pedido\PedidoPago;
+use App\Models\Pedido\TipoEntrega;
 use App\Models\Usuario;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+
+use App\Models\Configuracion\ConfiguracionTienda;
+
+
 
 /**
  * Paso 3 del checkout: el cliente declara su pago sobre un pedido que ya
@@ -29,6 +35,10 @@ use Illuminate\Validation\ValidationException;
  *      comprobantes_temp ni el baile de archivos huérfanos.
  *   3. Declarar el pago cierra el plazo: ped_vence pasa a NULL y el pedido
  *      sale del barrido de expiración.
+ *
+ * Método CHEQUE: no adjunta archivo. Su equivalente al comprobante son los
+ * datos declarados (tipo, banco, CI y nombre del titular), que se guardan
+ * en pago_cheque. Sólo está disponible para pedidos con retiro en sucursal.
  */
 class PagoPedidoService
 {
@@ -43,16 +53,34 @@ class PagoPedidoService
     ) {}
 
     // ---------- Lectura ----------
-
-    /**
-     * Datos de pago de la tienda (banco, Tigo, mensaje de efectivo) y
-     * métodos activos. Se reutiliza tal cual del service anterior: esa
-     * parte no cambió.
+     /**
+     * Datos de pago de la tienda y métodos disponibles PARA ESTE PEDIDO.
+     *
+     * El cheque se ofrece sólo si el admin lo habilitó para la modalidad
+     * de entrega del pedido (retiro en sucursal y/o envío a domicilio).
+     * Cuando no se ofrece, se devuelve el motivo para que la pantalla lo
+     * explique en vez de ocultar la opción sin dar razones.
      */
-    public function datosIniciales(): array
+    public function datosIniciales(Pedido $pedido): array
     {
-        return $this->configuracion->datosIniciales();
+        $datos = $this->configuracion->datosIniciales();
+
+        $datos['cheque_habilitado'] = $this->admiteCheque($pedido)
+            && $datos['datos_cheque']['tipos'] !== [];
+
+        $datos['cheque_motivo'] = $datos['cheque_habilitado']
+            ? null
+            : $this->motivoChequeNoDisponible($pedido);
+
+        if (!$datos['cheque_habilitado']) {
+            $datos['metodos'] = $datos['metodos']
+                ->reject(fn ($m) => $m->mpa_codigo === MetodoPago::CHEQUE)
+                ->values();
+        }
+
+        return $datos;
     }
+
 
     /**
      * Pedido del cliente autenticado que todavía puede pagarse.
@@ -96,8 +124,8 @@ class PagoPedidoService
         }
 
         $pedido->load([
-            'pagos.metodoPago', 'pagos.comprobante',
-            'entrega.sucursal', 'tipoEntrega', 'estadoPago', 'estadoPedido',
+            'pagos.metodoPago', 'pagos.comprobante', 'pagos.cheque',
+            'entrega.sucursal', 'sucursal', 'tipoEntrega', 'estadoPago', 'estadoPedido',
         ]);
 
         return $pedido;
@@ -123,7 +151,14 @@ class PagoPedidoService
                 // reintento del navegador) se serializan y el segundo
                 // encuentra el pedido ya pagado.
                 $pedido = $this->pedidoPagable($usuario, $numero);
-                $pedido = Pedido::whereKey($pedido->ped_id)->lockForUpdate()->firstOrFail();
+
+                // with('tipoEntrega'): esta consulta devuelve una instancia
+                // nueva sin las relaciones del pedido anterior, y
+                // verificarCheques() necesita la modalidad de entrega.
+                $pedido = Pedido::with('tipoEntrega')
+                    ->whereKey($pedido->ped_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
                 abort_if($pedido->pagos()->exists(), 409, 'Este pedido ya tiene un pago registrado.');
 
@@ -133,11 +168,13 @@ class PagoPedidoService
                     ? $this->armarDividido($datos['pagos'] ?? [], $total, $archivos)
                     : $this->armarUnico($datos, $total, $archivos);
 
+                $this->verificarCheques($pedido, $pagos);
+
                 $this->crearPagos($pedido, $pagos);
                 $this->marcarPedidoPagado($pedido, $pagos, $usuario);
 
                 return $pedido->fresh([
-                    'pagos.metodoPago', 'pagos.comprobante',
+                    'pagos.metodoPago', 'pagos.comprobante', 'pagos.cheque',
                     'entrega.sucursal', 'tipoEntrega', 'estadoPago', 'estadoPedido',
                 ]);
             });
@@ -235,7 +272,7 @@ class PagoPedidoService
                 $this->estadoPago->cerrarPlazo($pedido);
 
                 return $pedido->fresh([
-                    'pagos.metodoPago', 'pagos.comprobante', 'pagos.estadoPago',
+                    'pagos.metodoPago', 'pagos.comprobante', 'pagos.cheque', 'pagos.estadoPago',
                     'entrega.sucursal', 'tipoEntrega', 'estadoPago', 'estadoPedido',
                 ]);
             });
@@ -321,6 +358,7 @@ class PagoPedidoService
             'comprobante' => $metodo->mpa_requcom
                 ? $this->guardarArchivo($comprobante, $archivos)
                 : null,
+            'cheque'      => $this->armarCheque($metodo, $datos['cheque'] ?? null),
         ]];
     }
 
@@ -336,14 +374,98 @@ class PagoPedidoService
             $resultado[] = [
                 'metodo'      => $metodo,
                 'monto'       => (int) $p['monto'],
-                // Regla: el efectivo contra entrega no lleva comprobante.
+                // Regla: el efectivo contra entrega y el cheque no llevan
+                // comprobante adjunto.
                 'comprobante' => $metodo->mpa_requcom
                     ? $this->guardarArchivo($p['comprobante'] ?? null, $archivos)
                     : null,
+                'cheque'      => $this->armarCheque($metodo, $p['cheque'] ?? null),
             ];
         }
 
         return $resultado;
+    }
+
+    /**
+     * Normaliza los datos del cheque declarados por el cliente. Devuelve
+     * null para cualquier otro método: así crearPagos() no necesita
+     * ramificar por código de método.
+     *
+     * La obligatoriedad de cada campo ya la validó PagoPedidoRequest; acá
+     * sólo se limpia y se descarta lo que no corresponde.
+     */
+       /**
+     * Normaliza los datos del cheque declarados por el cliente. Devuelve
+     * null cuando el método no es cheque.
+     *
+     * La fecha de cobro sólo se conserva en el diferido: en un cheque a la
+     * vista no existe, y guardarla haría que la sucursal esperara una
+     * fecha de depósito que nadie definió. Si el cliente la cargó y después
+     * cambió a VISTA, se descarta acá.
+     */
+    private function armarCheque(MetodoPago $metodo, ?array $cheque): ?array
+    {
+        if ($metodo->mpa_codigo !== MetodoPago::CHEQUE || !$cheque) {
+            return null;
+        }
+
+        $tipo = $cheque['tipo'];
+
+        return [
+            'tipo'        => $tipo,
+            'banco'       => trim((string) $cheque['banco']),
+            'nrodoc'      => trim((string) $cheque['nrodoc']),
+            'nombre'      => trim((string) $cheque['nombre']),
+            'nro'         => trim((string) ($cheque['nro'] ?? '')),
+            'fecha_cobro' => $tipo === PagoCheque::TIPO_DIFERIDO
+                ? ($cheque['fecha_cobro'] ?? null)
+                : null,
+        ];
+    }
+
+    /**
+     * ¿La configuración de la tienda acepta cheque para la modalidad de
+     * entrega de este pedido?
+     *
+     * Vive en el backend y no sólo como aviso en pantalla porque es una
+     * regla de negocio: un POST armado a mano con una modalidad no
+     * habilitada generaría un pedido que la tienda no quiere procesar.
+     */
+    private function admiteCheque(Pedido $pedido): bool
+    {
+        return ConfiguracionTienda::actual()->aceptaChequeEn($pedido->tipoEntrega?->ten_codigo);
+    }
+
+    /**
+     * Texto (sin prefijo ni mayúscula inicial) que explica por qué el
+     * cheque no está disponible. Como el cheque sólo puede quedar sin
+     * ofrecerse por la modalidad del pedido, el motivo es siempre uno de
+     * estos dos.
+     */
+    private function motivoChequeNoDisponible(Pedido $pedido): string
+    {
+        return $pedido->tipoEntrega?->ten_codigo === TipoEntrega::RETIRO
+            ? 'tu pedido está marcado para retiro en sucursal y no para envío a domicilio. El pago con cheque solo se acepta en pedidos con envío a domicilio.'
+            : 'tu pedido está marcado para envío a domicilio y no para retiro en sucursal. El pago con cheque solo se acepta en pedidos con retiro en sucursal.';
+    }
+
+
+    /**
+     * Si algún pago es con cheque, la modalidad del pedido tiene que ser
+     * una de las habilitadas. Se verifica dentro de la transacción y
+     * contra el pedido ya persistido, no contra lo que mandó el navegador.
+     */
+    private function verificarCheques(Pedido $pedido, array $pagos): void
+    {
+        $hayCheque = collect($pagos)
+            ->contains(fn ($p) => $p['metodo']->mpa_codigo === MetodoPago::CHEQUE);
+
+        if ($hayCheque && !$this->admiteCheque($pedido)) {
+            throw ValidationException::withMessages([
+                'mpa_codigo' => 'El pago con cheque no está disponible para este pedido: '
+                    . $this->motivoChequeNoDisponible($pedido),
+            ]);
+        }
     }
 
     /**
@@ -389,17 +511,23 @@ class PagoPedidoService
      * método se escribe una sola fila. Así el panel admin, "Mis pedidos" y
      * los reportes leen un único lugar.
      */
-    private function crearPagos(Pedido $pedido, array $pagos): void
+        private function crearPagos(Pedido $pedido, array $pagos): void
     {
-        $pendiente = EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR)->epa_id;
+        $verificar = EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR)->epa_id;
+        $pendiente = EstadoPago::porCodigo(EstadoPago::PENDIENTE_PAGO)->epa_id;
 
         foreach ($pagos as $i => $p) {
+            // El cheque no tiene evidencia que verificar hasta que el papel
+            // llegue a la sucursal: nace Pendiente de pago, igual que el
+            // pedido. El resto de métodos ya trae su comprobante adjunto.
+            $esCheque = $p['metodo']->mpa_codigo === MetodoPago::CHEQUE;
+
             $pedidoPago = PedidoPago::create([
                 'ppa_pedid' => $pedido->ped_id,
                 'ppa_orden' => $i + 1,
                 'ppa_mpaid' => $p['metodo']->mpa_id,
                 'ppa_monto' => $p['monto'],
-                'ppa_epaid' => $pendiente,
+                'ppa_epaid' => $esCheque ? $pendiente : $verificar,
             ]);
 
             if ($p['comprobante']) {
@@ -408,6 +536,29 @@ class PagoPedidoService
                     'pco_ppaid'  => $pedidoPago->ppa_id,
                     'pco_archiv' => $p['comprobante'],
                     'pco_verifi' => false,
+                ]);
+            }
+
+            // El cheque es el "comprobante" de este método: sin estos datos
+            // la sucursal no puede identificar el cheque que llega.
+                        if ($p['cheque']) {
+                PagoCheque::create([
+                    'pch_pedid'  => $pedido->ped_id,
+                    'pch_ppaid'  => $pedidoPago->ppa_id,
+                    'pch_tipo'   => $p['cheque']['tipo'],
+                    'pch_banco'  => $p['cheque']['banco'],
+                    'pch_nrodoc' => $p['cheque']['nrodoc'],
+                    'pch_nombre' => $p['cheque']['nombre'],
+
+                    // Etapa 3 del checkout: hoy todavía no llegan.
+                    'pch_nro'    => $p['cheque']['nro'] ?? null,
+                    'pch_fecobr' => $p['cheque']['fecha_cobro'] ?? null,
+
+                    // El reloj de 48 h arranca al declarar, no al confirmar
+                    // el pedido: es el tiempo que tiene el cliente para
+                    // acercar el papel a la sucursal.
+                    'pch_estado' => PagoCheque::EN_ESPERA,
+                    'pch_fevcto' => PagoCheque::calcularVencimiento(),
                 ]);
             }
         }
@@ -421,17 +572,28 @@ class PagoPedidoService
      * plazo y el pedido sale del barrido de expiración. Si no se limpiara,
      * una transferencia esperando revisión podría cancelarse sola.
      */
-    private function marcarPedidoPagado(Pedido $pedido, array $pagos, Usuario $usuario): void
+        private function marcarPedidoPagado(Pedido $pedido, array $pagos, Usuario $usuario): void
     {
         $esDividido = count($pagos) > 1;
-        $pendiente  = EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR);
+
+        // Con cheque no hay nada que verificar todavía: la evidencia es el
+        // papel físico y recién existe cuando llega a la sucursal. El
+        // pedido queda Pendiente de Pago y el eje Cheque pasa a Pendiente
+        // de Recepción, tal como define el flujo del método.
+        $soloCheques = collect($pagos)
+            ->every(fn ($p) => $p['metodo']->mpa_codigo === MetodoPago::CHEQUE);
+
+        $pendiente = EstadoPago::porCodigo(
+            $soloCheques ? EstadoPago::PENDIENTE_PAGO : EstadoPago::PAGO_VERIFICAR
+        );
 
         $pedido->update([
-            // Sólo tiene sentido con un único método; con pago dividido la
-            // verdad vive en pedido_pago.
             'ped_mpaid'  => $esDividido ? null : $pagos[0]['metodo']->mpa_id,
             'ped_pagdiv' => $esDividido,
             'ped_epaid'  => $pendiente->epa_id,
+
+            // El plazo del cheque vive en pago_cheque.pch_fevcto, por pago:
+            // con pago dividido cada cheque tiene el suyo.
             'ped_vence'  => null,
         ]);
 
@@ -446,6 +608,7 @@ class PagoPedidoService
                 : 'Cliente declaró su pago: ' . $pagos[0]['metodo']->mpa_descri,
         ]);
     }
+
 
     // ---------- Helpers ----------
 

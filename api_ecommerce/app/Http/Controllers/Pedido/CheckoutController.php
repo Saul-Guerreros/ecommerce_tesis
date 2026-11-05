@@ -57,6 +57,7 @@ class CheckoutController extends Controller
             'direcciones' => DireccionClienteResource::collection($datos['direcciones']),
             'titular'     => $datos['titular'],
             'envio'       => $datos['envio'],
+            'cheque_aceptado' => $datos['cheque_aceptado'],
 
             // Alimenta la tarjeta "Productos en Carrito" del Paso 1.
             'items'       => CarritoResource::collection($this->servicioResumen->itemsOpcionales($usuario)),

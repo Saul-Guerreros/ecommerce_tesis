@@ -28,6 +28,14 @@ use App\Http\Resources\Venta\VentaCabResource;
 
 use App\Services\Venta\VentaService;
 
+use App\Http\Requests\Pedido\ActualizarChequeRequest;
+use App\Http\Requests\Pedido\ConfirmarRecepcionChequeRequest;
+use App\Http\Requests\Pedido\DescartarChequeRequest;
+use App\Http\Requests\Pedido\RechazarChequeRequest;
+use App\Models\Configuracion\ConfiguracionTienda;
+use App\Models\Pedido\PagoCheque;
+use App\Services\Pedido\ChequeGestionService;
+
 /**
  * Gestión del Pedido: detalle, verificación de pagos y cambio de estado.
  *
@@ -64,12 +72,17 @@ class PedidoGestionController extends Controller
         'pagos.cobro.usuario.persona',
         'pagos.cobro.metodoPago',
         'factura.fe',
+        'pagos.cobro.metodoPago',
+        'pagos.cheque.usuarioReceptor.persona',
+        'pagos.cheque.motivoRechazo',
+        'factura.fe',
     ];
 
     public function __construct(
         private PagoVerificacionService $verificacion,
         private PedidoEstadoService $estados,
         private VentaService $ventas,
+        private ChequeGestionService $cheques,
     ) {}
 
     /**
@@ -82,16 +95,45 @@ class PedidoGestionController extends Controller
         ]);
     }
 
-    /**
+        /**
      * GET /api/admin/pedidos/gestion/config
-     * Catálogo de motivos para el modal de rechazo.
+     *
+     * Los motivos se sirven separados por ámbito: el modal del comprobante
+     * no debe ofrecer «No entregado en plazo» ni el del cheque «El
+     * comprobante es ilegible». Filtrarlos en Angular dejaría la regla
+     * repetida en dos lugares.
      */
     public function config(): JsonResponse
     {
+        $motivos = MotivoRechazoPago::activos()->orderBy('mrp_id')->get();
+
+        $mapear = fn ($coleccion) => $coleccion
+            ->map(fn (MotivoRechazoPago $m) => [
+                'mrp_id'      => $m->mrp_id,
+                'mrp_codigo'  => $m->mrp_codigo,
+                'mrp_descri'  => $m->mrp_descri,
+                'mrp_requdet' => $m->mrp_requdet,
+            ])
+            ->values();
+
         return response()->json([
-            'motivos_rechazo' => MotivoRechazoPago::activos()
-                ->orderBy('mrp_id')
-                ->get(['mrp_id', 'mrp_codigo', 'mrp_descri', 'mrp_requdet']),
+            // Se mantiene la clave original: la pantalla del comprobante ya
+            // la consume y no tiene por qué cambiar.
+            'motivos_rechazo' => $mapear(
+                $motivos->filter(fn ($m) => $m->aplicaA(MotivoRechazoPago::AMBITO_COMPROBANTE))
+            ),
+            'motivos_rechazo_cheque' => $mapear(
+                $motivos->filter(fn ($m) => $m->aplicaA(MotivoRechazoPago::AMBITO_CHEQUE))
+            ),
+
+            'cheque' => [
+                'tipos'        => PagoCheque::DESCRIPCIONES,
+                'estados'      => PagoCheque::ESTADOS,
+                'horas_plazo'  => PagoCheque::HORAS_PLAZO,
+                // La pantalla avisa al admin qué va a pasar con el stock
+                // cuando confirme la recepción.
+                'stock_al_recibir' => ConfiguracionTienda::actual()->chequeDescuentaEnRecepcion(),
+            ],
         ]);
     }
 
@@ -116,6 +158,93 @@ class PedidoGestionController extends Controller
         ]);
     }
 
+        /**
+     * PUT /api/admin/pedidos/{pedido}/pagos/{pago}/cheque
+     *
+     * Botón [Editar]: corrige los datos del cheque contra el papel que el
+     * admin tiene en la mano. Cada corrección queda auditada.
+     */
+    public function actualizarCheque(ActualizarChequeRequest $request, Pedido $pedido, int $pago): JsonResponse
+    {
+        $actualizado = $this->cheques->actualizarDatos(
+            $pedido,
+            $pago,
+            $request->validated(),
+            auth('api')->user(),
+        );
+
+        return response()->json([
+            'message' => 'Datos del cheque actualizados.',
+            'data'    => $this->serializar($actualizado),
+        ]);
+    }
+
+    /**
+     * POST /api/admin/pedidos/{pedido}/pagos/{pago}/cheque/descartar
+     *
+     * Botón [Descartar cheque]: el cliente presentó uno distinto del
+     * declarado. Borra la declaración del checkout; no cancela el pedido.
+     */
+    public function descartarCheque(DescartarChequeRequest $request, Pedido $pedido, int $pago): JsonResponse
+    {
+        $actualizado = $this->cheques->descartar(
+            $pedido,
+            $pago,
+            $request->validated(),
+            auth('api')->user(),
+        );
+
+        return response()->json([
+            'message' => 'Datos del cheque descartados. Cargá los del cheque presentado.',
+            'data'    => $this->serializar($actualizado),
+        ]);
+    }
+
+    /**
+     * POST /api/admin/pedidos/{pedido}/pagos/{pago}/cheque/recibir
+     *
+     * Botón [Confirmar recepción]: el equivalente de validar el
+     * comprobante, pero con efectos reales. Según la política configurada,
+     * acá se descuenta el stock y el pedido pasa a Listo para
+     * entrega/retiro. Un StockInsuficienteException revierte todo (409).
+     */
+    public function recibirCheque(ConfirmarRecepcionChequeRequest $request, Pedido $pedido, int $pago): JsonResponse
+    {
+        $actualizado = $this->cheques->confirmarRecepcion(
+            $pedido,
+            $pago,
+            $request->validated(),
+            auth('api')->user(),
+        );
+
+        return response()->json([
+            'message' => 'Recepción del cheque confirmada.',
+            'data'    => $this->serializar($actualizado),
+        ]);
+    }
+
+    /**
+     * POST /api/admin/pedidos/{pedido}/pagos/{pago}/cheque/rechazar
+     *
+     * Botón [Rechazar cheque]: cancela el pedido y libera la reserva. A
+     * diferencia del comprobante, no hay segunda oportunidad: el cliente no
+     * tiene pantalla para declarar otro cheque.
+     */
+    public function rechazarCheque(RechazarChequeRequest $request, Pedido $pedido, int $pago): JsonResponse
+    {
+        $actualizado = $this->cheques->rechazar(
+            $pedido,
+            $pago,
+            $request->validated(),
+            auth('api')->user(),
+        );
+
+        return response()->json([
+            'message' => 'Cheque rechazado. El pedido quedó cancelado y el stock liberado.',
+            'data'    => $this->serializar($actualizado),
+        ]);
+    }
+    
 
         /**
      * POST /api/admin/pedidos/{pedido}/factura/generar

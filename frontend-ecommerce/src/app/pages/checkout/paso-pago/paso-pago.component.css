@@ -198,6 +198,19 @@
   opacity: 1; /* no es un control inhabilitado, es informativo */
 }
 
+/* Método que no se puede elegir en este pedido (ej. cheque con envío a
+   domicilio). Se distingue de las tarjetas informativas del pago dividido,
+   que también están inhabilitadas pero se ven normales. */
+.ck-opcion.ck-opcion--no-disponible {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f8f8f8;
+}
+
+.ck-opcion.ck-opcion--no-disponible:hover {
+  border-color: var(--uk-global-border, #e5e5e5);
+}
+
 /* ---------- Propio del Paso 3 ---------- */
 
 /* Padding reducido respecto del uk-card-body estándar: es una tarjeta de

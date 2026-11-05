@@ -121,8 +121,20 @@ class VentaService
             ]);
         }
 
+        // Antes esto lo cubría, de rebote, la exigencia de LISTO. Ahora que
+        // el cheque ya no la dispara, se valida de forma explícita.
+        $chequesSinRecibir = $pedido->pagos
+            ->filter(fn ($pago) => $pago->cheque && !$pago->cheque->fueRecibido())
+            ->count();
+
+        if ($chequesSinRecibir > 0) {
+            throw ValidationException::withMessages([
+                'factura' => 'Falta confirmar la recepción del cheque en la sucursal antes de generar la factura.',
+            ]);
+        }
+
         $hayEfectivo = $pedido->pagos
-            ->contains(fn ($pago) => !$pago->metodoPago?->mpa_requcom);
+            ->contains(fn ($pago) => !$pago->metodoPago?->requiereVerificacion());
 
         if ($hayEfectivo && $pedido->estadoPedido?->est_codigo !== EstadoPedido::LISTO) {
             throw ValidationException::withMessages([

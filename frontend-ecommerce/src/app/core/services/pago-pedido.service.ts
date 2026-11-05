@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { URL_SERVICIOS } from '../../config/config';
 import {
+  ChequeDeclarado,
   ConfigPagoPedidoResponse,
   RegistrarPagoRequest,
   ResultadoPago,
@@ -37,8 +38,10 @@ export class PagoPedidoService {
    * archivos; las claves indexadas pagos[i][campo] son las que Laravel
    * entiende como array de objetos con archivo adentro.
    *
-   * A diferencia del flujo anterior ya no existe "conservar": el pago se
-   * declara una sola vez, así que el archivo siempre viaja completo.
+   * El cheque no lleva archivo: viaja como campos de texto
+   * (cheque[tipo], cheque[banco], cheque[nrodoc], cheque[nombre],
+   * cheque[nro] y, sólo en el diferido, cheque[fecha_cobro]), con el
+   * mismo prefijo indexado en el pago dividido.
    */
   registrar(numero: string, payload: RegistrarPagoRequest) {
     const formData = new FormData();
@@ -47,11 +50,13 @@ export class PagoPedidoService {
     if (payload.modo === 'unico') {
       formData.append('mpa_codigo', payload.mpa_codigo!);
       if (payload.comprobante) formData.append('comprobante', payload.comprobante);
+      if (payload.cheque) this.adjuntarCheque(formData, 'cheque', payload.cheque);
     } else {
       (payload.pagos ?? []).forEach((pago, i) => {
         formData.append(`pagos[${i}][mpa_codigo]`, pago.mpa_codigo);
         formData.append(`pagos[${i}][monto]`, String(pago.monto));
         if (pago.comprobante) formData.append(`pagos[${i}][comprobante]`, pago.comprobante);
+        if (pago.cheque) this.adjuntarCheque(formData, `pagos[${i}][cheque]`, pago.cheque);
       });
     }
 
@@ -68,5 +73,20 @@ export class PagoPedidoService {
    */
   resultado(numero: string): Observable<{ data: ResultadoPago }> {
     return this.http.get<{ data: ResultadoPago }>(`${this.URL}/${numero}/resultado`);
+  }
+
+   private adjuntarCheque(formData: FormData, prefijo: string, cheque: ChequeDeclarado): void {
+    formData.append(`${prefijo}[tipo]`, cheque.tipo ?? '');
+    formData.append(`${prefijo}[banco]`, cheque.banco.trim());
+    formData.append(`${prefijo}[nrodoc]`, cheque.nrodoc.trim());
+    formData.append(`${prefijo}[nombre]`, cheque.nombre.trim());
+    formData.append(`${prefijo}[nro]`, cheque.nro.trim());
+
+    // Sólo el diferido tiene fecha de cobro. Si se mandara vacía, Laravel
+    // la convertiría en null y la validación "date" la dejaría pasar, pero
+    // es mejor no enviar un campo que no corresponde.
+    if (cheque.tipo === 'DIFERIDO' && cheque.fecha_cobro) {
+      formData.append(`${prefijo}[fecha_cobro]`, cheque.fecha_cobro);
+    }
   }
 }

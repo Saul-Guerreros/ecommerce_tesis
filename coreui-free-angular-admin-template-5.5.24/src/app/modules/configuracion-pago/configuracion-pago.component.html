@@ -1,17 +1,21 @@
-<c-card class="mb-4">
-  <c-card-header><strong>Datos de Pago</strong></c-card-header>
+<div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
 
-  <c-card-body>
-    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+<form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando">
 
-    <form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando">
+  <h5 class="mb-1">Datos de Pago</h5>
+  <p class="text-body-secondary small mb-4">
+    Datos y textos que ve el cliente en el Paso 3 del checkout según el método de pago que elija.
+  </p>
 
-      <h6 class="mb-1">Transferencia Bancaria</h6>
+  <!-- ==================== TRANSFERENCIA BANCARIA ==================== -->
+  <c-card class="mb-4">
+    <c-card-header><strong>Transferencia Bancaria</strong></c-card-header>
+    <c-card-body>
       <p class="text-body-secondary small mb-4">
-        Datos informativos que ve el cliente en el Paso 2 del checkout al elegir "Transferencia Bancaria".
+        Datos informativos que ve el cliente al elegir "Transferencia Bancaria".
       </p>
 
-      <div class="row g-4 mb-4">
+      <div class="row g-4">
         <div class="col-lg-4">
           <label cLabel for="ctn_pago_banco">Banco</label>
           <input cFormControl type="text" id="ctn_pago_banco" formControlName="ctn_pago_banco" maxlength="80">
@@ -34,13 +38,18 @@
           </div>
         </div>
       </div>
+    </c-card-body>
+  </c-card>
 
-      <h6 class="mb-1">Tigo Money</h6>
+  <!-- ==================== TIGO MONEY ==================== -->
+  <c-card class="mb-4">
+    <c-card-header><strong>Tigo Money</strong></c-card-header>
+    <c-card-body>
       <p class="text-body-secondary small mb-4">
-        Datos informativos que ve el cliente en el Paso 2 del checkout al elegir "Tigo Money".
+        Datos informativos que ve el cliente al elegir "Tigo Money".
       </p>
 
-      <div class="row g-4 mb-4">
+      <div class="row g-4">
         <div class="col-lg-4">
           <label cLabel for="ctn_pago_tigo_titular">Titular</label>
           <input cFormControl type="text" id="ctn_pago_tigo_titular" formControlName="ctn_pago_tigo_titular" maxlength="150">
@@ -63,10 +72,15 @@
           </div>
         </div>
       </div>
+    </c-card-body>
+  </c-card>
 
-      <h6 class="mb-1">Efectivo</h6>
+  <!-- ==================== EFECTIVO ==================== -->
+  <c-card class="mb-4">
+    <c-card-header><strong>Efectivo</strong></c-card-header>
+    <c-card-body>
       <p class="text-body-secondary small mb-4">
-        Mensaje informativo que ve el cliente al elegir "Efectivo" en el checkout.
+        Mensaje informativo que ve el cliente al elegir "Efectivo".
       </p>
 
       <div class="row g-4">
@@ -78,13 +92,168 @@
           </div>
         </div>
       </div>
+    </c-card-body>
+  </c-card>
 
-      <div class="mt-4">
-        <button cButton color="primary" type="submit" [disabled]="guardando">
-          <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
-          {{ guardando ? 'Guardando...' : 'Guardar' }}
-        </button>
+  <!-- ==================== CHEQUE ==================== -->
+  <c-card class="mb-4">
+    <c-card-header><strong>Cheque</strong></c-card-header>
+    <c-card-body>
+      <p class="text-body-secondary small mb-4">
+        Configuración del método "Cheque": qué tipos se ofrecen, en qué modalidades de entrega se
+        acepta y los textos que ve el cliente, con un solo método de pago o dentro de un pago dividido.
+      </p>
+
+      <!-- Tipos permitidos -->
+      <div class="mb-4">
+        <label cLabel class="d-block">Tipos de cheque permitidos</label>
+
+        <div class="form-check">
+          <input cFormCheckInput type="checkbox" id="ctn_pago_cheque_vista"
+                 formControlName="ctn_pago_cheque_vista" />
+          <label cFormCheckLabel for="ctn_pago_cheque_vista">Cheque a la vista</label>
+        </div>
+
+        <div class="form-check">
+          <input cFormCheckInput type="checkbox" id="ctn_pago_cheque_diferido"
+                 formControlName="ctn_pago_cheque_diferido" />
+          <label cFormCheckLabel for="ctn_pago_cheque_diferido">Cheque diferido</label>
+        </div>
+
+        <div class="text-danger small mt-1" *ngIf="sinTipoCheque || errorBackend('ctn_pago_cheque_vista')">
+          {{ errorBackend('ctn_pago_cheque_vista') || 'Marcá al menos un tipo de cheque.' }}
+        </div>
+        <div class="small text-body-secondary mt-1">
+          El cliente solo verá los tipos marcados al elegir "Cheque" en el checkout. Se puede
+          marcar uno o ambos.
+        </div>
       </div>
-    </form>
-  </c-card-body>
-</c-card>
+
+      <!-- Modalidades de entrega -->
+      <div class="mb-4">
+        <label cLabel class="d-block">Modalidad de entrega en la que se acepta el cheque</label>
+
+        <div class="form-check form-switch">
+          <input cFormCheckInput type="checkbox" role="switch" id="ctn_pago_cheque_retiro"
+                 formControlName="ctn_pago_cheque_retiro" />
+          <label cFormCheckLabel for="ctn_pago_cheque_retiro">Retiro en sucursal</label>
+        </div>
+
+        <div class="form-check form-switch">
+          <input cFormCheckInput type="checkbox" role="switch" id="ctn_pago_cheque_envio"
+                 formControlName="ctn_pago_cheque_envio" />
+          <label cFormCheckLabel for="ctn_pago_cheque_envio">Envío a domicilio</label>
+        </div>
+
+        <div class="text-danger small mt-1" *ngIf="sinModalidadCheque || errorBackend('ctn_pago_cheque_retiro')">
+          {{ errorBackend('ctn_pago_cheque_retiro') || 'Habilitá el cheque en al menos una modalidad de entrega.' }}
+        </div>
+        <div class="small text-body-secondary mt-1">
+          En los pedidos de una modalidad deshabilitada, el cliente ve la opción "Cheque"
+          inhabilitada con un aviso, y en el Paso 1 se le indica qué modalidad debe elegir.
+        </div>
+      </div>
+
+      <!-- Política de descuento de stock -->
+      <div class="mb-4">
+        <label cLabel class="d-block">Descuento de stock del pedido</label>
+        <div class="small text-body-secondary mb-2">
+          En qué momento del cheque se descuenta el stock real del inventario. Las dos opciones
+          responden a criterios de riesgo opuestos y la decisión es de la tienda, no del sistema.
+        </div>
+
+        <div class="form-check">
+          <input cFormCheckInput type="radio" id="ctn_cheque_stock_recepcion"
+                 formControlName="ctn_cheque_stock" value="RECEPCION" />
+          <label cFormCheckLabel for="ctn_cheque_stock_recepcion">
+            Al recibir el cheque en la sucursal
+          </label>
+        </div>
+
+        <div class="form-check">
+          <input cFormCheckInput type="radio" id="ctn_cheque_stock_acreditacion"
+                 formControlName="ctn_cheque_stock" value="ACREDITACION" />
+          <label cFormCheckLabel for="ctn_cheque_stock_acreditacion">
+            Al acreditarse el pago en el banco
+          </label>
+        </div>
+
+        <div class="text-danger small mt-1" *ngIf="errorBackend('ctn_cheque_stock')">
+          {{ errorBackend('ctn_cheque_stock') }}
+        </div>
+
+        <!-- Consecuencia de la opción elegida: es lo que el admin necesita
+             entender antes de guardar, porque cambia cuándo puede entregar. -->
+        <div class="alert alert-info py-2 px-3 small mt-3 mb-0" *ngIf="descuentaEnRecepcion">
+          El stock se descuenta al confirmar la recepción del cheque y el pedido se puede marcar
+          como <strong>Entregado</strong> antes de que el banco acredite. Permite entregar el mismo
+          día; el riesgo del cheque rebotado lo asume la tienda.
+        </div>
+
+        <div class="alert alert-warning py-2 px-3 small mt-3 mb-0" *ngIf="!descuentaEnRecepcion">
+          Al recibir el cheque el pedido sigue en <strong>Pedido recibido</strong> y se puede
+          facturar. El stock se descuenta y el pedido pasa a <strong>Listo para
+          Entrega/Retiro</strong> recién cuando se registra el cobro, es decir, cuando el banco
+          acredita. Elimina el riesgo del cheque rebotado, pero la mercadería queda reservada
+          hasta la acreditación, que en un cheque diferido son semanas.
+        </div>
+
+        <div class="small text-body-secondary mt-2">
+          El cambio rige para las operaciones posteriores al guardado. Los pedidos cuyo stock ya
+          fue descontado no se ven afectados.
+        </div>
+      </div>
+
+      <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+          <label cLabel for="ctn_pago_cheque_titular">Titular receptor del cheque</label>
+          <input cFormControl type="text" id="ctn_pago_cheque_titular"
+                 formControlName="ctn_pago_cheque_titular" maxlength="150">
+          <div class="text-danger small" *ngIf="campoInvalido('ctn_pago_cheque_titular')">
+            {{ errorBackend('ctn_pago_cheque_titular') || 'Máximo 150 caracteres.' }}
+          </div>
+          <div class="small text-body-secondary mt-2">
+            Así lo verá el cliente:
+            <span class="fst-italic">{{ descripcionChequeVistaPrevia }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+          <label cLabel for="ctn_pago_cheque_mensaje">Mensaje del proceso de verificación</label>
+          <textarea cFormControl id="ctn_pago_cheque_mensaje" rows="2"
+                    formControlName="ctn_pago_cheque_mensaje" maxlength="300"></textarea>
+          <div class="text-danger small" *ngIf="campoInvalido('ctn_pago_cheque_mensaje')">
+            {{ errorBackend('ctn_pago_cheque_mensaje') || 'Máximo 300 caracteres.' }}
+          </div>
+          <div class="small text-body-secondary mt-2">
+            Se muestra encima de los campos que el cliente completa con los datos de su cheque.
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <label cLabel for="ctn_pago_cheque_aviso">Aviso del plazo de entrega</label>
+          <textarea cFormControl id="ctn_pago_cheque_aviso" rows="3"
+                    formControlName="ctn_pago_cheque_aviso" maxlength="400"></textarea>
+          <div class="text-danger small" *ngIf="campoInvalido('ctn_pago_cheque_aviso')">
+            {{ errorBackend('ctn_pago_cheque_aviso') || 'Máximo 400 caracteres.' }}
+          </div>
+          <div class="small text-body-secondary mt-2">
+            Este es un aviso destacado al pie del cheque.
+          </div>
+        </div>
+      </div>
+    </c-card-body>
+  </c-card>
+
+  <!-- Un solo guardado para los cuatro métodos: todos viajan en el mismo PATCH. -->
+  <div class="mb-4">
+    <button cButton color="primary" type="submit" [disabled]="guardando">
+      <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+      {{ guardando ? 'Guardando...' : 'Guardar' }}
+    </button>
+  </div>
+</form>

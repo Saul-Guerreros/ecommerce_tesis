@@ -713,6 +713,20 @@ Route::prefix('admin/pedidos')->middleware('auth:api')->group(function () {
 
     Route::get('/{pedido}/pagos/{pago}/comprobante', [PedidoGestionController::class, 'comprobante'])
     ->middleware('permiso:pedidos.ver');
+
+        // Cheque: mismo permiso que la verificación de pagos. Recibir mueve
+    // stock, así que no es un permiso más laxo que cobrar.
+    Route::put('/{pedido}/pagos/{pago}/cheque', [PedidoGestionController::class, 'actualizarCheque'])
+        ->middleware('permiso:pedidos.pago.verificar');
+
+    Route::post('/{pedido}/pagos/{pago}/cheque/descartar', [PedidoGestionController::class, 'descartarCheque'])
+        ->middleware('permiso:pedidos.pago.verificar');
+
+    Route::post('/{pedido}/pagos/{pago}/cheque/recibir', [PedidoGestionController::class, 'recibirCheque'])
+        ->middleware('permiso:pedidos.pago.verificar');
+
+    Route::post('/{pedido}/pagos/{pago}/cheque/rechazar', [PedidoGestionController::class, 'rechazarCheque'])
+        ->middleware('permiso:pedidos.pago.verificar');
 });
 
 

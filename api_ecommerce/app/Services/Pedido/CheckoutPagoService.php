@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
+use App\Models\Pedido\PagoCheque;
+
 /**
  * Paso 2 del checkout, seccion "Metodo de Pago".
  *
@@ -35,7 +37,7 @@ class CheckoutPagoService
         private CheckoutResumenService $resumen,
     ) {}
 
-    public function datosIniciales(): array
+        public function datosIniciales(): array
     {
         $config = ConfiguracionTienda::actual();
 
@@ -52,7 +54,41 @@ class CheckoutPagoService
                 'referencia' => $config->ctn_pago_tigo_referencia,
             ],
             'mensaje_efectivo' => $config->ctn_pago_efectivo_mensaje,
+
+            // Sólo los tipos que el admin dejó marcados. La descripción sale
+            // ya armada con el titular; el mensaje y el aviso son los
+            // textos que edita el admin. Un texto vacío no se muestra.
+            'datos_cheque' => [
+                'tipos' => array_map(
+                    fn (string $tipo) => ['codigo' => $tipo, 'descri' => PagoCheque::DESCRIPCIONES[$tipo]],
+                    $config->tiposChequeHabilitados(),
+                ),
+                'titular'     => $config->ctn_pago_cheque_titular,
+                'descripcion' => PagoCheque::descripcionMetodo($config->ctn_pago_cheque_titular),
+                'mensaje'     => $config->ctn_pago_cheque_mensaje,
+                'aviso'       => $config->ctn_pago_cheque_aviso,
+            ],
         ];
+    }
+
+
+    /**
+     * Métodos activos del catálogo, menos el cheque cuando el admin no
+     * dejó ningún tipo habilitado.
+     *
+     * Se filtra acá y no dando de baja la fila en metodo_pago porque esa
+     * fila sigue siendo referenciada por los pedidos históricos: apagarla
+     * rompería su lectura.
+     */
+    private function metodosDisponibles(ConfiguracionTienda $config)
+    {
+        $metodos = MetodoPago::activos()->orderBy('mpa_id')->get();
+
+        if ($config->aceptaCheques()) {
+            return $metodos;
+        }
+
+        return $metodos->reject(fn ($m) => $m->mpa_codigo === MetodoPago::CHEQUE)->values();
     }
 
     public function borrador(Usuario $usuario): ?array
