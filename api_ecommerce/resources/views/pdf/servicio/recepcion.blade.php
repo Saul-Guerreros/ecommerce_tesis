@@ -19,7 +19,7 @@
   <h2>Cliente</h2>
   <table class="datos">
     <tr><td class="et">Nombre</td><td>{{ $s->cliente?->persona?->nombre_completo }}</td></tr>
-    <tr><td class="et">C.I.</td><td>{{ $s->cliente?->persona?->per_cedula ?: '—' }}</td></tr>
+    <tr><td class="et">{{ $s->cliente?->persona?->tipoDocumento?->tpd_codigo === 'PAS' ? 'Pasaporte' : 'C.I.' }}</td><td>{{ $s->cliente?->persona?->per_cedula ?: '—' }}</td></tr>
   </table>
 
   <h2>Equipo</h2>
@@ -60,8 +60,35 @@
     <td><div class="linea">Firma y sello del taller</div></td>
   </tr></table>
 
+    @if(!empty($vinculacion))
+    <h2>Tu cuenta en la tienda en línea</h2>
+    <table class="datos">
+      <tr>
+        <td style="width:72%; vertical-align:top;">
+          <p style="margin:0 0 4px 0;">
+            Para seguir este servicio desde tu perfil, creá tu cuenta en
+            <strong>{{ $vinculacion['pagina'] }}</strong> o escaneá el código QR.
+            Vas a necesitar tu documento y este código:
+          </p>
+          <div style="font-size:20px; font-weight:bold; letter-spacing:3px; margin:6px 0;">{{ $vinculacion['codigo'] }}</div>
+          <div class="muted">Vigente hasta el {{ $vinculacion['vence']->format('d/m/Y') }}. Es personal: no lo compartas.</div>
+        </td>
+        <td style="text-align:center; vertical-align:middle;">
+          @if(!empty($vinculacion['qr']))
+            <img src="{{ $vinculacion['qr'] }}" width="110" height="110" alt="QR de vinculación">
+          @endif
+        </td>
+      </tr>
+    </table>
+  @endif
   <div class="pie">
-    El diagnóstico se informa mediante presupuesto, que el cliente aprueba o rechaza desde su perfil. Hacé un respaldo de tu
+    @if($s->cliente?->persona?->usuario)
+      El diagnóstico se informa mediante presupuesto, que el cliente aprueba o rechaza desde su perfil o comunicándose con la sucursal.
+    @else
+      El diagnóstico se informa mediante presupuesto, que el cliente aprueba o rechaza comunicándose con la sucursal
+      (o desde su perfil, si crea su cuenta en la tienda con el correo registrado).
+    @endif
+    Hacé un respaldo de tu
     información: el taller no se responsabiliza por los datos almacenados. Documento de uso interno, sin validez fiscal.
   </div>
 </body></html>

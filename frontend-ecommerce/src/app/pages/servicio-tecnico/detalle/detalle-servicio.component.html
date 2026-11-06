@@ -24,7 +24,7 @@
           @if (s.reclamo_de) {
             <span class="uk-label uk-label-warning">Reclamo de garantía de {{ s.reclamo_de }}</span>
           } @else if (s.sse_garant) {
-            <span class="uk-label uk-label-warning">Garantía · {{ s.pedido }}</span>
+            <span class="uk-label uk-label-warning">Garantía · {{ s.producto || s.pedido }}</span>
           }
         </div>
 
@@ -40,7 +40,7 @@
             <p class="uk-margin-remove">Registramos tu solicitud. El seguimiento comienza cuando el equipo llega al taller.</p>
           } @else {
             <ol class="ds-timeline">
-              @for (p of pasos; track p; let i = $index) {
+              @for (p of pasosServicio; track p; let i = $index) {
                 <li [class]="'ds-paso ds-paso--' + estadoPaso(i)">
                   <span class="ds-punto">
                     @if (estadoPaso(i) === 'hecho') { <span uk-icon="icon: check; ratio: 0.8"></span> } @else { {{ i + 1 }} }
@@ -52,6 +52,26 @@
           }
         </div>
 
+        <!-- Garantía de compra: la gestiona el taller con la empresa responsable -->
+        @if (s.garantia_empresa; as ge) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <h4 class="uk-card-title">Garantía con la empresa responsable</h4>
+            <p class="uk-text-small uk-margin-small">
+              La garantía de tu compra la cubre la empresa que respalda el producto. Nosotros hacemos
+              todo el trámite y el traslado, y te avisamos cuando esté listo.
+            </p>
+            <dl class="uk-description-list">
+              @if (ge.empresa) { <dt>Empresa</dt><dd>{{ ge.empresa }}</dd> }
+              @if (ge.nrocaso) { <dt>N° de caso</dt><dd>{{ ge.nrocaso }}</dd> }
+              @if (ge.fecha_envio) { <dt>Enviado el</dt><dd>{{ ge.fecha_envio | date:'dd/MM/yyyy' }}</dd> }
+              @if (ge.fecha_recepcion) { <dt>Recibido de la empresa</dt><dd>{{ ge.fecha_recepcion | date:'dd/MM/yyyy' }}</dd> }
+              @if (ge.resultado) { <dt>Resultado</dt><dd><strong>{{ ge.resultado }}</strong></dd> }
+              @if (ge.nuevo_serie) { <dt>Nuevo N° de serie</dt><dd>{{ ge.nuevo_serie }}</dd> }
+              @if (ge.motivo) { <dt>Motivo</dt><dd>{{ ge.motivo }}</dd> }
+            </dl>
+          </div>
+        }
+
         <!-- Resultado, entrega y garantía (Paso 6) -->
         @if (s.resultado; as r) {
           <div class="uk-card uk-card-default uk-card-body uk-margin">
@@ -61,6 +81,80 @@
             @if (r.total > 0) { <p class="uk-margin-remove">Total: <strong>{{ r.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong></p> }
             @if (s.entrega; as e) {
               <p class="uk-text-meta uk-margin-small-top">Entregado el {{ e.fecha | date:'dd/MM/yyyy HH:mm' }} a {{ e.receptor }}.</p>
+            }
+          </div>
+        }
+
+        <!-- Pago del servicio (C4): saldo, botón Pagar y pagos registrados -->
+        @if (s.pago; as pg) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap" style="gap: 10px;">
+              <div>
+                <h4 class="uk-card-title uk-margin-remove">Pago del servicio</h4>
+                @if (pg.estado) { <div class="uk-text-meta">{{ pg.estado }}</div> }
+              </div>
+              @if (pg.pagable) {
+                <a class="uk-button uk-button-primary" [routerLink]="['/mis-servicios', s.sse_numero, 'pago']">
+                  Pagar {{ pg.saldo | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                </a>
+              }
+            </div>
+
+            <dl class="uk-description-list uk-margin-small-top ds-montos">
+              <dt>Total</dt><dd>{{ pg.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd>
+              @if (pg.pagado > 0) { <dt>Pagado</dt><dd>{{ pg.pagado | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd> }
+              @if (pg.en_verificacion > 0) { <dt>En verificación</dt><dd>{{ pg.en_verificacion | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd> }
+              @if (pg.saldo > 0) { <dt>Saldo</dt><dd><strong>{{ pg.saldo | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong></dd> }
+            </dl>
+
+            @if (pg.pagos.length) {
+              <app-tarjeta-pagos
+                #tarjetaPagos
+                [pagos]="pagosTarjeta"
+                [abriendoId]="abriendoId"
+                [subiendoId]="subiendoId"
+                (verComprobante)="verComprobante($event)"
+                (reemplazar)="reemplazarComprobante($event, tarjetaPagos)">
+              </app-tarjeta-pagos>
+            }
+          </div>
+        }
+
+        <!-- Factura del servicio: aparece cuando se confirma el pago -->
+        @if (factura; as f) {
+          <div class="uk-card uk-card-default uk-card-body uk-margin">
+            <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap" style="gap: 10px;">
+              <div>
+                <h4 class="uk-card-title uk-margin-remove">Factura</h4>
+                <div class="uk-text-meta">N.º {{ f.numero }} · {{ f.fecha | date:'dd/MM/yyyy' }}</div>
+              </div>
+              @if (f.disponible) {
+                <button type="button" class="uk-button uk-button-primary" [disabled]="descargandoFactura" (click)="descargarFactura()">
+                  @if (descargandoFactura) { <span uk-spinner="ratio: 0.6"></span> } @else { <span uk-icon="icon: download"></span> }
+                  Descargar factura
+                </button>
+              }
+            </div>
+
+            <dl class="uk-description-list uk-margin-small-top ds-montos">
+              <dt>A nombre de</dt><dd>{{ f.nombre }} ({{ f.documento }})</dd>
+              <dt>Total</dt><dd>{{ f.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd>
+            </dl>
+
+            @if (!f.disponible) {
+              <p class="uk-text-meta uk-margin-remove-bottom">
+                Estamos procesando tu factura electrónica. En unos minutos vas a poder descargarla.
+              </p>
+            }
+            @if (f.disponible && f.qr) {
+              <p class="uk-text-meta uk-margin-remove-bottom">
+                Podés verificarla en <a [href]="f.qr" target="_blank" rel="noopener">e-Kuatia (DNIT)</a>.
+              </p>
+            }
+            @if (f.prueba) {
+              <p class="uk-text-warning uk-text-small uk-margin-small-top uk-margin-remove-bottom">
+                Comprobante de prueba: no tiene valor fiscal.
+              </p>
             }
           </div>
         }
@@ -138,6 +232,12 @@
             </table>
             @if (p.pse_obs) { <p class="uk-text-small">{{ p.pse_obs }}</p> }
             @if (p.pse_motrec) { <p class="uk-text-small uk-text-danger">Motivo: {{ p.pse_motrec }}</p> }
+            @if (p.respuesta?.asistida) {
+              <p class="uk-text-small uk-text-meta">
+                {{ p.codigo === 'APROBADO' ? 'Aprobado' : 'Rechazado' }} {{ p.respuesta?.etiqueta }}
+                el {{ p.respuesta?.fecha | date:'dd/MM/yyyy' }} (registrado en sucursal).
+              </p>
+            }
 
             @if (p.puede_responder) {
               @if (!confirmando) {

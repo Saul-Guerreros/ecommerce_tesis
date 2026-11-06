@@ -9,7 +9,7 @@ import { suthGuard } from './pages/auth/service/suth.guard';
 import { ProductosBusquedaComponent } from './pages/productos-busqueda/productos-busqueda.component';
 import { CarritoComponent } from './pages/carrito/carrito.component';
 import { ComparadorComponent } from './pages/comparador/comparador.component';
-
+import { VincularCuentaComponent } from './pages/auth/vincular-cuenta/vincular-cuenta.component';
 // --- Checkout ---
 import { CheckoutComponent } from './pages/checkout/checkout.component';
 import { PasoEntregaComponent } from './pages/checkout/paso-entrega/paso-entrega.component';
@@ -77,6 +77,10 @@ export const routes: Routes = [
     {
         path: 'register',
         component: RegisterComponent
+    },
+    {
+        path: 'vincular-cuenta',
+        component: VincularCuentaComponent
     },
     {
         path: 'cambiar-credenciales',
@@ -191,6 +195,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/servicio-tecnico/solicitud/solicitud-servicio.component').then(m => m.SolicitudServicioComponent),
         canActivate: [suthGuard],
         title: 'Solicitar servicio técnico | Z Informática',
+    },
+    {
+        path: 'mis-servicios/:numero/pago',
+        loadComponent: () => import('./pages/servicio-tecnico/pago/pago-servicio.component').then(m => m.PagoServicioComponent),
+        canActivate: [suthGuard],
+        title: 'Pagar servicio técnico | Z Informática',
     },
     {
         path: 'mis-servicios/:numero',

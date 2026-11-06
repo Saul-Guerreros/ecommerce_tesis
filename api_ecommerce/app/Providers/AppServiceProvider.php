@@ -10,6 +10,8 @@ use App\Models\Producto;
 use App\Models\PublicacionWeb;
 use App\Observers\IndiceBusquedaObserver;
 use App\Services\Catalogo\IndiceBusquedaService;
+use App\Services\Facturacion\FacturaPayloadBuilder;
+use App\Services\Servicio\FacturaServicioPayloadBuilder;
 use Illuminate\Support\ServiceProvider;
 use App\Services\Chat\Herramientas\{BuscarProductos, ProponerAgregarCarrito,RegistroHerramientas, SolicitarAtencionHumana, VerProducto};
 
@@ -24,7 +26,13 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(RegistroHerramientas::class,
             fn ($app) => new RegistroHerramientas($app->tagged('chat.herramientas')));
-        }
+
+        // Facturación electrónica: el builder reconoce el origen de la venta.
+        // Pedido -> FacturaPayloadBuilder original (parent::construir), sin cambios.
+        // Servicio técnico (ven_sseid) -> JSON propio. FacturacionService, el job
+        // DeclararFacturaElectronica y facturacion:reintentar no se modifican.
+        $this->app->bind(FacturaPayloadBuilder::class, FacturaServicioPayloadBuilder::class);
+    }
 
     public function boot(): void
     {

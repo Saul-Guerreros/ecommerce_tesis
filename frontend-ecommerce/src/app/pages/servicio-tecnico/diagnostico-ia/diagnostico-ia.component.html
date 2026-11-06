@@ -1,0 +1,65 @@
+<div class="uk-card uk-card-default uk-card-body uk-card-small uk-margin-small-top">
+  @if (!diagnostico.disponible) {
+    <p class="uk-margin-remove">
+      El diagnóstico preliminar no está disponible en este momento. Podés continuar con tu solicitud normalmente.
+    </p>
+  } @else {
+    <div class="uk-flex uk-flex-between uk-flex-middle">
+      <h4 class="uk-card-title uk-margin-remove">Diagnóstico preliminar</h4>
+      @if (diagnostico.confianza) {
+        <span class="uk-label" [ngClass]="claseConfianza">Confianza {{ etiqueta[diagnostico.confianza] }}</span>
+      }
+    </div>
+
+    @if (diagnostico.resumen) {
+      <p class="uk-margin-small">{{ diagnostico.resumen }}</p>
+    }
+
+    <h5 class="uk-margin-small">Posibles causas</h5>
+    <ul class="uk-list uk-list-bullet uk-margin-small">
+      @for (f of diagnostico.fallas; track f.fll_id) {
+        <li>{{ f.descripcion }} <span class="uk-text-meta">· probabilidad {{ etiqueta[f.probabilidad] | lowercase }}</span></li>
+      }
+    </ul>
+
+    @if (diagnostico.trabajos.length) {
+      <h5 class="uk-margin-small">Servicios recomendados</h5>
+      <ul class="uk-list uk-list-divider uk-margin-small">
+        @for (t of diagnostico.trabajos; track t.trb_id) {
+          <li class="uk-flex uk-flex-between">
+            <span>{{ t.descripcion }}</span>
+            @if (t.precio !== null) {
+              <span>{{ t.precio | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    @if (diagnostico.estimacion; as e) {
+      <p class="uk-margin-small">
+        <strong>Estimación de mano de obra:</strong>
+        entre {{ e.costo_min | currency:'PYG':'symbol-narrow':'1.0-0' }} y {{ e.costo_max | currency:'PYG':'symbol-narrow':'1.0-0' }}
+        @if (e.dias) { · aprox. {{ e.dias }} día(s) hábil(es) }
+      </p>
+    }
+
+    @if (diagnostico.garantia) {
+      <p class="uk-text-small uk-margin-small">
+        Como es un servicio por garantía, no mostramos costos: la cobertura la confirma el taller al revisar el equipo.
+      </p>
+    }
+
+    @if (diagnostico.preguntas.length) {
+      <h5 class="uk-margin-small">Para un mejor diagnóstico, contanos en la descripción:</h5>
+      <ul class="uk-list uk-list-bullet uk-margin-small">
+        @for (p of diagnostico.preguntas; track p) { <li>{{ p }}</li> }
+      </ul>
+    }
+  }
+
+  <p class="uk-text-meta uk-margin-small-top uk-margin-remove-bottom">
+    Orientativo, generado con inteligencia artificial. No incluye repuestos. El diagnóstico y el presupuesto
+    definitivos los realiza el técnico al revisar el equipo.
+  </p>
+</div>

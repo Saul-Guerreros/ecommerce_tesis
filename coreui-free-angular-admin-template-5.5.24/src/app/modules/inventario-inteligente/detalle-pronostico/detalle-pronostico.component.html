@@ -1,0 +1,93 @@
+<c-modal size="xl" [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>
+      Pronóstico de demanda
+      <small class="text-muted" *ngIf="datos">· {{ datos.producto.codigo }} {{ datos.producto.nombre }}</small>
+    </h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <div class="text-center py-5" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <ng-container *ngIf="datos && !cargando">
+      <div class="mb-3">
+        <c-badge color="secondary" class="me-2" *ngIf="datos.clasificacion">Demanda {{ datos.clasificacion }}</c-badge>
+        <span class="text-muted small" *ngIf="datos.adi">ADI {{ datos.adi | number: '1.0-2' }}
+          (vende en promedio cada {{ datos.adi | number: '1.0-1' }} semana/s)</span>
+      </div>
+
+      <!-- Gráfico real vs. pronóstico -->
+      <div style="height: 300px" class="mb-4">
+        <c-chart type="line" height="300" [data]="grafico" [options]="opciones" />
+      </div>
+
+      <c-row class="g-4">
+        <!-- Cálculo de reposición -->
+        <c-col lg="6">
+          <h6>Cálculo de reposición</h6>
+          <table cTable small *ngIf="datos.reposicion as r; else sinReposicion">
+            <tbody>
+              <tr><td>Modelo usado</td><td class="text-end">{{ MODELOS[r.modelo] ?? r.modelo }}</td></tr>
+              <tr><td>Stock disponible</td><td class="text-end">{{ r.disponible | number: '1.0-2' }}</td></tr>
+              <tr><td>Demanda prevista (semana)</td><td class="text-end">{{ r.demanda_semanal | number: '1.0-2' }}</td></tr>
+              <tr><td>Error del modelo σ (RMSE)</td><td class="text-end">{{ r.sigma | number: '1.0-2' }}</td></tr>
+              <tr><td>Lead time</td><td class="text-end">{{ r.lt_dias }} días</td></tr>
+              <tr><td>Stock de seguridad (SS)</td><td class="text-end">{{ r.ss | number: '1.0-1' }}</td></tr>
+              <tr><td>Punto de reorden (ROP)</td><td class="text-end">{{ r.rop | number: '1.0-1' }}</td></tr>
+              <tr><td>Nivel objetivo (S)</td><td class="text-end">{{ r.objetivo | number: '1.0-1' }}</td></tr>
+              <tr><td>Cobertura</td><td class="text-end">{{ r.cobertura_dias !== null ? (r.cobertura_dias | number: '1.0-0') + ' días' : '-' }}</td></tr>
+              <tr class="fw-semibold">
+                <td>Cantidad sugerida</td>
+                <td class="text-end">{{ r.sugerido | number: '1.0-0' }} u. · {{ r.sugerido * r.costo_unitario | gs }}</td>
+              </tr>
+              <tr>
+                <td>Resultado</td>
+                <td class="text-end">
+                  <c-badge *ngIf="r.tipo; else normal" [color]="TIPOS[r.tipo].color">{{ TIPOS[r.tipo].etiqueta }}</c-badge>
+                  <ng-template #normal><c-badge color="success">Normal</c-badge></ng-template>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <ng-template #sinReposicion><p class="text-muted">Sin demanda prevista para este producto.</p></ng-template>
+
+          <!-- Lead time propio -->
+          <div class="border rounded p-2 mt-2" *ngIf="puedeGestionar">
+            <label cLabel class="small mb-1">Lead time del producto (días). Vacío = valor global.</label>
+            <div class="d-flex gap-2">
+              <input cFormControl type="number" min="1" max="180" [(ngModel)]="leadTime" placeholder="Global" />
+              <button cButton size="sm" color="primary" (click)="guardarLeadTime(leadTime || null)">Guardar</button>
+              <button cButton size="sm" color="secondary" variant="outline" class="text-nowrap" (click)="guardarLeadTime(null)">Usar global</button>
+            </div>
+          </div>
+        </c-col>
+
+        <!-- Comparación de modelos -->
+        <c-col lg="6">
+          <h6>Comparación de modelos (backtesting)</h6>
+          <table cTable small hover *ngIf="datos.metricas.length; else sinMetricas">
+            <thead><tr><th>Modelo</th><th class="text-end">RMSE</th><th class="text-end">MAE</th><th class="text-end">WAPE</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let m of datos.metricas" [class.table-success]="m.elegido">
+                <td>{{ m.elegido ? '★ ' : '' }}{{ MODELOS[m.modelo] ?? m.modelo }}</td>
+                <td class="text-end">{{ m.rmse | number: '1.0-3' }}</td>
+                <td class="text-end">{{ m.mae | number: '1.0-3' }}</td>
+                <td class="text-end">{{ m.wape !== null ? (m.wape * 100 | number: '1.0-1') + '%' : '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <ng-template #sinMetricas>
+            <p class="text-muted">Historial corto: el modelo se eligió según la clasificación de la demanda.</p>
+          </ng-template>
+          <p class="text-muted small mb-0">
+            Se elige el modelo con menor RMSE al pronosticar las últimas 8 semanas con datos anteriores (origen móvil).
+          </p>
+        </c-col>
+      </c-row>
+    </ng-container>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cerrar</button>
+  </c-modal-footer>
+</c-modal>

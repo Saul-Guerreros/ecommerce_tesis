@@ -1,0 +1,63 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <div>
+      <strong>Gestión inteligente de inventario</strong>
+      <div class="text-muted small">Predicción de demanda y alertas de reposición</div>
+    </div>
+    <div class="text-muted small text-end" *ngIf="resumen">
+      {{ resumen.productos_analizados }} producto(s) analizado(s)<br />
+      Último cálculo: {{ resumen.ultima_ejecucion ? (resumen.ultima_ejecucion | date: 'dd/MM/yyyy HH:mm') : 'nunca' }}
+    </div>
+  </c-card-header>
+
+  <c-card-body>
+    <!-- Tarjetas de resumen -->
+    <div class="text-center py-3" *ngIf="!resumen"><c-spinner color="primary"></c-spinner></div>
+
+    <c-row class="g-3 mb-4" *ngIf="resumen">
+      <c-col md="6" xl="2" *ngFor="let t of tipos">
+        <c-card class="tarjeta h-100 border-start border-start-4 border-{{ t[1].color }}"
+                [class.activa]="tipoSeleccionado === t[0]" (click)="filtrarPorTipo(t[0])" [title]="t[1].descripcion">
+          <c-card-body class="py-3">
+            <div class="text-muted small text-uppercase">{{ t[1].etiqueta }}</div>
+            <div class="fs-3 fw-semibold">{{ resumen.alertas[t[0]] }}</div>
+          </c-card-body>
+        </c-card>
+      </c-col>
+      <c-col md="6" xl="2">
+        <c-card class="h-100 border-start border-start-4 border-success">
+          <c-card-body class="py-3">
+            <div class="text-muted small text-uppercase">Inversión sugerida</div>
+            <div class="fs-5 fw-semibold">{{ resumen.inversion_sugerida | gs: true }}</div>
+          </c-card-body>
+        </c-card>
+      </c-col>
+      <c-col md="6" xl="2">
+        <c-card class="h-100 border-start border-start-4 border-secondary">
+          <c-card-body class="py-3">
+            <div class="text-muted small text-uppercase">Capital en sobrestock</div>
+            <div class="fs-5 fw-semibold">{{ resumen.valor_sobrestock | gs: true }}</div>
+          </c-card-body>
+        </c-card>
+      </c-col>
+    </c-row>
+
+      <!-- Análisis con IA -->
+    <app-insights-inventario *ngIf="resumen && resumen.total_pendientes > 0"></app-insights-inventario>
+
+    <!-- Pestañas -->
+    <c-nav variant="tabs" class="mb-3">
+      <c-nav-item><a cNavLink [active]="pestana === 'alertas'" (click)="pestana = 'alertas'">Alertas</a></c-nav-item>
+      <c-nav-item><a cNavLink [active]="pestana === 'metricas'" (click)="pestana = 'metricas'">Métricas de modelos</a></c-nav-item>
+      <c-nav-item><a cNavLink [active]="pestana === 'config'" (click)="pestana = 'config'">Configuración</a></c-nav-item>
+    </c-nav>
+
+    <app-list-alertas *ngIf="pestana === 'alertas'" [tipo]="tipoSeleccionado" [puedeGestionar]="puedeGestionar"
+      (tipoChange)="tipoSeleccionado = $event" (cambio)="cargarResumen()"></app-list-alertas>
+
+    <app-metricas-modelos *ngIf="pestana === 'metricas'"></app-metricas-modelos>
+
+    <app-config-inventario *ngIf="pestana === 'config'" [puedeGestionar]="puedeGestionar"
+      (cambio)="cargarResumen()"></app-config-inventario>
+  </c-card-body>
+</c-card>

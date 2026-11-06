@@ -1,0 +1,120 @@
+<c-card class="border-primary">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Clasificación automática (IA)</strong>
+    <div class="d-flex gap-1" *ngIf="clasificacion">
+      <c-badge [color]="etiquetaEstado.color">{{ etiquetaEstado.texto }}</c-badge>
+      <c-badge color="success" *ngIf="clasificacion.revisada">Revisada</c-badge>
+      <c-badge [color]="colorConfianza" *ngIf="generada && clasificacion.confianza">
+        Confianza {{ clasificacion.confianza | titlecase }}
+      </c-badge>
+    </div>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="text-center py-2" *ngIf="cargando"><c-spinner size="sm" color="primary"></c-spinner></div>
+
+    <ng-container *ngIf="!cargando">
+      <!-- Sin clasificación / pendiente / no disponible -->
+      <p class="small text-muted mb-2" *ngIf="!clasificacion">La solicitud todavía no tiene clasificación.</p>
+      <p class="small text-muted mb-2" *ngIf="clasificacion?.estado === 'PENDIENTE'">
+        La IA está clasificando la solicitud. Actualice en unos segundos.
+      </p>
+      <p class="small text-muted mb-2" *ngIf="clasificacion?.estado === 'NO_DISPONIBLE'">
+        La IA no respondió. El sistema lo reintentará automáticamente, o puede clasificarla manualmente.
+      </p>
+
+      <!-- Clasificación generada -->
+      <ng-container *ngIf="generada && !editando && clasificacion as c">
+        <div class="row g-2 mb-2">
+          <div class="col-md-4">
+            <div class="small text-muted text-uppercase">Tipo de problema</div>
+            <c-badge color="info">{{ c.categoria?.descri ?? '—' }}</c-badge>
+          </div>
+          <div class="col-md-4">
+            <div class="small text-muted text-uppercase">Urgencia</div>
+            <c-badge [color]="c.urgencia?.color ?? 'secondary'">{{ c.urgencia?.descri ?? '—' }}</c-badge>
+          </div>
+          <div class="col-md-4">
+            <div class="small text-muted text-uppercase">Dispositivo</div>
+            <c-badge color="primary">{{ c.dispositivo?.descri ?? '—' }}</c-badge>
+          </div>
+        </div>
+
+        <div class="alert alert-warning py-1 px-2 small mb-2" *ngIf="c.dispositivo_inconsistente">
+          El cliente indicó <strong>{{ c.dispositivo_cliente }}</strong> y la IA determinó
+          <strong>{{ c.dispositivo_ia }}</strong>. Verifique el equipo al recibirlo.
+        </div>
+
+        <p class="small mb-1" *ngIf="c.motivo"><strong>Motivo:</strong> {{ c.motivo }}</p>
+        <p class="small mb-1" *ngIf="c.falla_ia"><strong>Falla principal sugerida:</strong> {{ c.falla_ia }}</p>
+      </ng-container>
+
+      <!-- Corrección en línea -->
+      <div *ngIf="editando && config" class="border rounded p-2 mb-2">
+        <div class="row g-2">
+          <div class="col-md-4">
+            <label cLabel class="small">Tipo de problema</label>
+            <select cSelect sizing="sm" [(ngModel)]="form.caf_id">
+              <option [ngValue]="0" disabled>Seleccione...</option>
+              <option *ngFor="let x of config.categorias" [ngValue]="x.caf_id">{{ x.caf_descri }}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label cLabel class="small">Urgencia</label>
+            <select cSelect sizing="sm" [(ngModel)]="form.urg_id">
+              <option [ngValue]="0" disabled>Seleccione...</option>
+              <option *ngFor="let x of config.urgencias" [ngValue]="x.urg_id" [title]="x.urg_criter">{{ x.urg_descri }}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label cLabel class="small">Dispositivo</label>
+            <select cSelect sizing="sm" [(ngModel)]="form.tdi_id">
+              <option [ngValue]="0" disabled>Seleccione...</option>
+              <option *ngFor="let x of config.tipos_dispositivo" [ngValue]="x.tdi_id">{{ x.tdi_descri }}</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label cLabel class="small">Motivo de la corrección (opcional)</label>
+            <input cFormControl sizing="sm" maxlength="255" [(ngModel)]="form.motivo" />
+          </div>
+        </div>
+        <div class="mt-2 text-end">
+          <button cButton size="sm" color="secondary" class="me-2" [disabled]="procesando" (click)="editando = false">Cancelar</button>
+          <button cButton size="sm" color="primary" class="me-2 text-white" [disabled]="procesando" (click)="guardarCorreccion()">
+            <c-spinner size="sm" class="me-1" *ngIf="procesando"></c-spinner>Guardar corrección
+          </button>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="d-flex flex-wrap" *ngIf="!editando">
+        <button cButton size="sm" color="success" class="me-2 text-white"
+                *ngIf="generada && !clasificacion?.revisada" [disabled]="procesando" (click)="confirmar()">Confirmar</button>
+        <button cButton size="sm" color="warning" class="me-2 text-white"
+                *ngIf="clasificacion?.estado !== 'PENDIENTE'" [disabled]="procesando" (click)="abrirCorreccion()">
+          {{ generada ? 'Corregir' : 'Clasificar manualmente' }}
+        </button>
+        <button cButton size="sm" color="info" class="me-2 text-white"
+                *ngIf="clasificacion?.estado !== 'MANUAL'" [disabled]="procesando" (click)="reclasificar()">Reclasificar con IA</button>
+        <button cButton size="sm" color="secondary" class="me-2 text-white"
+                *ngIf="clasificacion?.estado === 'PENDIENTE'" (click)="cargar()">Actualizar</button>
+      </div>
+
+      <!-- Auditoría -->
+      <div class="mt-2" *ngIf="clasificacion?.correcciones?.length">
+        <div class="small text-muted text-uppercase">Correcciones</div>
+        <ul class="small mb-0">
+          <li *ngFor="let k of clasificacion?.correcciones">
+            {{ k.fecha | date:'dd/MM/yyyy HH:mm' }} · {{ k.usuario || '—' }}:
+            {{ k.campo | titlecase }} {{ k.anterior || '—' }} → <strong>{{ k.nuevo }}</strong>
+            <span *ngIf="k.motivo" class="text-muted"> ({{ k.motivo }})</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="small text-muted border-top pt-2 mt-2">
+        La clasificación orienta al taller; <strong>no cambia el orden de atención</strong> (por llegada).
+      </div>
+    </ng-container>
+  </c-card-body>
+</c-card>

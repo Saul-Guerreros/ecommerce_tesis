@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Servicio;
 
+use App\Models\Servicio\ServicioHistorialEstado;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,9 @@ class ServicioHistorialResource extends JsonResource
             'estado_ant'   => $this->she_estant ? ($mapa[$this->she_estant] ?? null) : null,
             'estado_nuevo' => $this->she_estid ? ($mapa[$this->she_estid] ?? null) : null,
             'she_coment'   => $this->she_coment,
+            // Paso 2: contacto con el cliente
+            'medio'        => $this->she_medio ? (ServicioHistorialEstado::ETIQUETAS_MEDIO[$this->she_medio] ?? $this->she_medio) : null,
+            'resultado'    => $this->she_result ? (ServicioHistorialEstado::ETIQUETAS_RESULTADO[$this->she_result] ?? $this->she_result) : null,
             'she_fecha'    => $this->she_fecha?->format('Y-m-d H:i'),
             'usuario'      => $this->whenLoaded('usuario', fn () => $this->usuario?->persona?->nombre_completo
                                                                    ?? $this->usuario?->usu_login),

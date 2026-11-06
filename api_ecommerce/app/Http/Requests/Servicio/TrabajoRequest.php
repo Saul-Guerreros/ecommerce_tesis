@@ -29,6 +29,7 @@ class TrabajoRequest extends FormRequest
             ],
             'trb_precio' => ['required', 'numeric', 'min:0', 'max:999999999999'],
             'trb_tivid'  => ['required', 'integer', Rule::exists('tipo_iva', 'tiv_id')->where('tiv_estado', 1)],
+            'trb_dias'   => ['sometimes', 'integer', 'min:1', 'max:60'],
             'trb_estado' => ['nullable', 'integer', Rule::in([0, 1])],
         ];
     }

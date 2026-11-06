@@ -30,13 +30,26 @@
                   <span cInputGroupText>
                     <svg cIcon name="cilLockLocked"></svg>
                   </span>
-                  <input
+                   <input
                     cFormControl
-                    type="password"
+                    [type]="verPassword ? 'text' : 'password'"
                     formControlName="password"
                     placeholder="Password"
                     autocomplete="current-password"
                   />
+                  <button
+                    cButton
+                    type="button"
+                    color="secondary"
+                    variant="outline"
+                    [title]="verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                    [attr.aria-label]="verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                    [attr.aria-pressed]="verPassword"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="verPassword = !verPassword"
+                  >
+                    <svg [cIcon]="verPassword ? iconoOcultar : iconoVer"></svg>
+                  </button>
                 </c-input-group>
                  <div
                   *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"

@@ -1,0 +1,46 @@
+<c-card class="mb-4 border-primary">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <div>
+      <strong>Análisis con IA</strong>
+      <span class="text-muted small ms-2">Interpretación de las alertas y prioridades sugeridas</span>
+    </div>
+    <div class="d-flex gap-2">
+      <button cButton size="sm" color="primary" *ngIf="!insights" (click)="generar()" [disabled]="cargando">
+        <c-spinner size="sm" *ngIf="cargando" class="me-1"></c-spinner>Generar análisis
+      </button>
+      <ng-container *ngIf="insights">
+        <button cButton size="sm" color="secondary" variant="outline" (click)="generar(true)" [disabled]="cargando">
+          <c-spinner size="sm" *ngIf="cargando" class="me-1"></c-spinner>Regenerar
+        </button>
+        <button cButton size="sm" color="secondary" (click)="expandido = !expandido"
+                [attr.aria-expanded]="expandido" [title]="expandido ? 'Ocultar análisis' : 'Mostrar análisis'">
+          {{ expandido ? '▲ Ocultar' : '▼ Mostrar' }}
+        </button>
+      </ng-container>
+    </div>
+  </c-card-header>
+
+  <c-card-body *ngIf="insights && expandido">
+    <p class="mb-3">{{ insights.resumen }}</p>
+
+    <div class="border rounded p-3 mb-2" *ngFor="let a of insights.acciones">
+      <div class="d-flex justify-content-between align-items-start mb-1">
+        <strong>{{ a.titulo }}</strong>
+        <span class="text-nowrap ms-2">
+          <c-badge color="light" textColor="dark" class="me-1">{{ TIPOS[a.tipo] }}</c-badge>
+          <c-badge [color]="PRIORIDADES[a.prioridad]">Prioridad {{ a.prioridad }}</c-badge>
+        </span>
+      </div>
+      <div class="small text-muted mb-1">{{ a.evidencia }}</div>
+      <div class="small">-> {{ a.accion }}</div>
+      <div class="small mt-1" *ngIf="a.productos.length">
+        <span class="text-muted">Productos:</span> {{ a.productos.join(', ') }}
+      </div>
+    </div>
+
+    <div class="text-muted small mt-2">
+      Generado {{ insights.generado | date: 'dd/MM/yyyy HH:mm' }}{{ insights.desde_cache ? ' (guardado)' : '' }}.
+      La IA interpreta los cálculos del sistema; las cantidades sugeridas provienen de los modelos de pronóstico.
+    </div>
+  </c-card-body>
+</c-card>

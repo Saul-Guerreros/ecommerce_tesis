@@ -37,6 +37,7 @@
           <th>Documento</th>
           <th>Nombre completo</th>
           <th>Cargo</th>
+          <th>Sucursal</th>
           <th>Contacto</th>
           <th>Ingreso</th>
           <th class="text-center">Estado</th>
@@ -48,6 +49,7 @@
           <td>{{ f.persona.per_cedula }}</td>
           <td>{{ f.persona.nombre_completo }}</td>
           <td>{{ f.cargo?.crg_descr }}</td>
+          <td>{{ f.sucursal?.suc_nombre || '—' }}</td>
           <td>{{ (f.contactos | contactoPrincipal) || '—' }}</td>
           <td>{{ f.fun_fecing | date:'dd/MM/yyyy' }}</td>
           <td class="text-center">
@@ -61,7 +63,7 @@
             <button cButton size="sm" color="danger" class="text-white" (click)="confirmarEliminar(f)">Eliminar</button>
           </td>
         </tr>
-        <tr *ngIf="funcionarios.length === 0"><td colspan="7" class="text-center">No hay funcionarios registrados</td></tr>
+        <tr *ngIf="funcionarios.length === 0"><td colspan="8" class="text-center">No hay funcionarios registrados</td></tr>
       </tbody>
     </table>
 

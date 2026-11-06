@@ -19,7 +19,10 @@ use Illuminate\Validation\ValidationException;
  */
 class RecepcionServicioService
 {
-    public function __construct(private ServicioEstadoService $estados) {}
+    public function __construct(
+        private ServicioEstadoService $estados,
+        private TecnicoService $tecnicos,
+    ) {}
 
     /** Retiro a domicilio: agenda (o reprograma) la fecha de retiro. */
     public function agendarRetiro(SolicitudServicio $s, string $fecha, ?string $coment, Usuario $usuario): SolicitudServicio
@@ -73,6 +76,13 @@ class RecepcionServicioService
     {
         if ($s->recepcion()->exists()) {
             throw ValidationException::withMessages(['rse_tecid' => 'La recepción de este equipo ya fue registrada.']);
+        }
+
+        // Cada sucursal tiene su taller: el técnico debe estar asignado a la sucursal de la solicitud.
+        if (!$this->tecnicos->esTecnicoActivo((int) $datos['rse_tecid'], $s->sse_sucid)) {
+            throw ValidationException::withMessages([
+                'rse_tecid' => 'El técnico seleccionado no está asignado a la sucursal de esta solicitud.',
+            ]);
         }
 
         // A domicilio: el equipo tiene que venir en camino (o al menos agendado).

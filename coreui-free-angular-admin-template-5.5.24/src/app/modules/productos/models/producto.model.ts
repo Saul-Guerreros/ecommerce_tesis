@@ -10,6 +10,8 @@ export interface Producto {
   prd_stkmin: number | null;
   prd_afestk?: number;    // 1 = afecta stock al venderse, 0 = no (ej. servicios)
   prd_repues?: number;    // 1 = repuesto de taller (Servicio Técnico): no se publica en la tienda
+  prd_gardia?: number | null;   // días de garantía al vender; null = plazo general de la tienda, 0 = sin garantía
+  prd_proid?: number | null;    // empresa (proveedor) que respalda la garantía; null = sin definir
   prd_estado?: number;
   prd_creado?: string;
 
@@ -104,8 +106,15 @@ export interface UnidadMedidaOption {
   umd_decimal: number;
 }
 
+/** Empresa que puede respaldar la garantía de un producto (proveedor activo). */
+export interface ProveedorOption {
+  pro_id: number;
+  pro_razon: string;
+}
+
 export interface ProductoConfig {
   marcas: MarcaOption[];
+  proveedores?: ProveedorOption[];
   tipos_iva: TipoIvaOption[];
   unidades: UnidadMedidaOption[];
   // Todos los tipos de atributo, para el "Se diferencia por" de variantes.

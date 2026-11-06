@@ -80,16 +80,33 @@ use App\Http\Controllers\Admin\Servicio\FallaController;
 use App\Http\Controllers\Admin\Servicio\TrabajoController;
 use App\Http\Controllers\Servicio\ServicioClienteController;
 use App\Http\Controllers\Admin\Servicio\SolicitudServicioController;
+use App\Http\Controllers\Admin\Servicio\MostradorServicioController;
 use App\Http\Controllers\Admin\Servicio\OrdenTecnicoController;
 use App\Http\Controllers\Admin\Servicio\PresupuestoValidacionController;
 use App\Http\Controllers\Admin\Servicio\PanelServicioController;
-
+use App\Http\Controllers\Admin\Servicio\CobroServicioController;
+use App\Http\Controllers\Servicio\PagoServicioController;
+use App\Http\Controllers\Servicio\FacturaServicioClienteController;
+use App\Http\Controllers\Admin\Servicio\FacturaServicioController;
+use App\Http\Controllers\Admin\Reporte\ReporteConfigController;
+use App\Http\Controllers\Admin\Reporte\DashboardController;
+use App\Http\Controllers\Admin\Reporte\ReporteVentasController;
+use App\Http\Controllers\Admin\Reporte\ReporteInventarioController;
+use App\Http\Controllers\Admin\Reporte\ReporteExportacionController;
+use App\Http\Controllers\Admin\Reporte\ReporteComprasController;
+use App\Http\Controllers\Admin\Reporte\ReporteServicioController;
+use App\Http\Controllers\Admin\Reporte\ReporteClientesController;
+use App\Http\Controllers\Admin\Reporte\ReportePromocionesController;
+use App\Http\Controllers\Admin\Reporte\ReporteChatbotController;
 use App\Http\Controllers\Pedido\PagoPedidoController;
-
+use App\Http\Controllers\Servicio\DiagnosticoPreliminarController;
 use App\Http\Controllers\Pedido\PedidoClienteController;
-
+use App\Http\Controllers\Admin\Reporte\ReporteComportamientoController;
+use App\Http\Controllers\Api\ActividadController;
 use App\Http\Controllers\Admin\Venta\VentaController;
-
+use App\Http\Controllers\Admin\Servicio\ClasificacionSolicitudController;
+use App\Http\Controllers\Admin\Inventario\InventarioInteligenteController;
+use App\Http\Controllers\VinculacionPresencialController;
 use App\Http\Controllers\Admin\Configuracion\PaginaInformativaController;
 use App\Http\Controllers\Api\PaginaInformativaPublicaController;
 use App\Http\Controllers\Api\FaqPublicoController;
@@ -124,6 +141,7 @@ Route::group([
     Route::post('/refresh', [AuthController::class, 'refresh'])->name('refresh');
     Route::post('/me', [AuthController::class, 'me'])->name('me');
     Route::post('/verified_auth', [AuthController::class, 'verified_auth'])->name('verified_auth');
+    Route::post('/vincular_cuenta', [VinculacionPresencialController::class, 'vincular'])->middleware('throttle:6,1')->name('vincular_cuenta');
 
     Route::post('/verified_email', [AuthController::class, 'verified_email'])->name('verified_email');
     Route::post('/verified_code', [AuthController::class, 'verified_code'])->name('verified_code');
@@ -167,6 +185,8 @@ Route::group([
     Route::post('chat/mensajes', [ChatController::class, 'enviar'])->middleware('throttle:chat');
     Route::get('chat/{token}', [ChatController::class, 'historial'])->whereUuid('token')->middleware('throttle:60,1');
 
+    // Análisis de comportamiento: vista de producto (invitado o cliente con JWT).
+    Route::post('actividad/vista', [ActividadController::class, 'vista'])->middleware('throttle:60,1');
     // Catálogo de estados de Solicitud de Crédito (público: se usa para
     // leyendas antes de loguear, ej. en "Mis Solicitudes").
     Route::get('credito/estados', [SolicitudCreditoController::class, 'estados']);
@@ -212,11 +232,26 @@ Route::group([
 	Route::get('servicios/{numero}/constancia/{tipo}', [ServicioClienteController::class, 'constancia'])
         ->where('numero', 'SS-[0-9]{4}-[0-9]+')->whereIn('tipo', ['recepcion', 'retiro']);
     Route::get('servicios/{numero}', [ServicioClienteController::class, 'show'])->where('numero', 'SS-[0-9]{4}-[0-9]+');
-	
+	Route::post('servicios/diagnostico-preliminar', [DiagnosticoPreliminarController::class, 'cliente'])->middleware('throttle:6,1');
+
 	Route::post('servicios/{numero}/presupuesto/aprobar', [ServicioClienteController::class, 'aprobarPresupuesto'])
         ->where('numero', 'SS-[0-9]{4}-[0-9]+');
     Route::post('servicios/{numero}/presupuesto/rechazar', [ServicioClienteController::class, 'rechazarPresupuesto'])
         ->where('numero', 'SS-[0-9]{4}-[0-9]+');
+
+    // --- Pago del servicio (C4). Espejo de tienda/pedidos/{numero}/pago ---
+    Route::prefix('servicios/{numero}')->where(['numero' => 'SS-[0-9]{4}-[0-9]+'])->group(function () {
+        Route::get('pago', [PagoServicioController::class, 'config']);
+        Route::post('pago', [PagoServicioController::class, 'registrar'])->middleware('throttle:10,1');
+        // GET descarga el comprobante, POST lo reemplaza (pago rechazado)
+        Route::get('pagos/{pago}/comprobante', [PagoServicioController::class, 'comprobante'])->whereNumber('pago');
+        Route::post('pagos/{pago}/comprobante', [PagoServicioController::class, 'reemplazarComprobante'])->whereNumber('pago');
+
+        // Facturación del servicio: CI/RUC antes de pagar y descarga del KuDE
+        Route::get('facturacion', [FacturaServicioClienteController::class, 'show']);
+        Route::put('facturacion', [FacturaServicioClienteController::class, 'update'])->middleware('throttle:20,1');
+        Route::get('factura/kude', [FacturaServicioClienteController::class, 'kude']);
+    });
 
     // Paso 2: Facturación + Confirmar Pedido (crea el pedido y reserva stock)
     Route::get('checkout/facturacion',  [CheckoutController::class, 'configFacturacion']);
@@ -272,8 +307,35 @@ Route::prefix('admin/servicios/solicitudes')->middleware('auth:api')->group(func
         Route::post('/{id}/en-transito', [SolicitudServicioController::class, 'enTransito'])->whereNumber('id');
         Route::post('/{id}/rechazar', [SolicitudServicioController::class, 'rechazar'])->whereNumber('id');
         Route::post('/{id}/recepcion', [SolicitudServicioController::class, 'confirmarRecepcion'])->whereNumber('id');
+
+        // Ingreso presencial (mostrador): alta rápida de cliente + solicitud recibida en una transacción
+        Route::prefix('mostrador')->group(function () {
+            Route::get('/config', [MostradorServicioController::class, 'config']);
+            Route::get('/clientes', [MostradorServicioController::class, 'buscarClientes']);
+            Route::post('/diagnostico-preliminar', [DiagnosticoPreliminarController::class, 'mostrador'])->middleware('throttle:20,1');
+            Route::post('/clientes', [MostradorServicioController::class, 'crearCliente']);
+            Route::put('/clientes/{cliId}/documento', [MostradorServicioController::class, 'completarDocumento'])->whereNumber('cliId');
+            Route::post('/clientes/{cliId}/codigo-vinculacion', [MostradorServicioController::class, 'reemitirCodigo'])->whereNumber('cliId')->middleware('throttle:10,1');
+            Route::get('/clientes/{cliId}/garantias', [MostradorServicioController::class, 'garantias'])->whereNumber('cliId');
+            Route::get('/clientes/{cliId}/reclamables', [MostradorServicioController::class, 'reclamables'])->whereNumber('cliId');
+            Route::get('/reclamo/{numero}', [MostradorServicioController::class, 'reclamo'])->where('numero', 'SS-[0-9]{4}-[0-9]+');
+            Route::post('/', [MostradorServicioController::class, 'store']);
+        });
     });
 });
+
+// Punto 7 - Clasificación automática de solicitudes (IA): consulta, corrección y reclasificación.
+// La usan la bandeja (solicitudes.ver) y el técnico (tecnico.ver).
+Route::prefix('admin/servicios/clasificacion')
+    ->middleware(['auth:api', 'permiso:servicios.solicitudes.ver,servicios.tecnico.ver'])
+    ->group(function () {
+        Route::get('/config', [ClasificacionSolicitudController::class, 'config']);
+        Route::get('/{sseId}', [ClasificacionSolicitudController::class, 'show'])->whereNumber('sseId');
+        Route::put('/{sseId}', [ClasificacionSolicitudController::class, 'update'])->whereNumber('sseId');
+        Route::post('/{sseId}/confirmar', [ClasificacionSolicitudController::class, 'confirmar'])->whereNumber('sseId');
+        Route::post('/{sseId}/reclasificar', [ClasificacionSolicitudController::class, 'reclasificar'])
+            ->whereNumber('sseId')->middleware('throttle:10,1');
+    });
 
 Route::group([
     'middleware'=> ['auth:api', 'permiso:dashboard.ver'],   // <- solo agregar esta línea
@@ -358,6 +420,8 @@ Route::group([
     Route::patch("clientes/{cliente}/estado", [ClienteController::class, "cambiarEstado"]);
     Route::resource("clientes", ClienteController::class)
     ->only(['index','store','update','destroy']);
+    Route::post("clientes/{cliente}/codigo-vinculacion", [ClienteController::class, "codigoVinculacion"])
+        ->whereNumber('cliente')->middleware('throttle:20,1');
 
     // --- Tipos de cliente ---
     Route::get('tipos-cliente/select', [TipoClienteController::class, 'select']);
@@ -576,6 +640,12 @@ Route::prefix('admin/servicios/tecnico/ordenes')
         Route::post('/{sseId}/iniciar', [OrdenTecnicoController::class, 'iniciar'])->whereNumber('sseId');
         Route::post('/{sseId}/diagnostico', [OrdenTecnicoController::class, 'diagnostico'])->whereNumber('sseId');
         Route::post('/{sseId}/no-reparable', [OrdenTecnicoController::class, 'noReparable'])->whereNumber('sseId');
+
+        // Garantía de compra: el taller gestiona el reclamo con la empresa responsable
+        Route::post('/{sseId}/garantia/iniciar', [OrdenTecnicoController::class, 'iniciarGarantia'])->whereNumber('sseId');
+        Route::put('/{sseId}/garantia', [OrdenTecnicoController::class, 'guardarGarantia'])->whereNumber('sseId');
+        Route::post('/{sseId}/garantia/enviar', [OrdenTecnicoController::class, 'enviarGarantia'])->whereNumber('sseId');
+        Route::post('/{sseId}/garantia/resolver', [OrdenTecnicoController::class, 'resolverGarantia'])->whereNumber('sseId');
 		
 		Route::get('/{sseId}/productos', [OrdenTecnicoController::class, 'productos'])->whereNumber('sseId');
         Route::put('/{sseId}/presupuesto', [OrdenTecnicoController::class, 'guardarPresupuesto'])->whereNumber('sseId');
@@ -586,6 +656,8 @@ Route::prefix('admin/servicios/tecnico/ordenes')
         Route::post('/{sseId}/finalizar', [OrdenTecnicoController::class, 'finalizar'])->whereNumber('sseId');
         Route::post('/{sseId}/presupuesto/complementario', [OrdenTecnicoController::class, 'abrirComplementario'])->whereNumber('sseId');
         Route::delete('/{sseId}/presupuesto/complementario', [OrdenTecnicoController::class, 'descartarComplementario'])->whereNumber('sseId');
+    
+        Route::get('/{sseId}/diagnostico-preliminar', [DiagnosticoPreliminarController::class, 'tecnico'])->whereNumber('sseId');
     });
 
 // Servicio técnico - Validación de presupuestos (control de precios)
@@ -604,6 +676,13 @@ Route::prefix('admin/servicios/panel')->middleware('auth:api')->group(function (
         ->whereNumber('id')->whereIn('tipo', ['recepcion', 'retiro'])
         ->middleware('permiso:servicios.solicitudes.ver,servicios.panel.ver');
 
+    // Paso 2: aprobación asistida, contacto y PDF del presupuesto (desde A3 y desde el detalle de A1)
+    Route::middleware('permiso:servicios.solicitudes.ver,servicios.panel.ver')->group(function () {
+        Route::post('/{id}/presupuesto/respuesta', [PanelServicioController::class, 'responderPresupuesto'])->whereNumber('id');
+        Route::post('/{id}/contacto', [PanelServicioController::class, 'registrarContacto'])->whereNumber('id');
+        Route::get('/{id}/presupuesto/pdf', [PanelServicioController::class, 'pdfPresupuesto'])->whereNumber('id');
+    });
+
     Route::middleware('permiso:servicios.panel.ver')->group(function () {
         Route::get('/resumen', [PanelServicioController::class, 'resumen']);
         Route::get('/config', [PanelServicioController::class, 'config']);
@@ -611,6 +690,58 @@ Route::prefix('admin/servicios/panel')->middleware('auth:api')->group(function (
         Route::post('/{id}/reasignar', [PanelServicioController::class, 'reasignar'])->whereNumber('id');
         Route::get('/{id}/entrega', [PanelServicioController::class, 'entregaConfig'])->whereNumber('id');
         Route::post('/{id}/entrega', [PanelServicioController::class, 'entregar'])->whereNumber('id');
+    });
+});
+
+// Servicio técnico - Cobro del servicio (bandeja, verificación web y cobro en mostrador)
+Route::prefix('admin/servicios/cobros')->middleware('auth:api')->group(function () {
+    // Literales antes de {id}
+    Route::get('/config', [CobroServicioController::class, 'config'])
+        ->middleware('permiso:servicios.cobros.ver,servicios.panel.ver,servicios.solicitudes.ver');
+    Route::get('/', [CobroServicioController::class, 'index'])
+        ->middleware('permiso:servicios.cobros.ver');
+
+    // Sección "Pagos" del detalle (A1/A3) y del modal A5
+    Route::middleware('permiso:servicios.cobros.ver,servicios.panel.ver,servicios.solicitudes.ver')->group(function () {
+        Route::get('/{id}', [CobroServicioController::class, 'show'])->whereNumber('id');
+        Route::get('/{id}/pagos/{pago}/comprobante', [CobroServicioController::class, 'comprobante'])
+            ->whereNumber('id')->whereNumber('pago');
+    });
+
+    // Verificación de pagos web: mismo permiso que en pedidos (decisión 14-b)
+    Route::middleware('permiso:pedidos.pago.verificar')->group(function () {
+        Route::post('/{id}/pagos/{pago}/confirmar', [CobroServicioController::class, 'confirmar'])->whereNumber('id')->whereNumber('pago');
+        Route::post('/{id}/pagos/{pago}/rechazar', [CobroServicioController::class, 'rechazar'])->whereNumber('id')->whereNumber('pago');
+    });
+
+    // Cobro presencial: sin este permiso no se registran cobros (decisión 12-a)
+    Route::middleware('permiso:servicios.cobros.confirmar')->group(function () {
+        Route::post('/{id}/cobros', [CobroServicioController::class, 'registrarCobro'])->whereNumber('id');
+        Route::post('/{id}/pagos/{pago}/cobrar-al-retirar', [CobroServicioController::class, 'cobrarAlRetirar'])
+            ->whereNumber('id')->whereNumber('pago');
+        // A5: además exige el acceso al panel (dos middleware = se exigen los DOS permisos)
+        Route::post('/{id}/cobrar-entregar', [CobroServicioController::class, 'cobrarYEntregar'])
+            ->whereNumber('id')->middleware('permiso:servicios.panel.ver');
+    });
+
+    // Facturación del servicio: consulta (los mismos permisos que la sección "Pagos")
+    Route::middleware('permiso:servicios.cobros.ver,servicios.panel.ver,servicios.solicitudes.ver')->group(function () {
+        Route::get('/{id}/facturacion', [FacturaServicioController::class, 'datosFiscales'])->whereNumber('id');
+        Route::get('/{id}/factura', [FacturaServicioController::class, 'show'])->whereNumber('id');
+        Route::get('/{id}/factura/kude', [FacturaServicioController::class, 'kude'])->whereNumber('id');
+        Route::get('/{id}/factura/xml', [FacturaServicioController::class, 'xml'])->whereNumber('id');
+    });
+
+    // Datos fiscales: quien cobra en mostrador o quien verifica pagos web (con coma = cualquiera)
+    Route::put('/{id}/facturacion', [FacturaServicioController::class, 'guardarDatosFiscales'])
+        ->whereNumber('id')->middleware('permiso:servicios.cobros.confirmar,pedidos.pago.verificar');
+
+    // Acciones sobre la factura: mismo criterio que facturas-venta
+    Route::middleware('permiso:servicios.cobros.confirmar,facturas-venta.ver')->group(function () {
+        Route::post('/{id}/factura/reintentar', [FacturaServicioController::class, 'reintentar'])
+            ->whereNumber('id')->middleware('throttle:10,1');
+        Route::post('/{id}/factura/reenviar', [FacturaServicioController::class, 'reenviar'])
+            ->whereNumber('id')->middleware('throttle:5,1');
     });
 });
 
@@ -795,6 +926,171 @@ Route::prefix('admin/notas-credito-venta')->middleware('auth:api')->group(functi
 
     Route::patch('/{id}/anular', [NotaCreditoVentaController::class, 'anular'])
         ->middleware('permiso:notas-credito-venta.ver');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Módulo de Métricas y Reportes
+|--------------------------------------------------------------------------
+| Grupo propio (no dentro del admin con 'permiso:dashboard.ver') porque cada
+| bloque exige su permiso específico. 'config' alimenta los combos de
+| filtros y basta con tener acceso a cualquier reporte.
+*/
+Route::prefix('admin')->middleware('auth:api')->group(function () {
+
+    Route::get('reportes/config', [ReporteConfigController::class, 'config'])
+        ->middleware('permiso:metricas.dashboard.ver,reportes.ventas.ver,reportes.compras.ver,'
+            . 'reportes.inventario.ver,reportes.servicio.ver,reportes.clientes.ver,'
+            . 'reportes.promociones.ver,reportes.chatbot.ver,reportes.comportamiento.ver');
+
+    // --- Paso 3: métricas del dashboard ---
+    Route::prefix('metricas/dashboard')
+        ->middleware('permiso:metricas.dashboard.ver')
+        ->controller(DashboardController::class)
+        ->group(function () {
+            Route::get('resumen', 'resumen');
+            Route::get('ventas-compras', 'ventasCompras');
+            Route::get('distribucion', 'distribucion');
+            Route::get('tablas', 'tablas');
+        });
+        
+    // --- Reportes ---
+    Route::prefix('reportes/ventas')
+        ->middleware('permiso:reportes.ventas.ver')
+        ->controller(ReporteVentasController::class)
+        ->group(function () {
+            Route::get('periodo', 'periodo');
+            Route::get('productos', 'productos');
+            Route::get('agrupado', 'agrupado');
+            Route::get('metodos-pago', 'metodosPago');
+            Route::get('ubicacion', 'ubicacion');
+			
+			Route::get('{vista}/exportar', [ReporteExportacionController::class, 'ventas'])
+                ->whereIn('vista', ['periodo', 'productos', 'agrupado', 'metodos-pago', 'ubicacion']);
+        });
+
+    Route::prefix('reportes/inventario')
+        ->middleware('permiso:reportes.inventario.ver')
+        ->controller(ReporteInventarioController::class)
+        ->group(function () {
+            Route::get('valorizado', 'valorizado');
+            Route::get('critico', 'critico');
+            Route::get('sin-movimiento', 'sinMovimiento');
+            Route::get('margen', 'margen');
+			
+			Route::get('{vista}/exportar', [ReporteExportacionController::class, 'inventario'])
+                ->whereIn('vista', ['valorizado', 'critico', 'sin-movimiento', 'margen']);
+        });
+
+    // --- Gestión inteligente de inventario ---
+    Route::prefix('inventario-inteligente')
+        ->name('inventario-inteligente.')
+        ->controller(InventarioInteligenteController::class)
+        ->group(function () {
+            Route::middleware('permiso:inventario-inteligente.ver')->group(function () {
+                Route::get('resumen', 'resumen');
+                Route::get('notificaciones', 'notificaciones');
+                Route::get('alertas', 'alertas');
+                Route::get('productos/{id}/pronostico', 'pronostico')->whereNumber('id');
+                Route::get('metricas', 'metricas');
+                Route::get('config', 'config');
+                Route::post('insights', 'insights')->middleware('throttle:10,1');
+            });
+
+            Route::middleware('permiso:inventario-inteligente.gestionar')->group(function () {
+                Route::patch('alertas/{id}/atender', 'atender')->whereNumber('id')->name('atender');
+                Route::patch('alertas/{id}/descartar', 'descartar')->whereNumber('id')->name('descartar');
+                Route::patch('productos/{id}/lead-time', 'leadTime')->whereNumber('id');
+                Route::put('config', 'actualizarConfig');
+                Route::post('recalcular', 'recalcular')->middleware('throttle:3,1');
+            });
+        });
+
+    // --- Reporte de compras ---
+    Route::prefix('reportes/compras')
+        ->middleware('permiso:reportes.compras.ver')
+        ->group(function () {
+            Route::get('proveedores', [ReporteComprasController::class, 'proveedores']);
+            Route::get('cxp-vencidas', [ReporteComprasController::class, 'vencidas']);
+            Route::get('cxp-por-vencer', [ReporteComprasController::class, 'porVencer']);
+
+            Route::get('{vista}/exportar', [ReporteExportacionController::class, 'compras'])
+                ->where('vista', 'proveedores|cxp-vencidas|cxp-por-vencer');
+        });
+    
+    // --- Reporte de servicio técnico ---
+    Route::prefix('reportes/servicio')
+        ->middleware('permiso:reportes.servicio.ver')
+        ->group(function () {
+            Route::get('estados', [ReporteServicioController::class, 'estados']);
+            Route::get('tecnicos', [ReporteServicioController::class, 'tecnicos']);
+            Route::get('tiempos', [ReporteServicioController::class, 'tiempos']);
+            Route::get('fallas', [ReporteServicioController::class, 'fallas']);
+            Route::get('presupuestos', [ReporteServicioController::class, 'presupuestos']);
+
+            Route::get('{vista}/exportar', [ReporteExportacionController::class, 'servicio'])
+                ->where('vista', 'estados|tecnicos|tiempos|fallas|presupuestos');
+            
+            Route::get('diagnostico-ia', [ReporteServicioController::class, 'diagnosticoIa']);
+             Route::get('clasificacion', [ReporteServicioController::class, 'clasificacion']);   // Punto 7
+        });
+
+   // --- Reporte de clientes ---
+    Route::prefix('reportes/clientes')
+        ->middleware('permiso:reportes.clientes.ver')
+        ->group(function () {
+            Route::get('top', [ReporteClientesController::class, 'top']);
+            Route::get('nuevos', [ReporteClientesController::class, 'nuevos']);
+            Route::get('inactivos', [ReporteClientesController::class, 'inactivos']);
+
+            Route::get('{vista}/exportar', [ReporteExportacionController::class, 'clientes'])
+                ->where('vista', 'top|nuevos|inactivos');
+        });
+
+    // --- Reporte de promociones ---
+    Route::prefix('reportes/promociones')
+        ->middleware('permiso:reportes.promociones.ver')
+        ->group(function () {
+            Route::get('cupones', [ReportePromocionesController::class, 'cupones']);
+            Route::get('campanas', [ReportePromocionesController::class, 'campanas']);
+
+            Route::get('{vista}/exportar', [ReporteExportacionController::class, 'promociones'])
+                ->where('vista', 'cupones|campanas');
+        });
+
+    // --- Análisis de comportamiento de clientes ---
+    Route::prefix('reportes/comportamiento')
+        ->middleware('permiso:reportes.comportamiento.ver')
+        ->controller(ReporteComportamientoController::class)
+        ->group(function () {
+            Route::get('busquedas', 'busquedas');
+            Route::get('sin-resultados', 'sinResultados');
+            Route::get('productos-buscados', 'productosBuscados');
+            Route::get('franja-horaria', 'franjaHoraria');
+            Route::get('comprados-juntos', 'compradosJuntos');
+            Route::get('recompra', 'recompra');
+            Route::get('modalidades', 'modalidades');
+            Route::get('embudo', 'embudo');
+            Route::get('carritos-abandonados', 'carritosAbandonados');
+            Route::get('segmentos', 'segmentos');
+            Route::get('clientes', 'buscarClientes')->middleware('throttle:60,1');
+            Route::get('clientes/{cliente}', 'perfil')->whereNumber('cliente');
+            Route::post('insights', 'generarInsights')->middleware('throttle:10,1');
+        });
+        
+     // --- Reporte del asistente virtual ---
+    Route::prefix('reportes/chatbot')
+        ->middleware('permiso:reportes.chatbot.ver')
+        ->group(function () {
+            Route::get('periodo', [ReporteChatbotController::class, 'periodo']);
+            Route::get('temas', [ReporteChatbotController::class, 'temas']);
+            Route::get('preguntas', [ReporteChatbotController::class, 'preguntas']);
+            Route::get('sin-respuesta', [ReporteChatbotController::class, 'sinRespuesta']);
+
+            Route::get('{vista}/exportar', [ReporteExportacionController::class, 'chatbot'])
+                ->where('vista', 'periodo|temas|preguntas|sin-respuesta');
+        });
+
 });
 
 

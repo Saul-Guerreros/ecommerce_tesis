@@ -18,21 +18,30 @@
       <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
                <div>
           @if (cedulaEditable) {
-            <!-- Todavía no tiene cédula: se puede cargar una única vez -->
-            <label class="info-chip-label" for="per_cedula">Cédula</label>
-            <div class="uk-inline uk-width-1-1">
-              <span class="uk-form-icon" uk-icon="icon: credit-card"></span>
-              <input class="uk-input perfil-input" id="per_cedula" type="text" name="per_cedula"
-                     inputmode="numeric" maxlength="12" placeholder="Número de cédula (sin puntos)"
-                     [(ngModel)]="per_cedula" />
+            <!-- Todavía no tiene documento: se puede cargar una única vez -->
+            <label class="info-chip-label" for="per_cedula">Documento de identidad</label>
+            <div class="uk-grid-small" uk-grid>
+              <div class="uk-width-2-5">
+                <select class="uk-select perfil-input" name="tipoDocumento" aria-label="Tipo de documento"
+                        [(ngModel)]="tipoDocumento">
+                  <option value="CI">Cédula</option>
+                  <option value="PAS">Pasaporte</option>
+                </select>
+              </div>
+              <div class="uk-width-3-5">
+                <input class="uk-input perfil-input" id="per_cedula" type="text" name="per_cedula"
+                       [attr.inputmode]="esPasaporte ? 'text' : 'numeric'" maxlength="20" autocomplete="off"
+                       [placeholder]="esPasaporte ? 'N.º de pasaporte' : 'N.º de cédula (sin puntos)'"
+                       [(ngModel)]="per_cedula" />
+              </div>
             </div>
             <div class="uk-text-meta uk-text-small uk-margin-xsmall-top">
-              Revisala bien: una vez guardada no se puede modificar.
+              Revisalo bien: una vez guardado no se puede modificar.
             </div>
           } @else {
-            <!-- Ya registrada: solo lectura -->
-            <div class="info-chip" title="Para corregirla, contactá con la tienda">
-              <span class="info-chip-label">Cédula</span>
+            <!-- Ya registrado: solo lectura -->
+            <div class="info-chip" title="Para corregirlo, contactá con la tienda">
+              <span class="info-chip-label">{{ etiquetaDocumento }}</span>
               <span class="info-chip-valor">
                 {{ perfil?.persona?.per_cedula }}
                 <span uk-icon="icon: lock; ratio: .7"></span>

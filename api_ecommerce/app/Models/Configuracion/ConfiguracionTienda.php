@@ -16,11 +16,10 @@ class ConfiguracionTienda extends Model
 
     public const AVISO_CHEQUE_INICIAL = 'La entrega del cheque perteneciente a esta compra debe realizarse en un plazo máximo de 48 horas. Pasado este tiempo el pedido quedará anulado. El stock y el precio del producto adquirido podrán sufrir variaciones transcurrido este plazo.';
 
-     // ---------- Política de stock del cheque ----------
+    // ---------- Política de stock del cheque ----------
 
     public const STOCK_AL_RECIBIR   = 'RECEPCION';
     public const STOCK_AL_ACREDITAR = 'ACREDITACION';
-
 
     protected $fillable = [
         'ctn_pocstk_activo',
@@ -33,6 +32,8 @@ class ConfiguracionTienda extends Model
         'ctn_pago_cheque_vista', 'ctn_pago_cheque_diferido',
         'ctn_pago_cheque_retiro', 'ctn_pago_cheque_envio',
         'ctn_cheque_stock',
+        // Gestión inteligente de inventario
+        'ctn_nivserv', 'ctn_horizonte', 'ctn_leadtime', 'ctn_cobmax',
     ];
 
     protected $casts = [
@@ -47,6 +48,10 @@ class ConfiguracionTienda extends Model
         'ctn_pago_cheque_diferido' => 'boolean',
         'ctn_pago_cheque_retiro'   => 'boolean',
         'ctn_pago_cheque_envio'    => 'boolean',
+        'ctn_nivserv'       => 'integer',
+        'ctn_horizonte'     => 'integer',
+        'ctn_leadtime'      => 'integer',
+        'ctn_cobmax'        => 'integer',
     ];
 
     public const VALORES_INICIALES = [
@@ -63,6 +68,11 @@ class ConfiguracionTienda extends Model
         'ctn_pago_cheque_retiro'    => true,
         'ctn_pago_cheque_envio'     => false,
         'ctn_cheque_stock'          => 'RECEPCION',
+        // Gestión inteligente de inventario
+        'ctn_nivserv'   => 95,
+        'ctn_horizonte' => 4,
+        'ctn_leadtime'  => 7,
+        'ctn_cobmax'    => 12,
     ];
 
     private static ?self $memo = null;

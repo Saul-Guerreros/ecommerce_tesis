@@ -2,7 +2,10 @@
 
 namespace App\Http\Resources\Servicio;
 
+use App\Models\Pedido\EstadoPago;
 use App\Models\Servicio\EstadoPresupuesto;
+use App\Models\Servicio\GarantiaProveedor;
+use App\Services\Servicio\EstadoPagoServicioService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,9 +18,14 @@ class ServicioClienteResource extends JsonResource
     /** Pasos del timeline de C4 (SOLICITADO y CANCELADO quedan fuera). */
     public const PASOS = ['RECIBIDO', 'EN DIAGNÓSTICO', 'EN REPARACIÓN', 'LISTO', 'ENTREGADO'];
 
+    /** Garantía de compra: no hay diagnóstico ni reparación en el taller, el reclamo va a la empresa. */
+    public const PASOS_GARANTIA = ['RECIBIDO', 'EN GESTIÓN', 'EN LA EMPRESA', 'LISTO', 'ENTREGADO'];
+
     public function toArray(Request $request): array
     {
         $visible = $this->estadoServicio?->ets_visible;
+        $pasos   = $this->esGarantiaDeCompra() ? self::PASOS_GARANTIA : self::PASOS;
+        $paso    = array_search($visible, $pasos, true);
 
         return [
             'sse_numero'  => $this->sse_numero,
@@ -26,8 +34,8 @@ class ServicioClienteResource extends JsonResource
             'sse_nroser'  => $this->sse_nroser,
             'sse_garant'  => $this->sse_garant,
             'estado'      => $visible,
-            'paso_actual' => array_search($visible, self::PASOS, true) === false
-                ? null : array_search($visible, self::PASOS, true) + 1,
+            'pasos'       => $pasos,
+            'paso_actual' => $paso === false ? null : $paso + 1,
             'cancelado'   => $this->estadoServicio?->ets_codigo === 'CANCELADA',
             'accion_pendiente' => $this->accionPendiente(),
 
@@ -52,6 +60,11 @@ class ServicioClienteResource extends JsonResource
                 'modelo' => $this->sse_modelo, 'nroser' => $this->sse_nroser,
             ]),
             'reclamo_de'  => $this->whenLoaded('solicitudOriginal', fn () => $this->solicitudOriginal?->sse_numero),
+            'producto'    => $this->whenLoaded('detallePedido', fn () => $this->detallePedido?->dpd_descri),
+            'garantia_empresa' => $this->when(
+                $this->relationLoaded('garantiaProveedor') && $this->esGarantiaDeCompra(),
+                fn () => $this->garantiaEmpresaVisible()
+            ),
             'resultado'   => $this->when($this->relationLoaded('ordenServicio'), fn () => $this->resultadoVisible()),
             'entrega'     => $this->whenLoaded('entrega', fn () => $this->entrega ? [
                 'fecha'    => $this->entrega->ese_fecha?->format('Y-m-d H:i'),
@@ -62,6 +75,9 @@ class ServicioClienteResource extends JsonResource
                 'recepcion' => $this->recepcion !== null,
                 'retiro'    => $this->entrega !== null,
             ]),
+            // ---- Pago del servicio (solo en el detalle) ----
+            'pago' => $this->when($this->relationLoaded('pagos'), fn () => $this->pagoVisible()),
+
             'historial' => $this->whenLoaded('historial', fn () => $this->historial->map(fn ($h) => [
                 'fecha'  => $h->she_fecha?->format('Y-m-d H:i'),
                 'coment' => $h->she_coment,
@@ -91,6 +107,13 @@ class ServicioClienteResource extends JsonResource
             'pse_fecven'  => $p->pse_fecven?->format('Y-m-d'),
             'pse_obs'     => $p->pse_obs,
             'pse_motrec'  => $p->pse_motrec,
+            // Paso 2 (E.14): cómo se registró la respuesta, sin exponer al funcionario.
+            'respuesta'   => $p->pse_respon ? [
+                'fecha'    => $p->pse_respon->format('Y-m-d H:i'),
+                'canal'    => $p->pse_canres,
+                'etiqueta' => \App\Models\Servicio\PresupuestoServicio::ETIQUETAS_RESPUESTA[$p->pse_canres] ?? null,
+                'asistida' => $p->pse_canres !== null && $p->pse_canres !== 'WEB',
+            ] : null,
             'pse_impues'  => (float) $p->pse_impues,
             'pse_total'   => (float) $p->pse_total,
             'costo_retiro' => (float) $this->sse_cosret,
@@ -102,6 +125,29 @@ class ServicioClienteResource extends JsonResource
                 'precio' => (float) $l->psd_precio,
                 'total'  => (float) $l->psd_total,
             ]),
+        ];
+    }
+
+    /**
+     * Lo que el cliente ve de la gestión con la empresa: quién, cuándo y cómo terminó.
+     * El contacto y las observaciones internas no se exponen (salvo el motivo si no la aceptó).
+     */
+    private function garantiaEmpresaVisible(): ?array
+    {
+        $g = $this->garantiaProveedor;
+        if (!$g) {
+            return null;
+        }
+
+        return [
+            'empresa'          => $g->proveedor?->pro_razon,
+            'nrocaso'          => $g->gpr_nrocaso,
+            'fecha_envio'      => $g->gpr_fecenv?->format('Y-m-d'),
+            'fecha_recepcion'  => $g->gpr_fecrec?->format('Y-m-d'),
+            'resultado'        => $g->gpr_result ? GarantiaProveedor::RESULTADOS[$g->gpr_result] : null,
+            'codigo_resultado' => $g->gpr_result,
+            'nuevo_serie'      => $g->gpr_result === GarantiaProveedor::REEMPLAZADO ? $g->gpr_nroserr : null,
+            'motivo'           => $g->gpr_result === GarantiaProveedor::RECHAZADO ? $g->gpr_obs : null,
         ];
     }
 
@@ -140,6 +186,32 @@ class ServicioClienteResource extends JsonResource
         ];
     }
 
+    /**
+     * Bloque de pago de C4. 'pagable' lo decide el backend (LISTA, con saldo y
+     * sin garantía): el front solo muestra u oculta el botón "Pagar".
+     */
+    private function pagoVisible(): ?array
+    {
+        $estadoPago = app(EstadoPagoServicioService::class);
+
+        if (!$estadoPago->admitePagos($this->resource) && $this->pagos->isEmpty()) {
+            return null;
+        }
+
+        $resumen = $estadoPago->resumen($this->resource);
+
+        return [
+            'estado'  => $this->estadoPago?->epa_descri,
+            'total'   => $resumen['total'],
+            'pagado'  => $resumen['confirmado'],
+            'en_verificacion' => $resumen['en_verificacion'],
+            'saldo'   => $resumen['saldo'],
+            'pagable' => $this->estadoServicio?->ets_codigo === 'LISTA'
+                && $resumen['admite_pagos'] && $resumen['saldo'] > 0,
+            'pagos'   => $this->pagos->map(fn ($p) => (new ServicioPagoClienteResource($p, $this->sse_numero))->resolve())->values(),
+        ];
+    }
+
     private function accionPendiente(): ?string
     {
         return match ($this->estadoServicio?->ets_codigo) {
@@ -147,7 +219,12 @@ class ServicioClienteResource extends JsonResource
                 ? 'Esperá la confirmación del retiro de tu equipo'
                 : 'Llevá tu equipo a la sucursal elegida',
             'PRESUPUESTADA' => 'Revisá y respondé el presupuesto',
-            'LISTA'         => 'Tu equipo está listo para retirar',
+            'LISTA'         => match ($this->estadoPago?->epa_codigo) {
+                EstadoPago::RECHAZADO      => 'Revisá tu pago: necesitamos un comprobante nuevo',
+                EstadoPago::PENDIENTE_PAGO => 'Tu equipo está listo: pagá el servicio o abonalo al retirar',
+                EstadoPago::PAGO_VERIFICAR => 'Estamos verificando tu pago',
+                default                    => 'Tu equipo está listo para retirar',
+            },
             default         => null,
         };
     }

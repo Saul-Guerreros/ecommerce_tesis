@@ -1,0 +1,35 @@
+<c-row class="g-3">
+  <c-col md="6" lg="3">
+    <label cLabel>Nivel de servicio (%)</label>
+    <input cFormControl type="number" min="80" max="99" [(ngModel)]="config.nivel_servicio" [disabled]="!puedeGestionar" />
+    <div class="form-text">Probabilidad de no quedarse sin stock. Mayor nivel = más stock de seguridad.
+      <span *ngIf="config.factor_z">(Z = {{ config.factor_z }})</span></div>
+  </c-col>
+  <c-col md="6" lg="3">
+    <label cLabel>Horizonte (semanas)</label>
+    <input cFormControl type="number" min="1" max="12" [(ngModel)]="config.horizonte" [disabled]="!puedeGestionar" />
+    <div class="form-text">Semanas a pronosticar y período entre revisiones. Cambiarlo recalcula el pronóstico.</div>
+  </c-col>
+  <c-col md="6" lg="3">
+    <label cLabel>Lead time por defecto (días)</label>
+    <input cFormControl type="number" min="1" max="180" [(ngModel)]="config.lead_time" [disabled]="!puedeGestionar" />
+    <div class="form-text">Días que tarda el proveedor en entregar. Cada producto puede tener el suyo.</div>
+  </c-col>
+  <c-col md="6" lg="3">
+    <label cLabel>Cobertura máxima (semanas)</label>
+    <input cFormControl type="number" min="2" max="52" [(ngModel)]="config.cobertura_max" [disabled]="!puedeGestionar" />
+    <div class="form-text">Si el stock alcanza para más semanas que esto, se considera sobrestock.</div>
+  </c-col>
+</c-row>
+
+<div class="d-flex gap-2 mt-4" *ngIf="puedeGestionar">
+  <button cButton color="primary" (click)="guardar()" [disabled]="guardando">
+    <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>Guardar parámetros
+  </button>
+  <button cButton color="info" class="text-white" (click)="recalcular()" [disabled]="recalculando">
+    <c-spinner size="sm" *ngIf="recalculando" class="me-1"></c-spinner>Recalcular pronóstico ahora
+  </button>
+</div>
+<p class="text-muted small mt-3 mb-0">
+  El pronóstico se recalcula automáticamente cada lunes a las 02:00 y las alertas todos los días a las 06:00.
+</p>

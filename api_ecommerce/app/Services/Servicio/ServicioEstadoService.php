@@ -24,11 +24,16 @@ class ServicioEstadoService
     /** Ciclo técnico. ENTREGADA y CANCELADA son terminales. */
     private const TRANSICIONES_SERVICIO = [
         EstadoServicio::SOLICITADA     => [EstadoServicio::RECIBIDA, EstadoServicio::CANCELADA],
-        EstadoServicio::RECIBIDA       => [EstadoServicio::EN_DIAGNOSTICO, EstadoServicio::CANCELADA],
+        // GESTION_GARANTIA solo para garantía de compra (lo exige GarantiaProveedorService).
+        EstadoServicio::RECIBIDA       => [EstadoServicio::EN_DIAGNOSTICO, EstadoServicio::GESTION_GARANTIA, EstadoServicio::CANCELADA],
         EstadoServicio::EN_DIAGNOSTICO => [EstadoServicio::PRESUPUESTADA, EstadoServicio::APROBADA, EstadoServicio::LISTA],
         EstadoServicio::PRESUPUESTADA  => [EstadoServicio::APROBADA, EstadoServicio::LISTA],
         EstadoServicio::APROBADA       => [EstadoServicio::EN_REPARACION],
         EstadoServicio::EN_REPARACION  => [EstadoServicio::PRESUPUESTADA, EstadoServicio::LISTA],
+        // Garantía de compra: el taller gestiona con la empresa. Si la empresa no la acepta sin
+        // haberla recibido todavía, se cierra directo; si no, pasa por la empresa y vuelve LISTA.
+        EstadoServicio::GESTION_GARANTIA => [EstadoServicio::EN_EMPRESA, EstadoServicio::LISTA],
+        EstadoServicio::EN_EMPRESA     => [EstadoServicio::LISTA],
         EstadoServicio::LISTA          => [EstadoServicio::ENTREGADA],
         EstadoServicio::ENTREGADA      => [],
         EstadoServicio::CANCELADA      => [],
@@ -127,10 +132,34 @@ class ServicioEstadoService
         $this->registrar($s, ServicioHistorialEstado::NOTA, null, null, $usuId, $coment);
     }
 
-    /** Registro inicial al crear la solicitud (no hay estado anterior). */
-    public function registrarAlta(SolicitudServicio $s, ?int $usuId): void
+    /**
+     * Paso 2 - "Registrar contacto con el cliente": deja constancia de cada intento de
+     * comunicación (medio y resultado) para que el panel sepa si el cliente fue contactado.
+     */
+    public function registrarContacto(SolicitudServicio $s, int $usuId, string $medio, string $resultado, ?string $coment): void
     {
-        $this->registrar($s, ServicioHistorialEstado::SERVICIO, null, $s->sse_etsid, $usuId, 'Solicitud registrada por el cliente');
+        $s->loadMissing('estadoServicio');
+        if (in_array($s->estadoServicio?->ets_codigo, [EstadoServicio::ENTREGADA, EstadoServicio::CANCELADA], true)) {
+            throw ValidationException::withMessages(['medio' => 'La solicitud está cerrada: no se registran contactos.']);
+        }
+
+        ServicioHistorialEstado::create([
+            'she_sseid'  => $s->sse_id,
+            'she_usuid'  => $usuId,
+            'she_tipo'   => ServicioHistorialEstado::CONTACTO,
+            'she_estant' => null,
+            'she_estid'  => null,
+            'she_medio'  => $medio,
+            'she_result' => $resultado,
+            'she_coment' => $coment,
+            'she_ip'     => request()->ip(),
+        ]);
+    }
+
+    /** Registro inicial al crear la solicitud (no hay estado anterior). */
+    public function registrarAlta(SolicitudServicio $s, ?int $usuId, string $coment = 'Solicitud registrada por el cliente'): void
+    {
+        $this->registrar($s, ServicioHistorialEstado::SERVICIO, null, $s->sse_etsid, $usuId, $coment);
         $this->registrar($s, ServicioHistorialEstado::INGRESO, null, $s->sse_elging, $usuId, null);
     }
 

@@ -17,7 +17,7 @@ import { CarritoService } from '../../core/services/carrito.service';
 import { CarritoUiService } from '../../core/services/carrito-ui.service';
 import { SolicitudCreditoService } from '../../core/services/solicitud-credito.service';
 import { ProductoCardComponent } from '../../shared/components/producto-card/producto-card.component';
-
+import { ActividadTiendaService } from '../../core/services/actividad-tienda.service';
 import { StockSucursalesModalComponent } from '../../shared/components/stock-sucursales-modal/stock-sucursales-modal.component';
 
 type TabDetalle = 'descripcion' | 'especificaciones' | 'resenas';
@@ -75,6 +75,7 @@ export class ProductoDetalleComponent implements OnInit {
   // Comparador: el estado vive en ComparadorService (persiste y se comparte con
   // las tarjetas y el header); acá solo se lee.
   private readonly comparador = inject(ComparadorService);
+  private readonly actividad = inject(ActividadTiendaService);
   get compararActivo(): boolean {
     return this.comparador.estaEnComparador(this.producto?.slug);
   }
@@ -163,7 +164,7 @@ export class ProductoDetalleComponent implements OnInit {
         this.cuotaElegidaN = null;
         this.tabActiva = 'descripcion';
         this.cargando = false;
-
+        this.actividad.registrarVista(slug);
         if (typeof window !== 'undefined') {
           window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
         }

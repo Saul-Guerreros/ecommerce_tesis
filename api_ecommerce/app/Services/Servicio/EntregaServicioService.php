@@ -18,9 +18,10 @@ use Illuminate\Validation\ValidationException;
  * FASE 7 - Entrega y cierre (A5).
  *
  * Regla 7: si hay monto a cobrar, no se entrega hasta que el pago esté
- * CONFIRMADO. El registro del cobro (C5/A4) llega con la instrucción de
- * facturación; hasta entonces solo se entregan servicios sin cargo
- * (garantía, no reparable sin revisión) o ya confirmados.
+ * CONFIRMADO. sse_epaid lo deriva EstadoPagoServicioService de servicio_pago
+ * (pago web verificado o cobro en mostrador). "Cobrar y entregar" vive en
+ * CobroMostradorService y termina llamando a registrar(): la regla se
+ * aplica igual por los dos caminos.
  */
 class EntregaServicioService
 {
@@ -31,16 +32,23 @@ class EntregaServicioService
     {
         $persona = $s->cliente?->persona;
 
+        // Paso 3 (B.4-a / B.5-a): el canal mostrador se entrega solo en su sucursal (cada sucursal
+        // tiene su taller, sin traslados) y sin envío: el envío lo decidirá el cierre de RF-038 (C5).
+        $mostrador = $s->esMostrador();
+
         return [
+            'solo_retiro_sucursal' => $mostrador,
             'titular' => [
                 'nrodoc' => $persona?->per_cedula,
                 'nombre' => $persona?->per_nombr1,
                 'apelli' => $persona?->per_apell1,
                 'telef'  => $persona?->contactos?->whereIn('con_tipo', ['CELULAR', 'TELEFONO'])->first()?->con_valor,
             ],
-            'sucursales'  => Sucursal::paraRetiro()->orderByDesc('suc_princi')->get(['suc_id', 'suc_nombre']),
-            'direcciones' => $persona ? $persona->direcciones()->activas()->with('ciudad')->get()
-                ->map(fn ($d) => ['dir_id' => $d->dir_id, 'resumen' => $d->resumen]) : [],
+            'sucursales'  => $mostrador
+                ? Sucursal::whereKey($s->sse_sucid)->get(['suc_id', 'suc_nombre'])
+                : Sucursal::paraRetiro()->orderByDesc('suc_princi')->get(['suc_id', 'suc_nombre']),
+            'direcciones' => $mostrador ? [] : ($persona ? $persona->direcciones()->activas()->with('ciudad')->get()
+                ->map(fn ($d) => ['dir_id' => $d->dir_id, 'resumen' => $d->resumen]) : []),
             'accesorios'  => $s->recepcion?->accesorios->map(fn ($a) => ['rac_id' => $a->rac_id, 'rac_descri' => $a->rac_descri]) ?? [],
             'cobro'       => $this->estadoCobro($s),
         ];
@@ -73,6 +81,19 @@ class EntregaServicioService
         $cobro = $this->estadoCobro($s);
         if (!$cobro['habilitado']) {
             throw ValidationException::withMessages(['modalidad' => $cobro['motivo']]);
+        }
+
+        if ($s->esMostrador()) {
+            if (($d['modalidad'] ?? null) !== 'retiro') {
+                throw ValidationException::withMessages([
+                    'modalidad' => 'Los servicios de mostrador se entregan en la sucursal (el envío se define al cerrar el cobro).',
+                ]);
+            }
+            if ((int) ($d['ese_sucid'] ?? 0) !== (int) $s->sse_sucid) {
+                throw ValidationException::withMessages([
+                    'ese_sucid' => 'El equipo se entrega en la sucursal donde fue recibido.',
+                ]);
+            }
         }
 
         // Accesorios: lo que entró tiene que salir; si no, se explica por qué.

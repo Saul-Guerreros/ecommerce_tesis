@@ -36,6 +36,7 @@
           <th>Código</th>
           <th>Descripción</th>
           <th>Tipo de dispositivo</th>
+          <th>Tipo de problema</th>
           <th class="text-center">En uso</th>
           <th class="text-center">Estado</th>
           <th class="text-end">Acciones</th>
@@ -49,6 +50,7 @@
             <span *ngIf="f.tipo_dispositivo; else generica">{{ f.tipo_dispositivo.tdi_descri }}</span>
             <ng-template #generica><c-badge color="secondary">Genérica</c-badge></ng-template>
           </td>
+           <td>{{ f.categoria?.caf_descri ?? 'Otro' }}</td>
           <td class="text-center">{{ f.usos_count }}</td>
           <td class="text-center">
             <c-badge [color]="f.fll_estado === 1 ? 'success' : 'secondary'">{{ f.fll_estado === 1 ? 'Activo' : 'Inactivo' }}</c-badge>
@@ -62,7 +64,7 @@
             <button cButton size="sm" color="danger" class="me-2 text-white" (click)="abrirEliminar(f)">Eliminar</button>
           </td>
         </tr>
-        <tr *ngIf="fallas.length === 0"><td colspan="6" class="text-center">No hay fallas registradas</td></tr>
+        <tr *ngIf="fallas.length === 0"><td colspan="7" class="text-center">No hay fallas registradas</td></tr>
       </tbody>
     </table>
   </c-card-body>
@@ -73,3 +75,5 @@
 
 <app-delete-falla [visible]="deleteModalVisible" [falla]="fallaSeleccionada"
   (visibleChange)="deleteModalVisible = $event" (confirmar)="confirmarEliminar()"></app-delete-falla>
+
+<app-form-falla ... [tiposDispositivo]="tiposDispositivo" [categorias]="categorias" ...></app-form-falla>

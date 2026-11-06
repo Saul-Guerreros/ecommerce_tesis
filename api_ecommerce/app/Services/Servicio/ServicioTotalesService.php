@@ -2,8 +2,6 @@
 
 namespace App\Services\Servicio;
 
-use App\Models\Pedido\EstadoPago;
-use App\Models\Servicio\ServicioHistorialEstado;
 use App\Models\Servicio\SolicitudServicio;
 
 /**
@@ -19,6 +17,8 @@ use App\Models\Servicio\SolicitudServicio;
  */
 class ServicioTotalesService
 {
+    public function __construct(private EstadoPagoServicioService $estadoPago) {}
+
     public function consolidar(SolicitudServicio $s, float $subtot, float $impues, ?int $usuId): void
     {
         if ($s->sse_garant) {
@@ -33,23 +33,13 @@ class ServicioTotalesService
         $s->sse_impues = round($impues, 2);
         $s->sse_total  = $total;
 
-        $anterior = $s->sse_epaid;
-
-        // Sin monto a cobrar no se abre el eje de pago (queda NULL).
-        $s->sse_epaid = $total > 0 ? EstadoPago::porCodigo(EstadoPago::PENDIENTE)->epa_id : null;
         $s->save();
 
-        if ($s->sse_epaid && $s->sse_epaid !== $anterior) {
-            ServicioHistorialEstado::create([
-                'she_sseid'  => $s->sse_id,
-                'she_usuid'  => $usuId,
-                'she_tipo'   => ServicioHistorialEstado::PAGO,
-                'she_estant' => $anterior,
-                'she_estid'  => $s->sse_epaid,
-                'she_coment' => 'Total a cobrar: Gs. ' . number_format($total, 0, ',', '.'),
-                'she_ip'     => request()->ip(),
-            ]);
-        }
+        // El eje de cobro se DERIVA de los pagos (EstadoPagoServicioService):
+        // sin pagos queda PENDIENTE_PAGO si hay total, o NULL si el total es 0;
+        // con anticipos confirmados queda PARCIAL o, si ya cubren todo, CONFIRMADO.
+        $this->estadoPago->recalcular($s, $usuId,
+            $total > 0 ? 'Total a cobrar: Gs. ' . number_format($total, 0, ',', '.') : null);
     }
 
     /** IVA contenido en un precio con IVA incluido (mismo cálculo que Producto::ivaIncluidoEn). */

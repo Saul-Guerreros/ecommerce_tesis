@@ -11,10 +11,11 @@ class Trabajo extends Model
     protected $primaryKey = 'trb_id';
     public $timestamps = false;
 
-    protected $fillable = ['trb_codigo', 'trb_descri', 'trb_precio', 'trb_tivid', 'trb_estado'];
-
+    protected $fillable = ['trb_codigo', 'trb_descri', 'trb_precio', 'trb_dias', 'trb_tivid', 'trb_estado'];
+    
     protected $casts = [
         'trb_precio' => 'decimal:2',
+        'trb_dias'   => 'integer',
         'trb_tivid'  => 'integer',
         'trb_estado' => 'integer',
         'trb_creado' => 'datetime',

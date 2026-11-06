@@ -12,7 +12,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        // Servicio técnico
         $schedule->command('servicio:vencer-presupuestos')->dailyAt('00:10')->withoutOverlapping();
+        $schedule->command('servicio:clasificar-pendientes')->everyFifteenMinutes()->withoutOverlapping();
+
+        // Facturación
         $schedule->command('facturacion:reintentar')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('facturacion:reintentar-nc')->everyTenMinutes()->withoutOverlapping();
 
@@ -26,10 +30,19 @@ class Kernel extends ConsoleKernel
         //
         // La salida se guarda en un archivo: es la única forma de saber
         // después qué cancelaron las corridas automáticas, ya que nadie
+        // está mirando la consola cuando se ejecutan.
         $schedule->command('pedidos:expirar')
             ->everyFifteenMinutes()
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/pedidos-expirar.log'));
+
+        // Mantenimiento
+        $schedule->command('actividad:purgar')->monthlyOn(1, '03:00')->withoutOverlapping();
+
+        // Gestión inteligente de inventario
+        $schedule->command('inventario:pronosticar')->weeklyOn(1, '02:00')->withoutOverlapping();
+        // Alertas: cada hora de 07:00 a 20:00 (horario comercial) para reflejar las ventas del día.
+        $schedule->command('inventario:alertas')->hourly()->between('07:00', '20:00')->withoutOverlapping();
     }
 
     /**

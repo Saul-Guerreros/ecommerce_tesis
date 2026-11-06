@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Servicio\CategoriaFalla;
 
 class FallaController extends Controller
 {
@@ -50,7 +51,7 @@ class FallaController extends Controller
     // GET /api/admin/fallas?search=&estado=&tdi_id=   (tdi_id = 'GEN' filtra las genéricas)
     public function index(Request $request): JsonResponse
     {
-        $query = Falla::with('tipoDispositivo');
+        $query = Falla::with(['tipoDispositivo', 'categoria']);
 
         if ($request->filled('search')) {
             $search = '%' . mb_strtolower($request->search) . '%';
@@ -77,8 +78,11 @@ class FallaController extends Controller
     public function config(): JsonResponse
     {
         return response()->json([
-            'tipos_dispositivo' => TipoDispositivo::activos()->orderBy('tdi_descri')
+            'tipos_dispositivo' => TipoDispositivo::seleccionables()->orderBy('tdi_descri')
                 ->get(['tdi_id', 'tdi_codigo', 'tdi_descri']),
+            // Punto 7: tipo de problema de la falla
+            'categorias'        => CategoriaFalla::activas()->orderBy('caf_descri')
+                ->get(['caf_id', 'caf_codigo', 'caf_descri']),
         ], 200);
     }
 
@@ -95,7 +99,7 @@ class FallaController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $falla = Falla::with('tipoDispositivo')->find($id);
+        $falla = Falla::with(['tipoDispositivo', 'categoria'])->find($id);
         if (!$falla) return response()->json(['message' => 'Falla no encontrada'], 404);
 
         return response()->json(['data' => new FallaResource($falla)], 200);
@@ -147,7 +151,7 @@ class FallaController extends Controller
 
     public function toggleEstado(int $id): JsonResponse
     {
-        $falla = Falla::with('tipoDispositivo')->find($id);
+        $falla = Falla::with(['tipoDispositivo', 'categoria'])->find($id);
         if (!$falla) return response()->json(['message' => 'Falla no encontrada'], 404);
 
         $falla->fll_estado = $falla->fll_estado == 1 ? 0 : 1;

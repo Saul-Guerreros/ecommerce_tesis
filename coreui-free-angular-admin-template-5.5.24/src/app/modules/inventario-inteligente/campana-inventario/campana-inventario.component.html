@@ -1,0 +1,52 @@
+@if (visible) {
+  <c-dropdown [popperOptions]="{ placement: 'bottom-end' }" variant="nav-item">
+    <button cDropdownToggle [caret]="false" class="position-relative py-2"
+            [attr.aria-label]="total() + ' alertas de reposición pendientes'">
+      <svg cIcon name="cilBell" size="lg"></svg>
+      @if (total() > 0) {
+        <c-badge [color]="urgentes() > 0 ? 'danger' : 'warning'" shape="rounded-pill" position="top-end">
+          {{ total() > 99 ? '99+' : total() }}
+        </c-badge>
+      }
+    </button>
+
+    <ul cDropdownMenu class="pt-0" style="min-width: 340px">
+      <li>
+        <div class="px-3 py-2 bg-body-secondary rounded-top d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">Reposición de stock</span>
+          @if (notif(); as n) {
+            <span>
+              @if (n.agotado) { <c-badge color="dark" class="me-1">{{ n.agotado }} agotado</c-badge> }
+              @if (n.critico) { <c-badge color="danger" class="me-1">{{ n.critico }} crítico</c-badge> }
+              @if (n.reponer) { <c-badge color="warning">{{ n.reponer }} reponer</c-badge> }
+            </span>
+          }
+        </div>
+      </li>
+
+      @if (total() === 0) {
+        <li><span class="dropdown-item-text small text-body-secondary py-3">✔ Sin alertas de reposición pendientes</span></li>
+      } @else {
+        @for (a of notif()?.urgentes ?? []; track a.id) {
+          <li>
+            <a cDropdownItem routerLink="/inventario/inteligente" class="py-2 border-bottom">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <span class="text-truncate small fw-semibold" style="max-width: 210px" [title]="a.producto">{{ a.producto }}</span>
+                <c-badge [color]="TIPOS[a.tipo].color">{{ TIPOS[a.tipo].etiqueta }}</c-badge>
+              </div>
+              <div class="small text-body-secondary">
+                {{ a.deposito }} · disp. {{ a.disponible | number: '1.0-0' }} · pedir {{ a.sugerido | number: '1.0-0' }}
+              </div>
+            </a>
+          </li>
+        }
+      }
+
+      <li>
+        <a cDropdownItem routerLink="/inventario/inteligente" class="text-center fw-semibold small py-2 text-primary">
+          Ver todas las alertas →
+        </a>
+      </li>
+    </ul>
+  </c-dropdown>
+}

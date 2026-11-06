@@ -15,11 +15,28 @@ class PresupuestoServicio extends Model
 
     public const DIAS_VIGENCIA = 7;
 
+    /** Medio por el que el cliente respondió (pse_canres). */
+    public const RESPUESTA_WEB       = 'WEB';
+    public const RESPUESTA_MOSTRADOR = 'MOSTRADOR';
+    public const RESPUESTA_TELEFONO  = 'TELEFONO';
+    public const RESPUESTA_WHATSAPP  = 'WHATSAPP';
+
+    /** Medios que registra un funcionario (aprobación asistida). */
+    public const RESPUESTAS_ASISTIDAS = [self::RESPUESTA_MOSTRADOR, self::RESPUESTA_TELEFONO, self::RESPUESTA_WHATSAPP];
+
+    public const ETIQUETAS_RESPUESTA = [
+        self::RESPUESTA_WEB       => 'desde la tienda online',
+        self::RESPUESTA_MOSTRADOR => 'en la sucursal',
+        self::RESPUESTA_TELEFONO  => 'por teléfono',
+        self::RESPUESTA_WHATSAPP  => 'por WhatsApp',
+    ];
+
     protected $fillable = [
         'pse_numero', 'pse_oseid', 'pse_versio', 'pse_eprid',
         'pse_subtot', 'pse_impues', 'pse_total', 'pse_fecven',
         'pse_obs', 'pse_obsval', 'pse_motrec', 'pse_usuid', 'pse_valusu',
         'pse_enviad', 'pse_respon',
+        'pse_canres', 'pse_usures', 'pse_obsres',
     ];
 
     protected $casts = [
@@ -56,6 +73,12 @@ class PresupuestoServicio extends Model
     public function validador(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'pse_valusu', 'usu_id');
+    }
+
+    /** Funcionario que registró la respuesta del cliente (aprobación asistida). */
+    public function respondidoPor(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'pse_usures', 'usu_id');
     }
 
     public function codigoEstado(): ?string

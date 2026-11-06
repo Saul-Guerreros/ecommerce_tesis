@@ -23,6 +23,8 @@ class OrdenTrabajoService
     public function __construct(
         private ServicioEstadoService $estados,
         private ServicioTotalesService $totales,
+        private DiagnosticoPreliminarService $preliminar,
+         private ClasificacionSolicitudService $clasificacion,
     ) {}
 
     /** Crea la OT y pasa la solicitud a EN_DIAGNOSTICO. */
@@ -33,6 +35,12 @@ class OrdenTrabajoService
         }
         if ($s->ordenServicio()->exists()) {
             throw ValidationException::withMessages(['orden' => 'Esta solicitud ya tiene una orden de trabajo.']);
+        }
+        // La garantía de compra la cubre la empresa responsable: no se diagnostica ni se presupuesta.
+        if ($s->esGarantiaDeCompra()) {
+            throw ValidationException::withMessages([
+                'orden' => 'Las garantías de compra se gestionan con la empresa responsable: use «Iniciar gestión de garantía».',
+            ]);
         }
 
         return DB::transaction(function () use ($s, $usuario) {
@@ -91,9 +99,11 @@ class OrdenTrabajoService
                         'dfa_obs'   => $f['obs'] ?? null,
                     ]);
                 }
-
+                // Métrica de la tesis: coincidencia IA vs. técnico (se recalcula en cada guardado).
+                $this->preliminar->evaluar($s, array_column($d['fallas'], 'fll_id'));
                 $rutas = AdjuntoServicio::guardar($s, $fotos, SolicitudAdjunto::DIAGNOSTICO, $usuario->usu_id);
-
+                // Punto 7: el tipo de problema de la IA se compara con la falla principal del técnico.
+                $this->clasificacion->evaluar($s, array_column($d['fallas'], 'fll_id'));
                 $this->estados->registrarNota(
                     $s, $usuario->usu_id,
                     ($existia ? 'Diagnóstico actualizado' : 'Diagnóstico registrado')

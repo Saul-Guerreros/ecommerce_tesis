@@ -1,0 +1,203 @@
+<app-pagina-reporte titulo="Reporte de compras"
+                    descripcion="Compras confirmadas (no anuladas) y obligaciones pendientes con proveedores. Montos en guaraníes con IVA.">
+
+  <div acciones>
+    <app-exportar-reporte reporte="compras" [vista]="vista()" [filtros]="ultimosFiltros()"
+                          [deshabilitado]="resultado().estado !== 'ok'" />
+  </div>
+
+  <app-filtros-reporte [mostrarFechas]="usaFechas()"
+                       [cargando]="cargando()"
+                       [errores]="errores()"
+                       (aplicar)="aplicarFiltros($event)">
+    <ng-container filtrosExtra>
+      <c-col md="6" lg="3">
+        <label cLabel for="c-proveedor">Proveedor</label>
+        <select cSelect id="c-proveedor" sizing="sm" (change)="cambiarExtra('proveedor_id', $any($event.target).value)"
+                [class.is-invalid]="!!errores()?.['proveedor_id']">
+          <option value="">Todos</option>
+          @for (p of proveedores(); track p.id) {
+            <option [value]="p.id" [selected]="extra().proveedor_id === p.id">{{ p.nombre }}</option>
+          }
+        </select>
+        @if (errores()?.['proveedor_id']?.[0]; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+      </c-col>
+      @if (vista() === 'cxp-por-vencer') {
+        <c-col md="6" lg="2">
+          <label cLabel for="c-dias">Vencen en los próximos (días)</label>
+          <input cFormControl id="c-dias" type="number" sizing="sm" min="1" max="365"
+                 [value]="extra().dias" (change)="cambiarExtra('dias', $any($event.target).value)"
+                 [class.is-invalid]="!!errores()?.['dias']" />
+          @if (errores()?.['dias']?.[0]; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+        </c-col>
+      }
+    </ng-container>
+  </app-filtros-reporte>
+
+  <c-card>
+    <c-card-body>
+      <c-nav variant="underline-border" class="mb-3">
+        @for (v of vistas; track v.clave) {
+          <c-nav-item>
+            <button cNavLink type="button" [active]="vista() === v.clave" (click)="cambiarVista(v.clave)">
+              {{ v.etiqueta }}
+            </button>
+          </c-nav-item>
+        }
+      </c-nav>
+
+      @if (!usaFechas()) {
+        <div class="small text-body-secondary mb-3">
+          Situación al día de hoy: no depende del rango de fechas.
+        </div>
+      }
+
+      @let r = resultado();
+      @let t = r.totales;
+
+      <app-estado-bloque [estado]="r.estado" [altura]="300" [mensajeVacio]="mensajeVacio()" (reintentar)="cargar()">
+        @switch (vista()) {
+
+          <!-- ===== Por proveedor ===== -->
+          @case ('proveedores') {
+            @if (t) {
+              <c-row class="g-3 mb-4">
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Total comprado</div>
+                    <div class="fs-5 fw-semibold">{{ t['total'] | gs }}</div>
+                    <div class="small text-body-secondary">{{ t['compras'] }} facturas · {{ t['proveedores'] }} proveedores</div>
+                  </div>
+                </c-col>
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Contado</div>
+                    <div class="fs-5 fw-semibold">{{ t['contado'] | gs }}</div>
+                  </div>
+                </c-col>
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Crédito</div>
+                    <div class="fs-5 fw-semibold">{{ t['credito'] | gs }}</div>
+                  </div>
+                </c-col>
+                <c-col sm="6" lg="3">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">IVA crédito fiscal</div>
+                    <div class="fs-5 fw-semibold">{{ t['iva'] | gs }}</div>
+                  </div>
+                </c-col>
+              </c-row>
+            }
+            <div class="small text-body-secondary mb-2">{{ r.filas.length }} resultados encontrados</div>
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Proveedor</th><th>RUC</th><th style="width: 15%">Participación</th>
+                  <th class="text-end">Facturas</th><th class="text-end">Contado</th><th class="text-end">Crédito</th>
+                  <th class="text-end">Promedio</th><th class="text-end">Total</th><th>Última compra</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id) {
+                    <tr>
+                      <td>{{ f.proveedor }}</td>
+                      <td class="small">{{ f.ruc }}</td>
+                      <td>
+                        <div class="small text-body-secondary">{{ numero(f.participacion ?? 0) }} %</div>
+                        <c-progress thin color="info" [value]="f.participacion ?? 0" [attr.aria-label]="f.proveedor" />
+                      </td>
+                      <td class="text-end">{{ f.compras }}</td>
+                      <td class="text-end text-nowrap">{{ f.contado | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.credito | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.promedio | gs }}</td>
+                      <td class="text-end text-nowrap fw-semibold">{{ f.total | gs }}</td>
+                      <td class="small text-nowrap">{{ fecha(f.ultima_compra) | date: 'dd/MM/yyyy' }}</td>
+                    </tr>
+                  }
+                </tbody>
+                @if (t) {
+                  <tfoot class="fw-semibold text-nowrap"><tr>
+                    <td colspan="3">Total</td>
+                    <td class="text-end">{{ t['compras'] }}</td>
+                    <td class="text-end">{{ t['contado'] | gs }}</td>
+                    <td class="text-end">{{ t['credito'] | gs }}</td>
+                    <td></td>
+                    <td class="text-end">{{ t['total'] | gs }}</td>
+                    <td></td>
+                  </tr></tfoot>
+                }
+              </table>
+            </div>
+          }
+
+          <!-- ===== Cuentas por pagar (vencidas y por vencer) ===== -->
+          @default {
+            @if (t) {
+              <c-row class="g-3 mb-4">
+                <c-col md="4">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">
+                      {{ vista() === 'cxp-vencidas' ? 'Saldo vencido' : 'Saldo a pagar en ' + t['dias_umbral'] + ' días' }}
+                    </div>
+                    <div class="fs-4 fw-semibold" [class.text-danger]="vista() === 'cxp-vencidas'">{{ t['saldo'] | gs }}</div>
+                    <div class="small text-body-secondary">{{ t['cuotas'] }} cuotas · {{ t['proveedores'] }} proveedores</div>
+                  </div>
+                </c-col>
+                <c-col md="8">
+                  <div class="border rounded p-3 h-100">
+                    @for (tr of t['tramos']; track tr.tramo; let i = $index) {
+                      <div class="d-flex justify-content-between small">
+                        <span>{{ tr.tramo }} <span class="text-body-secondary">· {{ tr.cuotas }} cuotas</span></span>
+                        <span class="fw-semibold">{{ tr.saldo | gs }}</span>
+                      </div>
+                      <c-progress thin class="mb-2" [color]="colorTramo(i, t['tramos'].length)"
+                                  [value]="tr.participacion ?? 0" [attr.aria-label]="tr.tramo" />
+                    }
+                  </div>
+                </c-col>
+              </c-row>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Proveedor</th><th>Factura</th><th>Cuota</th><th>Vencimiento</th>
+                  <th class="text-end">{{ vista() === 'cxp-vencidas' ? 'Días vencida' : 'Días para vencer' }}</th>
+                  <th>Tramo</th>
+                  <th class="text-end">Importe</th><th class="text-end">Pagado</th><th class="text-end">Saldo</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id) {
+                    <tr>
+                      <td>
+                        <div>{{ f.proveedor }}</div>
+                        <div class="small text-body-secondary">{{ f.ruc }}</div>
+                      </td>
+                      <td class="small text-nowrap">{{ f.factura }}</td>
+                      <td class="small">{{ f.cuota }}</td>
+                      <td class="small text-nowrap">{{ fecha(f.vencimiento) | date: 'dd/MM/yyyy' }}</td>
+                      <td class="text-end fw-semibold" [class.text-danger]="vista() === 'cxp-vencidas'">
+                        {{ vista() === 'cxp-vencidas' ? f.dias_vencido : f.dias_para_vencer }}
+                      </td>
+                      <td><c-badge [color]="vista() === 'cxp-vencidas' ? 'danger' : 'warning'">{{ f.tramo }}</c-badge></td>
+                      <td class="text-end text-nowrap">{{ f.importe | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.pagado | gs }}</td>
+                      <td class="text-end text-nowrap fw-semibold">{{ f.saldo | gs }}</td>
+                    </tr>
+                  }
+                </tbody>
+                @if (t) {
+                  <tfoot class="fw-semibold text-nowrap"><tr>
+                    <td colspan="6">Total</td>
+                    <td class="text-end">{{ t['importe'] | gs }}</td>
+                    <td class="text-end">{{ t['pagado'] | gs }}</td>
+                    <td class="text-end">{{ t['saldo'] | gs }}</td>
+                  </tr></tfoot>
+                }
+              </table>
+            </div>
+          }
+        }
+      </app-estado-bloque>
+    </c-card-body>
+  </c-card>
+</app-pagina-reporte>

@@ -1,0 +1,104 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Cobros de servicios</strong></c-card-header>
+  <c-card-body>
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar por N.º de solicitud, cliente o C.I..."
+               [(ngModel)]="filtros.buscar" (ngModelChange)="onBuscar()" />
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtros.estado" (ngModelChange)="cargar()">
+          <option *ngFor="let e of config?.estados ?? []" [value]="e.epa_codigo">{{ e.epa_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtros.canal" (ngModelChange)="cargar()">
+          <option value="">Todos los canales</option>
+          <option value="WEB">Tienda web</option>
+          <option value="MOSTRADOR">Mostrador</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtros.mpa_id" (ngModelChange)="cargar()">
+          <option value="">Todos los métodos</option>
+          <option *ngFor="let m of config?.metodos ?? []" [value]="m.mpa_id">{{ m.mpa_descri }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <select cSelect [(ngModel)]="filtros.suc_id" (ngModelChange)="cargar()">
+          <option value="">Todas las sucursales</option>
+          <option *ngFor="let s of config?.sucursales ?? []" [value]="s.suc_id">{{ s.suc_nombre }}</option>
+        </select>
+      </div>
+      <div class="col-md-2"><input cFormControl type="date" [(ngModel)]="filtros.desde" (ngModelChange)="cargar()" title="Desde" /></div>
+      <div class="col-md-2"><input cFormControl type="date" [(ngModel)]="filtros.hasta" (ngModelChange)="cargar()" title="Hasta" /></div>
+    </div>
+
+    <div class="text-muted small mb-2" *ngIf="!cargando">{{ total }} resultado(s) encontrado(s)</div>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <div class="table-responsive" *ngIf="!cargando">
+      <table cTable striped hover>
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Solicitud</th><th>Cliente</th><th>Pago</th><th>Método</th>
+            <th class="text-end">Monto</th><th class="text-center">Estado</th><th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of filas">
+            <td class="text-nowrap">{{ f.creado }}</td>
+            <td class="text-nowrap">
+              <strong>{{ f.solicitud.sse_numero }}</strong>
+              <div class="small text-muted">{{ f.solicitud.estado }}<span *ngIf="f.solicitud.sucursal"> · {{ f.solicitud.sucursal }}</span></div>
+            </td>
+            <td>{{ f.solicitud.cliente }}<div class="small text-muted">C.I. {{ f.solicitud.cedula || '—' }}</div></td>
+            <td class="small">
+              Pago {{ f.orden }} · {{ f.tipo }}
+              <c-badge color="dark" class="ms-1" *ngIf="f.canal === 'MOSTRADOR'">Mostrador</c-badge>
+            </td>
+            <td class="small">{{ f.metodo }}<span class="text-muted" *ngIf="f.tiene_comprobante"> · con comprobante</span></td>
+            <td class="text-end text-nowrap">Gs. {{ formatoGs(f.monto) }}</td>
+            <td class="text-center"><c-badge [color]="colorEstado(f.estado.codigo)">{{ f.estado.descripcion }}</c-badge></td>
+            <td class="text-end text-nowrap">
+              <button cButton size="sm" color="primary" class="me-2 text-white" (click)="gestionar(f)">Gestionar</button>
+            </td>
+          </tr>
+          <tr *ngIf="filas.length === 0">
+            <td colspan="8" class="text-center">No hay cobros para los filtros aplicados</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" *ngIf="!cargando && total > 0">
+      <div class="text-muted small">Mostrando {{ rangoDesde }}-{{ rangoHasta }} de {{ total }}</div>
+      <nav *ngIf="lastPage > 1">
+        <ul cPagination class="mb-0">
+          <li cPageItem [disabled]="currentPage === 1"><a cPageLink role="button" (click)="cambiarPagina(currentPage - 1)">&#9664;</a></li>
+          <li cPageItem *ngFor="let p of pagesArray" [active]="p === currentPage"><a cPageLink role="button" (click)="cambiarPagina(p)">{{ p }}</a></li>
+          <li cPageItem [disabled]="currentPage === lastPage"><a cPageLink role="button" (click)="cambiarPagina(currentPage + 1)">&#9654;</a></li>
+        </ul>
+      </nav>
+    </div>
+  </c-card-body>
+</c-card>
+
+<c-modal [visible]="gestionVisible" (visibleChange)="cerrarGestion($event)" size="xl" scrollable>
+  <c-modal-header>
+    <h5 cModalTitle>Pagos — {{ seleccionada?.solicitud?.sse_numero }} · {{ seleccionada?.solicitud?.cliente }}</h5>
+    <button cButtonClose (click)="cerrarGestion(false)"></button>
+  </c-modal-header>
+  <c-modal-body>
+    <app-pagos-solicitud *ngIf="gestionVisible" [solicitudId]="seleccionada?.solicitud?.sse_id ?? null"
+                         (actualizado)="onCambio()"></app-pagos-solicitud>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrarGestion(false)">Cerrar</button>
+  </c-modal-footer>
+</c-modal>

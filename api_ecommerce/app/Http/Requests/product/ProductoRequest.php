@@ -45,6 +45,10 @@ class ProductoRequest extends FormRequest
             'prd_afestk' => ['nullable', 'boolean'],
             // Repuesto de taller (Servicio Técnico): no se publica en la tienda.
             'prd_repues' => ['nullable', 'boolean'],
+            // Garantía en días. null = usa el plazo general; 0 = sin garantía.
+            'prd_gardia' => ['nullable', 'integer', 'min:0', 'max:3650'],
+            // Empresa responsable de la garantía (la que repara o repone). null = sin definir.
+            'prd_proid'  => ['nullable', 'integer', Rule::exists('proveedor', 'pro_id')],
             'prd_estado' => ['nullable', 'boolean'],
 
             // Solo se acepta un padre que no sea, a su vez, variante.

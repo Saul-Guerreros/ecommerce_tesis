@@ -1,0 +1,117 @@
+<app-pagina-reporte titulo="Reporte de promociones"
+                    descripcion="Configuración de cupones y campañas de descuento.">
+
+  <div acciones>
+    <app-exportar-reporte reporte="promociones" [vista]="vista()" [filtros]="ultimosFiltros()"
+                          [deshabilitado]="resultado().estado !== 'ok'" />
+  </div>
+
+  <c-alert color="info" class="small">
+    <strong>Alcance:</strong> este reporte muestra la configuración de las promociones. El uso de cupones y
+    las ventas por campaña no se registran todavía en los pedidos, por lo que su medición queda como trabajo futuro.
+  </c-alert>
+
+  <app-filtros-reporte [mostrarFechas]="usaFechas()"
+                       [mostrarSucursal]="false"
+                       [cargando]="cargando()"
+                       [errores]="errores()"
+                       (aplicar)="aplicarFiltros($event)" />
+
+  <c-card>
+    <c-card-body>
+      <c-nav variant="underline-border" class="mb-3">
+        @for (v of vistas; track v.clave) {
+          <c-nav-item>
+            <button cNavLink type="button" [active]="vista() === v.clave" (click)="cambiarVista(v.clave)">
+              {{ v.etiqueta }}
+            </button>
+          </c-nav-item>
+        }
+      </c-nav>
+
+      @if (vista() === 'campanas') {
+        <div class="small text-body-secondary mb-3">Campañas cuya vigencia se superpone con el período seleccionado.</div>
+      }
+
+      @let r = resultado();
+      @let t = r.totales;
+
+      <app-estado-bloque [estado]="r.estado" [altura]="250" [mensajeVacio]="mensajeVacio()" (reintentar)="cargar()">
+        @switch (vista()) {
+
+          <!-- ===== Cupones ===== -->
+          @case ('cupones') {
+            @if (t) {
+              <div class="d-flex flex-wrap gap-3 mb-3 small">
+                <span><strong>{{ t['cupones'] }}</strong> cupones</span>
+                <span><c-badge color="success">{{ t['activos'] }}</c-badge> activos</span>
+                <span><c-badge color="secondary">{{ t['inactivos'] }}</c-badge> inactivos</span>
+                <span>{{ t['porcentaje'] }} por porcentaje · {{ t['monto_fijo'] }} por monto fijo</span>
+                <span>{{ t['ilimitados'] }} de uso ilimitado</span>
+              </div>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Código</th><th>Tipo</th><th class="text-end">Descuento</th><th>Uso</th>
+                  <th>Alcance</th><th class="text-end">Elementos</th><th>Estado</th><th>Creado</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id) {
+                    <tr>
+                      <td class="fw-semibold">{{ f.codigo }}</td>
+                      <td class="small">{{ f.tipo_descuento }}</td>
+                      <td class="text-end text-nowrap">{{ f.descuento_texto }}</td>
+                      <td class="small">{{ f.uso }}</td>
+                      <td class="small">{{ f.alcance }}</td>
+                      <td class="text-end">{{ f.elementos }}</td>
+                      <td><c-badge [color]="f.estado === 'Activo' ? 'success' : 'secondary'">{{ f.estado }}</c-badge></td>
+                      <td class="small text-nowrap">{{ fecha(f.creado) | date: 'dd/MM/yyyy' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          <!-- ===== Campañas ===== -->
+          @case ('campanas') {
+            @if (t) {
+              <div class="d-flex flex-wrap gap-3 mb-3 small">
+                <span><strong>{{ t['campanas'] }}</strong> campañas</span>
+                <span><c-badge color="success">{{ t['vigentes'] }}</c-badge> vigentes</span>
+                <span><c-badge color="info">{{ t['programadas'] }}</c-badge> programadas</span>
+                <span><c-badge color="secondary">{{ t['finalizadas'] }}</c-badge> finalizadas</span>
+                <span><c-badge color="danger">{{ t['inactivas'] }}</c-badge> inactivas</span>
+                <span>{{ t['flash'] }} campañas flash</span>
+              </div>
+            }
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Código</th><th>Campaña</th><th class="text-end">Descuento</th><th>Alcance</th>
+                  <th class="text-end">Elementos</th><th>Inicio</th><th>Fin</th><th class="text-end">Días</th><th>Situación</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id) {
+                    <tr>
+                      <td class="small fw-semibold">{{ f.codigo }}</td>
+                      <td class="small">{{ f.tipo_campana }}</td>
+                      <td class="text-end text-nowrap">{{ f.descuento_texto }}</td>
+                      <td class="small">{{ f.alcance }}</td>
+                      <td class="text-end">{{ f.elementos }}</td>
+                      <td class="small text-nowrap">{{ fecha(f.inicio) | date: 'dd/MM/yyyy' }}</td>
+                      <td class="small text-nowrap">{{ fecha(f.fin) | date: 'dd/MM/yyyy' }}</td>
+                      <td class="text-end">{{ f.duracion }}</td>
+                      <td><c-badge [color]="colorSituacion(f.situacion)">{{ f.situacion | titlecase }}</c-badge></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </app-estado-bloque>
+    </c-card-body>
+  </c-card>
+</app-pagina-reporte>

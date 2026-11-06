@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { URL_SERVICIOS } from '../../config/config';
-import { ConfigServicio, ServicioCliente } from '../models/servicio-tecnico.model';
+import { ConfigServicio, DiagnosticoIa, DiagnosticoIaPayload, ServicioCliente } from '../models/servicio-tecnico.model';
 
 @Injectable({ providedIn: 'root' })
 export class ServicioTecnicoService {
@@ -43,5 +43,9 @@ export class ServicioTecnicoService {
   /** PDF con el JWT del cliente (por eso Blob y no un enlace directo). */
   constancia(numero: string, tipo: 'recepcion' | 'retiro') {
     return this.http.get(`${this.URL}/${encodeURIComponent(numero)}/constancia/${tipo}`, { responseType: 'blob' });
+  }
+
+  diagnosticoPreliminar(datos: DiagnosticoIaPayload) {
+    return this.http.post<{ message: string; data: DiagnosticoIa }>(`${this.URL}/diagnostico-preliminar`, datos);
   }
 }

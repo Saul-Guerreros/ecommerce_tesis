@@ -65,6 +65,9 @@ class OpcionesAdmin
                     ['permiso' => 'tipos-ajuste.ver', 'nombre' => 'Tipos de ajuste', 'urls' => ['/inventario/tipos-ajuste'], 'fijo' => false],
                     ['permiso' => 'kardex.ver', 'nombre' => 'Movimientos de stock (Kardex)', 'urls' => ['/inventario/kardex'], 'fijo' => false],
                     ['permiso' => 'stock.ver', 'nombre' => 'Stock actual', 'urls' => ['/inventario/stock-actual'], 'fijo' => false],
+                    ['permiso' => 'inventario-inteligente.ver', 'nombre' => 'Inventario inteligente (predicción y alertas)', 'urls' => ['/inventario/inteligente'], 'fijo' => false],
+                    // Acción sin pantalla propia: atender/descartar alertas, recalcular y configurar parámetros.
+                    ['permiso' => 'inventario-inteligente.gestionar', 'nombre' => 'Gestionar inventario inteligente', 'urls' => [], 'fijo' => false],
                 ],
             ],
             [
@@ -119,8 +122,25 @@ class OpcionesAdmin
 					['permiso' => 'fallas.ver',                'nombre' => 'Fallas',                     'urls' => ['/servicios/fallas'], 'fijo' => false],
 					['permiso' => 'trabajos.ver',              'nombre' => 'Trabajos (mano de obra)',    'urls' => ['/servicios/trabajos'], 'fijo' => false],
 				    ['permiso' => 'servicios.presupuestos.ver', 'nombre' => 'Validación de presupuestos', 'urls' => ['/servicios/presupuestos'], 'fijo' => false],
+					['permiso' => 'servicios.cobros.ver',       'nombre' => 'Cobros de servicios',        'urls' => ['/servicios/cobros'], 'fijo' => false],
+					// Acción sin pantalla propia: cobrar en el mostrador (anticipo, saldo, "Cobrar y entregar").
+					['permiso' => 'servicios.cobros.confirmar', 'nombre' => 'Cobrar servicios en el mostrador', 'urls' => [], 'fijo' => false],
 				],
 			],
+            [
+                'nombre' => 'Métricas y Reportes',
+                'opciones' => [
+                    ['permiso' => 'metricas.dashboard.ver',   'nombre' => 'Métricas del dashboard',      'urls' => [],                         'fijo' => false],
+                    ['permiso' => 'reportes.ventas.ver',      'nombre' => 'Reportes de ventas',          'urls' => ['/reportes/ventas'],       'fijo' => false],
+                    ['permiso' => 'reportes.compras.ver',     'nombre' => 'Reportes de compras',         'urls' => ['/reportes/compras'],      'fijo' => false],
+                    ['permiso' => 'reportes.inventario.ver',  'nombre' => 'Reportes de inventario',      'urls' => ['/reportes/inventario'],   'fijo' => false],
+                    ['permiso' => 'reportes.servicio.ver',    'nombre' => 'Reportes de servicio técnico','urls' => ['/reportes/servicio'],     'fijo' => false],
+                    ['permiso' => 'reportes.clientes.ver',    'nombre' => 'Reportes de clientes',        'urls' => ['/reportes/clientes'],     'fijo' => false],
+                    ['permiso' => 'reportes.promociones.ver', 'nombre' => 'Reportes de promociones',     'urls' => ['/reportes/promociones'],  'fijo' => false],
+                    ['permiso' => 'reportes.chatbot.ver',     'nombre' => 'Reportes del asistente virtual','urls' => ['/reportes/chatbot'],    'fijo' => false],
+                    ['permiso' => 'reportes.comportamiento.ver', 'nombre' => 'Análisis de comportamiento de clientes', 'urls' => ['/reportes/comportamiento'], 'fijo' => false],
+                ],
+            ],
         ];
     }
 

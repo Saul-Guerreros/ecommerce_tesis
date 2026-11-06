@@ -1,0 +1,29 @@
+<div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+<c-row class="g-4" *ngIf="!cargando">
+  <c-col lg="6">
+    <h6>Modelo elegido por producto</h6>
+    <div style="height: 280px"><c-chart type="bar" height="280" [data]="grafico" [options]="opciones" /></div>
+  </c-col>
+
+  <c-col lg="6">
+    <h6>Error promedio en el backtesting</h6>
+    <table cTable striped hover>
+      <thead>
+        <tr><th>Modelo</th><th class="text-end">Elegido</th><th class="text-end">RMSE</th><th class="text-end">MAE</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let m of metricas; let i = index" [class.fw-semibold]="i === 0">
+          <td>{{ MODELOS[m.modelo] ?? m.modelo }}</td>
+          <td class="text-end">{{ m.veces_elegido }} ({{ totalElegidos ? (m.veces_elegido / totalElegidos * 100 | number: '1.0-0') : 0 }}%)</td>
+          <td class="text-end">{{ m.rmse | number: '1.0-3' }}</td>
+          <td class="text-end">{{ m.mae | number: '1.0-3' }}</td>
+        </tr>
+        <tr *ngIf="metricas.length === 0"><td colspan="4" class="text-center">Aún no se ejecutó el pronóstico</td></tr>
+      </tbody>
+    </table>
+    <p class="text-muted small mb-0">
+      RMSE y MAE en unidades por semana; menor es mejor. El promedio móvil es la línea base de comparación.
+    </p>
+  </c-col>
+</c-row>

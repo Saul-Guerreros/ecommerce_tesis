@@ -1,0 +1,51 @@
+<c-card class="border-info">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>{{ titulo }}</strong>
+    <c-badge *ngIf="diagnostico.disponible && diagnostico.confianza" [color]="colorConfianza">
+      Confianza {{ diagnostico.confianza | titlecase }}
+    </c-badge>
+  </c-card-header>
+  <c-card-body>
+    <p *ngIf="!diagnostico.disponible" class="text-muted mb-2">La IA no devolvió un diagnóstico para esta consulta.</p>
+
+    <ng-container *ngIf="diagnostico.disponible">
+      <p *ngIf="diagnostico.resumen" class="mb-2">{{ diagnostico.resumen }}</p>
+
+      <h6 class="small text-uppercase text-muted">Posibles causas</h6>
+      <ul class="small mb-2">
+        <li *ngFor="let f of diagnostico.fallas">
+          {{ f.descripcion }} <span class="text-muted">({{ f.probabilidad | titlecase }})</span>
+        </li>
+      </ul>
+
+      <ng-container *ngIf="diagnostico.trabajos.length">
+        <h6 class="small text-uppercase text-muted">Servicios recomendados</h6>
+        <ul class="small mb-2">
+          <li *ngFor="let t of diagnostico.trabajos">
+            {{ t.descripcion }}<span *ngIf="t.precio !== null"> · Gs. {{ t.precio | number:'1.0-0' }}</span>
+          </li>
+        </ul>
+      </ng-container>
+
+      <p *ngIf="diagnostico.estimacion as e" class="small mb-2">
+        <strong>Estimación mano de obra:</strong>
+        Gs. {{ e.costo_min | number:'1.0-0' }} – Gs. {{ e.costo_max | number:'1.0-0' }}
+        <span *ngIf="e.dias"> · aprox. {{ e.dias }} día(s)</span>
+      </p>
+      <p *ngIf="diagnostico.garantia" class="small text-muted mb-2">Servicio por garantía: sin estimación de costos.</p>
+
+      <ng-container *ngIf="diagnostico.preguntas.length">
+        <h6 class="small text-uppercase text-muted">Preguntas sugeridas</h6>
+        <ul class="small mb-2"><li *ngFor="let p of diagnostico.preguntas">{{ p }}</li></ul>
+      </ng-container>
+
+      <p *ngIf="mostrarCoincidencia && diagnostico.coincidencia" class="small mb-2">
+        Coincidencia con el diagnóstico del técnico: <strong>{{ diagnostico.coincidencia }}</strong>
+      </p>
+    </ng-container>
+
+    <div class="small text-muted border-top pt-2">
+      Orientativo (IA). No incluye repuestos. El diagnóstico definitivo es del técnico.
+    </div>
+  </c-card-body>
+</c-card>

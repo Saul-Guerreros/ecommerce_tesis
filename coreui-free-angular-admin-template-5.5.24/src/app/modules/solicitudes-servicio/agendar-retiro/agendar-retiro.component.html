@@ -10,8 +10,9 @@
       <div class="mb-3">
         <label cLabel for="sse_fecing">Fecha de retiro <span class="text-danger">*</span></label>
         <input cFormControl id="sse_fecing" type="date" formControlName="sse_fecing" [min]="hoy" />
+        <div class="small text-muted">No se atiende los domingos.</div>
         <div class="text-danger small" *ngIf="campoInvalido('sse_fecing')">
-          {{ errorBackend('sse_fecing') || 'Indique la fecha de retiro.' }}
+          {{ errorBackend('sse_fecing') || (form.get('sse_fecing')?.hasError('domingo') ? 'No se puede agendar un domingo.' : 'Indique la fecha de retiro.') }}
         </div>
       </div>
       <div>

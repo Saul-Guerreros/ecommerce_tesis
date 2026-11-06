@@ -25,7 +25,13 @@ export const routes: Routes = [
     children: [
       {
         path: 'dashboard',
-        loadChildren: () => import('./views/dashboard/routes').then((m) => m.routes)
+        loadChildren: () => import('./modules/dashboard/dashboard.module').then((m) => m.DashboardModule),
+        data: { title: 'Dashboard' },
+      },
+      {
+        path: 'reportes',
+        loadChildren: () => import('./modules/reportes/reportes.module').then((m) => m.ReportesModule),
+        data: { title: 'Reportes' },
       },
 	    {
         path: 'perfil',
@@ -251,6 +257,11 @@ export const routes: Routes = [
         data: { title: 'Stock Actual' },
       },
 	  {
+        path: 'inventario/inteligente',
+        loadChildren: () => import('./modules/inventario-inteligente/inventario-inteligente.module').then(m => m.InventarioInteligenteModule),
+        data: { title: 'Inventario inteligente' },
+      },
+	  {
         path: 'seguridad',
         loadChildren: () => import('./modules/seguridad/seguridad.routes').then(m => m.routes),
         data: { title: 'Seguridad' },
@@ -375,19 +386,17 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/panel-servicios/panel-servicios.module').then(m => m.PanelServiciosModule),
         data: { title: 'Panel general de servicios' },
       },
-
+      {
+        path: 'servicios/cobros',
+        loadChildren: () => import('./modules/cobros-servicio/cobros-servicio.module').then(m => m.CobrosServicioModule),
+        data: { title: 'Cobros de servicios' },
+      },
       {
         path: 'atencion-cliente/:slug',
         loadChildren: () =>
           import('./modules/paginas-informativas/paginas-informativas.module').then(m => m.PaginasInformativasModule),
         data: { title: 'Atención al Cliente' },
       },
-
-
-
-
-
-
     {
       //Fuera del FrontEnd
       path: 'discounts',

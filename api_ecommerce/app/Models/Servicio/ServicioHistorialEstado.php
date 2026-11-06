@@ -17,9 +17,22 @@ class ServicioHistorialEstado extends Model
     public const PAGO        = 'PAGO';
     public const PRESUPUESTO = 'PRESUPUESTO';
     public const NOTA        = 'NOTA';
+    public const CONTACTO    = 'CONTACTO';
+
+    /** Registrar contacto con el cliente (she_tipo CONTACTO). */
+    public const MEDIOS     = ['TELEFONO', 'WHATSAPP', 'CORREO', 'PRESENCIAL'];
+    public const RESULTADOS = ['CONTACTADO', 'NO_CONTESTA', 'PIDE_TIEMPO'];
+
+    public const ETIQUETAS_MEDIO = [
+        'TELEFONO' => 'Teléfono', 'WHATSAPP' => 'WhatsApp', 'CORREO' => 'Correo', 'PRESENCIAL' => 'Presencial',
+    ];
+    public const ETIQUETAS_RESULTADO = [
+        'CONTACTADO' => 'Contactado', 'NO_CONTESTA' => 'No contesta', 'PIDE_TIEMPO' => 'Pide tiempo',
+    ];
 
     protected $fillable = [
         'she_sseid', 'she_usuid', 'she_tipo', 'she_estant', 'she_estid', 'she_coment', 'she_ip',
+        'she_medio', 'she_result',
     ];
 
     protected $casts = ['she_fecha' => 'datetime'];

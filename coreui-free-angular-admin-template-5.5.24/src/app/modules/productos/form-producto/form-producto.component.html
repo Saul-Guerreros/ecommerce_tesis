@@ -108,6 +108,51 @@
           </select>
         </div>
 
+        <!-- Garantía de venta (un repuesto de taller no se vende, no lleva garantía) -->
+        <div class="col-md-6" *ngIf="!esRepuesto">
+          <label cLabel for="prd_garantia">Garantía de venta</label>
+          <select cSelect id="prd_garantia"
+                  [disabled]="soloLectura || esVariante"
+                  (change)="onGarantiaSeleccion($any($event.target).value)">
+            <option *ngFor="let o of opcionesGarantia" [value]="o.clave"
+                    [selected]="garantiaSeleccion === o.clave">{{ o.texto }}</option>
+          </select>
+
+          <input cFormControl type="number" min="0" max="3650" step="1" class="mt-2"
+                 formControlName="prd_gardia" placeholder="Días de garantía (0 a 3650)"
+                 *ngIf="garantiaPersonalizada" />
+
+          <div class="text-danger small" *ngIf="campoInvalido('prd_gardia')">
+            {{ errorBackend('prd_gardia') || 'Ingresá un número entero de días entre 0 y 3650.' }}
+          </div>
+          <div class="text-muted small" *ngIf="esVariante">
+            Se hereda del producto base: se cambia desde ese producto.
+          </div>
+          <div class="text-muted small" *ngIf="!esVariante">
+            Se cuenta desde la entrega del pedido y queda fijado al vender: cambiarlo
+            no afecta las compras ya realizadas.
+          </div>
+        </div>
+
+        <!-- Empresa que respalda la garantía (a ella el técnico le gestiona el reclamo) -->
+        <div class="col-md-6" *ngIf="!esRepuesto">
+          <label cLabel for="prd_proid">Empresa responsable de la garantía</label>
+          <select cSelect id="prd_proid" formControlName="prd_proid">
+            <option [ngValue]="null">Sin definir (se elige al gestionar el reclamo)</option>
+            <option *ngFor="let p of proveedores" [ngValue]="p.pro_id">{{ p.pro_razon }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('prd_proid')">
+            {{ errorBackend('prd_proid') || 'La empresa seleccionada no es válida.' }}
+          </div>
+          <div class="text-muted small" *ngIf="esVariante">
+            Se hereda del producto base: se cambia desde ese producto.
+          </div>
+          <div class="text-muted small" *ngIf="!esVariante">
+            Distribuidora o fabricante que repara o repone el producto en garantía. Si el cliente
+            pide garantía, el técnico le gestiona el reclamo a esta empresa.
+          </div>
+        </div>
+
         <!-- Repuesto de taller (Servicio Técnico) -->
         <div class="col-12">
           <div class="form-check form-switch">

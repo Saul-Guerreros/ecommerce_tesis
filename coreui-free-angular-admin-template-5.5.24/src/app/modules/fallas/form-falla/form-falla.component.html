@@ -25,6 +25,15 @@
         </div>
 
         <div class="col-12">
+          <label cLabel for="fll_cafid">Tipo de problema</label>
+          <select cSelect id="fll_cafid" formControlName="fll_cafid">
+            <option [ngValue]="null">— Sin asignar (se clasifica como "Otro") —</option>
+            <option *ngFor="let c of categorias" [ngValue]="c.caf_id">{{ c.caf_descri }}</option>
+          </select>
+          <div class="text-muted small mt-1">La clasificación automática usa este dato para el tipo de problema.</div>
+          <div class="text-danger small" *ngIf="errorBackend('fll_cafid')">{{ errorBackend('fll_cafid') }}</div>
+        </div>
+        <div class="col-12">
           <label cLabel for="fll_descri">Descripción <span class="text-danger">*</span></label>
           <input cFormControl id="fll_descri" formControlName="fll_descri"
                  placeholder="Ej: Pantalla rota o con líneas" maxlength="100" />

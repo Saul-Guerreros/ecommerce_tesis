@@ -22,6 +22,14 @@ class OpcionesAdminPermisoSeeder extends Seeder
         'usuarios.ver', 'usuarios.gestionar',
         'roles.gestionar', 'permisos.gestionar',
         'chatbot.gestionar', 'auditoria.ver',
+        // Información financiera y de gestión: solo por asignación explícita
+        'metricas.dashboard.ver',
+        'reportes.ventas.ver', 'reportes.compras.ver', 'reportes.inventario.ver',
+        'reportes.servicio.ver', 'reportes.clientes.ver', 'reportes.promociones.ver',
+        'reportes.chatbot.ver', 'reportes.comportamiento.ver',
+        // Recibir dinero: solo por asignación explícita
+        'servicios.cobros.confirmar',
+        'inventario-inteligente.ver', 'inventario-inteligente.gestionar',
     ];
 
     public function run(): void

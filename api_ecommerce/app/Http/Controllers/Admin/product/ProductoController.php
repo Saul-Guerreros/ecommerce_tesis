@@ -133,6 +133,8 @@ class ProductoController extends Controller
                 'prd_marmin'    => $padre->prd_marmin,
                 'prd_marmaj'    => $padre->prd_marmaj,
                 'prd_canminmaj' => $padre->prd_canminmaj,
+                'prd_gardia'    => $padre->prd_gardia,
+                'prd_proid'     => $padre->prd_proid,
                 'prd_codinv'    => $fila['prd_codinv'],
                 'prd_descri'    => $fila['prd_descri'],
                 'prd_stkmin'    => $fila['prd_stkmin'],
@@ -166,7 +168,8 @@ class ProductoController extends Controller
      * definió como compartido, tampoco en precio. prd_estado/prd_afestk/
      * prd_stkmin NO se propagan: son independientes por diseño (cada
      * variante puede tener su propio stock mínimo o estar desactivada sin
-     * afectar a sus hermanas). prd_pvtmin/prd_pvtmay (el precio ya
+     * afectar a sus hermanas). La garantía (prd_gardia) y la empresa que la respalda
+     * (prd_proid) SÍ se propagan: son política del modelo/marca, no de cada variante. prd_pvtmin/prd_pvtmay (el precio ya
      * CALCULADO) tampoco se tocan acá: eso lo recalcula PriceService según
      * el costo propio de cada variante, no se copia del padre.
      */
@@ -179,6 +182,8 @@ class ProductoController extends Controller
             'prd_marmin'    => $padre->prd_marmin,
             'prd_marmaj'    => $padre->prd_marmaj,
             'prd_canminmaj' => $padre->prd_canminmaj,
+            'prd_gardia'    => $padre->prd_gardia,
+            'prd_proid'     => $padre->prd_proid,
         ]);
     }
 
@@ -296,8 +301,15 @@ class ProductoController extends Controller
             ->orderBy('atb_nombre')
             ->get(['atb_id', 'atb_nombre', 'atb_tipo', 'atb_unidad']);
 
+        // Empresas que pueden respaldar la garantía de un producto (proveedores activos).
+        $proveedores = DB::table('proveedor')
+            ->where('pro_estado', 1)
+            ->orderBy('pro_razon')
+            ->get(['pro_id', 'pro_razon']);
+
         return response()->json([
             'marcas'             => $marcas,
+            'proveedores'        => $proveedores,
             'tipos_iva'          => $tiposIva,
             'unidades'           => $unidades,
             'atributos_variante' => $atributosVariante,

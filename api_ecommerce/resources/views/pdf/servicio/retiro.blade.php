@@ -23,7 +23,7 @@
   <table class="datos">
     <tr><td class="et">Tipo / marca / modelo</td><td>{{ $s->tipoDispositivo?->tdi_descri }} {{ $s->sse_marca }} {{ $s->sse_modelo }}</td></tr>
     <tr><td class="et">N.º de serie</td><td>{{ $s->sse_nroser ?: '—' }}</td></tr>
-    <tr><td class="et">Titular</td><td>{{ $s->cliente?->persona?->nombre_completo }} (C.I. {{ $s->cliente?->persona?->per_cedula }})</td></tr>
+    <tr><td class="et">Titular</td><td>{{ $s->cliente?->persona?->nombre_completo }} ({{ $s->cliente?->persona?->tipoDocumento?->tpd_codigo === 'PAS' ? 'Pasaporte' : 'C.I.' }} {{ $s->cliente?->persona?->per_cedula }})</td></tr>
   </table>
 
   <h2>Trabajo realizado</h2>

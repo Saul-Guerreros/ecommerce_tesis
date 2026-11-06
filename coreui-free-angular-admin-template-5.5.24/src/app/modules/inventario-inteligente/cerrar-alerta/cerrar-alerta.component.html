@@ -1,0 +1,25 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)">
+  <c-modal-header>
+    <h5 cModalTitle>{{ modo === 'atender' ? 'Atender alerta' : 'Descartar alerta' }}</h5>
+  </c-modal-header>
+  <c-modal-body *ngIf="alerta">
+    <p class="mb-2">
+      <strong>{{ alerta.producto }}</strong> · {{ alerta.deposito }}
+      <span class="badge bg-{{ TIPOS[alerta.tipo].color }} ms-1">{{ TIPOS[alerta.tipo].etiqueta }}</span>
+    </p>
+    <p class="text-muted small" *ngIf="modo === 'atender' && alerta.sugerido > 0">
+      Cantidad sugerida a comprar: <strong>{{ alerta.sugerido | number: '1.0-0' }}</strong> unidades.
+      Registrá la compra en el módulo de Compras; esta acción solo cierra la alerta.
+    </p>
+    <label cLabel for="obs">{{ modo === 'atender' ? 'Observación (opcional)' : 'Motivo del descarte *' }}</label>
+    <textarea cFormControl id="obs" rows="3" maxlength="255" [(ngModel)]="observacion"
+      [placeholder]="modo === 'atender' ? 'Ej.: Pedido realizado al proveedor' : 'Ej.: Producto en discontinuación'"></textarea>
+    <div class="text-danger small mt-1" *ngIf="modo === 'descartar' && !valido">Indicá el motivo (mínimo 3 caracteres).</div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()">Cancelar</button>
+    <button cButton [color]="modo === 'atender' ? 'success' : 'warning'" class="text-white" [disabled]="!valido" (click)="enviar()">
+      {{ modo === 'atender' ? 'Marcar como atendida' : 'Descartar' }}
+    </button>
+  </c-modal-footer>
+</c-modal>

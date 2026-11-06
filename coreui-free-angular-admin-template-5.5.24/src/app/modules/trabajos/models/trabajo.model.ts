@@ -15,6 +15,7 @@ export interface Trabajo {
 
   tipo_iva?: TipoIvaOpcion;
   usos_count?: number;
+    trb_dias: number;
 }
 
 export interface TrabajoConfig {

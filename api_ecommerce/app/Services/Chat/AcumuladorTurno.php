@@ -15,6 +15,9 @@ final class AcumuladorTurno
     private array $acciones = [];
 
     public bool $derivada = false;
+    /** Se consultó el catálogo en este turno (insumo de la métrica "sin respuesta"). */
+    private bool $huboBusqueda = false;
+    private bool $huboError = false;
     public ?string $modelo = null;
     public int $vueltas = 0;
     public int $tokensEntrada = 0;
@@ -37,6 +40,14 @@ final class AcumuladorTurno
 
         array_push($this->acciones, ...$resultado->acciones);
         $this->derivada = $this->derivada || $resultado->motivoDerivacion !== null;
+
+        if (in_array($nombre, ['buscar_productos', 'ver_producto'], true)) {
+            $this->huboBusqueda = true;
+        }
+
+        if (isset($resultado->paraModelo['error'])) {
+            $this->huboError = true;
+        }
     }
 
     public function tarjetas(): array
@@ -47,6 +58,18 @@ final class AcumuladorTurno
     public function acciones(): array
     {
         return $this->acciones;
+    }
+
+    /**
+     * El turno no pudo responder: buscó (o falló una herramienta) y no
+     * mostró ningún producto. Las derivadas se excluyen porque se miden
+     * aparte (cnv_estado = 'derivada').
+     */
+    public function sinRespuesta(): bool
+    {
+        return ! $this->derivada
+            && ($this->huboBusqueda || $this->huboError)
+            && $this->tarjetas === [];
     }
 
     /** id + título de lo mostrado: se guarda para reconstruir el historial. */

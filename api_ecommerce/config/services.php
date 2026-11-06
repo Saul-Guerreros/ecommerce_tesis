@@ -47,6 +47,8 @@ return [
         // El chat envía peticiones más pesadas que el buscador (historial + herramientas).
         'chat_timeout' => (int) env('GEMINI_CHAT_TIMEOUT', 15),
         'chat_tiempo_total' => (int) env('GEMINI_CHAT_TIEMPO_TOTAL', 25),
+		'diagnostico_timeout'      => (int) env('GEMINI_DIAGNOSTICO_TIMEOUT', 20),
+        'diagnostico_tiempo_total' => (int) env('GEMINI_DIAGNOSTICO_TIEMPO_TOTAL', 40),
     ],
 
 ];

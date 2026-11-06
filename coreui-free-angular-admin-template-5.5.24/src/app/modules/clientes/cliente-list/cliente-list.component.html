@@ -55,6 +55,9 @@
             </c-badge>
           </td>
            <td class="text-end">
+            <button cButton size="sm" color="primary" class="me-2 text-white"
+                    *ngIf="cliente.cli_estado === 1 && !cliente.tiene_cuenta"
+                    (click)="verCodigo(cliente)">Código</button>
             <button cButton size="sm" color="info" class="me-2 text-white"
                     (click)="editar(cliente)">Editar</button>
             <button cButton size="sm" class="me-2 text-white"
@@ -63,6 +66,7 @@
               {{ cliente.cli_estado === 1 ? 'Desactivar' : 'Activar' }}
             </button>
             <button cButton size="sm" color="danger" class="text-white"
+                    *ngIf="!cliente.tiene_cuenta && !cliente.tiene_movimientos"
                     (click)="confirmarEliminar(cliente)">Eliminar</button>
           </td>
         </tr>
@@ -74,6 +78,11 @@
         </tr>
       </tbody>
     </table>
+      <p class="small text-medium-emphasis mt-3 mb-0">
+      <strong>Eliminar</strong> solo aparece en clientes sin cuenta en la tienda y sin movimientos
+      (pedidos, servicios, ventas o créditos), por ejemplo una ficha duplicada o cargada por error.
+      Para el resto, usá <strong>Desactivar</strong>.
+    </p>
 
     <div class="d-flex justify-content-center mt-3" *ngIf="totalPaginas > 1">
       <button cButton size="sm" variant="outline" color="secondary"
@@ -93,3 +102,5 @@
 
 <app-cliente-delete [(visible)]="showDelete" [cliente]="clienteSel"
                     (eliminado)="onEliminado($event)"></app-cliente-delete>
+
+<app-cliente-codigo [(visible)]="showCodigo" [cliente]="clienteSel"></app-cliente-codigo>

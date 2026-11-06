@@ -6,16 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Servicio\CerrarNoReparableRequest;
 use App\Http\Requests\Servicio\DiagnosticoRequest;
 use App\Http\Requests\Servicio\FinalizarOrdenRequest;
+use App\Http\Requests\Servicio\GarantiaDatosRequest;
+use App\Http\Requests\Servicio\GarantiaEnviarRequest;
+use App\Http\Requests\Servicio\GarantiaResolverRequest;
 use App\Http\Requests\Servicio\RepuestosUsadosRequest;
 use App\Http\Requests\Servicio\PresupuestoBorradorRequest;
 use App\Http\Resources\Servicio\OrdenTarjetaResource;
 use App\Http\Resources\Servicio\OrdenTrabajoResource;
+use App\Models\Compras\Proveedor;
 use App\Models\Producto;
 use App\Models\Servicio\Falla;
 use App\Models\Servicio\SolicitudServicio;
 use App\Models\Servicio\Trabajo;
 use App\Models\Usuario;
 use App\Services\Servicio\EjecucionServicioService;
+use App\Services\Servicio\GarantiaProveedorService;
 use App\Services\Servicio\OrdenTecnicoConsultaService;
 use App\Services\Servicio\OrdenTrabajoService;
 use App\Services\Servicio\PresupuestoService;
@@ -41,6 +46,7 @@ class OrdenTecnicoController extends Controller
         private PresupuestoService $presupuestos,
         private StockServicioService $stock,
         private EjecucionServicioService $ejecucion,
+        private GarantiaProveedorService $garantias,
     ) {}
 
     // GET /api/admin/servicios/tecnico/ordenes?buscar=&tecnico=
@@ -90,6 +96,22 @@ class OrdenTecnicoController extends Controller
                     'trb_precio' => (float) $t->trb_precio, 'tasa_iva' => (float) ($t->tipoIva->tiv_tasa ?? 0),
                 ]),
             'max_fotos'       => (int) config('servicio.max_fotos_diagnostico'),
+            // Garantía de compra: empresas a las que se puede gestionar el reclamo, con su contacto.
+            'proveedores' => Proveedor::where('pro_estado', 1)
+                ->with(['contactos' => fn ($q) => $q->where('cpr_estado', 1)->orderByDesc('cpr_princi')->orderBy('cpr_nombre')])
+                ->orderBy('pro_razon')->get()
+                ->map(fn ($p) => [
+                    'pro_id'    => $p->pro_id,
+                    'razon'     => $p->pro_razon,
+                    'telef'     => $p->pro_telef,
+                    'email'     => $p->pro_email,
+                    'contactos' => $p->contactos->map(fn ($c) => [
+                        'nombre' => trim($c->cpr_nombre . ' ' . $c->cpr_apellido),
+                        'cargo'  => $c->cpr_cargo,
+                        'telef'  => $c->cpr_telef,
+                        'email'  => $c->cpr_email,
+                    ])->values(),
+                ])->values(),
         ], 200);
     }
 
@@ -123,6 +145,40 @@ class OrdenTecnicoController extends Controller
         );
 
         return $this->respuesta('Orden cerrada: equipo no reparable. La solicitud quedó lista para devolver.', $sseId);
+    }
+
+    // ---------- Garantía de compra: gestión con la empresa responsable ----------
+
+    // POST /api/admin/servicios/tecnico/ordenes/{sseId}/garantia/iniciar
+    public function iniciarGarantia(int $sseId): JsonResponse
+    {
+        $this->garantias->iniciar($this->cargar($sseId), $this->usuario());
+
+        return $this->respuesta('Gestión de garantía iniciada', $sseId, 201);
+    }
+
+    // PUT /api/admin/servicios/tecnico/ordenes/{sseId}/garantia
+    public function guardarGarantia(GarantiaDatosRequest $request, int $sseId): JsonResponse
+    {
+        $this->garantias->guardar($this->cargar($sseId), $request->validated(), $this->usuario());
+
+        return $this->respuesta('Datos de la garantía guardados', $sseId);
+    }
+
+    // POST /api/admin/servicios/tecnico/ordenes/{sseId}/garantia/enviar
+    public function enviarGarantia(GarantiaEnviarRequest $request, int $sseId): JsonResponse
+    {
+        $this->garantias->enviar($this->cargar($sseId), $request->validated(), $this->usuario());
+
+        return $this->respuesta('Producto enviado a la empresa. Se avisó al cliente.', $sseId);
+    }
+
+    // POST /api/admin/servicios/tecnico/ordenes/{sseId}/garantia/resolver
+    public function resolverGarantia(GarantiaResolverRequest $request, int $sseId): JsonResponse
+    {
+        $this->garantias->resolver($this->cargar($sseId), $request->validated(), $this->usuario());
+
+        return $this->respuesta('Gestión cerrada: el producto quedó listo para entregar al cliente.', $sseId);
     }
 
     // GET /api/admin/servicios/tecnico/ordenes/{sseId}/productos?buscar=
@@ -275,6 +331,8 @@ class OrdenTecnicoController extends Controller
             'ordenServicio.diagnostico.fallas.falla',
             'ordenServicio.presupuestoActual.estado', 'ordenServicio.presupuestoActual.detalles',
             'ordenServicio.presupuestos.estado', 'ordenServicio.repuestos.producto',
+            // Garantía de compra: producto comprado, su pedido y la gestión con la empresa.
+            'detallePedido.producto:prd_id,prd_proid', 'pedido:ped_id,ped_numero', 'garantiaProveedor.proveedor',
         ])->findOrFail($sseId);
 
         abort_if(!$s->recepcion, 404, 'La solicitud todavía no fue recibida en el taller.');

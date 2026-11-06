@@ -1,0 +1,5 @@
+/* El grueso de los estilos viene de paso-pago.component.css (styleUrls).
+   Acá solo lo propio de la pantalla del servicio. */
+.ps-montos .uk-flex-between + .uk-flex-between {
+  margin-top: 6px;
+}

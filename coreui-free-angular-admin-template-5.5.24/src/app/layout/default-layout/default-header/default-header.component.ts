@@ -1,16 +1,9 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { switchMap, timer } from 'rxjs';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-
-import {
-  AvatarComponent,
-  BadgeComponent,
-  BreadcrumbRouterComponent,
-  ColorModeService,
-  ContainerComponent,
-  DropdownComponent,
-  DropdownDividerDirective,
-  DropdownItemDirective,
+import { AvatarComponent, BadgeComponent,BreadcrumbRouterComponent,ColorModeService,ContainerComponent,DropdownComponent,DropdownDividerDirective,DropdownItemDirective,
   DropdownMenuDirective,
   DropdownToggleDirective,
   HeaderComponent,
@@ -23,11 +16,12 @@ import {
 
 import { IconDirective } from '@coreui/icons-angular';
 import { AuthService } from '../../../auth/services/auth.service';
+import { CampanaInventarioComponent } from '../../../modules/inventario-inteligente/campana-inventario/campana-inventario.component';
 
 @Component({
   selector: 'app-default-header',
   templateUrl: './default-header.component.html',
- imports: [ContainerComponent, HeaderTogglerDirective, SidebarToggleDirective, IconDirective, HeaderNavComponent, NavItemComponent, NavLinkDirective, RouterLink, RouterLinkActive, NgTemplateOutlet, BreadcrumbRouterComponent, DropdownComponent, DropdownToggleDirective, AvatarComponent, DropdownMenuDirective, DropdownItemDirective, BadgeComponent, DropdownDividerDirective]
+ imports: [ContainerComponent, HeaderTogglerDirective, SidebarToggleDirective, IconDirective, HeaderNavComponent, NavItemComponent, NavLinkDirective, RouterLink, RouterLinkActive, NgTemplateOutlet, BreadcrumbRouterComponent, DropdownComponent, DropdownToggleDirective, AvatarComponent, DropdownMenuDirective, DropdownItemDirective, BadgeComponent, DropdownDividerDirective,CampanaInventarioComponent]
 })
 export class DefaultHeaderComponent extends HeaderComponent {
 
@@ -35,7 +29,7 @@ export class DefaultHeaderComponent extends HeaderComponent {
   readonly colorMode = this.#colorModeService.colorMode;
 
   private authService = inject(AuthService);
-
+  
   // Usuario logueado (persona.nombre_completo, email, rol) - viene de /auth/login o /auth/me
   readonly currentUser = this.authService.currentUser;
   /** Iniciales para el avatar cuando el usuario no subió foto. */
@@ -56,7 +50,7 @@ export class DefaultHeaderComponent extends HeaderComponent {
     return this.colorModes.find(mode => mode.name === currentMode)?.icon ?? 'cilSun';
   });
 
-  constructor() {
+   constructor() {
     super();
   }
 

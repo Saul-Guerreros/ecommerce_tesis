@@ -23,6 +23,7 @@ class TrabajoResource extends JsonResource
                 'tiv_tasa'   => (float) $this->tipoIva->tiv_tasa,
             ]),
             'usos_count' => $this->whenNotNull($this->usos_count),
+            'trb_dias'   => (int) $this->trb_dias,
         ];
     }
 }

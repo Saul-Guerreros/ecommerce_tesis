@@ -1,3 +1,8 @@
+import { PresupuestoResumen, UltimoContacto } from '../../panel-servicios/models/panel-servicio.model';
+import { Clasificacion } from './clasificacion.model';
+
+export type Canal = 'WEB' | 'MOSTRADOR';
+
 export interface EstadoRef {
   codigo: string | null;
   descri: string | null;
@@ -13,9 +18,13 @@ export interface SolicitudServicioLista {
   sse_garant: boolean;
   a_domicilio: boolean;
   sse_fecing: string | null;
+  canal: Canal;
+  sucursal: string | null;
   estado_servicio: EstadoRef;
   estado_ingreso: EstadoRef;
   tecnico?: string | null;
+  clasificacion?: Clasificacion | null;
+
 }
 
 export interface SolicitudAdjunto {
@@ -40,6 +49,8 @@ export interface RecepcionServicio {
 export interface HistorialServicio {
   she_id: number;
   she_tipo: string;
+  medio?: string | null;
+  resultado?: string | null;
   estado_ant: string | null;
   estado_nuevo: string | null;
   she_coment: string | null;
@@ -51,7 +62,17 @@ export interface SolicitudServicioDetalle {
   sse_id: number;
   sse_numero: string;
   sse_creado: string;
-  cliente: { nombre: string | null; cedula: string | null; telefono: string | null; correo: string | null };
+  canal: Canal;
+  registrado_por?: string | null;
+  cliente: {
+    nombre: string | null;
+    cedula: string | null;
+    telefono: string | null;
+    correo: string | null;
+    whatsapp: string | null;
+    tiene_cuenta: boolean;
+    whatsapp_url: string | null;
+  };
   equipo: { tipo: string | null; sse_marca: string; sse_modelo: string; sse_nroser: string | null };
   sse_proble: string;
   sse_acceso: string | null;
@@ -60,6 +81,7 @@ export interface SolicitudServicioDetalle {
   ingreso: {
     a_domicilio: boolean;
     modalidad: string;
+    suc_id: number | null;
     sucursal: string | null;
     direccion: string | null;
     referencia: string | null;
@@ -71,11 +93,26 @@ export interface SolicitudServicioDetalle {
   adjuntos: SolicitudAdjunto[];
   recepcion: RecepcionServicio | null;
   historial: HistorialServicio[];
+  // Paso 2
+  presupuesto: PresupuestoResumen | null;
+  ultimo_contacto: UltimoContacto | null;
+  cerrada: boolean;
+  // Paso 3
+  garantia_vence: string | null;
+  puede_reclamar: boolean;
+  es_reclamo_de: string | null;
 }
 
 export interface TecnicoOpcion {
   usu_id: number;
   nombre: string;
+  /** Sucursales (taller) a las que está asignado. Sin sucursal no aparece en ninguna. */
+  sucursales: number[];
+}
+
+export interface SucursalOpcion {
+  suc_id: number;
+  suc_nombre: string;
 }
 
 export interface SolicitudesConfig {
@@ -83,6 +120,11 @@ export interface SolicitudesConfig {
   estados_ingreso: { elg_id: number; elg_codigo: string; elg_descri: string }[];
   tipos_entrega: { ten_id: number; ten_codigo: string; ten_descri: string }[];
   tecnicos: TecnicoOpcion[];
+  sucursales: SucursalOpcion[];
+  canales: Canal[];
+   tipos_dispositivo: { tdi_id: number; tdi_descri: string }[];
+  categorias: { caf_id: number; caf_descri: string }[];
+  urgencias: { urg_id: number; urg_codigo: string; urg_descri: string; urg_color: string }[];
 }
 
 export interface SolicitudFiltros {
@@ -91,9 +133,15 @@ export interface SolicitudFiltros {
   elg_id?: string;
   ten_id?: string;
   garantia?: string;
+  suc_id?: string;
+  canal?: string;
   solo_pendientes?: boolean;
   page?: number;
   per_page?: number;
+  tdi_id?: string;
+  caf_id?: string;
+  urg_id?: string;
+  sin_clasificar?: boolean;
 }
 
 export interface SolicitudesPaginadas {

@@ -1,0 +1,328 @@
+@if (!puedeVer) {
+  <c-card class="mb-4">
+    <c-card-body class="py-5 text-center">
+      <h4 class="mb-2">Bienvenido al panel de administración</h4>
+      <p class="text-body-secondary mb-0">Usá el menú lateral para acceder a tus opciones.</p>
+    </c-card-body>
+  </c-card>
+} @else {
+  @let r = resumen().data;
+  @let vc = ventasCompras().data;
+  @let dist = distribucion().data;
+  @let tab = tablas().data;
+
+  <!-- ================= Filtro global ================= -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+      <h4 class="mb-0">Dashboard</h4>
+      <small class="text-body-secondary">Mes en curso · ventas concretadas (pedidos pagados)</small>
+    </div>
+    <div style="min-width: 220px">
+      <select cSelect sizing="sm" aria-label="Sucursal"
+              [value]="sucursalId() ?? ''"
+              (change)="cambiarSucursal($any($event.target).value)">
+        <option value="">Todas las sucursales</option>
+        @for (s of sucursales(); track s.id) {
+          <option [value]="s.id">{{ s.nombre }}{{ s.principal ? ' (principal)' : '' }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- ================= Widgets ================= -->
+  <c-row class="g-4 mb-4">
+    <c-col sm="6" xl="3">
+      <c-widget-stat-a color="primary" title="Ventas del mes" class="h-100">
+        <ng-template cTemplateId="widgetValueTemplate">
+          @if (r) {
+            {{ r.ventas.total | gs }}
+            <span class="fw-normal" style="font-size: 12px;">
+              ({{ variacion(r.ventas.variacion) }}
+              @if (r.ventas.variacion !== null) {
+                <svg cIcon [name]="r.ventas.variacion >= 0 ? 'cilArrowTop' : 'cilArrowBottom'" size="sm"></svg>
+              })
+            </span>
+          } @else { … }
+        </ng-template>
+        <ng-template cTemplateId="widgetChartTemplate">
+          <c-chart [data]="graficoDiario()" [options]="opcionesDiario" type="line" height="70" class="mt-3 mx-3" />
+        </ng-template>
+      </c-widget-stat-a>
+    </c-col>
+
+    <c-col sm="6" xl="3">
+      <c-widget-stat-a color="info" title="Pedidos del mes" class="h-100">
+        <ng-template cTemplateId="widgetValueTemplate">
+          {{ r ? r.pedidos.total : '…' }}
+        </ng-template>
+        <ng-template cTemplateId="widgetChartTemplate">
+          <div class="mx-3 pb-3 d-flex align-items-end" style="height: 70px">
+            @if (r) { {{ r.pedidos.pendientes }} pendientes de pago o entrega }
+          </div>
+        </ng-template>
+      </c-widget-stat-a>
+    </c-col>
+
+    <c-col sm="6" xl="3">
+      <c-widget-stat-a color="warning" title="Ticket promedio" class="h-100">
+        <ng-template cTemplateId="widgetValueTemplate">
+          @if (r) {
+            {{ r.ticket.promedio | gs }}
+            <span class="fw-normal" style="font-size: 12px;">({{ variacion(r.ticket.variacion) }})</span>
+          } @else { … }
+        </ng-template>
+        <ng-template cTemplateId="widgetChartTemplate">
+          <div class="mx-3 pb-3 d-flex align-items-end" style="height: 70px">
+            @if (r) { Sobre {{ r.ventas.facturas }} facturas emitidas }
+          </div>
+        </ng-template>
+      </c-widget-stat-a>
+    </c-col>
+
+    <c-col sm="6" xl="3">
+      <c-widget-stat-a color="danger" title="Órdenes de servicio abiertas" class="h-100">
+        <ng-template cTemplateId="widgetValueTemplate">
+          {{ r ? r.servicio.abiertas : '…' }}
+        </ng-template>
+        <ng-template cTemplateId="widgetChartTemplate">
+          <div class="mx-3 pb-3 d-flex align-items-end" style="height: 70px">
+            @if (r) { {{ r.servicio.nuevas }} iniciadas este mes }
+          </div>
+        </ng-template>
+      </c-widget-stat-a>
+    </c-col>
+  </c-row>
+
+  @if (resumen().estado === 'error') {
+    <app-estado-bloque class="d-block mb-4" estado="error" [altura]="60" (reintentar)="cargarResumen()" />
+  }
+
+  <!-- ================= Gráfico principal ================= -->
+  <c-card class="mb-4">
+    <c-card-body>
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+          <h4 class="card-title mb-0">Ventas vs Compras</h4>
+          @if (vc?.serie?.length) {
+            <div class="small text-body-secondary">
+              {{ vc!.serie[0].etiqueta }} – {{ vc!.serie[vc!.serie.length - 1].etiqueta }}
+            </div>
+          }
+        </div>
+        <c-button-group aria-label="Agrupación" size="sm">
+          @for (a of agrupaciones; track a.valor) {
+            <button cButton color="secondary" variant="outline"
+                    [active]="agrupacion() === a.valor"
+                    (click)="cambiarAgrupacion(a.valor)">
+              {{ a.etiqueta }}
+            </button>
+          }
+        </c-button-group>
+      </div>
+
+      <app-estado-bloque [estado]="ventasCompras().estado" [altura]="300" (reintentar)="cargarVentasCompras()">
+        <c-chart type="bar" height="300" [data]="graficoPrincipal()" [options]="opcionesPrincipal()" />
+      </app-estado-bloque>
+    </c-card-body>
+
+    @if (vc) {
+      <c-card-footer>
+        <c-row [xs]="1" [sm]="2" [lg]="5" class="text-center g-3">
+          <c-col>
+            <div class="text-body-secondary">Total ventas</div>
+            <div class="fw-semibold">{{ vc.totales.ventas | gs }}</div>
+            <c-progress thin class="mt-2" color="success" [value]="100" aria-label="Ventas" />
+          </c-col>
+          <c-col>
+            <div class="text-body-secondary">Total compras</div>
+            <div class="fw-semibold">{{ vc.totales.compras | gs }}</div>
+            <c-progress thin class="mt-2" color="info" [value]="ratioCompras()" aria-label="Compras sobre ventas" />
+          </c-col>
+          <c-col>
+            <div class="text-body-secondary">Margen bruto</div>
+            <div class="fw-semibold">
+              {{ vc.totales.margen_bruto | gs }}
+              @if (vc.totales.margen_pct !== null) {
+                <span class="fw-normal small">({{ numero(vc.totales.margen_pct) }} %)</span>
+              }
+            </div>
+            <c-progress thin class="mt-2" color="warning" [value]="vc.totales.margen_pct ?? 0" aria-label="Margen" />
+          </c-col>
+          <c-col>
+            <div class="text-body-secondary">Clientes nuevos</div>
+            <div class="fw-semibold">{{ vc.totales.clientes_nuevos }}</div>
+          </c-col>
+          <c-col>
+            <div class="text-body-secondary">Unidades vendidas</div>
+            <div class="fw-semibold">{{ numero(vc.totales.unidades) }}</div>
+          </c-col>
+        </c-row>
+      </c-card-footer>
+    }
+  </c-card>
+
+  <!-- ================= Distribución ================= -->
+  <c-row class="g-4 mb-4">
+    <c-col lg="7">
+      <c-card class="h-100">
+        <c-card-header>Ventas por día de la semana</c-card-header>
+        <c-card-body>
+          <app-estado-bloque [estado]="diaSemanaVacio() && distribucion().estado === 'ok' ? 'vacio' : distribucion().estado"
+                             [altura]="260" (reintentar)="cargarDistribucion()">
+            <c-chart type="bar" height="260" [data]="graficoDiaSemana()" [options]="opcionesDiaSemana()" />
+          </app-estado-bloque>
+        </c-card-body>
+      </c-card>
+    </c-col>
+
+    <c-col lg="5">
+      <c-card class="h-100">
+        <c-card-header>Ventas por método de pago</c-card-header>
+        <c-card-body>
+          <app-estado-bloque [estado]="estadoLista(distribucion(), dist?.metodos_pago?.length ?? 0)"
+                             [altura]="260" (reintentar)="cargarDistribucion()">
+            <c-chart type="doughnut" height="260" [data]="graficoMetodosPago()" [options]="opcionesMetodosPago()" />
+          </app-estado-bloque>
+        </c-card-body>
+      </c-card>
+    </c-col>
+
+    <c-col lg="6">
+      <c-card class="h-100">
+        <c-card-header>Top categorías</c-card-header>
+        <c-card-body>
+          <app-estado-bloque [estado]="estadoLista(distribucion(), dist?.categorias?.length ?? 0)"
+                             (reintentar)="cargarDistribucion()">
+            <div class="lista-progreso">
+              @for (c of dist?.categorias ?? []; track c.categoria) {
+                <div class="fila">
+                  <div class="d-flex justify-content-between small">
+                    <span>{{ c.categoria }} <span class="text-body-secondary">· {{ numero(c.unidades) }} u.</span></span>
+                    <span class="fw-semibold">{{ c.total | gs }}</span>
+                  </div>
+                  <c-progress thin color="success" [value]="(c.total / maxCategoria()) * 100" [attr.aria-label]="c.categoria" />
+                </div>
+              }
+            </div>
+          </app-estado-bloque>
+        </c-card-body>
+      </c-card>
+    </c-col>
+
+    <c-col lg="6">
+      <c-card class="h-100">
+        <c-card-header>Ventas por departamento y ciudad</c-card-header>
+        <c-card-body>
+          <app-estado-bloque [estado]="estadoLista(distribucion(), dist?.departamentos?.length ?? 0)"
+                             (reintentar)="cargarDistribucion()">
+            <div class="lista-progreso mb-4">
+              @for (d of dist?.departamentos ?? []; track d.departamento) {
+                <div class="fila">
+                  <div class="d-flex justify-content-between small">
+                    <span>{{ d.departamento }} <span class="text-body-secondary">· {{ d.pedidos }} pedidos</span></span>
+                    <span class="fw-semibold">{{ d.total | gs }}</span>
+                  </div>
+                  <c-progress thin color="info" [value]="(d.total / totalDepartamentos()) * 100" [attr.aria-label]="d.departamento" />
+                </div>
+              }
+            </div>
+
+            <table cTable small hover class="mb-0">
+              <thead>
+                <tr><th>Ciudad</th><th class="text-end">Pedidos</th><th class="text-end">Total</th></tr>
+              </thead>
+              <tbody>
+                @for (c of dist?.ciudades ?? []; track c.departamento + c.ciudad) {
+                  <tr>
+                    <td>{{ c.ciudad }} <span class="text-body-secondary small">({{ c.departamento }})</span></td>
+                    <td class="text-end">{{ c.pedidos }}</td>
+                    <td class="text-end">{{ c.total | gs }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </app-estado-bloque>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  <!-- ================= Tablas operativas ================= -->
+  <c-row class="g-4 mb-4">
+    <c-col lg="7">
+      <c-card class="h-100">
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <span>Últimos pedidos</span>
+          <a routerLink="/pedidos" class="small">Ver todos</a>
+        </c-card-header>
+        <c-card-body class="p-0">
+          <app-estado-bloque [estado]="estadoLista(tablas(), tab?.ultimos_pedidos?.length ?? 0)"
+                             mensajeVacio="Todavía no hay pedidos." (reintentar)="cargarTablas()">
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover align="middle" class="mb-0">
+                <thead class="text-nowrap">
+                  <tr>
+                    <th>Pedido</th><th>Cliente</th><th>Fecha</th>
+                    <th>Estado</th><th>Pago</th><th class="text-end">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (p of tab?.ultimos_pedidos ?? []; track p.id) {
+                    <tr>
+                      <td><a [routerLink]="['/pedidos', p.id]">{{ p.numero ?? '#' + p.id }}</a></td>
+                      <td>{{ p.cliente }}</td>
+                      <td class="text-nowrap small">{{ fecha(p.fecha) | date: 'dd/MM/yy HH:mm' }}</td>
+                      <td><c-badge [color]="colorEstadoPedido(p.estado.codigo)">{{ p.estado.descripcion }}</c-badge></td>
+                      <td><c-badge [color]="colorEstadoPago(p.estado_pago.codigo)">{{ p.estado_pago.descripcion ?? '—' }}</c-badge></td>
+                      <td class="text-end text-nowrap">{{ p.total | gs }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </app-estado-bloque>
+        </c-card-body>
+      </c-card>
+    </c-col>
+
+    <c-col lg="5">
+      <c-card class="h-100">
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <span>
+            Stock bajo el mínimo
+            @if (tab?.stock_bajo?.total) {
+              <c-badge color="danger" class="ms-1">{{ tab!.stock_bajo.total }}</c-badge>
+            }
+          </span>
+          <a routerLink="/inventario/stock-actual" class="small">Ver stock</a>
+        </c-card-header>
+        <c-card-body class="p-0">
+          <app-estado-bloque [estado]="estadoLista(tablas(), tab?.stock_bajo?.items?.length ?? 0)"
+                             mensajeVacio="Ningún producto está por debajo de su stock mínimo."
+                             (reintentar)="cargarTablas()">
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover align="middle" class="mb-0">
+                <thead class="text-nowrap">
+                  <tr><th>Producto</th><th>Depósito</th><th class="text-end">Disp.</th><th class="text-end">Mín.</th></tr>
+                </thead>
+                <tbody>
+                  @for (s of tab?.stock_bajo?.items ?? []; track s.id + s.deposito) {
+                    <tr>
+                      <td>
+                        <div class="small fw-semibold">{{ s.producto }}</div>
+                        <div class="small text-body-secondary">{{ s.codigo }}</div>
+                      </td>
+                      <td class="small">{{ s.deposito }}</td>
+                      <td class="text-end text-danger fw-semibold">{{ numero(s.disponible) }}</td>
+                      <td class="text-end">{{ s.minimo }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </app-estado-bloque>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+}

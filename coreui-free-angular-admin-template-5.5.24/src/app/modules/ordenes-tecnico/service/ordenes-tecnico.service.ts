@@ -1,8 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { FinalizarPayload, LineaPayload, OrdenConfig, OrdenTrabajo, ProductoBusqueda, TableroResponse } from '../models/orden-tecnico.model';
+import {
+  DatosGarantiaPayload, FinalizarPayload, LineaPayload, OrdenConfig, OrdenTrabajo, ProductoBusqueda,
+  ResolverGarantiaPayload, TableroResponse,
+} from '../models/orden-tecnico.model';
 import { environment } from '../../../../environments/environment';
+import { DiagnosticoIa } from '../../solicitudes-servicio/models/diagnostico-ia.model';
 
 type Respuesta = { message: string; data: OrdenTrabajo };
 
@@ -38,6 +42,24 @@ export class OrdenesTecnicoService {
 
   cerrarNoReparable(sseId: number, datos: { cobrar_revision: boolean; ose_proced?: string }): Observable<Respuesta> {
     return this.http.post<Respuesta>(`${this.apiUrl}/${sseId}/no-reparable`, datos);
+  }
+
+  // ---------- Garantía de compra: gestión con la empresa responsable ----------
+
+  iniciarGarantia(sseId: number): Observable<Respuesta> {
+    return this.http.post<Respuesta>(`${this.apiUrl}/${sseId}/garantia/iniciar`, {});
+  }
+
+  guardarGarantia(sseId: number, datos: DatosGarantiaPayload): Observable<Respuesta> {
+    return this.http.put<Respuesta>(`${this.apiUrl}/${sseId}/garantia`, datos);
+  }
+
+  enviarGarantia(sseId: number, datos: DatosGarantiaPayload & { gpr_fecenv: string }): Observable<Respuesta> {
+    return this.http.post<Respuesta>(`${this.apiUrl}/${sseId}/garantia/enviar`, datos);
+  }
+
+  resolverGarantia(sseId: number, datos: ResolverGarantiaPayload): Observable<Respuesta> {
+    return this.http.post<Respuesta>(`${this.apiUrl}/${sseId}/garantia/resolver`, datos);
   }
 
   verClave(sseId: number): Observable<{ data: { clave: string | null } }> {
@@ -79,5 +101,9 @@ export class OrdenesTecnicoService {
 
   descartarComplementario(sseId: number): Observable<Respuesta> {
     return this.http.delete<Respuesta>(`${this.apiUrl}/${sseId}/presupuesto/complementario`);
+  }
+    
+  diagnosticoPreliminar(sseId: number): Observable<{ data: DiagnosticoIa | null }> {
+    return this.http.get<{ data: DiagnosticoIa | null }>(`${this.apiUrl}/${sseId}/diagnostico-preliminar`);
   }
 }

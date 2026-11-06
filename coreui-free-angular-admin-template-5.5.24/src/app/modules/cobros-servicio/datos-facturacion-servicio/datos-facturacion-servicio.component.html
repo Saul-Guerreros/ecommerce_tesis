@@ -1,0 +1,70 @@
+<div class="text-center py-2" *ngIf="cargando"><c-spinner size="sm" color="primary"></c-spinner></div>
+
+<ng-container *ngIf="opciones as o">
+  <!-- Ya facturado: solo lectura -->
+  <div class="small text-muted mb-2" *ngIf="!o.editable">
+    La factura ya fue emitida con estos datos; no se pueden cambiar.
+  </div>
+
+  <form [formGroup]="form" class="row g-3">
+    <div class="col-md-6">
+      <label cLabel>Factura a nombre de <span class="text-danger">*</span></label>
+      <select cSelect formControlName="tipo_documento" [class.is-invalid]="campoInvalido('tipo_documento')">
+        <option value="CI">C.I. {{ o.titular.nrodoc }} — {{ o.titular.raznom }}</option>
+        <option value="RUC">RUC</option>
+      </select>
+      <div class="text-danger small" *ngIf="campoInvalido('tipo_documento')">{{ error('tipo_documento') }}</div>
+    </div>
+
+    <div class="col-md-6" *ngIf="esRuc">
+      <label cLabel>RUC</label>
+      <select cSelect formControlName="modo_ruc">
+        <option value="guardado" [disabled]="o.datos_fiscales.length === 0">Guardado del cliente</option>
+        <option value="unico">Otro RUC (uso único)</option>
+      </select>
+    </div>
+
+    <div class="col-12" *ngIf="rucGuardado">
+      <label cLabel>RUC guardado <span class="text-danger">*</span></label>
+      <select cSelect formControlName="dfi_id" [class.is-invalid]="campoInvalido('dfi_id')">
+        <option [ngValue]="null">Seleccione...</option>
+        <option *ngFor="let d of o.datos_fiscales" [ngValue]="d.dfi_id">
+          {{ d.dfi_numero }} — {{ d.dfi_razon }}{{ d.dfi_alias ? ' (' + d.dfi_alias + ')' : '' }}
+        </option>
+      </select>
+      <div class="text-danger small" *ngIf="campoInvalido('dfi_id')">{{ error('dfi_id') }}</div>
+    </div>
+
+    <ng-container *ngIf="rucUnico">
+      <div class="col-md-4">
+        <label cLabel>RUC <span class="text-danger">*</span></label>
+        <input cFormControl formControlName="nrodoc" maxlength="20" placeholder="80069563-1"
+               [class.is-invalid]="campoInvalido('nrodoc')" />
+        <div class="text-danger small" *ngIf="campoInvalido('nrodoc')">{{ error('nrodoc') }}</div>
+      </div>
+      <div class="col-md-8">
+        <label cLabel>Razón social <span class="text-danger">*</span></label>
+        <input cFormControl formControlName="raznom" maxlength="150" [class.is-invalid]="campoInvalido('raznom')" />
+        <div class="text-danger small" *ngIf="campoInvalido('raznom')">{{ error('raznom') }}</div>
+      </div>
+    </ng-container>
+
+    <div class="col-md-4">
+      <label cLabel>Enviar factura por <span class="text-danger">*</span></label>
+      <select cSelect formControlName="recibe">
+        <option value="CORREO">Correo</option>
+        <option value="WHATSAPP">WhatsApp</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label cLabel>Correo <span class="text-danger" *ngIf="form.get('recibe')?.value === 'CORREO'">*</span></label>
+      <input cFormControl type="email" formControlName="correo" maxlength="100" [class.is-invalid]="campoInvalido('correo')" />
+      <div class="text-danger small" *ngIf="campoInvalido('correo')">{{ error('correo') }}</div>
+    </div>
+    <div class="col-md-4">
+      <label cLabel>Celular <span class="text-danger" *ngIf="form.get('recibe')?.value === 'WHATSAPP'">*</span></label>
+      <input cFormControl formControlName="telefono" maxlength="45" [class.is-invalid]="campoInvalido('telefono')" />
+      <div class="text-danger small" *ngIf="campoInvalido('telefono')">{{ error('telefono') }}</div>
+    </div>
+  </form>
+</ng-container>

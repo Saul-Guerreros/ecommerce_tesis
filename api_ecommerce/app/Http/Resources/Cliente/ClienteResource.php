@@ -13,6 +13,8 @@ class ClienteResource extends JsonResource
             'cli_id'     => $this->cli_id,
             'cli_ruc'    => $this->cli_ruc,
             'cli_estado' => $this->cli_estado,
+            'tiene_cuenta' => $this->persona->usuario !== null,
+            'tiene_movimientos' => (bool) $this->resource->getAttribute('tiene_movimientos'),
 
             'persona' => [
                 'per_id'          => $this->persona->per_id,

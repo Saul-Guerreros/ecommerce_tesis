@@ -12,6 +12,7 @@ use Google\Auth\AccessToken;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
+use App\Services\Cliente\VinculacionCuentaService;
 
 class GoogleAuthService
 {
@@ -97,6 +98,20 @@ class GoogleAuthService
 
         [$nombre1, $nombre2] = $this->dividir($payload['given_name'] ?? $payload['name'] ?? 'Cliente', 45);
         [$apellido1, $apellido2] = $this->dividir($payload['family_name'] ?? '', 50);
+
+        // A.2: correo de un cliente de mostrador sin cuenta -> la cuenta se crea sobre esa persona.
+        $vinculable = app(VinculacionCuentaService::class)->personaVinculable($payload['email']);
+
+        if ($vinculable) {
+            return Usuario::create([
+                'usu_perid' => $vinculable->per_id,
+                'usu_rolid' => $rolCliente->rol_id,
+                'usu_login' => $payload['email'],
+                'usu_passwd' => bcrypt(Str::random(40)),
+                'usu_estado' => Usuario::ESTADO_ACTIVO,
+                'usu_gooid' => $payload['sub'],
+            ]);
+        }
 
         return DB::transaction(function () use ($payload, $rolCliente, $tipoDocumento, $tipoCliente, $nombre1, $nombre2, $apellido1, $apellido2) {
             $persona = Persona::create([

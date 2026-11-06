@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Configuracion\Sucursal;
 use Illuminate\Database\Eloquent\Model;
 
 class Funcionario extends Model
@@ -14,6 +15,7 @@ class Funcionario extends Model
         'fun_perid',
         'fun_crgid',
         'fun_rolid',
+        'fun_sucid',
         'fun_fecing',
         'fun_fecegr',
         'fun_estado',
@@ -32,5 +34,10 @@ class Funcionario extends Model
     public function rol()
     {
         return $this->belongsTo(Rol::class, 'fun_rolid', 'rol_id');
+    }
+
+    public function sucursal()
+    {
+        return $this->belongsTo(Sucursal::class, 'fun_sucid', 'suc_id');
     }
 }

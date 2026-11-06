@@ -16,6 +16,10 @@ class EstadoServicio extends Model
     public const PRESUPUESTADA  = 'PRESUPUESTADA';
     public const APROBADA       = 'APROBADA';
     public const EN_REPARACION  = 'EN_REPARACION';
+    /** Garantía de compra: el taller gestiona el reclamo con la empresa responsable. */
+    public const GESTION_GARANTIA = 'GESTION_GARANTIA';
+    /** Garantía de compra: el producto está en poder de la empresa. */
+    public const EN_EMPRESA       = 'EN_EMPRESA';
     public const LISTA          = 'LISTA';
     public const ENTREGADA      = 'ENTREGADA';
     public const CANCELADA      = 'CANCELADA';

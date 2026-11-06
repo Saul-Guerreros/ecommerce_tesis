@@ -26,6 +26,8 @@ use App\Services\Catalogo\FichaTecnicaService;
 use App\Services\Catalogo\BusquedaService;
 use App\Services\Catalogo\ResultadoBusqueda;
 use App\Services\Catalogo\BuscadorTiendaService;
+use App\Models\Comportamiento\Busqueda;
+use App\Services\Comportamiento\ActividadClienteService;
 
 /**
  * Vitrina de Home: resuelve qué productos aparecen en cada sección de la
@@ -879,6 +881,18 @@ class VitrinaController extends Controller
         $total = $productos->count();
         $paginaProductos = $productos->slice(($pagina - 1) * $porPagina, $porPagina)->values();
 
+        
+        // Análisis de comportamiento: solo búsquedas con texto y en la página 1.
+        $busquedaId = null;
+        if ($resultado && $pagina === 1) {
+            $busquedaId = app(ActividadClienteService::class)->registrarBusqueda(
+                $request,
+                $busqueda,
+                (string) $resultado->modo,
+                $total,
+                $request->attributes->get('origen_busqueda', Busqueda::ORIGEN_TIENDA),
+            );
+        }
         return response()->json([
             'data' => $paginaProductos,
             'meta' => [
@@ -889,6 +903,8 @@ class VitrinaController extends Controller
                 // "Mostrando resultados para notebook" cuando se corrigió la consulta.
                 'consulta_corregida' => $resultado?->consultaCorregida,
                 'modo' => $resultado?->modo,
+               // La tienda lo reenvía al abrir un producto (vista_producto.vpr_busid).
+                'busqueda_id' => $busquedaId,
 				// Lo que entendió la IA, para mostrarlo al cliente.
                 'interpretacion' => $resultado?->interpretacion ? [
                     'explicacion' => $resultado->interpretacion->explicacion,

@@ -1,0 +1,44 @@
+<p class="uk-text-meta" *ngIf="pagos.length === 0">{{ vacio }}</p>
+
+<ng-container *ngFor="let p of pagos">
+  <div class="tp-pago">
+    <div>
+      <strong>Pago {{ p.orden }}<ng-container *ngIf="p.metodo"> · {{ p.metodo }}</ng-container></strong>
+      <div class="uk-margin-small-top">
+        <span class="uk-label" [ngClass]="claseEstado(p.estado)">{{ p.estado_descri || p.estado }}</span>
+      </div>
+      <button type="button" class="uk-button uk-button-text uk-margin-small-top"
+              *ngIf="p.tiene_comprobante"
+              [disabled]="abriendoId === p.id"
+              (click)="verComprobante.emit(p)">
+        <span uk-icon="icon: file-text; ratio: 0.8"></span>
+        {{ abriendoId === p.id ? 'Abriendo...' : 'Ver comprobante' }}
+      </button>
+    </div>
+    <div class="uk-text-bold">{{ p.monto | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+  </div>
+
+  <!-- Pago rechazado: alerta propia debajo de su pago -->
+  <div class="tp-rechazo" *ngIf="p.motivo_rechazo">
+    <strong class="uk-text-danger">Pago rechazado</strong>
+    <div *ngIf="p.motivo_rechazo.motivo">Motivo: {{ p.motivo_rechazo.motivo }}</div>
+    <div class="uk-text-small" *ngIf="p.motivo_rechazo.detalle && p.motivo_rechazo.detalle !== p.motivo_rechazo.motivo">
+      {{ p.motivo_rechazo.detalle }}
+    </div>
+
+    <div class="tp-rechazo-form" *ngIf="p.reemplazable">
+      <label class="uk-form-label">Adjuntar un comprobante nuevo</label>
+      <input type="file" class="uk-input" accept=".jpg,.jpeg,.png,.pdf" (change)="onArchivo($event, p)">
+      <p class="uk-text-meta uk-margin-small-top uk-margin-remove-bottom">JPG, PNG o PDF. Máximo 5 MB.</p>
+      <p class="uk-text-danger uk-text-small uk-margin-small-top uk-margin-remove-bottom" *ngIf="errores[p.id]">
+        {{ errores[p.id] }}
+      </p>
+      <button type="button" class="uk-button uk-button-primary uk-button-small uk-margin-small-top"
+              [disabled]="subiendoId !== null || !archivos[p.id]"
+              (click)="enviar(p)">
+        <span *ngIf="subiendoId !== p.id">Enviar comprobante</span>
+        <span *ngIf="subiendoId === p.id"><span uk-spinner="ratio: 0.6"></span> Enviando...</span>
+      </button>
+    </div>
+  </div>
+</ng-container>

@@ -2,9 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, finalize } from 'rxjs';
 import { URL_SERVICIOS } from '../../../config/config';
-import {
-  BusquedaPersona, Cliente, ClienteConfig, ClientePayload, ListaClientes,
-} from '../models/cliente.model';
+import {BusquedaPersona, Cliente, ClienteConfig, ClientePayload, CodigoVinculacion, ListaClientes,} from '../models/cliente.model';
+
 
 /**
  * Servicio del módulo Clientes (admin).
@@ -53,6 +52,10 @@ export class ClienteService {
 
   cambiarEstado(id: number): Observable<any> {
     return this.http.patch(`${this.base}/${id}/estado`, {});
+  }
+  /** Código vigente de vinculación (lo crea si no existe). nuevo=true anula el anterior y emite otro. */
+  codigoVinculacion(id: number, nuevo = false): Observable<{ data: CodigoVinculacion }> {
+    return this.http.post<{ data: CodigoVinculacion }>(`${this.base}/${id}/codigo-vinculacion`, { nuevo });
   }
 
   destroy(id: number): Observable<any> {

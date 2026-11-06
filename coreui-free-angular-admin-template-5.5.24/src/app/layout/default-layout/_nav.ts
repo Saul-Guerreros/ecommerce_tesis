@@ -6,10 +6,29 @@ export const navItems: INavData[] = [
     name: 'Dashboard',
     url: '/dashboard',
     iconComponent: { name: 'cil-speedometer' },
-    badge: {
-      color: 'info',
-      text: 'NEW'
-    }
+  },
+  // ==========================================
+  // MÉTRICAS Y REPORTES
+  // ==========================================
+  {
+    title: true,
+    name: 'Métricas y Reportes'
+  },
+  {
+    name: 'Reportes',
+    url: '/reportes',
+    iconComponent: { name: 'cilChartPie' },
+    children: [
+      { name: 'Inicio', url: '/reportes', linkProps: { routerLinkActiveOptions: { exact: true } } },
+      { name: 'Ventas', url: '/reportes/ventas' },
+      { name: 'Inventario', url: '/reportes/inventario' },
+      { name: 'Compras', url: '/reportes/compras' },
+      { name: 'Servicio técnico', url: '/reportes/servicio' },
+      { name: 'Clientes', url: '/reportes/clientes' },
+      { name: 'Promociones', url: '/reportes/promociones' },
+      { name: 'Asistente virtual', url: '/reportes/chatbot' },
+      { name: 'Comportamiento de clientes', url: '/reportes/comportamiento' },
+    ]
   },
 
   // ==========================================
@@ -109,6 +128,11 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-calculator' }
   },
   {
+    name: 'Cobros de servicios',
+    url: '/servicios/cobros',
+    iconComponent: { name: 'cil-dollar' }
+  },
+  {
     name: 'Catálogos de servicio',
     url: '/servicios',
     iconComponent: { name: 'cil-settings' },
@@ -165,6 +189,11 @@ export const navItems: INavData[] = [
       { name: 'Lista de productos', url: '/inventario/productos' },
       { name: 'Unidades de Medida', url: '/unidades-medida' }
     ]
+  },
+  {
+    name: 'Inventario inteligente',
+    url: '/inventario/inteligente',
+    iconComponent: { name: 'cil-chart' },
   },
   {
     name: 'Configuración de Margen',
@@ -655,6 +684,7 @@ export const navItems: INavData[] = [
       }
     ]
   },
+  /*
   {
     name: 'Charts',
     iconComponent: { name: 'cil-chart-pie' },
@@ -722,38 +752,39 @@ export const navItems: INavData[] = [
       text: 'NEW'
     }
   },
+
   {
     title: true,
     name: 'Extras'
   },
- */ 
-  {
-    name: 'Pages',
-    url: '/login',
-    iconComponent: { name: 'cil-star' },
-    children: [
-      {
-        name: 'Login',
-        url: '/login',
-        icon: 'nav-icon-bullet'
-      },
-      {
-        name: 'Register',
-        url: '/register',
-        icon: 'nav-icon-bullet'
-      },
+ // */ 
+  // {
+    // name: 'Pages',
+    // url: '/login',
+    // iconComponent: { name: 'cil-star' },
+    // children: [
       // {
-        // name: 'Error 404',
-        // url: '/404',
+        // name: 'Login',
+        // url: '/login',
         // icon: 'nav-icon-bullet'
       // },
       // {
-        // name: 'Error 500',
-        // url: '/500',
+        // name: 'Register',
+        // url: '/register',
         // icon: 'nav-icon-bullet'
-      // }
-    ]
-  },
+      // },
+      // // {
+        // // name: 'Error 404',
+        // // url: '/404',
+        // // icon: 'nav-icon-bullet'
+      // // },
+      // // {
+        // // name: 'Error 500',
+        // // url: '/500',
+        // // icon: 'nav-icon-bullet'
+      // // }
+    // ]
+  // },
   // {
     // title: true,
     // name: 'Links',

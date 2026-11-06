@@ -1,0 +1,69 @@
+<div class="text-center py-2" *ngIf="cargando && !factura"><c-spinner size="sm" color="primary"></c-spinner></div>
+
+<div class="small text-muted" *ngIf="!cargando && !factura">
+  Sin factura emitida. Se emite automáticamente cuando el cobro del servicio queda confirmado.
+</div>
+
+<ng-container *ngIf="factura as f">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div class="small">
+      <div>
+        <strong>Factura {{ f.numero }}</strong> · Timbrado {{ f.timbrado }} · {{ f.fecha | date:'dd/MM/yyyy HH:mm' }}
+        <c-badge class="ms-2" [color]="colorEstado(f.fe.estado)" *ngIf="f.fe">{{ f.fe.estado }}</c-badge>
+        <c-badge class="ms-2" color="secondary" *ngIf="!f.fe">Sin facturación electrónica</c-badge>
+      </div>
+      <div>{{ f.tipo_doc }} {{ f.documento }} — {{ f.razon_social }}</div>
+      <div>Total <strong>Gs. {{ formatoGs(f.total) }}</strong></div>
+      <div class="text-muted text-break" *ngIf="f.fe?.cdc">CDC {{ f.fe?.cdc }}</div>
+      <div class="text-muted" *ngIf="f.fe?.correo">
+        Correo: {{ f.fe?.correo?.enviado ? 'enviado a ' + f.fe?.correo?.detalle : 'no enviado (' + f.fe?.correo?.detalle + ')' }}
+      </div>
+    </div>
+
+    <div class="text-nowrap">
+      <button cButton size="sm" color="info" class="me-2 text-white" *ngIf="f.fe?.tiene_pdf"
+              [disabled]="procesando === 'kude'" (click)="verKude()">Ver KuDE</button>
+      <button cButton size="sm" color="secondary" class="me-2 text-white" *ngIf="f.fe?.tiene_xml"
+              [disabled]="procesando === 'xml'" (click)="descargarXml()">XML</button>
+      <button cButton size="sm" color="warning" class="me-2 text-white" *ngIf="f.acciones.reintentar"
+              [disabled]="procesando === 'reintentar'" (click)="reintentar()">Reintentar</button>
+      <button cButton size="sm" color="primary" class="me-2 text-white" *ngIf="f.acciones.reenviar"
+              (click)="abrirReenvio()">Reenviar por correo</button>
+      <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="f.acciones.reenviar && whatsappUrl"
+              (click)="abrirWhatsapp()">WhatsApp</button>
+      <button cButton size="sm" color="light" class="me-2" *ngIf="f.fe?.estado === 'PENDIENTE'"
+              [disabled]="cargando" (click)="cargar()">Actualizar</button>
+    </div>
+  </div>
+
+  <c-alert color="warning" class="py-2 small mt-2 mb-0" *ngIf="f.fe?.prueba">
+    Comprobante de prueba (ambiente {{ f.fe?.ambiente }}): no tiene valor fiscal.
+  </c-alert>
+  <c-alert color="info" class="py-2 small mt-2 mb-0" *ngIf="f.fe?.aviso">{{ f.fe?.aviso }}</c-alert>
+  <c-alert color="danger" class="py-2 small mt-2 mb-0"
+           *ngIf="f.fe && f.fe.estado !== 'APROBADA' && f.fe.mensaje">
+    {{ f.fe.estado === 'RECHAZADA' ? 'Rechazada por la DNIT' : 'Pendiente de declarar' }}: {{ f.fe.mensaje }}
+    <span *ngIf="f.fe.intentos"> ({{ f.fe.intentos }} intento{{ f.fe.intentos === 1 ? '' : 's' }})</span>
+  </c-alert>
+</ng-container>
+
+<!-- Reenvío por correo -->
+<c-modal [visible]="reenvioVisible" (visibleChange)="reenvioVisible = $event" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Reenviar factura {{ factura?.numero }}</h5>
+    <button cButtonClose (click)="reenvioVisible = false"></button>
+  </c-modal-header>
+  <c-modal-body>
+    <label cLabel>Correo de destino <span class="text-danger">*</span></label>
+    <input cFormControl type="email" maxlength="100" [(ngModel)]="destino" [class.is-invalid]="errorDestino" />
+    <div class="text-danger small" *ngIf="errorDestino">{{ errorDestino }}</div>
+    <div class="form-text">Se envían el KuDE (PDF) y el XML firmado.</div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="reenvioVisible = false" [disabled]="procesando === 'reenviar'">Cancelar</button>
+    <button cButton color="primary" class="text-white" (click)="reenviar()" [disabled]="procesando === 'reenviar'">
+      <c-spinner size="sm" *ngIf="procesando === 'reenviar'" class="me-1"></c-spinner>
+      Enviar
+    </button>
+  </c-modal-footer>
+</c-modal>

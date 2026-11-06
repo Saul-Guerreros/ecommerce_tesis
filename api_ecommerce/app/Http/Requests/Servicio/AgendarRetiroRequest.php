@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Servicio;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Rules\FechaSinDomingo;
 
 class AgendarRetiroRequest extends FormRequest
 {
@@ -14,7 +15,7 @@ class AgendarRetiroRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'sse_fecing' => ['required', 'date', 'after_or_equal:today'],
+            'sse_fecing' => ['required', 'date', 'after_or_equal:today', new FechaSinDomingo],
             'coment'     => ['nullable', 'string', 'max:255'],
         ];
     }

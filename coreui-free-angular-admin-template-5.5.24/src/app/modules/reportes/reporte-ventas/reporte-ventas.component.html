@@ -1,0 +1,253 @@
+<app-pagina-reporte titulo="Reporte de ventas"
+                    descripcion="Ventas concretadas: facturas vigentes de pedidos pagados. Montos en guaraníes con IVA; el margen se calcula sin IVA.">
+
+  <!-- Paso 7: botones Exportar PDF / Excel -->
+    <div acciones>
+    <app-exportar-reporte reporte="ventas" [vista]="vista()" [filtros]="ultimosFiltros()"
+                          [deshabilitado]="resultado().estado !== 'ok'" />
+  </div>
+
+  <app-filtros-reporte [mostrarAgrupacion]="vista() === 'periodo'"
+                       [cargando]="cargando()"
+                       [errores]="errores()"
+                       (aplicar)="aplicarFiltros($event)">
+    @if (vista() === 'productos') {
+      <ng-container filtrosExtra>
+        <c-col md="6" lg="2">
+          <label cLabel for="f-categoria">Categoría</label>
+          <select cSelect id="f-categoria" sizing="sm" (change)="cambiarExtra('categoria_id', $any($event.target).value)">
+            <option value="">Todas</option>
+            @for (c of categorias(); track c.id) {
+              <option [value]="c.id" [selected]="extra().categoria_id === c.id">{{ sangria(c.nivel) }}{{ c.nombre }}</option>
+            }
+          </select>
+        </c-col>
+        <c-col md="6" lg="2">
+          <label cLabel for="f-marca">Marca</label>
+          <select cSelect id="f-marca" sizing="sm" (change)="cambiarExtra('marca_id', $any($event.target).value)">
+            <option value="">Todas</option>
+            @for (m of marcas(); track m.id) {
+              <option [value]="m.id" [selected]="extra().marca_id === m.id">{{ m.nombre }}</option>
+            }
+          </select>
+        </c-col>
+      </ng-container>
+    }
+    @if (vista() === 'agrupado') {
+      <c-col md="6" lg="2" filtrosExtra>
+        <label cLabel for="f-por">Agrupar por</label>
+        <select cSelect id="f-por" sizing="sm" (change)="cambiarExtra('por', $any($event.target).value)">
+          <option value="categoria" [selected]="extra().por === 'categoria'">Categoría</option>
+          <option value="marca" [selected]="extra().por === 'marca'">Marca</option>
+        </select>
+      </c-col>
+    }
+  </app-filtros-reporte>
+
+  <c-card>
+    <c-card-body>
+      <c-nav variant="underline-border" class="mb-3">
+        @for (v of vistas; track v.clave) {
+          <c-nav-item>
+            <button cNavLink type="button" [active]="vista() === v.clave" (click)="cambiarVista(v.clave)">
+              {{ v.etiqueta }}
+            </button>
+          </c-nav-item>
+        }
+      </c-nav>
+
+      @let r = resultado();
+      @let t = r.totales;
+
+      @if (r.estado === 'ok' && t) {
+        <div class="small text-body-secondary mb-2">{{ r.filas.length }} resultados encontrados</div>
+      }
+
+      <app-estado-bloque [estado]="r.estado" [altura]="300" (reintentar)="cargar()">
+        @switch (vista()) {
+
+          <!-- ===== Por período ===== -->
+          @case ('periodo') {
+            <div class="mb-4" style="height: 280px">
+              <c-chart type="bar" height="280" [data]="graficoPeriodo()" [options]="opcionesPeriodo" />
+            </div>
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead><tr>
+                  <th>Período</th><th class="text-end">Facturas</th>
+                  <th class="text-end">Ticket promedio</th><th class="text-end">Total</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.periodo) {
+                    <tr>
+                      <td>{{ f.etiqueta }}</td>
+                      <td class="text-end">{{ f.facturas }}</td>
+                      <td class="text-end">{{ f.ticket | gs }}</td>
+                      <td class="text-end">{{ f.total | gs }}</td>
+                    </tr>
+                  }
+                </tbody>
+                @if (t) {
+                  <tfoot class="fw-semibold"><tr>
+                    <td>Total</td><td class="text-end">{{ t['facturas'] }}</td>
+                    <td class="text-end">{{ t['ticket'] | gs }}</td><td class="text-end">{{ t['total'] | gs }}</td>
+                  </tr></tfoot>
+                }
+              </table>
+            </div>
+          }
+
+          <!-- ===== Por producto ===== -->
+          @case ('productos') {
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>Código</th><th>Producto</th><th>Categoría</th><th>Marca</th>
+                  <th class="text-end">Unid.</th><th class="text-end">Total</th>
+                  <th class="text-end">Venta neta</th><th class="text-end">Costo</th>
+                  <th class="text-end">Margen</th><th class="text-end">%</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.id) {
+                    <tr>
+                      <td class="small">{{ f.codigo }}</td>
+                      <td>{{ f.producto }}</td>
+                      <td class="small">{{ f.categoria }}</td>
+                      <td class="small">{{ f.marca }}</td>
+                      <td class="text-end">{{ numero(f.unidades) }}</td>
+                      <td class="text-end text-nowrap">{{ f.total | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.venta_neta | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.costo | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.margen | gs }}</td>
+                      <td class="text-end" [class]="claseMargen(f.margen_pct)">
+                        {{ f.margen_pct === null ? '—' : numero(f.margen_pct) + ' %' }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+                @if (t) {
+                  <tfoot class="fw-semibold text-nowrap"><tr>
+                    <td colspan="4">Total</td>
+                    <td class="text-end">{{ numero(t['unidades']) }}</td>
+                    <td class="text-end">{{ t['total'] | gs }}</td>
+                    <td class="text-end">{{ t['venta_neta'] | gs }}</td>
+                    <td class="text-end">{{ t['costo'] | gs }}</td>
+                    <td class="text-end">{{ t['margen'] | gs }}</td>
+                    <td class="text-end">{{ t['margen_pct'] === null ? '—' : numero(t['margen_pct']) + ' %' }}</td>
+                  </tr></tfoot>
+                }
+              </table>
+            </div>
+          }
+
+          <!-- ===== Por categoría / marca ===== -->
+          @case ('agrupado') {
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead class="text-nowrap"><tr>
+                  <th>{{ extra().por === 'marca' ? 'Marca' : 'Categoría' }}</th>
+                  <th style="width: 20%">Participación</th>
+                  <th class="text-end">Unid.</th><th class="text-end">Total</th>
+                  <th class="text-end">Margen</th><th class="text-end">%</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.nombre) {
+                    <tr>
+                      <td>{{ f.nombre }}</td>
+                      <td>
+                        <div class="small text-body-secondary">{{ numero(f.participacion ?? 0) }} %</div>
+                        <c-progress thin color="success" [value]="f.participacion ?? 0" [attr.aria-label]="f.nombre" />
+                      </td>
+                      <td class="text-end">{{ numero(f.unidades) }}</td>
+                      <td class="text-end text-nowrap">{{ f.total | gs }}</td>
+                      <td class="text-end text-nowrap">{{ f.margen | gs }}</td>
+                      <td class="text-end" [class]="claseMargen(f.margen_pct)">
+                        {{ f.margen_pct === null ? '—' : numero(f.margen_pct) + ' %' }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+                @if (t) {
+                  <tfoot class="fw-semibold text-nowrap"><tr>
+                    <td colspan="2">Total</td>
+                    <td class="text-end">{{ numero(t['unidades']) }}</td>
+                    <td class="text-end">{{ t['total'] | gs }}</td>
+                    <td class="text-end">{{ t['margen'] | gs }}</td>
+                    <td class="text-end">{{ t['margen_pct'] === null ? '—' : numero(t['margen_pct']) + ' %' }}</td>
+                  </tr></tfoot>
+                }
+              </table>
+            </div>
+          }
+
+          <!-- ===== Por método de pago ===== -->
+          @case ('metodos-pago') {
+            <c-row class="g-4">
+              <c-col lg="5">
+                <div style="height: 300px">
+                  <c-chart type="doughnut" height="300" [data]="graficoMetodos()" [options]="opcionesMetodos" />
+                </div>
+              </c-col>
+              <c-col lg="7">
+                <table cTable hover small class="mb-0">
+                  <thead><tr>
+                    <th>Método</th><th class="text-end">Operaciones</th>
+                    <th class="text-end">%</th><th class="text-end">Total</th>
+                  </tr></thead>
+                  <tbody>
+                    @for (f of r.filas; track f.metodo) {
+                      <tr>
+                        <td>{{ f.metodo }}</td>
+                        <td class="text-end">{{ f.operaciones }}</td>
+                        <td class="text-end">{{ numero(f.participacion ?? 0) }} %</td>
+                        <td class="text-end">{{ f.total | gs }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                  @if (t) {
+                    <tfoot class="fw-semibold"><tr>
+                      <td>Total</td><td class="text-end">{{ t['operaciones'] }}</td>
+                      <td class="text-end">100 %</td><td class="text-end">{{ t['total'] | gs }}</td>
+                    </tr></tfoot>
+                  }
+                </table>
+              </c-col>
+            </c-row>
+          }
+
+          <!-- ===== Por ciudad ===== -->
+          @case ('ubicacion') {
+            <div class="table-responsive tabla-scroll">
+              <table cTable hover small class="mb-0">
+                <thead><tr>
+                  <th>Departamento</th><th>Ciudad</th><th style="width: 20%">Participación</th>
+                  <th class="text-end">Pedidos</th><th class="text-end">Total</th>
+                </tr></thead>
+                <tbody>
+                  @for (f of r.filas; track f.departamento + f.ciudad) {
+                    <tr>
+                      <td>{{ f.departamento }}</td>
+                      <td>{{ f.ciudad }}</td>
+                      <td>
+                        <div class="small text-body-secondary">{{ numero(f.participacion ?? 0) }} %</div>
+                        <c-progress thin color="info" [value]="f.participacion ?? 0" [attr.aria-label]="f.ciudad" />
+                      </td>
+                      <td class="text-end">{{ f.pedidos }}</td>
+                      <td class="text-end">{{ f.total | gs }}</td>
+                    </tr>
+                  }
+                </tbody>
+                @if (t) {
+                  <tfoot class="fw-semibold"><tr>
+                    <td colspan="3">Total</td>
+                    <td class="text-end">{{ t['pedidos'] }}</td><td class="text-end">{{ t['total'] | gs }}</td>
+                  </tr></tfoot>
+                }
+              </table>
+            </div>
+          }
+        }
+      </app-estado-bloque>
+    </c-card-body>
+  </c-card>
+</app-pagina-reporte>

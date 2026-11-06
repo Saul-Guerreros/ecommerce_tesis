@@ -6,10 +6,11 @@ export interface PanelResumen {
     presupuestos_validar: number;
     esperando_cliente: number;
     por_vencer: number;
+    sin_contacto: number;
     listos_entregar: number;
     cobros_pendientes: number;
   };
-  tecnicos: { usu_id: number; nombre: string; abiertas: number }[];
+  tecnicos: { usu_id: number; nombre: string; abiertas: number; sucursales: number[] }[];
 }
 
 export interface PanelFila {
@@ -21,6 +22,8 @@ export interface PanelFila {
   equipo: string;
   sse_garant: boolean;
   es_reclamo: boolean;
+  canal: 'WEB' | 'MOSTRADOR';
+  sucursal: { suc_id: number; nombre: string | null } | null;
   dias_taller: number | null;
   ejes: {
     servicio: { codigo: string; descri: string };
@@ -28,18 +31,57 @@ export interface PanelFila {
     pago: { codigo: string; descri: string } | null;
     egreso: string | null;
   };
-  presupuesto: { numero: string; versio: number; estado: string; fecven: string | null } | null;
+  presupuesto: PresupuestoResumen | null;
+  ultimo_contacto: UltimoContacto | null;
+  whatsapp_url: string | null;
   sse_total: number;
   tecnico: { usu_id: number; nombre: string | null } | null;
-  acciones: { reasignar: boolean; entregar: boolean; const_recepcion: boolean; const_retiro: boolean };
+  acciones: {
+    reasignar: boolean; entregar: boolean; const_recepcion: boolean; const_retiro: boolean;
+    responder: boolean; contacto: boolean; pdf_presupuesto: boolean;
+  };
 }
+
+/** Paso 2 - Presupuesto vigente (panel y detalle). */
+export interface PresupuestoResumen {
+  pse_id: number;
+  numero: string;
+  versio: number;
+  codigo: string;
+  estado: string;
+  total: number;
+  fecven: string | null;
+  vencido: boolean;
+  respuesta: {
+    fecha: string; canal: string | null; etiqueta: string | null;
+    registro: string | null; obs: string | null; motivo: string | null;
+  } | null;
+  puede_responder: boolean;
+  puede_imprimir: boolean;
+}
+
+export interface UltimoContacto {
+  fecha: string;
+  medio: string | null;
+  resultado: string | null;
+  codigo?: string | null;
+}
+
+export type CanalRespuesta = 'MOSTRADOR' | 'TELEFONO' | 'WHATSAPP';
+export type MedioContacto = 'TELEFONO' | 'WHATSAPP' | 'CORREO' | 'PRESENCIAL';
+export type ResultadoContacto = 'CONTACTADO' | 'NO_CONTESTA' | 'PIDE_TIEMPO';
 
 export interface PanelConfig {
   estados_servicio: { ets_id: number; ets_codigo: string; ets_descri: string }[];
-  tecnicos: { usu_id: number; nombre: string }[];
+  tecnicos: { usu_id: number; nombre: string; sucursales: number[] }[];
+  sucursales: { suc_id: number; suc_nombre: string }[];
+  canales: ('WEB' | 'MOSTRADOR')[];
+  contacto_alerta_dias: number;
 }
 
 export interface EntregaConfig {
+  /** Paso 3: canal mostrador -> solo retiro en la sucursal de la solicitud (sin envío). */
+  solo_retiro_sucursal: boolean;
   sse_numero: string;
   cliente: string | null;
   equipo: string;

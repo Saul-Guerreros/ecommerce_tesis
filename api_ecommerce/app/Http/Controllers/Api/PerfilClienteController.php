@@ -66,9 +66,12 @@ class PerfilClienteController extends Controller
                 'per_fechna' => $data['per_fechna'] ?? null,
             ]);
 			
-			// La cédula se guarda solo la primera vez (si estaba vacía).
+		    // El documento (y su tipo) se guardan solo la primera vez, si estaba vacío.
             if (blank($persona->per_cedula) && filled($data['per_cedula'] ?? null)) {
-                $persona->update(['per_cedula' => $data['per_cedula']]);
+                $persona->update([
+                    'per_tpdid'  => $request->tipoDocumento()?->tpd_id ?? $persona->per_tpdid,
+                    'per_cedula' => $data['per_cedula'],
+                ]);
             }
 
             if ($request->hasFile('avatar')) {

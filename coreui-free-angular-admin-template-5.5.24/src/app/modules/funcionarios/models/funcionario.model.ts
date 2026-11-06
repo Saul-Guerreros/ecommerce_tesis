@@ -8,6 +8,11 @@ export interface Cargo {
   crg_descr: string;
 }
 
+export interface SucursalOpcion {
+  suc_id: number;
+  suc_nombre: string;
+}
+
 // En Funcionario, agregar rol_id y rol (igual que en Usuario):
 export interface Funcionario {
   fun_id: number;
@@ -18,6 +23,8 @@ export interface Funcionario {
   rol?: string | null;
   persona: Persona;
   cargo?: Cargo;
+  /** null en funcionarios anteriores a la columna fun_sucid. */
+  sucursal?: SucursalOpcion | null;
   contactos: Contacto[];
   /** Cuenta de acceso al panel (null si todavía no tiene). Nunca incluye la contraseña. */
   usuario?: { usu_id: number; email: string; estado: string } | null;
@@ -36,6 +43,7 @@ export interface FuncionarioPayload {
   per_fechna: string | null;
   fun_crgid: number | null;
   rol_id: number | null;
+  fun_sucid: number | null;
   fun_fecing: string;
   fun_fecegr: string | null;
   fun_estado: number;
@@ -54,6 +62,7 @@ export interface FuncionarioConfig {
   tipos_documento: TipoDocumento[];
   cargos: Cargo[];
   roles: RolOpcion[];
+  sucursales: SucursalOpcion[];
   estados_civiles: string[];
   tipos_contacto: TipoContacto[];
 }

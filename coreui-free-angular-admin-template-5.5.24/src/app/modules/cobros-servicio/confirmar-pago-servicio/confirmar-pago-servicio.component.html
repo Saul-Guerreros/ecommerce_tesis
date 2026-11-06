@@ -1,0 +1,82 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" size="lg" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle *ngIf="pago && detalle">CONFIRMAR PAGO {{ pago.orden }} — {{ detalle.sse_numero }}</h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="pago">
+    <form [formGroup]="form">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label small text-muted mb-1">Método</label>
+          <div class="fw-semibold">{{ pago.metodo.descri }}</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted mb-1">Monto esperado</label>
+          <div class="fw-semibold">Gs. {{ formatoGs(montoEsperado) }}</div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Monto verificado <span class="text-danger">*</span></label>
+          <input cFormControl type="number" min="1" formControlName="monto_verificado" (blur)="montoTocado = true"
+                 [class.is-invalid]="campoInvalido('monto_verificado') || errorBackend('monto_verificado') || montoInsuficiente" />
+          <div class="invalid-feedback d-block" *ngIf="errorBackend('monto_verificado')">{{ errorBackend('monto_verificado') }}</div>
+          <div class="invalid-feedback d-block" *ngIf="campoInvalido('monto_verificado') && !errorBackend('monto_verificado')">
+            Ingresá el monto que figura en el comprobante.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">N° de transacción / referencia</label>
+          <input cFormControl formControlName="nro_transaccion" [class.is-invalid]="errorBackend('nro_transaccion')" />
+          <div class="invalid-feedback d-block" *ngIf="errorBackend('nro_transaccion')">{{ errorBackend('nro_transaccion') }}</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Banco / Billetera</label>
+          <input cFormControl formControlName="banco" [class.is-invalid]="errorBackend('banco')" />
+          <div class="invalid-feedback d-block" *ngIf="errorBackend('banco')">{{ errorBackend('banco') }}</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Fecha del pago</label>
+          <input cFormControl type="date" formControlName="fecha_pago" [class.is-invalid]="errorBackend('fecha_pago')" />
+          <div class="invalid-feedback d-block" *ngIf="errorBackend('fecha_pago')">{{ errorBackend('fecha_pago') }}</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Observación (opcional)</label>
+          <textarea cFormControl rows="2" formControlName="observacion"></textarea>
+        </div>
+      </div>
+
+      <c-alert color="danger" class="mt-3 mb-0" *ngIf="montoInsuficiente">
+        <strong>El pago no cubre el monto asignado</strong>
+        <p class="mb-0 mt-1">
+          El comprobante cubre Gs. {{ formatoGs(montoVerificado) }} de los Gs. {{ formatoGs(montoEsperado) }}.
+          Faltan <strong>Gs. {{ formatoGs(faltante) }}</strong>. Rechazalo para que el cliente complete la diferencia.
+        </p>
+      </c-alert>
+
+      <c-alert color="warning" class="mt-3 mb-0" *ngIf="montoExcedente">
+        <strong>El comprobante excede el monto asignado</strong>
+        <p class="mb-2 mt-1">Excedente: <strong>Gs. {{ formatoGs(faltante) }}</strong>.</p>
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="confirmarDifSrv" formControlName="confirmar_diferencia" />
+          <label class="form-check-label" for="confirmarDifSrv">Confirmo el excedente y autorizo el pago.</label>
+        </div>
+      </c-alert>
+
+      <div class="border-top mt-3 pt-3 small" *ngIf="cubreElTotal && !montoInsuficiente">
+        Al confirmar este pago el servicio quedará <strong>TOTALMENTE PAGADO</strong> y el equipo podrá entregarse.
+        Se avisará al cliente por correo.
+      </div>
+    </form>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" variant="outline" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" variant="outline" [disabled]="guardando" (click)="pedirRechazo()">Rechazar pago</button>
+    <button cButton color="success" class="text-white" [disabled]="!puedeGuardar" (click)="confirmar()">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>Confirmar pago
+    </button>
+  </c-modal-footer>
+</c-modal>

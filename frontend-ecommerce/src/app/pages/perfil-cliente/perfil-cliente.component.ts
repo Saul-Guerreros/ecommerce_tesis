@@ -60,4 +60,9 @@ export class PerfilClienteComponent {
       full_name: perfilActualizado.persona.nombre_completo,
     });
   }
+  
+    /** Cierra la sesión y vuelve al inicio (AuthService limpia token y datos locales). */
+  cerrarSesion(): void {
+    this.authService.logout('/');
+  }
 }

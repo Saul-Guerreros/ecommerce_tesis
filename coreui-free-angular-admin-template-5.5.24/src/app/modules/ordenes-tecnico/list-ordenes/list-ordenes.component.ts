@@ -24,10 +24,12 @@ interface Columna {
 })
 export class ListOrdenesComponent implements OnInit, OnDestroy {
   readonly columnas: Columna[] = [
-    { titulo: 'Por diagnosticar', estados: ['RECIBIDA'], color: 'warning' },
+    { titulo: 'Recibidas', estados: ['RECIBIDA'], color: 'warning' },
     { titulo: 'En diagnóstico', estados: ['EN_DIAGNOSTICO'], color: 'info' },
     { titulo: 'Esperando al cliente', estados: ['PRESUPUESTADA'], color: 'secondary' },
     { titulo: 'Para reparar', estados: ['APROBADA', 'EN_REPARACION'], color: 'primary' },
+    // Garantía de compra: el taller gestiona el reclamo con la empresa responsable.
+    { titulo: 'Garantía con la empresa', estados: ['GESTION_GARANTIA', 'EN_EMPRESA'], color: 'dark' },
     { titulo: 'Listas', estados: ['LISTA'], color: 'success' },
   ];
 

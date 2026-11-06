@@ -50,6 +50,15 @@ export class ConfirmarRecepcionComponent implements OnChanges {
     });
   }
 
+  /**
+   * Cada sucursal tiene su taller: solo los técnicos asignados a la sucursal de la solicitud.
+   * Sin sucursal (retiro a domicilio sin tarifa) se muestran todos los técnicos activos.
+   */
+  get tecnicosDisponibles(): TecnicoOpcion[] {
+    const suc = this.detalle?.ingreso.suc_id ?? null;
+    return suc ? this.tecnicos.filter((t) => (t.sucursales ?? []).includes(suc)) : this.tecnicos;
+  }
+
   get accesorios(): FormArray<FormControl<string>> {
     return this.form.get('accesorios') as FormArray<FormControl<string>>;
   }

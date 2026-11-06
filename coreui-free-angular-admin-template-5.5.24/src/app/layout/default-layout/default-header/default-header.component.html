@@ -25,9 +25,6 @@
 
     <c-header-nav class="d-none d-md-flex ms-auto ">
       <a cNavLink>
-        <svg cIcon class="my-1" name="cilBell" size="lg"></svg>
-      </a>
-      <a cNavLink>
         <svg cIcon class="my-1" name="cilList" size="lg"></svg>
       </a>
       <a cNavLink>
@@ -45,6 +42,10 @@
       </div>
     </c-header-nav>
 
+    <!-- Alertas de reposición: visible también en móvil -->
+    <c-header-nav class="mx-0">
+      <app-campana-inventario />
+    </c-header-nav>
     <c-header-nav class="mx-0">
       <ng-container *ngTemplateOutlet="userDropdown" />
     </c-header-nav>

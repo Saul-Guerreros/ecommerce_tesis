@@ -66,7 +66,7 @@ class DatoFiscalClienteController extends Controller
         }
 
         $persona = $this->personaAutenticada();
-        $persona->loadMissing('cliente', 'contactos');
+        $persona->loadMissing('cliente', 'contactos', 'tipoDocumento');
 
         $esPropio = false;
         $fuente = null;
@@ -76,7 +76,7 @@ class DatoFiscalClienteController extends Controller
         if ($cliRuc && $this->normalizarRuc($numero) === $this->normalizarRuc($cliRuc)) {
             $esPropio = true;
             $fuente = 'perfil';
-        } elseif ($persona->per_cedula && RucParaguayo::correspondeACedula($numero, $persona->per_cedula)) {
+        }elseif ($persona->per_cedula && $persona->tipoDocumento?->tpd_codigo === 'CI' && RucParaguayo::correspondeACedula($numero, $persona->per_cedula)) {
             $esPropio = true;
             $fuente = 'calculado';
             // Si ya tiene cli_ruc guardado (aunque distinto a este

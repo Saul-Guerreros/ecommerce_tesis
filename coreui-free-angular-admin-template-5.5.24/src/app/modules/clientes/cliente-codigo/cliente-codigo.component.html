@@ -1,0 +1,57 @@
+<c-modal [visible]="visible" (visibleChange)="!$event && cerrar()" size="sm">
+
+  <c-modal-header>
+    <h5 cModalTitle>Código de vinculación</h5>
+  </c-modal-header>
+
+  <c-modal-body>
+    <strong>{{ cliente?.persona?.nombre_completo }}</strong>
+    <div class="text-medium-emphasis small mb-3">
+      Documento: {{ cliente?.persona?.per_cedula || '—' }}
+    </div>
+
+    <div class="text-center py-3" *ngIf="cargando">
+      <c-spinner color="primary"></c-spinner>
+    </div>
+
+    <ng-container *ngIf="!cargando && vinculo">
+      <div class="text-center my-3">
+        <div class="fs-3 fw-bold" style="letter-spacing: 3px;">{{ vinculo.codigo }}</div>
+        <div class="small text-medium-emphasis">Vigente hasta el {{ vinculo.vence }}</div>
+      </div>
+
+      <p class="small mb-2">
+        El cliente lo ingresa junto con su documento en <em>Vincular mi cuenta</em> de la tienda.
+        Entregalo solo después de verificar su documento.
+      </p>
+
+      <c-alert color="warning" class="py-2 small mb-0" *ngIf="confirmando">
+        Se anulará el código actual y se emitirá uno nuevo. Si el cliente tiene impresa la constancia
+        anterior, deberá usar el código nuevo.
+      </c-alert>
+    </ng-container>
+  </c-modal-body>
+
+  <c-modal-footer class="flex-wrap gap-2">
+    <ng-container *ngIf="!cargando && vinculo && !confirmando">
+      <button cButton size="sm" color="secondary" class="text-white"
+              (click)="copiar(vinculo.codigo, 'Código')">Copiar código</button>
+      <button cButton size="sm" color="secondary" class="text-white"
+              (click)="copiar(vinculo.enlace, 'Enlace')">Copiar enlace</button>
+      <a cButton size="sm" color="success" class="text-white" *ngIf="vinculo.whatsapp_url"
+         [href]="vinculo.whatsapp_url" target="_blank" rel="noopener">WhatsApp</a>
+      <button cButton size="sm" color="warning" class="text-white"
+              (click)="confirmando = true">Generar nuevo</button>
+    </ng-container>
+
+    <ng-container *ngIf="confirmando">
+      <button cButton size="sm" color="secondary" variant="outline"
+              (click)="confirmando = false" [disabled]="cargando">Cancelar</button>
+      <button cButton size="sm" color="warning" class="text-white"
+              (click)="generarNuevo()" [disabled]="cargando">Sí, generar nuevo</button>
+    </ng-container>
+
+    <button cButton size="sm" color="secondary" variant="outline" (click)="cerrar()">Cerrar</button>
+  </c-modal-footer>
+
+</c-modal>

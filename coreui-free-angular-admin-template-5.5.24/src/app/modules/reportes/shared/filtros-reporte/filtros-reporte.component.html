@@ -1,0 +1,91 @@
+<c-card class="mb-4">
+  <c-card-body>
+    <form [formGroup]="form" (ngSubmit)="enviar()" novalidate>
+
+      @if (mostrarFechas) {
+        <div class="d-flex flex-wrap gap-1 mb-3">
+          @for (p of presets; track p.clave) {
+            <button type="button" cButton size="sm"
+                    [color]="presetActivo() === p.clave ? 'primary' : 'secondary'"
+                    [variant]="presetActivo() === p.clave ? undefined : 'ghost'"
+                    (click)="aplicarPreset(p.clave)">
+              {{ p.etiqueta }}
+            </button>
+          }
+        </div>
+      }
+
+      <c-row class="g-3 align-items-start">
+        @if (mostrarFechas) {
+          <c-col md="6" lg="2">
+            <label cLabel for="f-desde">Desde <span class="text-danger">*</span></label>
+            <input cFormControl id="f-desde" type="date" sizing="sm" formControlName="desde"
+                   [class.is-invalid]="!!error('desde')" />
+            @if (error('desde'); as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+          </c-col>
+
+          <c-col md="6" lg="2">
+            <label cLabel for="f-hasta">Hasta <span class="text-danger">*</span></label>
+            <input cFormControl id="f-hasta" type="date" sizing="sm" formControlName="hasta"
+                   [class.is-invalid]="!!error('hasta')" />
+            @if (error('hasta'); as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+          </c-col>
+        }
+
+        @if (mostrarSucursal) {
+          <c-col md="6" lg="3">
+            <label cLabel for="f-sucursal">Sucursal</label>
+            <select cSelect id="f-sucursal" sizing="sm" formControlName="sucursal_id"
+                    [class.is-invalid]="!!error('sucursal_id')">
+              <option [ngValue]="null">Todas las sucursales</option>
+              @for (s of sucursales(); track s.id) {
+                <option [ngValue]="s.id">{{ s.nombre }}</option>
+              }
+            </select>
+            @if (error('sucursal_id'); as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+            @if (configError()) { <div class="small text-danger mt-1">No se pudieron cargar las sucursales.</div> }
+          </c-col>
+        }
+
+        @if (mostrarDeposito) {
+          <c-col md="6" lg="2">
+            <label cLabel for="f-deposito">Depósito</label>
+            <select cSelect id="f-deposito" sizing="sm" formControlName="deposito_id"
+                    [class.is-invalid]="!!error('deposito_id')">
+              <option [ngValue]="null">Todos los depósitos</option>
+              @for (d of depositosFiltrados(); track d.id) {
+                <option [ngValue]="d.id">{{ d.nombre }}</option>
+              }
+            </select>
+            @if (error('deposito_id'); as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
+          </c-col>
+        }
+
+        @if (mostrarAgrupacion) {
+          <c-col md="6" lg="2">
+            <label cLabel for="f-agrupacion">Agrupar por</label>
+            <select cSelect id="f-agrupacion" sizing="sm" formControlName="agrupacion">
+              @for (a of agrupaciones(); track a.valor) {
+                <option [ngValue]="a.valor">{{ a.etiqueta }}</option>
+              }
+            </select>
+          </c-col>
+        }
+
+        <!-- Filtros propios de cada reporte -->
+        <ng-content select="[filtrosExtra]" />
+
+        <c-col xs="12" class="d-flex justify-content-end gap-2">
+          <button type="button" cButton size="sm" color="secondary" variant="outline"
+                  [disabled]="cargando" (click)="limpiar()">
+            Limpiar
+          </button>
+          <button type="submit" cButton size="sm" color="primary" [disabled]="cargando">
+            @if (cargando) { <c-spinner size="sm" class="me-1" /> }
+            Aplicar filtros
+          </button>
+        </c-col>
+      </c-row>
+    </form>
+  </c-card-body>
+</c-card>

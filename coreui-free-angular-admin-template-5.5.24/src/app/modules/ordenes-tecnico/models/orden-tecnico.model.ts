@@ -4,6 +4,8 @@ export interface OrdenTarjeta {
   ose_numero: string | null;
   equipo: string;
   sse_garant: boolean;
+  /** Garantía de compra: la gestiona la empresa responsable, no hay diagnóstico ni presupuesto. */
+  es_garantia_compra: boolean;
   estado: string;
   recibido: string | null;
   tecnico: string | null;
@@ -20,10 +22,70 @@ export interface FallaDiagnostico {
   obs: string | null;
 }
 
+// ---------- Garantía de compra: gestión con la empresa responsable ----------
+
+export type ResultadoGarantia = 'REPARADO' | 'REEMPLAZADO' | 'RECHAZADO';
+
+export interface EmpresaGarantia {
+  pro_id: number;
+  razon: string;
+  telef: string | null;
+  email: string | null;
+}
+
+export interface ContactoEmpresa {
+  nombre: string;
+  cargo: string | null;
+  telef: string | null;
+  email: string | null;
+}
+
+/** Empresa elegible en la gestión (con sus contactos, para llamar o escribir). */
+export interface EmpresaOpcion extends EmpresaGarantia {
+  contactos: ContactoEmpresa[];
+}
+
+export interface GestionGarantia {
+  gpr_proid: number | null;
+  empresa: EmpresaGarantia | null;
+  gpr_nrocaso: string | null;
+  gpr_contacto: string | null;
+  gpr_fecenv: string | null;
+  gpr_fecrec: string | null;
+  gpr_result: ResultadoGarantia | null;
+  resultado: string | null;
+  gpr_nroserr: string | null;
+  gpr_obs: string | null;
+}
+
+export interface GarantiaEmpresa {
+  producto: string | null;
+  pedido: string | null;
+  /** Empresa vinculada al producto comprado (sugerida al iniciar la gestión). */
+  empresa_producto_id: number | null;
+  gestion: GestionGarantia | null;
+}
+
+export interface DatosGarantiaPayload {
+  gpr_proid: number | null;
+  gpr_nrocaso: string | null;
+  gpr_contacto: string | null;
+  gpr_obs: string | null;
+}
+
+export interface ResolverGarantiaPayload {
+  gpr_result: ResultadoGarantia;
+  gpr_fecrec?: string | null;
+  gpr_nroserr?: string | null;
+  gpr_obs?: string | null;
+}
+
 export interface OrdenTrabajo {
   sse_id: number;
   sse_numero: string;
   sse_garant: boolean;
+  es_garantia_compra: boolean;
+  garantia_empresa: GarantiaEmpresa | null;
   estado: { codigo: string; descri: string };
   cliente: string | null;
   equipo: { tdi_id: number; tipo: string | null; sse_marca: string; sse_modelo: string; sse_nroser: string | null };
@@ -69,6 +131,11 @@ export interface OrdenTrabajo {
     ejecutar: boolean;
     solicitar_complementario: boolean;
     descartar_complementario: boolean;
+    // Garantía de compra
+    iniciar_garantia: boolean;
+    garantia_editar: boolean;
+    garantia_enviar: boolean;
+    garantia_resolver: boolean;
   };
 }
 
@@ -92,6 +159,8 @@ export interface OrdenConfig {
   precio_revision: number | null;
   max_fotos: number;
   trabajos: TrabajoOpcion[];
+  /** Empresas a las que se puede gestionar una garantía de compra. */
+  proveedores: EmpresaOpcion[];
 }
 
 export type TipoLinea = 'REPUESTO' | 'MANO_OBRA';

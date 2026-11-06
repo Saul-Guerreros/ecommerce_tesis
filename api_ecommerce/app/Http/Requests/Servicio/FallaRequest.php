@@ -31,7 +31,10 @@ class FallaRequest extends FormRequest
             ],
             'fll_descri' => ['required', 'string', 'max:100'],
             // null = falla genérica (aplica a cualquier tipo de equipo)
-            'fll_tdiid'  => ['nullable', 'integer', Rule::exists('tipo_dispositivo', 'tdi_id')],
+            'fll_tdiid'  => ['nullable', 'integer', Rule::exists('tipo_dispositivo', 'tdi_id')
+                ->whereNot('tdi_codigo', \App\Models\Servicio\TipoDispositivo::PENDIENTE)],
+            // Punto 7: tipo de problema (NULL = se clasifica como "Otro")
+            'fll_cafid'  => ['nullable', 'integer', Rule::exists('categoria_falla', 'caf_id')->where('caf_estado', 1)],
             'fll_estado' => ['nullable', 'integer', Rule::in([0, 1])],
         ];
     }
@@ -62,6 +65,7 @@ class FallaRequest extends FormRequest
             'fll_codigo' => mb_strtoupper(trim((string) $this->input('fll_codigo'))),
             'fll_descri' => trim((string) $this->input('fll_descri')),
             'fll_tdiid'  => $this->input('fll_tdiid') ?: null,
+            'fll_cafid'  => $this->input('fll_cafid') ?: null,
         ]);
     }
 
@@ -75,6 +79,7 @@ class FallaRequest extends FormRequest
             'fll_descri.max'      => 'La descripción no puede superar los 100 caracteres.',
             'fll_tdiid.exists'    => 'El tipo de dispositivo seleccionado no existe.',
             'fll_estado.in'       => 'El estado debe ser Activo (1) o Inactivo (0).',
+            'fll_cafid.exists'    => 'El tipo de problema seleccionado no existe o está inactivo.',
         ];
     }
 }

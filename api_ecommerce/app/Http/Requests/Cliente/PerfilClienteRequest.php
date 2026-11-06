@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Cliente;
 
+use App\Models\TipoDocumento;
+use App\Rules\FechaNacimiento;
+use App\Services\Cliente\ClienteRapidoService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use App\Rules\FechaNacimiento;
 
 class PerfilClienteRequest extends FormRequest
 {
@@ -13,11 +15,55 @@ class PerfilClienteRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Tipo de documento a aplicar: el de la persona si ya tiene documento;
+     * si no, el elegido en el formulario (C.I. o pasaporte) o el que ya tenía la ficha.
+     */
+    public function tipoDocumento(): ?TipoDocumento
+    {
+        $persona = $this->user('api')?->persona;
+
+        if (filled($persona?->per_cedula)) {
+            return TipoDocumento::find($persona->per_tpdid);
+        }
+
+        if ($this->filled('tipo_documento')) {
+            return TipoDocumento::where('tpd_codigo', $this->input('tipo_documento'))
+                ->where('tpd_estado', 1)
+                ->whereIn('tpd_codigo', ClienteRapidoService::DOCUMENTOS_MOSTRADOR)
+                ->first();
+        }
+
+        return $persona?->per_tpdid ? TipoDocumento::find($persona->per_tpdid) : null;
+    }
+
+    /** C.I.: solo dígitos. Pasaporte: letras y números en mayúsculas. Misma comparación que el mostrador. */
+    private function normalizar(?string $codigo, string $valor): string
+    {
+        $valor = trim($valor);
+
+        return $codigo === 'PAS'
+            ? preg_replace('/[^A-Z0-9]/', '', mb_strtoupper($valor))
+            : preg_replace('/\D/', '', $valor);
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (!$this->filled('per_cedula')) {
+            return;
+        }
+
+        $this->merge([
+            'per_cedula' => $this->normalizar($this->tipoDocumento()?->tpd_codigo, (string) $this->input('per_cedula')),
+        ]);
+    }
+
     public function rules(): array
     {
-        $clienteId = $this->user('api')?->persona?->cliente?->cli_id;
-        $persona = $this->user('api')?->persona;
-		
+        $persona   = $this->user('api')?->persona;
+        $clienteId = $persona?->cliente?->cli_id;
+        $tipo      = $this->tipoDocumento();
+
         return [
             'per_nombr1' => ['required', 'string', 'max:45'],
             'per_nombr2' => ['nullable', 'string', 'max:45'],
@@ -34,18 +80,52 @@ class PerfilClienteRequest extends FormRequest
 
             // max:2048 KB = 2MB
             'avatar' => ['nullable', 'image', 'max:2048'],
-			            // Solo se acepta mientras la persona todavía no tiene cédula.
+
+            'tipo_documento' => ['nullable', Rule::in(ClienteRapidoService::DOCUMENTOS_MOSTRADOR)],
+
+            // El documento solo se acepta mientras la persona todavía no tiene uno.
             'per_cedula' => [
-                'nullable', 'string', 'regex:/^\d{4,10}$/',
-                function (string $attribute, mixed $value, \Closure $fail) use ($persona) {
-                    if ($value && filled($persona?->per_cedula) && $value !== $persona->per_cedula) {
-                        $fail('La cédula ya fue registrada y no se puede modificar. Contactá con la tienda para corregirla.');
+                'nullable', 'string',
+                function (string $attribute, mixed $value, \Closure $fail) use ($persona, $tipo) {
+                    if (!$value) {
+                        return;
+                    }
+
+                    // Ya tiene documento: no se modifica (reenviar el mismo valor es válido).
+                    if (filled($persona?->per_cedula)) {
+                        if ($value !== $this->normalizar($tipo?->tpd_codigo, $persona->per_cedula)) {
+                            $fail('El documento ya fue registrado y no se puede modificar. Contactá con la tienda para corregirlo.');
+                        }
+
+                        return;
+                    }
+
+                    if (!$tipo) {
+                        $fail('Seleccioná el tipo de documento.');
+
+                        return;
+                    }
+
+                    $esPasaporte = $tipo->tpd_codigo === 'PAS';
+                    $formatoOk   = $esPasaporte
+                        ? preg_match('/^[A-Z0-9]{4,20}$/', $value)
+                        : preg_match('/^\d{4,10}$/', $value);
+
+                    if (!$formatoOk) {
+                        $fail($esPasaporte
+                            ? 'El pasaporte debe tener entre 4 y 20 letras o números, sin espacios ni guiones.'
+                            : 'La cédula debe contener solo números (entre 4 y 10).');
+
+                        return;
+                    }
+
+                    // Mismo criterio que el mostrador: único por tipo + número normalizado.
+                    $otra = app(ClienteRapidoService::class)->personaConDocumento($tipo->tpd_id, $value);
+                    if ($otra && $otra->per_id !== $persona?->per_id) {
+                        $fail('Ese documento ya está registrado en otra cuenta. Si ya te atendimos en la sucursal, '
+                            . 'vinculá tu cuenta con el código de tu constancia o acercate a la sucursal.');
                     }
                 },
-                // Única por tipo de documento (mismo índice que la tabla persona)
-                Rule::unique('persona', 'per_cedula')
-                    ->where('per_tpdid', $persona?->per_tpdid)
-                    ->ignore($persona?->per_id, 'per_id'),
             ],
         ];
     }
@@ -53,15 +133,14 @@ class PerfilClienteRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'per_nombr1.required' => 'El primer nombre es obligatorio.',
-            'per_apell1.required' => 'El primer apellido es obligatorio.',
-            'celular.regex'       => 'El número de celular no tiene un formato válido.',
-            'cli_ruc.regex'       => 'El RUC debe tener el formato 1234567-8.',
-            'cli_ruc.unique'      => 'Ese RUC ya está registrado por otro cliente.',
-            'avatar.image'        => 'El archivo debe ser una imagen.',
-            'avatar.max'          => 'La imagen no puede superar los 2MB.',
-			'per_cedula.regex'  => 'La cédula debe contener solo números (sin puntos).',
-            'per_cedula.unique' => 'Ese número de cédula ya está registrado en otra cuenta.',
+            'per_nombr1.required'   => 'El primer nombre es obligatorio.',
+            'per_apell1.required'   => 'El primer apellido es obligatorio.',
+            'celular.regex'         => 'El número de celular no tiene un formato válido.',
+            'cli_ruc.regex'         => 'El RUC debe tener el formato 1234567-8.',
+            'cli_ruc.unique'        => 'Ese RUC ya está registrado por otro cliente.',
+            'avatar.image'          => 'El archivo debe ser una imagen.',
+            'avatar.max'            => 'La imagen no puede superar los 2MB.',
+            'tipo_documento.in'     => 'Seleccioná cédula o pasaporte.',
         ];
     }
 }

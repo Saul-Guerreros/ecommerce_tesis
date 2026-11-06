@@ -15,6 +15,7 @@ use App\Models\TipoDocumento;
 use App\Models\TokenVerificacion;
 use App\Models\Usuario;
 use App\Services\Auth\GoogleAuthService;
+use App\Services\Cliente\VinculacionCuentaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -81,7 +82,24 @@ class AuthController extends Controller
             ], 500);
         }
 
-        $usuario = DB::transaction(function () use ($request, $rolCliente, $tipoDocumento, $tipoCliente) {
+        // A.2: si el correo es de un cliente registrado en el mostrador (sin usuario),
+        // la cuenta se crea sobre esa persona y conserva su historial de servicios.
+        $vinculable = app(VinculacionCuentaService::class)->personaVinculable($request->email);
+
+        $usuario = DB::transaction(function () use ($request, $rolCliente, $tipoDocumento, $tipoCliente, $vinculable) {
+            if ($vinculable) {
+                // Se respetan los datos cargados en la sucursal; solo se suma el celular si es nuevo.
+                app(VinculacionCuentaService::class)->completarContacto($vinculable, 'CELULAR', $request->celular);
+
+                return Usuario::create([
+                    'usu_perid' => $vinculable->per_id,
+                    'usu_rolid' => $rolCliente->rol_id,
+                    'usu_login' => $request->email,
+                    'usu_passwd' => bcrypt($request->password),
+                    'usu_estado' => Usuario::ESTADO_INACTIVO,
+                ]);
+            }
+
             $persona = Persona::create([
                 'per_tpdid' => $tipoDocumento->tpd_id,
                 'per_nombr1' => $request->nombre1,
@@ -98,19 +116,18 @@ class AuthController extends Controller
             ]);
 
             if ($request->filled('celular')) {
-				$persona->contactos()->create([
-					'con_tipo' => 'CELULAR',
-					'con_valor' => $request->celular,
-					'con_estado' => 1,
-				]);
-			}
+                $persona->contactos()->create([
+                    'con_tipo' => 'CELULAR',
+                    'con_valor' => $request->celular,
+                    'con_estado' => 1,
+                ]);
+            }
 
-			$persona->contactos()->create([
-					'con_tipo' => 'EMAIL',
-					'con_valor' => $request->email,
-					'con_estado' => 1,
-			]);
-
+            $persona->contactos()->create([
+                'con_tipo' => 'EMAIL',
+                'con_valor' => $request->email,
+                'con_estado' => 1,
+            ]);
 
             return Usuario::create([
                 'usu_perid' => $persona->per_id,

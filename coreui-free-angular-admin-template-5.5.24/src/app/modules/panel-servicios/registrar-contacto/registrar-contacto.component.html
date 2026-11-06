@@ -1,0 +1,44 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Registrar contacto con el cliente — {{ numero }}</h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label cLabel for="medio">Medio <span class="text-danger">*</span></label>
+          <select cSelect id="medio" formControlName="medio">
+            <option [ngValue]="null" disabled>Seleccione...</option>
+            <option *ngFor="let m of medios" [ngValue]="m.valor">{{ m.texto }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('medio')">{{ errorBackend('medio') || 'Indique el medio.' }}</div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel for="resultado">Resultado <span class="text-danger">*</span></label>
+          <select cSelect id="resultado" formControlName="resultado">
+            <option [ngValue]="null" disabled>Seleccione...</option>
+            <option *ngFor="let r of resultados" [ngValue]="r.valor">{{ r.texto }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="campoInvalido('resultado')">{{ errorBackend('resultado') || 'Indique el resultado.' }}</div>
+        </div>
+        <div class="col-12">
+          <label cLabel for="obs">
+            Observación <span class="text-danger" *ngIf="form.get('resultado')?.value === 'NO_CONTESTA'">*</span>
+          </label>
+          <textarea cFormControl id="obs" rows="3" formControlName="obs" maxlength="300"
+                    placeholder="Ej.: llamé a las 15:00, buzón de voz"></textarea>
+          <div class="text-danger small" *ngIf="campoInvalido('obs')">
+            {{ errorBackend('obs') || 'Si no contestó, deje una observación.' }}
+          </div>
+        </div>
+      </div>
+    </c-modal-body>
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" class="text-white" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando"></c-spinner> Registrar contacto
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

@@ -9,6 +9,7 @@ import { Cliente } from '../models/cliente.model';
 import { ClienteFormComponent } from '../cliente-form/cliente-form.component';
 import { ClienteDeleteComponent } from '../cliente-delete/cliente-delete.component';
 import { ContactoPrincipalPipe } from '../pipes/contacto-principal.pipe';
+import { ClienteCodigoComponent } from '../cliente-codigo/cliente-codigo.component';
 
 @Component({
   selector: 'app-cliente-list',
@@ -16,7 +17,7 @@ import { ContactoPrincipalPipe } from '../pipes/contacto-principal.pipe';
   imports: [
     CommonModule, FormsModule,
     CardModule, TableModule, ButtonModule, BadgeModule, SpinnerModule, FormModule, GridModule,
-    ClienteFormComponent, ClienteDeleteComponent, ContactoPrincipalPipe,
+    ClienteFormComponent, ClienteDeleteComponent, ClienteCodigoComponent, ContactoPrincipalPipe,
   ],
   templateUrl: './cliente-list.component.html',
 })
@@ -33,6 +34,7 @@ export class ClienteListComponent implements OnInit {
 
   showForm = false;
   showDelete = false;
+  showCodigo = false;
   clienteSel: Cliente | null = null;
 
   constructor(
@@ -84,6 +86,11 @@ export class ClienteListComponent implements OnInit {
   confirmarEliminar(cliente: Cliente): void {
     this.clienteSel = cliente;
     this.showDelete = true;
+  }
+  
+  verCodigo(cliente: Cliente): void {
+    this.clienteSel = cliente;
+    this.showCodigo = true;
   }
 
   onGuardado(ev: { data: Cliente; isEdit: boolean }): void {
