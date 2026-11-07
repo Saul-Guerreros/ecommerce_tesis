@@ -6,6 +6,7 @@ use App\Models\Servicio\ServicioHistorialEstado;
 use App\Services\Servicio\NotificadorServicio;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Services\Servicio\CancelacionServicioService;
 
 /** Fila del panel general A3: estado de los 4 ejes + flags de acciones. */
 class PanelSolicitudResource extends JsonResource
@@ -65,6 +66,9 @@ class PanelSolicitudResource extends JsonResource
             'acciones' => [
                 'reasignar'       => $this->recepcion !== null && in_array($estado, self::REASIGNABLES, true),
                 'entregar'        => $estado === 'LISTA' && $this->entrega === null,
+                // El modal informa los bloqueos (anticipo, tránsito, factura).
+                'cancelar'        => in_array($estado, CancelacionServicioService::CANCELABLES, true)
+                                     && $this->entrega === null && $this->puedeCancelar(),
                 'const_recepcion' => $this->recepcion !== null,
                 'const_retiro'    => $this->entrega !== null,
                 // Paso 2: respuesta asistida, contacto y PDF del presupuesto
@@ -74,5 +78,18 @@ class PanelSolicitudResource extends JsonResource
                 'pdf_presupuesto' => (bool) ($pres && in_array($pres->estado?->epr_codigo, ['ENVIADO', 'APROBADO', 'RECHAZADO'], true)),
             ],
         ];
+    }
+
+        /** Permiso del usuario actual (una sola consulta por request). */
+    private function puedeCancelar(): bool
+    {
+        static $puede = null;
+
+        if ($puede === null) {
+            $u = auth('api')->user();
+            $puede = $u && ($u->rol?->rol_descri === 'Administrador' || $u->tienePermiso('servicios.solicitudes.cancelar'));
+        }
+
+        return $puede;
     }
 }

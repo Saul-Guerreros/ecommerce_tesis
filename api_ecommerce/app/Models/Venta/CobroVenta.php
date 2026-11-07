@@ -8,6 +8,7 @@ use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Servicio\ServicioPago;
 
 /**
  * Cobro registrado contra una factura de venta (espejo de PagoCompra).
@@ -24,7 +25,7 @@ class CobroVenta extends Model
 
     protected $fillable = [
         'cob_venid', 'cob_mpaid', 'cob_monto', 'cob_nrotrx', 'cob_banco',
-        'cob_fecha', 'cob_observ', 'cob_ppaid', 'cob_usuid',
+        'cob_fecha', 'cob_observ', 'cob_ppaid', 'cob_spaid', 'cob_usuid',
         'cob_estado', 'cob_fecanu', 'cob_anusid', 'cob_motanu',
     ];
 
@@ -39,6 +40,7 @@ class CobroVenta extends Model
         'cob_estado' => 'integer',
         'cob_creado' => 'datetime',
         'cob_fecanu' => 'datetime',
+        'cob_spaid'  => 'integer',
     ];
 
     public function scopeActivo(Builder $query): Builder
@@ -66,6 +68,12 @@ class CobroVenta extends Model
     public function pago(): BelongsTo
     {
         return $this->belongsTo(PedidoPago::class, 'cob_ppaid', 'ppa_id');
+    }
+
+    /** Pago del servicio técnico cobrado (excluyente con pago()). */
+    public function pagoServicio(): BelongsTo
+    {
+        return $this->belongsTo(ServicioPago::class, 'cob_spaid', 'spa_id');
     }
 
     public function usuario(): BelongsTo

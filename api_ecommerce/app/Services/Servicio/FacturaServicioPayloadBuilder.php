@@ -12,26 +12,21 @@ use App\Services\Ruc\DigitoVerificador;
 /**
  * Builder del cuerpo de POST /facturas que reconoce el ORIGEN de la venta.
  *
- *   - Venta de un pedido (ven_sseid NULL): delega en parent::construir().
- *     El JSON de los pedidos sale idéntico, byte por byte. Es importante:
- *     un pedido PENDIENTE que se reintenta con el mismo número y otro
- *     contenido recibiría 409 contenido_distinto.
- *   - Venta de un servicio técnico (ven_sseid): arma su propio JSON.
+ *   - Pedido (ven_sseid NULL): delega en parent::construir(), sin cambios.
+ *   - Servicio técnico: arma su JSON (guía 0.54.1, cap. 6.6.A y 29):
+ *       ANTICIPO  tipo_transaccion 9, ítems por el importe del adelanto,
+ *                 pagos = medios declarados del anticipo.
+ *       VENTA     tipo 2/3; si aplica un anticipo: anticipo { cdc, condicion 2 }
+ *                 e items[].anticipo POR UNIDAD; pagos = medios del NETO;
+ *                 neto cero -> pagos [{ tipo 11, monto 0 }].
+ *     Siempre entrega_inmediata: true y enviar_correo: false: el correo se
+ *     pide DESPUÉS del cobro (FacturaCorreoService).
  *
- * Se registra en AppServiceProvider como implementación de
- * FacturaPayloadBuilder. Así FacturacionService, el job
- * DeclararFacturaElectronica, el comando facturacion:reintentar y el botón
- * "Reintentar" de facturas-venta funcionan con los dos orígenes SIN
- * modificar ninguno de esos archivos (principio abierto/cerrado).
+ * Pagos DECLARADOS (no rechazados), no solo confirmados: la factura se emite
+ * antes del cobro, igual que en pedidos. Una vez emitida, sus pagos no se
+ * rechazan (lo impide la Fase 3), así un reintento manda lo mismo.
  *
- * Los métodos y constantes privados del padre no se pueden usar desde una
- * subclase en PHP: por eso la tabla de medios de pago y la validación del
- * RUC se repiten acá (duplicación controlada, a cambio de no tocar pedidos).
- *
- * Igual que el padre: todo sale del SNAPSHOT de venta_cab / venta_detalle,
- * así un reintento manda exactamente lo mismo. Los pagos salen de
- * servicio_pago, que ya no cambia una vez que el cobro quedó CONFIRMADO
- * (no admite pagos nuevos y un pago confirmado no se rechaza).
+ * Todo sale del SNAPSHOT de venta_cab / venta_detalle.
  */
 class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
 {
@@ -42,11 +37,17 @@ class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
         'BILLETERA_MOVIL' => 7,   // billetera electrónica (giros Tigo)
     ];
 
+    /** pagos[].tipo 11: pago por anticipo, monto 0 en una final de total cero. */
+    private const PAGO_POR_ANTICIPO = 11;
+
+    /** anticipo.condicion 2: aplicación por ítem (items[].anticipo). */
+    private const ANTICIPO_POR_ITEM = 2;
+
     private const TOLERANCIA_SERVICIO = 0.01;
 
-    /** guía 6.6, tipo_transaccion */
     private const TRANSACCION_SERVICIOS = 2;
     private const TRANSACCION_MIXTO     = 3;
+    private const TRANSACCION_ANTICIPO  = 9;
 
     public function construir(VentaCab $venta): array
     {
@@ -62,14 +63,13 @@ class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
     /** @return array<string, mixed> */
     private function construirServicio(VentaCab $venta): array
     {
-        // ven_creado lo pone la base: tras un create() el modelo no lo trae.
         if ($venta->ven_creado === null) {
             $venta->refresh();
         }
 
-        $venta->loadMissing(['detalle', 'sucursal']);
+        $venta->loadMissing(['detalle', 'sucursal', 'anticipoAplicado.fe']);
 
-        $solicitud = SolicitudServicio::with(['pagos.metodoPago', 'pagos.estadoPago', 'facturacion'])
+        $solicitud = SolicitudServicio::with(['pagos.metodoPago', 'pagos.estadoPago'])
             ->find($venta->ven_sseid);
 
         if (!$solicitud) {
@@ -81,7 +81,7 @@ class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
         $items = $this->itemsServicio($venta);
         $this->verificarTotalServicio($venta, $items);
 
-        return [
+        $payload = [
             'sede'             => $this->sedeServicio($venta),
             'numero'           => (string) $venta->ven_numero,
             'timbrado'         => $venta->ven_timbrado,
@@ -91,9 +91,17 @@ class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
             'condicion'        => 'contado',
             'tipo_transaccion' => $this->tipoTransaccionServicio($venta),
             'cliente'          => $this->clienteServicio($venta),
-            'items'            => $items,
-            'pagos'            => $this->pagosServicio($venta, $solicitud),
-            'enviar_correo'    => $this->enviarCorreoServicio($venta, $solicitud),
+        ];
+
+        if ($venta->ven_antvenid !== null) {
+            $payload['anticipo'] = $this->anticipoAplicado($venta);
+        }
+
+        return $payload + [
+            'items'             => $items,
+            'pagos'             => $this->pagosServicio($venta, $solicitud),
+            'entrega_inmediata' => true,
+            'enviar_correo'     => false,
         ];
     }
 
@@ -155,61 +163,102 @@ class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
         return $ruc;
     }
 
-    /** @return array<int, array<string, mixed>> */
+    /**
+     * Precio unitario cobrado (IVA incluido, ya con descuento comercial) y,
+     * en la final, el anticipo aplicado POR UNIDAD (guía 29).
+     *
+     * @return array<int, array<string, mixed>>
+     */
     private function itemsServicio(VentaCab $venta): array
     {
-        return $venta->detalle->map(fn ($d) => [
-            'codigo'          => (string) $d->vnd_codigo,
-            'descripcion'     => $d->vnd_descripcion,
-            'cantidad'        => (float) $d->vnd_cantidad,
-            'precio_unitario' => (float) $d->vnd_precio,   // cobrado, IVA incluido
-            'iva'             => (int) $d->vnd_tasa,       // 10, 5 o 0
-        ])->all();
+        return $venta->detalle->map(function ($d) {
+            $item = [
+                'codigo'          => (string) $d->vnd_codigo,
+                'descripcion'     => $d->vnd_descripcion,
+                'cantidad'        => (float) $d->vnd_cantidad,
+                'precio_unitario' => (float) $d->vnd_precio,
+                'iva'             => (int) $d->vnd_tasa,
+            ];
+
+            if ((float) $d->vnd_anticipo > 0) {
+                $item['anticipo'] = (float) $d->vnd_anticipo;
+            }
+
+            return $item;
+        })->values()->all();
     }
 
-    /**
-     * 2 = prestación de servicios (mano de obra, revisión, retiro, envío).
-     * 3 = mixto, si además se vendieron repuestos (las únicas líneas con
-     * producto). Criterio fiscal a confirmar con el contador.
-     */
     private function tipoTransaccionServicio(VentaCab $venta): int
     {
+        if ($venta->esAnticipo()) {
+            return self::TRANSACCION_ANTICIPO;
+        }
+
         return $venta->detalle->contains(fn ($d) => $d->vnd_prdid !== null)
             ? self::TRANSACCION_MIXTO
             : self::TRANSACCION_SERVICIOS;
     }
 
     /**
-     * Medios de pago de la factura al contado (guía 6.6 y 17): un renglón por
-     * cada pago CONFIRMADO, en el orden en que se registraron. Un cobro
-     * mixto (p. ej. mitad transferencia y mitad efectivo) sale como dos
-     * renglones, cada uno con su medio y su monto.
+     * anticipo { cdc, condicion } de la final. En producción el antecedente
+     * tiene que estar APROBADO (guía 29: PREPARADO no alcanza); en simulado
+     * y test la aprobación local también deja venta_fe en ENVIADO.
      *
-     * Se usa spa_monto (lo asignado al pago), el mismo monto que suma
-     * EstadoPagoServicioService para decidir CONFIRMADO. El excedente de un
-     * comprobante (spa_montver mayor) no es parte del precio.
-     *
-     * Si lo confirmado supera el total (p. ej. un anticipo mayor que el total
-     * final porque se usaron menos repuestos), se declara solo hasta el total:
-     * los últimos pagos se recortan. La devolución del excedente es de una
-     * etapa posterior y no cambia lo que se vendió.
+     * @return array{cdc: string, condicion: int}
+     */
+    private function anticipoAplicado(VentaCab $venta): array
+    {
+        $anticipo = $venta->anticipoAplicado;
+
+        if (!$anticipo || !$anticipo->esAnticipo() || !$anticipo->esVigente()) {
+            throw new EmisionFacturaException(
+                "La factura {$venta->ven_nrodoc} referencia un anticipo inexistente o anulado."
+            );
+        }
+
+        $fe = $anticipo->fe;
+
+        if (!$fe || !$fe->estaEnviado() || $fe->vfe_cdc === null) {
+            throw new EmisionFacturaException(
+                "La factura de anticipo {$anticipo->ven_nrodoc} todavía no está aprobada: "
+                . 'la factura final no puede aplicarla.'
+            );
+        }
+
+        return ['cdc' => $fe->vfe_cdc, 'condicion' => self::ANTICIPO_POR_ITEM];
+    }
+
+    /**
+     * Medios de pago (guía 6.6 y 29):
+     *   - ANTICIPO: los pagos ANTICIPO declarados; suman ven_total.
+     *   - VENTA: los demás pagos declarados; suman el NETO (ven_total).
+     *   - VENTA con neto cero: un único { tipo 11, monto 0 }.
      *
      * @return array<int, array{tipo: int, monto: float}>
      */
     private function pagosServicio(VentaCab $venta, SolicitudServicio $s): array
     {
-        $confirmados = $s->pagos
-            ->filter(fn ($p) => $p->estadoPago?->epa_codigo === EstadoPago::CONFIRMADO)
-            ->sortBy('spa_orden');
+        $total = (float) $venta->ven_total;
 
-        $restante = (float) $venta->ven_total;
-        $salida   = [];
-
-        foreach ($confirmados as $pago) {
-            if ($restante <= self::TOLERANCIA_SERVICIO) {
-                break;
+        if (!$venta->esAnticipo() && $total <= self::TOLERANCIA_SERVICIO) {
+            if ($venta->ven_antvenid === null) {
+                throw new EmisionFacturaException(
+                    "La factura {$venta->ven_nrodoc} tiene total cero y no aplica un anticipo."
+                );
             }
 
+            return [['tipo' => self::PAGO_POR_ANTICIPO, 'monto' => 0]];
+        }
+
+        $declarados = $s->pagos
+            ->filter(fn ($p) => $p->estadoPago?->epa_codigo !== EstadoPago::RECHAZADO
+                             && $p->esAnticipo() === $venta->esAnticipo())
+            ->sortBy('spa_orden');
+
+        $salida = [];
+        $suma   = 0.0;
+
+        foreach ($declarados as $pago) {
             $codigo = $pago->metodoPago?->mpa_codigo;
             $tipo   = self::MEDIO_PAGO_SERVICIO[$codigo] ?? null;
 
@@ -220,16 +269,17 @@ class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
                 );
             }
 
-            $monto    = round(min((float) $pago->spa_monto, $restante), 2);
+            $monto    = round((float) $pago->spa_monto, 2);
             $salida[] = ['tipo' => $tipo, 'monto' => $monto];
-            $restante = round($restante - $monto, 2);
+            $suma    += $monto;
         }
 
-        if ($salida === [] || $restante > self::TOLERANCIA_SERVICIO) {
+        if ($salida === [] || abs(round($suma, 2) - $total) > self::TOLERANCIA_SERVICIO) {
             throw new EmisionFacturaException(sprintf(
-                'Los pagos confirmados de la factura %s no cubren el total (faltan Gs. %s).',
+                'Los pagos declarados de la factura %s suman Gs. %s y su total es Gs. %s.',
                 $venta->ven_nrodoc,
-                number_format(max($restante, 0), 0, ',', '.')
+                number_format($suma, 0, ',', '.'),
+                number_format($total, 0, ',', '.')
             ));
         }
 
@@ -237,34 +287,35 @@ class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
     }
 
     /**
-     * Igual que el pedido: la API manda el correo solo si está habilitado
-     * (FACTURACION_ENVIAR_CORREO), se eligió CORREO y hay un correo válido.
-     * Sin datos fiscales elegidos (factura con la CI por defecto): no.
+     * La API calcula el total con los ítems: suma de cantidad × (precio −
+     * anticipo) tiene que dar ven_total, y lo aplicado tiene que dar ven_antapl.
      */
-    private function enviarCorreoServicio(VentaCab $venta, SolicitudServicio $s): bool
-    {
-        if (!config('facturacion.enviar_correo')) {
-            return false;
-        }
-
-        return (bool) $s->facturacion?->recibePorCorreo()
-            && filter_var($venta->ven_email, FILTER_VALIDATE_EMAIL) !== false;
-    }
-
-    /** La API calcula el total con los ítems: tiene que dar ven_total. */
     private function verificarTotalServicio(VentaCab $venta, array $items): void
     {
-        $total = 0.0;
+        $neto     = 0.0;
+        $aplicado = 0.0;
+
         foreach ($items as $item) {
-            $total += $item['cantidad'] * $item['precio_unitario'];
+            $anticipo  = (float) ($item['anticipo'] ?? 0);
+            $neto     += $item['cantidad'] * ($item['precio_unitario'] - $anticipo);
+            $aplicado += $item['cantidad'] * $anticipo;
         }
 
-        if (abs(round($total, 2) - (float) $venta->ven_total) > self::TOLERANCIA_SERVICIO) {
+        if (abs(round($neto, 2) - (float) $venta->ven_total) > self::TOLERANCIA_SERVICIO) {
             throw new EmisionFacturaException(sprintf(
                 'La factura %s no se puede declarar: el detalle suma Gs. %s y el total registrado es Gs. %s.',
                 $venta->ven_nrodoc,
-                number_format($total, 0, ',', '.'),
+                number_format($neto, 0, ',', '.'),
                 number_format((float) $venta->ven_total, 0, ',', '.')
+            ));
+        }
+
+        if (abs(round($aplicado, 2) - (float) $venta->ven_antapl) > self::TOLERANCIA_SERVICIO) {
+            throw new EmisionFacturaException(sprintf(
+                'La factura %s aplica Gs. %s de anticipo en el detalle y Gs. %s en la cabecera.',
+                $venta->ven_nrodoc,
+                number_format($aplicado, 0, ',', '.'),
+                number_format((float) $venta->ven_antapl, 0, ',', '.')
             ));
         }
     }

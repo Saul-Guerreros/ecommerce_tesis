@@ -8,6 +8,8 @@ class MotivoNotaCredito extends Model
     protected $table      = 'motivo_nota_credito';
     protected $primaryKey = 'mnc_id';
     public    $timestamps = false;
+    /** NC de un anticipo de servicio técnico (AnticipoDevolucionService). */
+    public const DEVOLUCION_ANTICIPO = 'DANT';
 
     protected $fillable = [
         'mnc_codigo', 'mnc_descri', 'mnc_afesto', 'mnc_canfij', 'mnc_obsreq',

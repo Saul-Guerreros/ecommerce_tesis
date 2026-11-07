@@ -23,6 +23,7 @@ class Kernel extends ConsoleKernel
 		 // Alertas: cada hora de 07:00 a 20:00 (horario comercial) para reflejar las ventas del día.
          $schedule->command('inventario:alertas')->hourly()->between('07:00', '20:00')->withoutOverlapping();
          $schedule->command('facturacion:reintentar-nc')->everyTenMinutes()->withoutOverlapping();
+         $schedule->command('facturacion:correos')->everyTenMinutes()->withoutOverlapping();
     }
 
     /**

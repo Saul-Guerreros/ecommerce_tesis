@@ -1,38 +1,44 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
-import { BadgeModule, ButtonModule, SpinnerModule, TableModule } from '@coreui/angular';
+import { BadgeModule, ButtonModule, FormModule, ModalModule, SpinnerModule, TableModule } from '@coreui/angular';
 import { CobroDetalle, PagoServicio } from '../models/cobro-servicio.model';
 import { CobrosServicioService } from '../service/cobros-servicio.service';
-import { ConfirmarPagoServicioComponent } from '../confirmar-pago-servicio/confirmar-pago-servicio.component';
+import { ValidarComprobanteServicioComponent } from '../validar-comprobante-servicio/validar-comprobante-servicio.component';
 import { RechazarPagoServicioComponent } from '../rechazar-pago-servicio/rechazar-pago-servicio.component';
 import { RegistrarCobroComponent } from '../registrar-cobro/registrar-cobro.component';
 import { FacturaServicioComponent } from '../factura-servicio/factura-servicio.component';
+import { GenerarFacturaServicioComponent, ModoFactura } from '../generar-factura-servicio/generar-factura-servicio.component';
+import { DevolucionServicioComponent } from '../devolucion-servicio/devolucion-servicio.component';
+
 
 /**
- * Sección "Pagos" de una solicitud: resumen de montos, pagos registrados y
- * acciones (verificar un pago web, cobrar un "al retirar", registrar un
- * cobro o anticipo). Autocontenida: la usan el detalle de la solicitud y la
- * bandeja "Cobros de servicios".
+ * Sección "Pagos" de una solicitud. Ciclo comprobante -> factura -> cobro
+ * (igual que el pedido):
  *
- * Qué botones se ven lo decide el backend en 'acciones' (permiso, sucursal
- * y si la solicitud admite pagos); acá solo se cruza con el estado del pago.
+ *   Anticipo   [Registrar anticipo] (mostrador) o pago web -> [Validar] ->
+ *              [Generar factura de anticipo] -> [Cobrar]
+ *   Final      LISTA -> [Generar factura] (aplica el anticipo) -> [Cobrar]
+ *   Devolución nota de crédito + devolución del dinero
  *
- * Debajo, la sección "Factura" (app-factura-servicio): se refresca cada vez
- * que se registra algo, porque el cobro que completa el total la emite.
+ * Los botones los habilita el backend (acciones.*, pagos[].puede_*). Una
+ * factura recién emitida tarda unos segundos en tener su documento: la
+ * sección se relee sola mientras tanto.
  */
 @Component({
   selector: 'app-pagos-solicitud',
   standalone: true,
   imports: [
-    CommonModule, BadgeModule, ButtonModule, SpinnerModule, TableModule,
-    ConfirmarPagoServicioComponent, RechazarPagoServicioComponent, RegistrarCobroComponent, FacturaServicioComponent,
+    CommonModule, FormsModule, BadgeModule, ButtonModule, FormModule, ModalModule, SpinnerModule, TableModule,
+    ValidarComprobanteServicioComponent, RechazarPagoServicioComponent, RegistrarCobroComponent,
+    FacturaServicioComponent, GenerarFacturaServicioComponent, DevolucionServicioComponent,
   ],
   templateUrl: './pagos-solicitud.component.html',
 })
-export class PagosSolicitudComponent implements OnChanges {
+export class PagosSolicitudComponent implements OnChanges, OnDestroy {
   @Input() solicitudId: number | null = null;
-    /** El contenedor lo cambia en cada apertura: fuerza releer pagos y factura sin destruir el componente. */
+  /** El contenedor lo cambia en cada apertura: fuerza releer sin destruir el componente. */
   @Input() refresco = 0;
   /** Se registró algo: el contenedor refresca su propia vista (lista, historial). */
   @Output() actualizado = new EventEmitter<void>();
@@ -42,66 +48,91 @@ export class PagosSolicitudComponent implements OnChanges {
   procesandoId: number | null = null;
 
   seleccionado: PagoServicio | null = null;
-  confirmarVisible = false;
+  validarVisible = false;
   rechazarVisible = false;
   cobroVisible = false;
-
-  /** Cambia en cada operación: la sección Factura se vuelve a leer. */
-  refrescoFactura = 0;
+  generarVisible = false;
+  modoGenerar: ModoFactura = 'final';
+    // Anular cobro
+  anularVisible = false;
+  cobroAnular: PagoServicio | null = null;
+  motivoAnular = '';
+  errorAnular: string | null = null;
+  anulando = false;
+  verAnuladas = false;
+  private espera?: ReturnType<typeof setTimeout>;
+  private intentosEspera = 0;
 
   constructor(private service: CobrosServicioService, private toastr: ToastrService) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     if ((changes['solicitudId'] || changes['refresco']) && this.solicitudId) {
-      this.refrescoFactura++;   // la sección Factura también se vuelve a leer
+      this.intentosEspera = 0;
       this.recargar();
     }
+  }
+
+  ngOnDestroy(): void {
+    clearTimeout(this.espera);
   }
 
   recargar(): void {
     if (!this.solicitudId) return;
     this.cargando = true;
     this.service.detalle(this.solicitudId).subscribe({
-      next: (res) => { this.detalle = res.data; this.cargando = false; },
+      next: (res) => { this.cargando = false; this.aplicar(res.data); },
       error: () => { this.cargando = false; this.toastr.error('No se pudieron cargar los pagos', 'Error'); },
     });
   }
 
-  // ---------- Reglas de botones ----------
-
-  enVerificacion(p: PagoServicio): boolean { return p.estado.codigo === 'PAGO_VERIFICAR'; }
-  esEfectivo(p: PagoServicio): boolean { return p.metodo.codigo === 'CONTRAENTREGA'; }
-
-  puedeVerificar(p: PagoServicio): boolean {
-    return !!this.detalle?.acciones.verificar && this.enVerificacion(p) && !this.esEfectivo(p);
+  private aplicar(d: CobroDetalle): void {
+    this.detalle = d;
+    this.programarEspera();
   }
 
-  /** "Pagar al retirar": lo confirma quien cobra, no el verificador. */
-  puedeCobrarAlRetirar(p: PagoServicio): boolean {
-    return !!this.detalle?.acciones.cobrar && this.enVerificacion(p) && this.esEfectivo(p);
+  /** Factura emitida sin documento todavía (job en curso): se relee cada 5 s, hasta 1 minuto. */
+  private programarEspera(): void {
+    clearTimeout(this.espera);
+    const f = this.detalle?.facturas;
+    const esperando = [f?.anticipo, f?.final].some((x) => x?.fe && !x.fe.documento && x.fe.estado === 'PENDIENTE');
+
+    if (esperando && this.intentosEspera < 12) {
+      this.intentosEspera++;
+      this.espera = setTimeout(() => this.recargar(), 5000);
+    }
   }
 
-  /** Rechazar un "al retirar" (el cliente paga de otra forma): libera el monto. */
-  puedeRechazarEfectivo(p: PagoServicio): boolean {
-    return !!this.detalle?.acciones.verificar && this.enVerificacion(p) && this.esEfectivo(p);
-  }
+  // ---------- Vista ----------
 
-  get puedeRegistrarCobro(): boolean {
-    const r = this.detalle?.resumen;
-    if (!this.detalle?.acciones.cobrar || !r) return false;
-    return r.consolidado ? r.saldo > 0 : true;   // antes de LISTA: anticipo
+  /** El pago está facturado y pendiente, pero su factura todavía no tiene documento. */
+  esperandoDocumento(p: PagoServicio): boolean {
+    if (p.estado.codigo !== 'PAGO_VERIFICAR' || !p.facturado || p.puede_cobrar) return false;
+    const f = p.tipo === 'ANTICIPO' ? this.detalle?.facturas.anticipo : this.detalle?.facturas.final;
+    return !!f?.fe && !f.fe.documento;
   }
 
   colorEstado(codigo: string | null): string {
     return ({ PAGO_VERIFICAR: 'primary', CONFIRMADO: 'success', RECHAZADO: 'danger', PARCIAL: 'info', PENDIENTE_PAGO: 'warning' } as Record<string, string>)[codigo ?? ''] ?? 'secondary';
   }
 
+  etiquetaEstado(p: PagoServicio): string {
+    if (p.estado.codigo === 'CONFIRMADO') return 'Cobrado';
+    if (p.estado.codigo === 'PAGO_VERIFICAR') return p.facturado ? 'Por cobrar' : 'Declarado';
+    return p.estado.descripcion ?? '';
+  }
+
   // ---------- Acciones ----------
 
-  abrir(modal: 'confirmar' | 'rechazar', p: PagoServicio): void {
+  abrir(modal: 'validar' | 'rechazar' | 'cobrar', p: PagoServicio): void {
     this.seleccionado = p;
-    this.confirmarVisible = modal === 'confirmar';
+    this.validarVisible = modal === 'validar';
     this.rechazarVisible = modal === 'rechazar';
+    this.cobroVisible = modal === 'cobrar';
+  }
+
+  abrirGenerar(modo: ModoFactura): void {
+    this.modoGenerar = modo;
+    this.generarVisible = true;
   }
 
   verComprobante(p: PagoServicio): void {
@@ -113,22 +144,35 @@ export class PagosSolicitudComponent implements OnChanges {
     });
   }
 
-  cobrarAlRetirar(p: PagoServicio): void {
-    if (!this.detalle || this.procesandoId !== null) return;
-    this.procesandoId = p.spa_id;
-    this.service.cobrarAlRetirar(this.detalle.sse_id, p.spa_id).subscribe({
-      next: (res) => { this.procesandoId = null; this.toastr.success(res.message, 'Cobro registrado'); this.onGuardado(res.data); },
+    abrirAnularCobro(p: PagoServicio): void {
+    this.cobroAnular = p;
+    this.motivoAnular = '';
+    this.errorAnular = null;
+    this.anularVisible = true;
+  }
+
+  anularCobro(): void {
+    if (!this.detalle || !this.cobroAnular?.cobro || this.anulando) return;
+    const motivo = this.motivoAnular.trim();
+    if (motivo.length < 5) { this.errorAnular = 'El motivo debe tener al menos 5 caracteres.'; return; }
+
+    this.anulando = true;
+    this.service.anularCobro(this.detalle.sse_id, this.cobroAnular.cobro.cob_id, motivo).subscribe({
+      next: (res) => {
+        this.anulando = false;
+        this.anularVisible = false;
+        this.toastr.success(res.message, 'Cobro anulado');
+        this.onGuardado(res.data);
+      },
       error: (err) => {
-        this.procesandoId = null;
-        const errores = err?.error?.errors as Record<string, string[]> | undefined;
-        this.toastr.error(errores ? Object.values(errores)[0][0] : err?.error?.message ?? 'No se pudo registrar el cobro', 'Error');
+        this.anulando = false;
+        this.errorAnular = CobrosServicioService.mensajeError(err, 'No se pudo anular el cobro');
       },
     });
   }
-
   onGuardado(detalle: CobroDetalle): void {
-    this.detalle = detalle;
-    this.refrescoFactura++;
+    this.intentosEspera = 0;
+    this.aplicar(detalle);
     this.actualizado.emit();
   }
 

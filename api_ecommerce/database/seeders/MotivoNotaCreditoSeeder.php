@@ -26,6 +26,7 @@ class MotivoNotaCreditoSeeder extends Seeder
             ['mnc_codigo' => 'ECAN', 'mnc_descri' => 'Diferencia de cantidad facturada',   'mnc_afesto' => 1, 'mnc_canfij' => 0, 'mnc_obsreq' => 0, 'mnc_destex' => 0, 'mnc_dnit' => 1],
             ['mnc_codigo' => 'DDEF', 'mnc_descri' => 'Devolución por producto defectuoso', 'mnc_afesto' => 1, 'mnc_canfij' => 0, 'mnc_obsreq' => 1, 'mnc_destex' => 1, 'mnc_dnit' => 2],
             ['mnc_codigo' => 'DOTR', 'mnc_descri' => 'Devolución por otros motivos',       'mnc_afesto' => 1, 'mnc_canfij' => 0, 'mnc_obsreq' => 1, 'mnc_destex' => 0, 'mnc_dnit' => 2],
+            ['mnc_codigo' => 'DANT', 'mnc_descri' => 'Devolución de anticipo',             'mnc_afesto' => 0, 'mnc_canfij' => 0, 'mnc_obsreq' => 0, 'mnc_destex' => 0, 'mnc_dnit' => 2],
         ];
 
         // Solo se escriben las columnas que existen: este seeder lo invocan

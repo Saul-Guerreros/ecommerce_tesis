@@ -1,0 +1,210 @@
+<!-- Estrella reutilizable (SVG relleno: se colorea con currentColor) -->
+<ng-template #estrella>
+  <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+    <path fill="currentColor" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z" />
+  </svg>
+</ng-template>
+
+<div class="rs-wrap">
+  <!-- ===== Resumen ===== -->
+  <div class="rs-top">
+    <div class="rs-summary">
+      <div class="rs-summary-label">Calificación promedio</div>
+      <div class="rs-summary-value">{{ resumen.promedio !== null ? (resumen.promedio | number: '1.1-1') : '—' }}</div>
+      <div class="rs-stars rs-stars-md">
+        <span *ngFor="let n of ESTRELLAS" class="rs-star" [class.is-filled]="llena(resumen.promedio, n)">
+          <ng-container *ngTemplateOutlet="estrella"></ng-container>
+        </span>
+      </div>
+      <div class="rs-summary-count">
+        basada en {{ resumen.total }} {{ resumen.total === 1 ? 'reseña' : 'reseñas' }}
+      </div>
+    </div>
+
+    <div class="rs-dist" *ngIf="resumen.total > 0">
+      <button
+        type="button"
+        class="rs-dist-row"
+        *ngFor="let n of [5, 4, 3, 2, 1]"
+        [class.is-active]="filtroEstrellas === n"
+        [disabled]="!resumen.distribucion[n]"
+        (click)="filtrarPorEstrellas(n)"
+        [attr.aria-label]="'Ver reseñas de ' + n + ' estrellas'"
+      >
+        <span class="rs-dist-label">{{ n }} ★</span>
+        <span class="rs-dist-bar"><span class="rs-dist-fill" [style.width.%]="porcentaje(n)"></span></span>
+        <span class="rs-dist-count">{{ resumen.distribucion[n] || 0 }}</span>
+      </button>
+      <a *ngIf="filtroEstrellas" href="javascript:void(0)" class="rs-link uk-text-small" (click)="filtrarPorEstrellas(filtroEstrellas)">
+        Quitar filtro
+      </a>
+    </div>
+
+    <!-- ===== Llamado a escribir / estado de la reseña propia ===== -->
+    <div class="rs-cta">
+      <ng-container *ngIf="!conSesion">
+        <p class="rs-muted">¿Compraste este producto? Iniciá sesión para contar tu experiencia.</p>
+        <a class="uk-button uk-button-default uk-button-small" routerLink="/login"
+           [queryParams]="{ redirect: loginUrl + '?resena=1' }">Iniciar sesión</a>
+      </ng-container>
+
+      <ng-container *ngIf="conSesion && estadoMia">
+        <ng-container *ngIf="estadoMia.puede_resenar && !formVisible">
+          <p class="rs-muted">Recibiste este producto. ¡Contale a otros clientes qué te pareció!</p>
+          <button type="button" class="uk-button uk-button-primary uk-button-small" (click)="abrirForm()">
+            Escribir una reseña
+          </button>
+        </ng-container>
+
+        <p class="rs-muted" *ngIf="!estadoMia.puede_resenar && !estadoMia.resena && estadoMia.motivo">
+          {{ estadoMia.motivo }}
+        </p>
+      </ng-container>
+    </div>
+  </div>
+
+  <!-- ===== Mi reseña ===== -->
+  <div class="rs-mine" *ngIf="estadoMia?.resena as mia">
+    <ng-container *ngIf="!formVisible">
+      <div class="rs-mine-head">
+        <strong>Tu reseña</strong>
+        <span class="uk-label uk-label-warning" *ngIf="!mia.visible">Oculta por la tienda</span>
+      </div>
+      <p class="rs-alert" *ngIf="!mia.visible && mia.motivo_oculta">Motivo: {{ mia.motivo_oculta }}</p>
+
+      <div class="rs-stars rs-stars-sm">
+        <span *ngFor="let n of ESTRELLAS" class="rs-star" [class.is-filled]="n <= mia.calificacion">
+          <ng-container *ngTemplateOutlet="estrella"></ng-container>
+        </span>
+      </div>
+      <div class="rs-title" *ngIf="mia.titulo">{{ mia.titulo }}</div>
+      <p class="rs-text">{{ mia.comentario }}</p>
+
+      <div class="rs-mine-actions">
+        <button type="button" class="uk-button uk-button-default uk-button-small" (click)="abrirForm()">Editar</button>
+        <button type="button" class="uk-button uk-button-danger uk-button-small" [disabled]="eliminando" (click)="eliminar()">
+          {{ eliminando ? 'Eliminando...' : 'Eliminar' }}
+        </button>
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- ===== Formulario crear / editar ===== -->
+  <form class="rs-form" *ngIf="formVisible" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+    <h4 class="rs-form-title">{{ estadoMia?.resena ? 'Editar tu reseña' : 'Escribí tu reseña' }}</h4>
+
+    <label class="uk-form-label">Calificación <span class="uk-text-danger">*</span></label>
+    <div class="rs-picker" (mouseleave)="hover = 0">
+      <button
+        type="button"
+        *ngFor="let n of ESTRELLAS"
+        class="rs-star rs-pick"
+        [class.is-filled]="n <= (hover || calificacionElegida)"
+        (mouseenter)="hover = n"
+        (click)="elegirEstrella(n)"
+        [attr.aria-label]="n + ' estrellas'"
+      >
+        <ng-container *ngTemplateOutlet="estrella"></ng-container>
+      </button>
+      <span class="rs-picker-label">{{ ETIQUETAS[hover || calificacionElegida] }}</span>
+    </div>
+    <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('res_califi')">
+      {{ errorBackend('res_califi') || 'Elegí de 1 a 5 estrellas.' }}
+    </div>
+
+    <div class="uk-margin-small-top">
+      <label class="uk-form-label" for="res_titulo">Título (opcional)</label>
+      <input id="res_titulo" class="uk-input" formControlName="res_titulo" [maxlength]="MAX_TITULO"
+             placeholder="Ej: Muy buena relación precio-calidad" [class.uk-form-danger]="campoInvalido('res_titulo')" />
+      <div class="uk-text-danger uk-text-small" *ngIf="campoInvalido('res_titulo')">
+        {{ errorBackend('res_titulo') || 'Máximo ' + MAX_TITULO + ' caracteres.' }}
+      </div>
+    </div>
+
+    <div class="uk-margin-small-top">
+      <label class="uk-form-label" for="res_coment">Comentario <span class="uk-text-danger">*</span></label>
+      <textarea id="res_coment" class="uk-textarea" rows="4" formControlName="res_coment" [maxlength]="MAX_COMENTARIO"
+                placeholder="¿Qué te gustó? ¿Qué mejorarías? ¿Lo recomendarías?"
+                [class.uk-form-danger]="campoInvalido('res_coment')"></textarea>
+      <div class="rs-form-foot">
+        <span class="uk-text-danger uk-text-small" *ngIf="campoInvalido('res_coment')">
+          {{ errorBackend('res_coment') || 'Escribí al menos 10 caracteres.' }}
+        </span>
+        <span class="rs-muted uk-text-small rs-counter">{{ largoComentario }} / {{ MAX_COMENTARIO }}</span>
+      </div>
+    </div>
+
+    <p class="rs-muted uk-text-small">
+      Tu reseña se publica al instante con tu nombre abreviado. No incluyas datos personales ni enlaces.
+    </p>
+
+    <div class="rs-mine-actions">
+      <button type="button" class="uk-button uk-button-default uk-button-small" (click)="cancelarForm()" [disabled]="guardando">
+        Cancelar
+      </button>
+      <button type="submit" class="uk-button uk-button-primary uk-button-small" [disabled]="guardando">
+        {{ guardando ? 'Guardando...' : (estadoMia?.resena ? 'Guardar cambios' : 'Publicar reseña') }}
+      </button>
+    </div>
+  </form>
+
+  <!-- ===== Listado ===== -->
+  <div class="rs-list-head" *ngIf="resumen.total > 0">
+    <span class="rs-muted uk-text-small">
+      {{ filtroEstrellas ? 'Reseñas de ' + filtroEstrellas + ' estrellas' : 'Todas las reseñas' }}
+    </span>
+    <select class="uk-select uk-form-small rs-order" (change)="cambiarOrden($any($event.target).value)">
+      <option value="recientes" [selected]="orden === 'recientes'">Más recientes</option>
+      <option value="mejor" [selected]="orden === 'mejor'">Mejor calificadas</option>
+      <option value="peor" [selected]="orden === 'peor'">Peor calificadas</option>
+    </select>
+  </div>
+
+  <div class="uk-text-center uk-margin" *ngIf="cargando"><div uk-spinner></div></div>
+
+  <div class="rs-empty" *ngIf="!cargando && resumen.total === 0">
+    <p>Este producto todavía no tiene reseñas. Sé el primero en probarlo y contar tu experiencia.</p>
+  </div>
+
+  <ng-container *ngIf="!cargando">
+    <article class="rs-item" *ngFor="let r of resenas; trackBy: trackById">
+      <div class="rs-item-head">
+        <div class="rs-stars rs-stars-sm">
+          <span *ngFor="let n of ESTRELLAS" class="rs-star" [class.is-filled]="n <= r.calificacion">
+            <ng-container *ngTemplateOutlet="estrella"></ng-container>
+          </span>
+        </div>
+        <span class="rs-muted uk-text-small">{{ r.fecha | date: 'dd/MM/yyyy' }}{{ r.editada ? ' · editada' : '' }}</span>
+      </div>
+
+      <div class="rs-title" *ngIf="r.titulo">{{ r.titulo }}</div>
+      <p class="rs-text">{{ r.comentario }}</p>
+
+      <div class="rs-meta">
+        <span class="rs-author">{{ r.autor }}</span>
+        <span class="rs-verified">✓ Compra verificada</span>
+        <span class="rs-muted" *ngIf="r.producto_comprado">· {{ r.producto_comprado }}</span>
+      </div>
+
+      <div class="rs-reply" *ngIf="r.respuesta">
+        <div class="rs-reply-head">
+          <strong>Respuesta de Z Informática</strong>
+          <span class="rs-muted uk-text-small" *ngIf="r.respuesta.fecha">{{ r.respuesta.fecha | date: 'dd/MM/yyyy' }}</span>
+        </div>
+        <p class="rs-text">{{ r.respuesta.texto }}</p>
+      </div>
+    </article>
+
+    <ul class="uk-pagination uk-flex-center uk-margin-top" *ngIf="ultimaPagina > 1">
+      <li [class.uk-disabled]="pagina === 1">
+        <a href="javascript:void(0)" (click)="cambiarPagina(pagina - 1)"><span uk-pagination-previous></span></a>
+      </li>
+      <li *ngFor="let p of paginas" [class.uk-active]="p === pagina">
+        <a href="javascript:void(0)" (click)="cambiarPagina(p)">{{ p }}</a>
+      </li>
+      <li [class.uk-disabled]="pagina === ultimaPagina">
+        <a href="javascript:void(0)" (click)="cambiarPagina(pagina + 1)"><span uk-pagination-next></span></a>
+      </li>
+    </ul>
+  </ng-container>
+</div>

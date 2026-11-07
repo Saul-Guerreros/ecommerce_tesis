@@ -19,6 +19,8 @@ export interface ProductoVitrina {
   oferta_fin: string | null;
   es_flash: boolean;
   rating: number | null;
+    /** Cantidad de reseñas visibles del modelo (compartidas entre variantes). */
+  total_resenas?: number;
 
   stock?: number | null;
   controla_stock?: boolean;

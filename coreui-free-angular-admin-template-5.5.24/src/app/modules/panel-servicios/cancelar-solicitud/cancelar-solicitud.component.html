@@ -1,0 +1,120 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" size="lg" backdrop="static" scrollable>
+  <c-modal-header>
+    <h5 cModalTitle>Cancelar solicitud — {{ fila?.sse_numero }}</h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <div class="text-center py-4" *ngIf="cancelada">
+      <h5 class="text-success">Solicitud cancelada</h5>
+      <p class="text-muted">Se registró la devolución del equipo. Imprima la constancia y hágala firmar por quien retira.</p>
+      <button cButton color="primary" (click)="imprimirConstancia()">Imprimir constancia de retiro</button>
+    </div>
+
+    <ng-container *ngIf="cfg && !cancelada">
+      <p class="small mb-2"><strong>{{ cfg.cliente }}</strong> · {{ cfg.equipo }} · Estado: {{ cfg.estado }}</p>
+
+      <c-alert color="danger" class="py-2 small" *ngIf="!cfg.cancelable">{{ cfg.motivo_bloqueo }}</c-alert>
+
+      <ng-container *ngIf="cfg.cancelable">
+        <c-alert color="warning" class="py-2 small">
+          Se cancela <strong>sin cobro</strong>. Si hubo trabajo que se quiere cobrar, no canceles: cerrá el servicio
+          como no reparable (con la revisión) o finalizalo, y después entregá el equipo.
+          Las reservas de repuestos se liberan.
+        </c-alert>
+
+        <form [formGroup]="form">
+          <label cLabel>Motivo de la cancelación <span class="text-danger">*</span></label>
+          <textarea cFormControl rows="2" maxlength="255" formControlName="motivo" [class.is-invalid]="campoInvalido('motivo')"></textarea>
+          <div class="text-danger small" *ngIf="campoInvalido('motivo')">Indicá el motivo (mínimo 5 caracteres).</div>
+
+          <ng-container *ngIf="devolucion as dev">
+            <hr />
+            <h6 class="text-muted text-uppercase small">Devolución del equipo</h6>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label cLabel>Modalidad</label>
+                <select cSelect formControlName="modalidad">
+                  <option value="retiro">Retira en sucursal</option>
+                  <option value="envio" *ngIf="!dev.solo_retiro_sucursal">Envío al domicilio del cliente</option>
+                </select>
+              </div>
+              <div class="col-md-6" *ngIf="!esEnvio">
+                <label cLabel>Sucursal <span class="text-danger">*</span></label>
+                <select cSelect formControlName="ese_sucid" [class.is-invalid]="campoInvalido('ese_sucid')">
+                  <option *ngFor="let s of dev.sucursales" [ngValue]="s.suc_id">{{ s.suc_nombre }}</option>
+                </select>
+              </div>
+              <div class="col-md-6" *ngIf="esEnvio">
+                <label cLabel>Dirección <span class="text-danger">*</span></label>
+                <select cSelect formControlName="ese_dirid" [class.is-invalid]="campoInvalido('ese_dirid')">
+                  <option *ngFor="let d of dev.direcciones" [ngValue]="d.dir_id">{{ d.resumen }}</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label cLabel>¿Quién recibe?</label>
+                <div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="canTit" formControlName="receptor" value="titular" />
+                    <label class="form-check-label" for="canTit">El titular ({{ cfg.cliente }})</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="canTer" formControlName="receptor" value="tercero" />
+                    <label class="form-check-label" for="canTer">Un tercero autorizado</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4" *ngIf="esTercero || !dev.titular.nrodoc">
+                <label cLabel>C.I. <span class="text-danger">*</span></label>
+                <input cFormControl formControlName="ese_nrodoc" maxlength="15" [class.is-invalid]="campoInvalido('ese_nrodoc')" />
+                <div class="text-danger small" *ngIf="campoInvalido('ese_nrodoc')">{{ errorBackend('ese_nrodoc') || 'Solo números (5 a 15).' }}</div>
+              </div>
+              <ng-container *ngIf="esTercero">
+                <div class="col-md-4">
+                  <label cLabel>Nombre <span class="text-danger">*</span></label>
+                  <input cFormControl formControlName="ese_nombre" maxlength="100" [class.is-invalid]="campoInvalido('ese_nombre')" />
+                </div>
+                <div class="col-md-4">
+                  <label cLabel>Apellido <span class="text-danger">*</span></label>
+                  <input cFormControl formControlName="ese_apelli" maxlength="100" [class.is-invalid]="campoInvalido('ese_apelli')" />
+                </div>
+              </ng-container>
+              <div class="col-md-4">
+                <label cLabel>Teléfono</label>
+                <input cFormControl formControlName="ese_telef" maxlength="45" />
+              </div>
+
+              <div class="col-12">
+                <label cLabel>Accesorios devueltos</label>
+                <div class="small text-muted" *ngIf="dev.accesorios.length === 0">El equipo ingresó sin accesorios.</div>
+                <div class="form-check" *ngFor="let a of dev.accesorios">
+                  <input class="form-check-input" type="checkbox" [id]="'can' + a.rac_id"
+                         [checked]="devueltos.has(a.rac_id)" (change)="alternarAccesorio(a.rac_id)" />
+                  <label class="form-check-label" [for]="'can' + a.rac_id">{{ a.rac_descri }}</label>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <label cLabel>Observaciones <span class="text-danger" *ngIf="faltanAccesorios">*</span></label>
+                <textarea cFormControl rows="2" maxlength="255" formControlName="ese_obs" [class.is-invalid]="campoInvalido('ese_obs')"></textarea>
+                <div class="text-danger small" *ngIf="campoInvalido('ese_obs')">{{ errorBackend('ese_obs') || 'Explicá qué accesorios no se devuelven.' }}</div>
+              </div>
+            </div>
+          </ng-container>
+        </form>
+      </ng-container>
+    </ng-container>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()" [disabled]="guardando">{{ cancelada ? 'Cerrar' : 'Volver' }}</button>
+    <button cButton color="danger" class="text-white" *ngIf="cfg?.cancelable && !cancelada" (click)="guardar()" [disabled]="guardando">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      {{ cfg?.recibido ? 'Cancelar y devolver el equipo' : 'Cancelar solicitud' }}
+    </button>
+  </c-modal-footer>
+</c-modal>

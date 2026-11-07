@@ -17,6 +17,8 @@ use App\Models\Configuracion\Deposito;
 use App\Models\Pedido\EstadoPedido;
 use App\Jobs\DeclararFacturaElectronica;
 use App\Models\Venta\VentaFe;
+use App\Models\Servicio\SolicitudServicio;
+use App\Services\Servicio\EstadoPagoServicioService;
 /**
  * Emision del comprobante fiscal a partir de un pedido.
  *
@@ -42,7 +44,10 @@ use App\Models\Venta\VentaFe;
  */
 class VentaService
 {
-    public function __construct(private NumeracionVentaService $numeracion) {}
+    public function __construct(
+        private NumeracionVentaService $numeracion,
+        private EstadoPagoServicioService $estadoPagoServicio,
+    ) {}
 
     // ---------- Emision ----------
 
@@ -226,36 +231,58 @@ class VentaService
 
     // ---------- Anulacion ----------
 
-    /**
+        /**
      * Un documento fiscal no se borra: se anula. La fila queda, con su
      * numero consumido, porque el talonario tiene que poder explicar que
      * paso con cada correlativo.
      *
-     * NO devuelve stock. El stock lo movio el pedido (kardex), no la
-     * factura: revertirlo exige una devolucion explicita y, si hubo
-     * entrega, una nota de credito.
+     * NO devuelve stock ni dinero. Reglas comunes:
+     *   - sin notas de credito vigentes;
+     *   - no declarada (o declarandose) ante la DNIT.
+     *
+     * Reglas adicionales SOLO para facturas de servicio tecnico (ven_sseid):
+     *   - sin cobros activos (el dinero se revierte anulando el cobro);
+     *   - si es un anticipo, que no este aplicado en una final vigente;
+     *   - el estado de pago de la solicitud se recalcula en la misma transaccion.
+     * Las facturas de pedido conservan su comportamiento.
      */
     public function anular(VentaCab $venta, Usuario $usuario, ?string $motivo = null): VentaCab
     {
-        if ($venta->anulada()) {
-            throw ValidationException::withMessages([
-                'factura' => 'Esta factura ya está anulada.',
-                
-            ]);
-        }
-
-        $this->verificarSinNotasCredito($venta);
-        $this->verificarSinDeclaracionElectronica($venta);
-
-        
-
         return DB::transaction(function () use ($venta, $usuario, $motivo) {
+            // Mismo orden de locks que los services de servicio: solicitud -> factura.
+            $solicitud = $venta->ven_sseid
+                ? SolicitudServicio::whereKey($venta->ven_sseid)->lockForUpdate()->first()
+                : null;
+
+            $venta = VentaCab::whereKey($venta->ven_id)->lockForUpdate()->firstOrFail();
+
+            if ($venta->anulada()) {
+                throw ValidationException::withMessages(['factura' => 'Esta factura ya está anulada.']);
+            }
+
+            $this->verificarSinNotasCredito($venta);
+            $this->verificarSinDeclaracionElectronica($venta);
+
+            if ($solicitud) {
+                $this->verificarSinCobros($venta);
+                $this->verificarAnticipoSinAplicar($venta);
+            }
+
             $venta->update([
                 'ven_estado'  => VentaCab::ESTADO_ANULADA,
                 'ven_anulado' => now(),
                 'ven_anusid'  => $usuario->usu_id,
                 'ven_motanu'  => $motivo,
             ]);
+
+            if ($solicitud) {
+                $this->estadoPagoServicio->recalcular($solicitud, $usuario->usu_id, sprintf(
+                    '%s %s anulada%s',
+                    $venta->esAnticipo() ? 'Factura de anticipo' : 'Factura',
+                    $venta->ven_nrodoc,
+                    $motivo ? " — {$motivo}" : '',
+                ));
+            }
 
             return $venta->refresh();
         });
@@ -588,6 +615,39 @@ class VentaService
             throw ValidationException::withMessages([
                 'factura' => "Esta factura tiene {$cantidad} nota(s) de crédito vigente(s). "
                            . 'Anulá primero las notas de crédito y después la factura.',
+            ]);
+        }
+    }
+
+        /**
+     * Servicio tecnico: con cobros activos, anular dejaria dinero registrado
+     * contra una factura que ya no vale y el estado de pago en CONFIRMADO.
+     */
+    private function verificarSinCobros(VentaCab $venta): void
+    {
+        $cantidad = $venta->cobros()->activo()->count();
+
+        if ($cantidad > 0) {
+            throw ValidationException::withMessages([
+                'factura' => "Esta factura tiene {$cantidad} cobro(s) registrado(s). "
+                           . 'Anulá primero los cobros desde la sección Pagos del servicio y después la factura.',
+            ]);
+        }
+    }
+
+    /** Servicio tecnico: un anticipo aplicado sostiene el descuento de una final vigente. */
+    private function verificarAnticipoSinAplicar(VentaCab $venta): void
+    {
+        if (!$venta->esAnticipo()) {
+            return;
+        }
+
+        $final = $venta->aplicaciones()->vigente()->first();
+
+        if ($final) {
+            throw ValidationException::withMessages([
+                'factura' => "El anticipo está aplicado en la factura {$final->ven_nrodoc}. "
+                           . 'Primero hay que resolver esa factura final.',
             ]);
         }
     }

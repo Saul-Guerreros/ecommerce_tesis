@@ -67,6 +67,18 @@ export const routes: Routes = [
         title: 'Política de Privacidad | Z Informática',
     },
     {
+        path: 'sobre-nosotros',
+        loadComponent: () =>
+            import('./pages/institucional/sobre-nosotros/sobre-nosotros.component').then((m) => m.SobreNosotrosComponent),
+        title: 'Sobre nosotros | Z Informática',
+    },
+    {
+        path: 'contacto',
+        loadComponent: () =>
+            import('./pages/institucional/contacto/contacto.component').then((m) => m.ContactoComponent),
+        title: 'Contacto | Z Informática',
+    },
+    {
         path: '',
         component: HomeComponent
     },
@@ -206,5 +218,11 @@ export const routes: Routes = [
         path: 'mis-servicios/:numero',
         loadComponent: () => import('./pages/servicio-tecnico/detalle/detalle-servicio.component').then(m => m.DetalleServicioComponent),
         canActivate: [suthGuard],
+    },
+    {
+        path: 'mis-servicios/:numero/anticipo',
+        loadComponent: () => import('./pages/servicio-tecnico/anticipo/anticipo-servicio.component').then(m => m.AnticipoServicioComponent),
+        canActivate: [suthGuard],
+        title: 'Pagar anticipo del servicio | Z Informática',
     },
 ];

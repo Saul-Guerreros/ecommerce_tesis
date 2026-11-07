@@ -54,12 +54,45 @@ class EntregaServicioService
         ];
     }
 
-    /** @return array{habilitado: bool, motivo: ?string, total: float} */
+        /**
+     * Regla 7 con facturación: si hay monto a cobrar, se entrega con la
+     * factura final emitida y el cobro CONFIRMADO. Además, ningún saldo de
+     * anticipo puede quedar sin aplicar ni devolver.
+     *
+     * @return array{habilitado: bool, motivo: ?string, total: float}
+     */
     public function estadoCobro(SolicitudServicio $s): array
     {
         $total = (float) $s->sse_total;
+        $cobra = $total > 0 && !$s->sse_garant;
 
-        if ($total <= 0 || $s->sse_garant) {
+        if ($cobra && !$s->factura()->exists()) {
+            return ['habilitado' => false, 'motivo' => 'Falta generar la factura del servicio.', 'total' => $total];
+        }
+
+        $anticipo = $s->anticipoSinResolver();
+
+        if ($anticipo > 0.01) {
+            return [
+                'habilitado' => false,
+                'motivo'     => 'Hay Gs. ' . number_format($anticipo, 0, ',', '.')
+                     . ' de anticipo sin resolver: acreditalo con nota de crédito y registrá la devolución antes de entregar.',
+                'total'      => $total,
+            ];
+        }
+
+        $porDevolverFinal = $s->factura()->first()?->dineroPorDevolver() ?? 0.0;
+
+        if ($porDevolverFinal > 0.01) {
+            return [
+                'habilitado' => false,
+                'motivo'     => 'Hay Gs. ' . number_format($porDevolverFinal, 0, ',', '.')
+                              . ' cobrados de más en la factura del servicio: registrá la devolución antes de entregar.',
+                'total'      => $total,
+            ];
+        }
+
+        if (!$cobra) {
             return ['habilitado' => true, 'motivo' => null, 'total' => 0.0];
         }
 
@@ -72,7 +105,7 @@ class EntregaServicioService
         ];
     }
 
-    public function registrar(SolicitudServicio $s, array $d, Usuario $usuario): EntregaServicio
+       public function registrar(SolicitudServicio $s, array $d, Usuario $usuario): EntregaServicio
     {
         if ($s->codigoServicio() !== EstadoServicio::LISTA || $s->entrega()->exists()) {
             throw ValidationException::withMessages(['modalidad' => 'Solo se entrega un equipo LISTO y sin entrega registrada.']);
@@ -83,10 +116,41 @@ class EntregaServicioService
             throw ValidationException::withMessages(['modalidad' => $cobro['motivo']]);
         }
 
+        return DB::transaction(function () use ($s, $d, $usuario) {
+            $entrega = $this->crearRegistro($s, $d, $usuario, EntregaServicio::TIPO_ENTREGA);
+
+            $gar = $s->ordenServicio?->ose_gardia;
+            $this->estados->cambiarServicio($s, EstadoServicio::ENTREGADA, $usuario->usu_id,
+                'Equipo entregado' . ($gar ? ". Garantía del trabajo: {$gar} días desde hoy" : ''));
+
+            return $entrega;
+        });
+    }
+
+    /**
+     * Devolución del equipo por CANCELACIÓN: misma trazabilidad que la
+     * entrega, sin cobro y sin cambiar el estado del servicio (lo hace
+     * CancelacionServicioService en la misma transacción).
+     */
+    public function registrarDevolucion(SolicitudServicio $s, array $d, Usuario $usuario): EntregaServicio
+    {
+        if ($s->entrega()->exists()) {
+            throw ValidationException::withMessages(['devolucion' => 'El equipo ya tiene una salida registrada.']);
+        }
+
+        return $this->crearRegistro($s, $d, $usuario, EntregaServicio::TIPO_DEVOLUCION);
+    }
+
+    /**
+     * Salida física del equipo (entrega o devolución): receptor, sucursal o
+     * dirección, accesorios devueltos y logística de egreso.
+     */
+    private function crearRegistro(SolicitudServicio $s, array $d, Usuario $usuario, string $tipo): EntregaServicio
+    {
         if ($s->esMostrador()) {
             if (($d['modalidad'] ?? null) !== 'retiro') {
                 throw ValidationException::withMessages([
-                    'modalidad' => 'Los servicios de mostrador se entregan en la sucursal (el envío se define al cerrar el cobro).',
+                    'modalidad' => 'Los servicios de mostrador se entregan en la sucursal donde se recibieron.',
                 ]);
             }
             if ((int) ($d['ese_sucid'] ?? 0) !== (int) $s->sse_sucid) {
@@ -97,9 +161,10 @@ class EntregaServicioService
         }
 
         // Accesorios: lo que entró tiene que salir; si no, se explica por qué.
-        $recibidos  = $s->recepcion?->accesorios ?? collect();
-        $devueltos  = collect($d['accesorios'] ?? [])->map(fn ($id) => (int) $id);
-        $faltantes  = $recibidos->reject(fn ($a) => $devueltos->contains($a->rac_id));
+        $recibidos = $s->recepcion?->accesorios ?? collect();
+        $devueltos = collect($d['accesorios'] ?? [])->map(fn ($id) => (int) $id);
+        $faltantes = $recibidos->reject(fn ($a) => $devueltos->contains($a->rac_id));
+
         if ($faltantes->isNotEmpty() && blank($d['ese_obs'] ?? null)) {
             throw ValidationException::withMessages([
                 'ese_obs' => 'No se marcaron como devueltos: ' . $faltantes->pluck('rac_descri')->implode(', ')
@@ -109,7 +174,7 @@ class EntregaServicioService
 
         $envio = $d['modalidad'] === 'envio';
 
-        return DB::transaction(function () use ($s, $d, $usuario, $envio, $recibidos, $devueltos) {
+        return DB::transaction(function () use ($s, $d, $usuario, $tipo, $envio, $recibidos, $devueltos) {
             $receptor = $d['receptor'] === 'titular' ? $this->titular($s, $d) : [
                 'ese_nrodoc' => $d['ese_nrodoc'], 'ese_nombre' => $d['ese_nombre'],
                 'ese_apelli' => $d['ese_apelli'], 'ese_telef' => $d['ese_telef'] ?? null,
@@ -120,9 +185,10 @@ class EntregaServicioService
                 $envio ? $this->snapshotDireccion($s, (int) $d['ese_dirid']) : ['ese_sucid' => (int) $d['ese_sucid']],
                 [
                     'ese_sseid'  => $s->sse_id,
+                    'ese_tipo'   => $tipo,
                     'ese_tenid'  => TipoEntrega::porCodigo($envio ? TipoEntrega::ENVIO : TipoEntrega::RETIRO)->ten_id,
                     'ese_titula' => $d['receptor'] === 'titular',
-                    'ese_cosenv' => 0,   // el costo de envío lo define el checkout de cierre (C5)
+                    'ese_cosenv' => 0,
                     'ese_obs'    => $d['ese_obs'] ?? null,
                     'ese_fecha'  => now(),
                     'ese_usuid'  => $usuario->usu_id,
@@ -133,12 +199,12 @@ class EntregaServicioService
                 ->get()
                 ->each(fn ($a) => $a->update(['rac_devuel' => $devueltos->contains($a->rac_id)]));
 
-            $this->estados->cambiarEgreso($s, EstadoLogistica::ENTREGADO, $usuario->usu_id,
-                ($envio ? 'Entregado en domicilio' : 'Retirado en sucursal') . " por {$entrega->ese_nombre} {$entrega->ese_apelli} (C.I. {$entrega->ese_nrodoc})");
+            $accion = $tipo === EntregaServicio::TIPO_DEVOLUCION
+                ? 'Devuelto sin reparar (cancelación)'
+                : ($envio ? 'Entregado en domicilio' : 'Retirado en sucursal');
 
-            $gar = $s->ordenServicio?->ose_gardia;
-            $this->estados->cambiarServicio($s, EstadoServicio::ENTREGADA, $usuario->usu_id,
-                'Equipo entregado' . ($gar ? ". Garantía del trabajo: {$gar} días desde hoy" : ''));
+            $this->estados->cambiarEgreso($s, EstadoLogistica::ENTREGADO, $usuario->usu_id,
+                "{$accion} a {$entrega->ese_nombre} {$entrega->ese_apelli} (C.I. {$entrega->ese_nrodoc})");
 
             return $entrega;
         });

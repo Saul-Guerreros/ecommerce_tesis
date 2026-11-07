@@ -29,7 +29,11 @@ class OpcionesAdminPermisoSeeder extends Seeder
         'reportes.chatbot.ver', 'reportes.comportamiento.ver',
         // Recibir dinero: solo por asignación explícita
         'servicios.cobros.confirmar',
+        'servicios.facturas.anular',
         'inventario-inteligente.ver', 'inventario-inteligente.gestionar',
+        'inventario-inteligente.ver', 'inventario-inteligente.gestionar',
+        // Textos legales e institucionales de la tienda: solo por asignación explícita
+        'contenido-web.gestionar',
     ];
 
     public function run(): void

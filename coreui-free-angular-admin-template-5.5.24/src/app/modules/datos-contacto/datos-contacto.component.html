@@ -1,0 +1,153 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <strong>Página de Contacto</strong>
+    <small class="text-body-secondary" *ngIf="actualizado">Última actualización: {{ actualizado }}</small>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando">
+      <p class="text-body-secondary small mb-4">
+        Estos datos se muestran en la página <strong>/contacto</strong> y en el pie de página de la tienda.
+      </p>
+
+      <!-- ===== Encabezado ===== -->
+      <h6 class="mb-3">Encabezado</h6>
+      <div class="row g-3 mb-4">
+        <div class="col-lg-4">
+          <label cLabel for="dco_titulo">Título *</label>
+          <input cFormControl id="dco_titulo" formControlName="dco_titulo" maxlength="120">
+          <div class="text-danger small" *ngIf="invalido('dco_titulo')">{{ mensaje('dco_titulo', 'El título es obligatorio.') }}</div>
+        </div>
+        <div class="col-lg-8">
+          <label cLabel for="dco_intro">Texto de introducción</label>
+          <input cFormControl id="dco_intro" formControlName="dco_intro" maxlength="500">
+          <div class="text-danger small" *ngIf="invalido('dco_intro')">{{ mensaje('dco_intro', 'Máximo 500 caracteres.') }}</div>
+        </div>
+      </div>
+
+      <!-- ===== Canales ===== -->
+      <h6 class="mb-1">Canales de contacto</h6>
+      <p class="text-body-secondary small mb-3">Para publicar la página hace falta al menos un teléfono, email o WhatsApp.</p>
+      <div class="row g-3 mb-4">
+        <div class="col-lg-4">
+          <label cLabel for="dco_telefono">Teléfono</label>
+          <input cFormControl id="dco_telefono" formControlName="dco_telefono" maxlength="30" placeholder="(021) 000 000">
+          <div class="text-danger small" *ngIf="invalido('dco_telefono')">{{ mensaje('dco_telefono', 'Solo números, espacios, +, ( ) y guiones.') }}</div>
+        </div>
+        <div class="col-lg-4">
+          <label cLabel for="dco_email">Email</label>
+          <input cFormControl id="dco_email" type="email" formControlName="dco_email" maxlength="120">
+          <div class="text-danger small" *ngIf="invalido('dco_email')">{{ mensaje('dco_email', 'Ingresá un email válido.') }}</div>
+        </div>
+        <div class="col-lg-4">
+          <label cLabel for="dco_whatsapp">WhatsApp</label>
+          <input cFormControl id="dco_whatsapp" formControlName="dco_whatsapp" placeholder="595981123456">
+          <div class="text-danger small" *ngIf="invalido('dco_whatsapp')">
+            {{ mensaje('dco_whatsapp', 'Formato internacional, ej: 595981123456.') }}
+          </div>
+          <a *ngIf="enlaceWhatsapp" class="small" [href]="enlaceWhatsapp" target="_blank" rel="noopener noreferrer">Probar número</a>
+        </div>
+        <div class="col-12">
+          <label cLabel for="dco_whatsapp_mensaje">Mensaje precargado de WhatsApp</label>
+          <input cFormControl id="dco_whatsapp_mensaje" formControlName="dco_whatsapp_mensaje" maxlength="200"
+                 placeholder="Hola, quiero consultar sobre...">
+        </div>
+      </div>
+
+      <!-- ===== Ubicación y horario ===== -->
+      <h6 class="mb-3">Ubicación y horario</h6>
+      <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+          <label cLabel for="dco_direccion">Dirección</label>
+          <input cFormControl id="dco_direccion" formControlName="dco_direccion" maxlength="255">
+        </div>
+        <div class="col-lg-6">
+          <label cLabel for="dco_referencia">Referencia</label>
+          <input cFormControl id="dco_referencia" formControlName="dco_referencia" maxlength="255"
+                 placeholder="Frente a..., a 2 cuadras de...">
+        </div>
+        <div class="col-lg-6">
+          <label cLabel for="dco_horario">Horario de atención</label>
+          <textarea cFormControl id="dco_horario" rows="3" formControlName="dco_horario" maxlength="500"
+                    placeholder="Lunes a viernes: 8:00 a 18:00"></textarea>
+          <small class="text-body-secondary">Un renglón por día o rango de días.</small>
+        </div>
+      </div>
+
+      <!-- ===== Mapa ===== -->
+      <h6 class="mb-1">Mapa</h6>
+      <p class="text-body-secondary small mb-3">
+        En Google Maps hacé clic derecho sobre el local y copiá las coordenadas (el primer número es la latitud).
+        Dejalas vacías para no mostrar mapa.
+      </p>
+      <div class="row g-3 mb-4">
+        <div class="col-lg-4">
+          <div class="row g-3">
+            <div class="col-6 col-lg-12">
+              <label cLabel for="dco_mapa_lat">Latitud</label>
+              <input cFormControl id="dco_mapa_lat" type="number" step="0.0000001" formControlName="dco_mapa_lat">
+              <div class="text-danger small" *ngIf="invalido('dco_mapa_lat')">{{ mensaje('dco_mapa_lat', 'Entre -90 y 90.') }}</div>
+            </div>
+            <div class="col-6 col-lg-12">
+              <label cLabel for="dco_mapa_lng">Longitud</label>
+              <input cFormControl id="dco_mapa_lng" type="number" step="0.0000001" formControlName="dco_mapa_lng">
+              <div class="text-danger small" *ngIf="invalido('dco_mapa_lng')">{{ mensaje('dco_mapa_lng', 'Entre -180 y 180.') }}</div>
+            </div>
+            <div class="col-12">
+              <label cLabel for="dco_mapa_zoom">Zoom ({{ form.value.dco_mapa_zoom }})</label>
+              <input type="range" class="form-range" id="dco_mapa_zoom" min="10" max="20" step="1" formControlName="dco_mapa_zoom">
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="border rounded bg-body-tertiary d-flex align-items-center justify-content-center" style="height: 260px; overflow: hidden;">
+            <iframe *ngIf="mapaPreview" [src]="mapaPreview" title="Vista previa del mapa" width="100%" height="100%"
+                    style="border: 0;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            <span *ngIf="!mapaPreview" class="text-body-secondary small">Cargá latitud y longitud para ver la vista previa.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Redes sociales ===== -->
+      <h6 class="mb-1">Redes sociales</h6>
+      <p class="text-body-secondary small mb-3">Enlace completo con https://. Dejá vacío lo que no uses.</p>
+      <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+          <label cLabel for="dco_facebook">Facebook</label>
+          <input cFormControl id="dco_facebook" formControlName="dco_facebook" placeholder="https://facebook.com/...">
+          <div class="text-danger small" *ngIf="invalido('dco_facebook')">{{ mensaje('dco_facebook', 'Enlace no válido.') }}</div>
+        </div>
+        <div class="col-lg-6">
+          <label cLabel for="dco_instagram">Instagram</label>
+          <input cFormControl id="dco_instagram" formControlName="dco_instagram" placeholder="https://instagram.com/...">
+          <div class="text-danger small" *ngIf="invalido('dco_instagram')">{{ mensaje('dco_instagram', 'Enlace no válido.') }}</div>
+        </div>
+        <div class="col-lg-6">
+          <label cLabel for="dco_youtube">YouTube</label>
+          <input cFormControl id="dco_youtube" formControlName="dco_youtube" placeholder="https://youtube.com/@...">
+          <div class="text-danger small" *ngIf="invalido('dco_youtube')">{{ mensaje('dco_youtube', 'Enlace no válido.') }}</div>
+        </div>
+        <div class="col-lg-6">
+          <label cLabel for="dco_tiktok">TikTok</label>
+          <input cFormControl id="dco_tiktok" formControlName="dco_tiktok" placeholder="https://tiktok.com/@...">
+          <div class="text-danger small" *ngIf="invalido('dco_tiktok')">{{ mensaje('dco_tiktok', 'Enlace no válido.') }}</div>
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="form-check form-switch mb-0">
+          <input cFormCheckInput type="checkbox" role="switch" id="dco_publicado" formControlName="dco_publicado">
+          <label cFormCheckLabel for="dco_publicado">Publicada en la tienda</label>
+        </div>
+        <button cButton color="primary" type="submit" [disabled]="guardando || form.pristine">
+          <c-spinner *ngIf="guardando" size="sm" class="me-1"></c-spinner>
+          Guardar cambios
+        </button>
+      </div>
+    </form>
+  </c-card-body>
+</c-card>

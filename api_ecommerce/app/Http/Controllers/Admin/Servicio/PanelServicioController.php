@@ -25,6 +25,8 @@ use App\Services\Servicio\TecnicoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Http\Requests\Servicio\CancelarSolicitudRequest;
+use App\Services\Servicio\CancelacionServicioService;
 
 /**
  * A3 - Panel general (RF-040) + A5 entrega (RF-039) + constancias PDF.
@@ -41,6 +43,7 @@ class PanelServicioController extends Controller
         private PresupuestoService $presupuestos,
         private PresupuestoPdfService $pdfPresupuestos,
         private ServicioEstadoService $estados,
+        private CancelacionServicioService $cancelaciones,
     ) {}
 
     // GET /api/admin/servicios/panel/resumen
@@ -125,6 +128,30 @@ class PanelServicioController extends Controller
         $this->entregas->registrar($this->cargarParaEntrega($id), $request->validated(), auth('api')->user());
 
         return response()->json(['message' => 'Entrega registrada. Puede imprimir la constancia de retiro.'], 201);
+    }
+
+        // GET /api/admin/servicios/panel/{id}/cancelacion
+    public function cancelacionConfig(int $id): JsonResponse
+    {
+        $s = $this->cargarParaEntrega($id);
+
+        return response()->json(['data' => $this->cancelaciones->configuracion($s) + [
+            'sse_numero' => $s->sse_numero,
+            'cliente'    => $s->cliente?->persona?->nombre_completo,
+            'equipo'     => trim(($s->tipoDispositivo?->tdi_descri ?? '') . ' ' . $s->sse_marca . ' ' . $s->sse_modelo),
+        ]], 200);
+    }
+
+    // POST /api/admin/servicios/panel/{id}/cancelar
+    public function cancelar(CancelarSolicitudRequest $request, int $id): JsonResponse
+    {
+        $s = $this->cancelaciones->cancelar($this->cargarParaEntrega($id), $request->validated(), auth('api')->user());
+
+        return response()->json([
+            'message' => $s->entrega
+                ? 'Solicitud cancelada. Se registró la devolución del equipo: puede imprimir la constancia.'
+                : 'Solicitud cancelada.',
+        ], 200);
     }
 
     // GET /api/admin/servicios/panel/{id}/constancia/{tipo}   (tipo: recepcion | retiro)

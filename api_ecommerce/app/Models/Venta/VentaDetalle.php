@@ -16,6 +16,7 @@ class VentaDetalle extends Model
         'vnd_venid', 'vnd_prdid', 'vnd_nroitem', 'vnd_codigo', 'vnd_descripcion',
         'vnd_umedida', 'vnd_nroserie', 'vnd_cantidad', 'vnd_precio', 'vnd_descuento',
         'vnd_tasa', 'vnd_valorventa', 'vnd_iva', 'vnd_cosuni',
+        'vnd_umedida', 'vnd_nroserie', 'vnd_cantidad', 'vnd_precio', 'vnd_anticipo', 'vnd_descuento',
     ];
 
     protected $casts = [
@@ -30,6 +31,7 @@ class VentaDetalle extends Model
         'vnd_valorventa' => 'decimal:2',
         'vnd_iva'        => 'decimal:2',
         'vnd_cosuni'     => 'decimal:4',
+        'vnd_anticipo'   => 'decimal:4',
     ];
 
     public function venta(): BelongsTo

@@ -154,4 +154,31 @@ class NotaCreditoVenta extends Model
     {
         return $this->hasOne(NotaCreditoVentaFe::class, 'nfe_ncvid', 'ncv_id');
     }
+
+    public function devoluciones(): HasMany
+    {
+        return $this->hasMany(DevolucionVenta::class, 'dev_ncvid', 'ncv_id')->orderBy('dev_id');
+    }
+
+    /** Dinero ya devuelto contra esta NC (no puede superar ncv_total). */
+    public function totalDevuelto(): float
+    {
+        return (float) $this->devoluciones()->activa()->sum('dev_monto');
+    }
+
+        /**
+     * Lo que todavía se puede devolver contra esta NC: lo que queda de la
+     * nota, y nunca más del dinero cobrado de más en su factura.
+     */
+    public function porDevolver(): float
+    {
+        if ($this->anulada()) {
+            return 0.0;
+        }
+
+        $porNota   = (float) $this->ncv_total - $this->totalDevuelto();
+        $porDinero = $this->factura?->dineroPorDevolver() ?? $porNota;
+
+        return max(0.0, round(min($porNota, $porDinero), 2));
+    }
 }

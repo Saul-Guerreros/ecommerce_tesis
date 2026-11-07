@@ -177,8 +177,9 @@
             </span>
           </div>
         </div>
-
         <app-productos-carrito-card class="uk-margin" [items]="pedido.productos"></app-productos-carrito-card>
+
+        <app-calificar-productos [numero]="pedido.ped_numero" [estado]="pedido.estado_pedido.codigo"></app-calificar-productos>
 
         <app-datos-entrega-card class="uk-margin" [entrega]="pedido.entrega"></app-datos-entrega-card>
 

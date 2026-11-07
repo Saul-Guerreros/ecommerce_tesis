@@ -1,98 +1,125 @@
 <!-- ==================== FOOTER (UIkit) ==================== -->
-<footer>
-  <section class="uk-section uk-section-secondary uk-section-small uk-light">
-    <div class="uk-container">
-      <div class="uk-grid-medium uk-child-width-1-1 uk-child-width-1-4@m" uk-grid>
-        <div>
-          <a class="uk-logo" routerLink="/">
-            <img alt="logo" height="32" src="assets/images/logo-inverse.svg" width="90">
-          </a>
-          <p class="uk-text-small">Tu tienda de tecnología de confianza: laptops, smartphones, gaming y accesorios al mejor precio.</p>
-          <ul class="uk-iconnav">
-            <li><a href="#" title="Facebook" uk-icon="facebook"></a></li>
-            <li><a href="#" title="Twitter" uk-icon="twitter"></a></li>
-            <li><a href="#" title="Instagram" uk-icon="instagram"></a></li>
-            <li><a href="#" title="YouTube" uk-icon="youtube"></a></li>
+<footer class="tm-ft uk-section-secondary uk-light">
+  <div class="uk-container">
+    <div class="uk-grid-medium" uk-grid>
+
+      <!-- Marca + contacto + redes -->
+      <div class="uk-width-1-1 uk-width-1-3@m">
+        <a class="uk-logo" routerLink="/">
+          <img alt="logo" height="32" src="assets/images/logo-inverse.svg" width="90">
+        </a>
+        <p class="uk-text-small tm-ft-desc">
+          Tu tienda de tecnología de confianza: laptops, smartphones, gaming y accesorios al mejor precio.
+        </p>
+
+               @if (contacto) {
+          <ul class="uk-list uk-text-small tm-ft-contacto">
+            @if (telefono) {
+              <li>
+                <a [href]="telefono">
+                  <svg class="tm-ft-ico" viewBox="0 0 20 20" aria-hidden="true">
+                    <path fill="none" stroke="currentColor" stroke-width="1.1" d="M6.189,13.611C8.134,15.525 11.097,18.239 13.867,18.257C16.47,18.275 18.2,16.241 18.2,16.241L14.509,12.551L11.539,13.639L6.189,8.29L7.313,5.355L3.76,1.8C3.76,1.8 1.732,3.537 1.7,6.092C1.667,8.809 4.347,11.738 6.189,13.611"/>
+                  </svg>
+                  {{ contacto.dco_telefono }}
+                </a>
+              </li>
+            }
+            @if (whatsapp) {
+              <li>
+                <a [href]="whatsapp" target="_blank" rel="noopener noreferrer">
+                  <svg class="tm-ft-ico" viewBox="0 0 20 20" aria-hidden="true">
+                    <path fill="currentColor" d="M16.7,3.3c-1.8-1.8-4.1-2.8-6.7-2.8c-5.2,0-9.4,4.2-9.4,9.4c0,1.7,0.4,3.3,1.3,4.7l-1.3,4.9l5-1.3c1.4,0.8,2.9,1.2,4.5,1.2l0,0l0,0c5.2,0,9.4-4.2,9.4-9.4C19.5,7.4,18.5,5,16.7,3.3 M10.1,17.7L10.1,17.7c-1.4,0-2.8-0.4-4-1.1l-0.3-0.2l-3,0.8l0.8-2.9l-0.2-0.3c-0.8-1.2-1.2-2.7-1.2-4.2c0-4.3,3.5-7.8,7.8-7.8c2.1,0,4.1,0.8,5.5,2.3c1.5,1.5,2.3,3.4,2.3,5.5C17.9,14.2,14.4,17.7,10.1,17.7 M14.4,11.9c-0.2-0.1-1.4-0.7-1.6-0.8c-0.2-0.1-0.4-0.1-0.5,0.1c-0.2,0.2-0.6,0.8-0.8,0.9c-0.1,0.2-0.3,0.2-0.5,0.1c-0.2-0.1-1-0.4-1.9-1.2c-0.7-0.6-1.2-1.4-1.3-1.6c-0.1-0.2,0-0.4,0.1-0.5C8,8.8,8.1,8.7,8.2,8.5c0.1-0.1,0.2-0.2,0.2-0.4c0.1-0.2,0-0.3,0-0.4C8.4,7.6,7.9,6.5,7.7,6C7.5,5.5,7.3,5.6,7.2,5.6c-0.1,0-0.3,0-0.4,0c-0.2,0-0.4,0.1-0.6,0.3c-0.2,0.2-0.8,0.8-0.8,2c0,1.2,0.8,2.3,1,2.4c0.1,0.2,1.7,2.5,4,3.5c0.6,0.2,1,0.4,1.3,0.5c0.6,0.2,1.1,0.2,1.5,0.1c0.5-0.1,1.4-0.6,1.6-1.1c0.2-0.5,0.2-1,0.1-1.1C14.8,12.1,14.6,12,14.4,11.9"/>
+                  </svg>
+                  WhatsApp
+                </a>
+              </li>
+            }
+            @if (email) {
+              <li>
+                <a [href]="email">
+                  <svg class="tm-ft-ico" viewBox="0 0 20 20" aria-hidden="true">
+                    <polyline fill="none" stroke="currentColor" points="1.4,6.5 10,11 18.6,6.5"/>
+                    <path fill="currentColor" d="M1,4 1,16 19,16 19,4 1,4 Z M18,15 2,15 2,5 18,5 18,15 Z"/>
+                  </svg>
+                  {{ contacto.dco_email }}
+                </a>
+              </li>
+            }
+            @if (contacto.dco_direccion) {
+              <li>
+                <svg class="tm-ft-ico" viewBox="0 0 20 20" aria-hidden="true">
+                  <path fill="none" stroke="currentColor" stroke-width="1.1" d="M10,0.5 C6.41,0.5 3.5,3.39 3.5,6.98 C3.5,11.83 10,19 10,19 C10,19 16.5,11.83 16.5,6.98 C16.5,3.39 13.59,0.5 10,0.5 L10,0.5 Z"/>
+                  <circle fill="none" stroke="currentColor" cx="10" cy="6.8" r="2.3"/>
+                </svg>
+                {{ contacto.dco_direccion }}
+              </li>
+            }
           </ul>
-        </div>
-        <div>
-          <nav class="uk-grid-small uk-child-width-1-2" uk-grid>
-            <div>
-              <ul class="uk-nav uk-nav-default">
-                <li class="uk-nav-header tm-footer-titulo">Navegación</li>
-                <li><a routerLink="/">Inicio</a></li>
-                <li><a href="#">Nosotros</a></li>
-                <li><a href="#">Envíos</a></li>
-                <li><a routerLink="/carrito-de-compra">Carrito</a></li>
-                <li><a routerLink="/comparar-productos">Comparar</a></li>
-              </ul>
-            </div>
-            <div>
-              <ul class="uk-nav uk-nav-default">
-                <li class="uk-nav-header tm-footer-titulo">Atención al cliente y Legal</li>
-                <li><a routerLink="/como-comprar">Cómo comprar</a></li>
-                <li><a routerLink="/garantia">Plazos y condiciones de Garantía</a></li>
-                <li><a routerLink="/terminos-y-condiciones">Términos y Condiciones</a></li>
-                <li><a routerLink="/politica-de-privacidad">Política de Privacidad</a></li>
-                <li><a routerLink="/preguntas-frecuentes">Preguntas frecuentes</a></li>
-              </ul>
-            </div>
-          </nav>
-        </div>
-        <div>
-          <ul class="uk-list uk-text-small">
-            <li>
-              <a class="uk-link-muted" href="#">
-                <span class="uk-margin-small-right" uk-icon="receiver"></span>
-                <span class="tm-pseudo">(+595) 000 000 000</span>
-              </a>
-            </li>
-            <li>
-              <a class="uk-link-muted" href="#">
-                <span class="uk-margin-small-right" uk-icon="mail"></span>
-                <span class="tm-pseudo">contacto&#64;tienda.com</span>
-              </a>
-            </li>
-            <li>
-              <div class="uk-text-muted">
-                <span class="uk-margin-small-right" uk-icon="location"></span>
-                <span>Capiatá, Paraguay</span>
-              </div>
-            </li>
-            <li>
-              <div class="uk-text-muted">
-                <span class="uk-margin-small-right" uk-icon="clock"></span>
-                <span>Lunes a Sábado 9:00–18:00</span>
-              </div>
-            </li>
+        }
+
+        @if (redes.length) {
+          <ul class="uk-iconnav tm-ft-redes">
+            @for (r of redes; track r.nombre) {
+              <li>
+                <a [href]="r.url" target="_blank" rel="noopener noreferrer" [title]="r.nombre" [attr.aria-label]="r.nombre">
+                  @if (r.icono) {
+                    <span [attr.uk-icon]="r.icono"></span>
+                  } @else {
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 1 1-2.59-2.59c.27 0 .53.04.77.12V9.77a5.7 5.7 0 0 0-.77-.05A5.68 5.68 0 1 0 15.54 15.4V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3a4.28 4.28 0 0 1-3.24-1.48Z"/>
+                    </svg>
+                  }
+                </a>
+              </li>
+            }
           </ul>
-        </div>
-        <div>
-          <form class="uk-form-stacked">
-            <label>
-              <div class="uk-form-label uk-text-muted">Suscribite a nuestras novedades</div>
-              <div class="uk-inline uk-width-1-1">
-                <a class="uk-form-icon uk-form-icon-flip" href="#" uk-icon="mail"></a>
-                <input class="uk-input" placeholder="Tu correo" required type="email">
-              </div>
-            </label>
-          </form>
-        </div>
+        }
+      </div>
+
+      <!-- Navegación -->
+      <div class="uk-width-1-2 uk-width-1-6@m">
+        <h4 class="tm-ft-titulo">Navegación</h4>
+        <ul class="uk-list tm-ft-links">
+          <li><a routerLink="/">Inicio</a></li>
+          <li><a routerLink="/sobre-nosotros">Nosotros</a></li>
+          <li><a routerLink="/contacto">Contacto</a></li>
+          <li><a routerLink="/carrito-de-compra">Carrito</a></li>
+          <li><a routerLink="/comparar-productos">Comparar</a></li>
+        </ul>
+      </div>
+
+      <!-- Atención al cliente -->
+      <div class="uk-width-1-2 uk-width-1-4@m">
+        <h4 class="tm-ft-titulo">Atención al cliente y Legal</h4>
+        <ul class="uk-list tm-ft-links">
+          <li><a routerLink="/como-comprar">Cómo comprar</a></li>
+          <li><a routerLink="/garantia">Plazos y condiciones de Garantía</a></li>
+          <li><a routerLink="/terminos-y-condiciones">Términos y Condiciones</a></li>
+          <li><a routerLink="/politica-de-privacidad">Política de Privacidad</a></li>
+          <li><a routerLink="/preguntas-frecuentes">Preguntas frecuentes</a></li>
+        </ul>
+      </div>
+
+      <!-- Suscripción -->
+      <div class="uk-width-1-1 uk-width-1-4@m">
+        <h4 class="tm-ft-titulo">Suscribite a nuestras novedades</h4>
+        <form class="uk-form-stacked">
+          <div class="uk-inline uk-width-1-1">
+            <span class="uk-form-icon uk-form-icon-flip" uk-icon="mail"></span>
+            <input class="uk-input" placeholder="Tu correo" required type="email" aria-label="Tu correo">
+          </div>
+        </form>
       </div>
     </div>
-  </section>
-  <section class="uk-section uk-section-secondary uk-section-xsmall uk-light uk-padding-remove-top">
-    <div class="uk-container">
-      <div class="uk-grid-small uk-flex-middle uk-flex-between@s" uk-grid>
-        <div class="uk-text-small uk-text-muted uk-text-center uk-text-left@s">&copy; 2026 Tienda. Todos los derechos reservados.</div>
-        <div class="uk-flex uk-flex-center@s">
-          <ul class="uk-iconnav">
-            <li title="Visa" uk-icon="icon: credit-card; ratio: 1.1;"></li>
-            <li title="Pago seguro" uk-icon="icon: lock; ratio: 1.1;"></li>
-            <li title="PayPal / MercadoPago" uk-icon="icon: world; ratio: 1.1;"></li>
-          </ul>
-        </div>
-      </div>
+
+    <!-- Barra inferior -->
+	<div class="tm-ft-inferior uk-flex uk-flex-middle uk-flex-wrap">
+      <div class="uk-text-small uk-text-muted">&copy; {{ anio }} Z Informática. Todos los derechos reservados.</div>
+      <ul class="uk-iconnav">
+        <li title="Tarjetas" uk-icon="icon: credit-card; ratio: 1"></li>
+        <li title="Pago seguro" uk-icon="icon: lock; ratio: 1"></li>
+        <li title="Pagos online" uk-icon="icon: world; ratio: 1"></li>
+      </ul>
     </div>
-  </section>
+  </div>
 </footer>

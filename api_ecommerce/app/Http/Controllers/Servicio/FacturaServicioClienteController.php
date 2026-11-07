@@ -12,6 +12,7 @@ use App\Services\Servicio\SolicitudServicioService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Models\Venta\VentaCab;
 
 /**
  * C4 - Facturación del servicio desde la tienda: el cliente elige CI o RUC
@@ -32,8 +33,23 @@ class FacturaServicioClienteController extends Controller
         $s = $this->solicitud($numero);
 
         return response()->json([
-            'data' => $this->datosFiscales->opciones($s) + ['factura' => $this->consulta->resumenCliente($s)],
+            'data' => $this->datosFiscales->opciones($s) + [
+                'factura'  => $this->consulta->resumenCliente($s),
+                'anticipo' => $this->consulta->resumenCliente($s, VentaCab::TIPO_ANTICIPO),
+            ],
         ], 200);
+    }
+
+    // GET .../factura/kude   |   GET .../anticipo/kude
+    public function kude(string $numero, string $tipo = VentaCab::TIPO_VENTA): StreamedResponse
+    {
+        $s = $this->solicitud($numero);
+
+        abort_if(!($this->consulta->resumenCliente($s, $tipo)['disponible'] ?? false), 404, 'La factura todavía no está disponible.');
+
+        $a = $this->consulta->archivo($s, 'pdf', $tipo);
+
+        return Storage::disk('local')->response($a['ruta'], $a['nombre'], ['Content-Type' => $a['mime']], 'inline');
     }
 
     // PUT /api/tienda/servicios/{numero}/facturacion
@@ -46,18 +62,6 @@ class FacturaServicioClienteController extends Controller
             'message' => 'Datos de facturación guardados.',
             'data'    => $this->datosFiscales->opciones($s->fresh()),
         ], 200);
-    }
-
-    // GET /api/tienda/servicios/{numero}/factura/kude
-    public function kude(string $numero): StreamedResponse
-    {
-        $s = $this->solicitud($numero);
-
-        abort_if(!($this->consulta->resumenCliente($s)['disponible'] ?? false), 404, 'La factura todavía no está disponible.');
-
-        $a = $this->consulta->archivo($s, 'pdf');
-
-        return Storage::disk('local')->response($a['ruta'], $a['nombre'], ['Content-Type' => $a['mime']], 'inline');
     }
 
     // ---------- Helpers ----------

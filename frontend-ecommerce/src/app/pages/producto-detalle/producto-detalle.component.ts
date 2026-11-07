@@ -19,6 +19,8 @@ import { SolicitudCreditoService } from '../../core/services/solicitud-credito.s
 import { ProductoCardComponent } from '../../shared/components/producto-card/producto-card.component';
 import { ActividadTiendaService } from '../../core/services/actividad-tienda.service';
 import { StockSucursalesModalComponent } from '../../shared/components/stock-sucursales-modal/stock-sucursales-modal.component';
+import { ResenasProductoComponent } from './resenas-producto/resenas-producto.component';
+import { ResumenResenas } from '../../core/models/resena.model';
 
 type TabDetalle = 'descripcion' | 'especificaciones' | 'resenas';
 
@@ -30,7 +32,7 @@ interface CuotaVista extends CuotaOpcion {
 @Component({
   selector: 'app-producto-detalle',
   standalone: true,
-  imports: [CommonModule, MonedaPyPipe, RouterModule, FlashCountdownComponent, SelectorCantidadComponent, ProductoCardComponent, StockSucursalesModalComponent],
+   imports: [CommonModule, MonedaPyPipe, RouterModule, FlashCountdownComponent, SelectorCantidadComponent, ProductoCardComponent, StockSucursalesModalComponent, ResenasProductoComponent],
   templateUrl: './producto-detalle.component.html',
   styleUrl: './producto-detalle.component.css',
 })
@@ -49,6 +51,8 @@ export class ProductoDetalleComponent implements OnInit {
   slugActual: string | null = null;
   imagenActivaIndex = 0;
   tabActiva: TabDetalle = 'descripcion';
+  /** Se llegó desde "Calificar" de Mis Pedidos (?resena=1). */
+  abrirFormResena = false;
 
   // --- Compra (Contado / Cuotas) ---------------------------------------
   // Las dos cantidades son INDEPENDIENTES a propósito: cada modalidad es
@@ -167,6 +171,11 @@ export class ProductoDetalleComponent implements OnInit {
         this.actividad.registrarVista(slug);
         if (typeof window !== 'undefined') {
           window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+        }
+        // Viene de "Calificar" en Mis Pedidos: abre Reseñas con el formulario.
+        this.abrirFormResena = this.route.snapshot.queryParamMap.get('resena') === '1';
+        if (this.abrirFormResena) {
+          this.irAResenas();
         }
       },
          error: (err) => {
@@ -710,6 +719,21 @@ export class ProductoDetalleComponent implements OnInit {
 
   seleccionarTab(tab: TabDetalle): void {
     this.tabActiva = tab;
+  }
+
+    /** Abre la pestaña Reseñas y la lleva a la vista. */
+  irAResenas(): void {
+    this.seleccionarTab('resenas');
+    if (typeof document !== 'undefined') {
+      setTimeout(() => document.getElementById('description')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    }
+  }
+
+  /** La pestaña Reseñas avisa cuando cambia el promedio (crear / editar / eliminar). */
+  actualizarResumenResenas(resumen: ResumenResenas): void {
+    if (!this.producto) return;
+    this.producto.rating = resumen.promedio;
+    this.producto.total_resenas = resumen.total;
   }
 
   verEspecificacionesCompletas(): void {

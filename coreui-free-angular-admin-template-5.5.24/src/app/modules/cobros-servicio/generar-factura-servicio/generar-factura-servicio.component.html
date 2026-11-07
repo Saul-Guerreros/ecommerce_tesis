@@ -1,0 +1,88 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" backdrop="static" size="lg">
+  <c-modal-header>
+    <h5 cModalTitle>{{ titulo }} — {{ detalle?.sse_numero }}</h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="detalle as d">
+    <!-- Contexto -->
+    <c-alert color="info" class="py-2 small" *ngIf="modo === 'anticipo'">
+      Se emite una <strong>factura de anticipo</strong> por el importe que entrega el cliente (IVA 10 %).
+      Se admite un solo anticipo por servicio y se descuenta en la factura final.
+      <span *ngIf="tope !== null"> Máximo: Gs. {{ formatoGs(tope) }}.</span>
+    </c-alert>
+
+    <c-alert color="info" class="py-2 small" *ngIf="modo === 'anticipo-web'">
+      Anticipo web declarado por <strong>Gs. {{ formatoGs(d.resumen.anticipo) }}</strong>, con el comprobante validado.
+      Se emite su factura de anticipo.
+    </c-alert>
+
+    <c-alert color="light" class="py-2 small" *ngIf="modo === 'final'">
+      Total del servicio <strong>Gs. {{ formatoGs(d.resumen.total) }}</strong>
+      <ng-container *ngIf="anticipoAplicable > 0">
+        − anticipo {{ d.facturas.anticipo?.numero }} Gs. {{ formatoGs(anticipoAplicable) }}
+        = factura por <strong>Gs. {{ formatoGs(d.resumen.total - anticipoAplicable) }}</strong>
+      </ng-container>
+      <div *ngIf="d.resumen.en_verificacion > 0">Pagos web declarados: Gs. {{ formatoGs(d.resumen.en_verificacion) }}.</div>
+      <div>Saldo sin medio de pago: <strong>Gs. {{ formatoGs(saldo) }}</strong></div>
+    </c-alert>
+
+    <c-alert color="warning" class="py-2 small" *ngIf="bloqueo">{{ bloqueo }}</c-alert>
+
+    <!-- Medios declarados -->
+    <ng-container *ngIf="pideMedios">
+      <h6 class="text-muted text-uppercase small">Medios de pago</h6>
+      <form [formGroup]="form">
+        <div formArrayName="medios">
+          <div class="row g-2 align-items-end mb-2" *ngFor="let m of medios.controls; let i = index" [formGroupName]="i">
+            <div class="col-md-6">
+              <label cLabel class="small">Forma de pago</label>
+              <select cSelect formControlName="mpa_codigo"
+                      [class.is-invalid]="m.get('mpa_codigo')?.invalid && m.get('mpa_codigo')?.touched">
+                <option value="">Seleccione...</option>
+                <option *ngFor="let op of metodos" [value]="op.mpa_codigo">{{ op.mpa_descri }}</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label cLabel class="small">Monto</label>
+              <input cFormControl type="number" min="1" formControlName="monto"
+                     [class.is-invalid]="m.get('monto')?.invalid && m.get('monto')?.touched" />
+            </div>
+            <div class="col-md-2 text-end">
+              <button cButton size="sm" color="danger" class="me-2 text-white" type="button"
+                      *ngIf="medios.length > 1" (click)="quitarMedio(i)">Quitar</button>
+            </div>
+          </div>
+        </div>
+      </form>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <button cButton size="sm" color="secondary" class="me-2 text-white" type="button"
+                *ngIf="medios.length < 5" (click)="agregarMedio()">Agregar medio</button>
+        <span class="small">Suma: <strong>Gs. {{ formatoGs(suma) }}</strong></span>
+      </div>
+      <div class="text-danger small mb-2" *ngIf="errorSuma">{{ errorSuma }}</div>
+      <div class="form-text mb-2">
+        Son los medios con que paga el cliente: van en la factura. El dinero se registra después con “Cobrar”.
+      </div>
+    </ng-container>
+
+    <!-- Datos fiscales: la primera factura los congela -->
+    <ng-container *ngIf="visible">
+      <hr />
+      <h6 class="text-muted text-uppercase small">Datos de facturación</h6>
+      <app-datos-facturacion-servicio [solicitudId]="d.sse_id"></app-datos-facturacion-servicio>
+    </ng-container>
+
+    <c-alert color="danger" class="py-2 small mt-3 mb-0" *ngIf="errores.length">
+      <div *ngFor="let e of errores">{{ e }}</div>
+    </c-alert>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+    <button cButton color="success" class="text-white" (click)="guardar()" [disabled]="guardando || !!bloqueo">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      {{ modo === 'final' ? 'Generar factura' : 'Emitir factura de anticipo' }}
+    </button>
+  </c-modal-footer>
+</c-modal>

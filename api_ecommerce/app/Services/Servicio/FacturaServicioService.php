@@ -6,9 +6,12 @@ use App\Exceptions\EmisionFacturaException;
 use App\Jobs\DeclararFacturaElectronica;
 use App\Models\Compras\Stock;
 use App\Models\Configuracion\Sucursal;
+use App\Models\Pedido\EstadoPago;
 use App\Models\Servicio\EstadoPresupuesto;
+use App\Models\Servicio\EstadoServicio;
 use App\Models\Servicio\OrdenServicio;
 use App\Models\Servicio\PresupuestoDetalle;
+use App\Models\Servicio\ServicioPago;
 use App\Models\Servicio\SolicitudServicio;
 use App\Models\Servicio\Trabajo;
 use App\Models\Usuario;
@@ -17,29 +20,24 @@ use App\Models\Venta\VentaCab;
 use App\Models\Venta\VentaDetalle;
 use App\Models\Venta\VentaFe;
 use App\Services\Venta\NumeracionVentaService;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
- * Emisión de la factura (venta_cab con ven_sseid) de una solicitud de
- * servicio técnico. Equivalente a VentaService::emitirDesdePedido(), que
- * NO se toca: se reutilizan NumeracionVentaService, VentaCab/VentaDetalle,
- * venta_fe y el job DeclararFacturaElectronica tal como están.
+ * Facturas del servicio técnico (venta_cab con ven_sseid). Las genera el
+ * USUARIO, igual que [GENERAR FACTURA] del pedido: ciclo comprobante ->
+ * factura -> cobro (guía 0.54.1, cap. 29).
  *
- * Cuándo: cuando el cobro queda CONFIRMADO (lo dispara
- * EstadoPagoServicioService::recalcular(), Paso 5). Factura al CONTADO: los
- * medios de pago (uno o varios, p. ej. mitad transferencia y mitad
- * efectivo) los arma el builder del Paso 4 a partir de servicio_pago.
+ *   generarAnticipo()  ANTICIPO (tipo_transaccion 9): una línea por el
+ *                      importe declarado, al 10 % (tratamiento de la
+ *                      operación real: prestación de servicios).
+ *   generarFinal()     VENTA: todas las líneas del servicio; si hay un
+ *                      anticipo cobrado, se aplica POR ÍTEM (vnd_anticipo)
+ *                      y la cabecera guarda el NETO. Neto cero -> Cobrada.
  *
- * Líneas (todas con IVA incluido, igual que los precios del sistema):
- *   - Mano de obra de TODOS los presupuestos aprobados (v1 + complementarios).
- *   - Repuestos realmente USADOS (orden_servicio_repuesto.osr_cantid > 0).
- *   - No reparable: una línea "Revisión técnica" por sse_subtot.
- *   - Retiro a domicilio (sse_cosret) y envío (sse_cosenv), si los hay.
- * Es la misma suma que ServicioTotalesService::consolidar() dejó en
- * sse_total; si no coincide, NO se emite (ver verificarTotal()).
- *
- * DEBE invocarse dentro de la transacción del cobro: el lock del timbrado
- * (NumeracionVentaService) vive hasta el commit, y si la emisión falla el
- * cobro se revierte (mismo criterio que el pedido, ver EmisionFacturaException).
+ * Los dos comparten numeración (NumeracionVentaService), venta_fe y el job
+ * DeclararFacturaElectronica, que se despacha DESPUÉS del commit.
  */
 class FacturaServicioService
 {
@@ -51,46 +49,150 @@ class FacturaServicioService
     public function __construct(
         private NumeracionVentaService $numeracion,
         private FacturacionServicioService $datosFiscales,
+        private EstadoPagoServicioService $estadoPago,
     ) {}
 
-    // ---------- Emisión ----------
+    // ---------- Factura de anticipo ----------
 
     /**
-     * Emite la factura del servicio. Idempotente: si ya tiene una vigente,
-     * la devuelve sin consumir otro número.
-     *
-     * @return VentaCab|null null si el servicio no se factura (garantía o total 0)
-     *
-     * @throws EmisionFacturaException
+     * Factura el anticipo DECLARADO (mostrador o web). Los comprobantes web
+     * tienen que estar validados. El cobro se registra después, cuando la
+     * factura ya tiene su documento (CDC, XML y PDF).
      */
-    public function emitir(SolicitudServicio $s, Usuario $usuario): ?VentaCab
+    public function generarAnticipo(SolicitudServicio $s, Usuario $usuario): VentaCab
     {
-        $existente = $s->factura()->first();
-        if ($existente) {
-            return $existente;
-        }
+        return DB::transaction(function () use ($s, $usuario) {
+            $s = $this->bloquear($s);
 
-        // Regla 8: la garantía no genera cobro ni factura. Total 0, tampoco.
-        if ($s->sse_garant || (float) $s->sse_total <= 0) {
-            return null;
-        }
+            if (!in_array($s->codigoServicio(), EstadoPagoServicioService::ESTADOS_ANTICIPO, true)) {
+                throw ValidationException::withMessages([
+                    'factura' => 'La factura de anticipo se emite con el equipo recibido y antes de que esté listo.',
+                ]);
+            }
 
-        // load() y no loadMissing(): recalcular() corre en la misma transacción
-        // que cierra la OT (finalizar / no reparable) y la relación podría estar
-        // cargada desde antes, con ose_result o cantidades viejas.
-        $s->load([
-            'ordenServicio.repuestos.producto.tipoIva',
-            'ordenServicio.repuestos.producto.unidadMedida',
-            'facturacion',
-            'cliente.persona',
-        ]);
+            $this->estadoPago->exigirQueAdmitaPagos($s);
 
-        // Antes de tomar el número: un error acá no debe gastar un correlativo
-        // (igual se revertiría con la transacción, pero así el lock dura menos).
-        $sucursal = $this->resolverSucursal($s);
-        $lineas   = $this->construirLineas($s, $sucursal);
-        $totales  = $this->calcularTotales($lineas);
-        $this->verificarTotal($s, $totales['total']);
+            if ($existente = $s->facturaAnticipo()->first()) {
+                throw ValidationException::withMessages([
+                    'factura' => "Esta solicitud ya tiene la factura de anticipo {$existente->ven_nrodoc}.",
+                ]);
+            }
+
+            $pagos = $this->pagosDeclarados($s, anticipo: true);
+
+            if ($pagos->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'factura' => 'No hay un anticipo declarado para facturar.',
+                ]);
+            }
+
+            $this->exigirComprobantesValidados($pagos);
+
+            $monto = round((float) $pagos->sum(fn ($p) => (float) $p->spa_monto), 2);
+
+            $s->load(['facturacion', 'cliente.persona']);
+
+            $sucursal = $this->resolverSucursal($s);
+            $lineas   = [$this->lineaAnticipo($s, $monto)];
+            $totales  = $this->calcularTotales($lineas);
+
+            $venta = $this->emitir($s, $usuario, $sucursal, VentaCab::TIPO_ANTICIPO, $lineas, $totales);
+
+            $this->estadoPago->recalcular($s, $usuario->usu_id, sprintf(
+                'Factura de anticipo %s emitida — Gs. %s',
+                $venta->ven_nrodoc,
+                number_format($monto, 0, ',', '.'),
+            ));
+
+            return $venta;
+        });
+    }
+
+    // ---------- Factura final ----------
+
+    /**
+     * Factura final del servicio LISTO. Los pagos declarados del saldo
+     * (no rechazados, sin contar el anticipo) tienen que sumar el NETO.
+     */
+    public function generarFinal(SolicitudServicio $s, Usuario $usuario): VentaCab
+    {
+        return DB::transaction(function () use ($s, $usuario) {
+            $s = $this->bloquear($s);
+
+            if ($s->codigoServicio() !== EstadoServicio::LISTA) {
+                throw ValidationException::withMessages([
+                    'factura' => 'La factura final se genera con el equipo LISTO.',
+                ]);
+            }
+
+            if ($s->sse_garant || (float) $s->sse_total <= 0) {
+                throw ValidationException::withMessages([
+                    'factura' => 'Este servicio no genera factura (garantía o sin monto a cobrar).',
+                ]);
+            }
+
+            if ($existente = $s->factura()->first()) {
+                throw ValidationException::withMessages([
+                    'factura' => "Esta solicitud ya tiene la factura {$existente->ven_nrodoc}.",
+                ]);
+            }
+
+            $anticipo = $this->anticipoParaAplicar($s);
+
+            $s->load([
+                'ordenServicio.repuestos.producto.tipoIva',
+                'ordenServicio.repuestos.producto.unidadMedida',
+                'facturacion',
+                'cliente.persona',
+            ]);
+
+            $sucursal = $this->resolverSucursal($s);
+            $lineas   = $this->construirLineas($s);
+            $this->verificarTotal($s, $this->calcularTotales($lineas)['total']);
+
+            $aplicado = 0.0;
+
+            if ($anticipo) {
+                [$lineas, $aplicado] = $this->aplicarAnticipo($lineas, $anticipo);
+            }
+
+            $totales = $this->calcularTotales($lineas);
+
+            $pagos = $this->pagosDeclarados($s, anticipo: false);
+            $this->exigirComprobantesValidados($pagos);
+            $this->exigirPagosDelNeto($pagos, $totales['total'], $aplicado);
+
+            $venta = $this->emitir($s, $usuario, $sucursal, VentaCab::TIPO_VENTA, $lineas, $totales, $anticipo, $aplicado);
+
+            // Neto cero: el anticipo cubrió todo. No hay nada que cobrar.
+            if ($totales['total'] <= 0.01) {
+                $venta->update(['ven_estado' => VentaCab::ESTADO_COBRADA]);
+            }
+
+            $this->estadoPago->recalcular($s, $usuario->usu_id, sprintf(
+                'Factura %s emitida — Gs. %s%s',
+                $venta->ven_nrodoc,
+                number_format($totales['total'], 0, ',', '.'),
+                $aplicado > 0 ? ' (anticipo aplicado Gs. ' . number_format($aplicado, 0, ',', '.') . ')' : '',
+            ));
+
+            return $venta;
+        });
+    }
+
+    // ---------- Emisión común ----------
+
+    /** Toma el número, guarda cabecera + detalle y programa la declaración. */
+    private function emitir(
+        SolicitudServicio $s,
+        Usuario $usuario,
+        Sucursal $sucursal,
+        string $tipo,
+        array $lineas,
+        array $totales,
+        ?VentaCab $anticipo = null,
+        float $aplicado = 0.0,
+    ): VentaCab {
         $adquirente = $this->datosFiscales->adquirente($s);
 
         ['timbrado' => $timbrado, 'numero' => $numero] = $this->numeracion->tomarNumero($sucursal->suc_id);
@@ -112,7 +214,6 @@ class FacturaServicioService
             'ven_sucid' => $sucursal->suc_id,
             'ven_pedid' => null,
 
-            // Snapshot del talonario y del emisor (mismo criterio que el pedido).
             'ven_timbrado'    => $timbrado->tim_numero,
             'ven_timb_inicio' => $timbrado->tim_fechin->toDateString(),
             'ven_timb_venc'   => $timbrado->tim_fechfn->toDateString(),
@@ -139,12 +240,14 @@ class FacturaServicioService
             'ven_totiva'   => $totales['totiva'],
 
             'ven_estado' => VentaCab::ESTADO_EMITIDA,
-            'ven_obs'    => "Servicio técnico {$s->sse_numero}",
+            'ven_obs'    => ($tipo === VentaCab::TIPO_ANTICIPO ? 'Anticipo servicio técnico ' : 'Servicio técnico ')
+                          . $s->sse_numero,
         ]);
 
-        // ven_sseid no está en $fillable de VentaCab (que no se modifica):
-        // se asigna directo, sin pasar por la asignación masiva.
-        $venta->ven_sseid = $s->sse_id;
+        $venta->ven_sseid    = $s->sse_id;
+        $venta->ven_tipo     = $tipo;
+        $venta->ven_antvenid = $anticipo?->ven_id;
+        $venta->ven_antapl   = round($aplicado, 2);
         $venta->save();
 
         foreach ($lineas as $linea) {
@@ -156,11 +259,6 @@ class FacturaServicioService
         return $venta->load('detalle');
     }
 
-    /**
-     * Igual que VentaService::programarDeclaracion() (privado, por eso se
-     * repite): venta_fe se crea DENTRO de la transacción y el job se despacha
-     * DESPUÉS del commit. La llamada a la API nunca bloquea el cobro.
-     */
     private function programarDeclaracion(VentaCab $venta): void
     {
         if (!config('facturacion.activa')) {
@@ -175,10 +273,171 @@ class FacturaServicioService
         DeclararFacturaElectronica::dispatch($venta->ven_id)->afterCommit();
     }
 
-    // ---------- Líneas ----------
+    // ---------- Anticipo ----------
+
+    /**
+     * Anticipo que la final puede aplicar. Bloquea si hay un anticipo
+     * declarado sin facturar, o facturado pero sin cobrar o sin aprobar
+     * (en producción PREPARADO no alcanza: guía 29).
+     */
+    private function anticipoParaAplicar(SolicitudServicio $s): ?VentaCab
+    {
+        $anticipo = $s->facturaAnticipo()->with(['fe', 'detalle'])->lockForUpdate()->first();
+
+        if (!$anticipo) {
+            if ($this->pagosDeclarados($s, anticipo: true)->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'factura' => 'Hay un anticipo declarado sin factura: emití su factura de anticipo o rechazá ese pago antes de generar la final.',
+                ]);
+            }
+
+            return null;
+        }
+
+        if (config('facturacion.activa') && !$anticipo->fe?->estaEnviado()) {
+            throw ValidationException::withMessages([
+                'factura' => "La factura de anticipo {$anticipo->ven_nrodoc} todavía no está aprobada por la DNIT. "
+                    . 'La final se genera cuando el anticipo esté aprobado.',
+            ]);
+        }
+
+        if ($anticipo->ven_estado !== VentaCab::ESTADO_COBRADA) {
+            throw ValidationException::withMessages([
+                'factura' => "La factura de anticipo {$anticipo->ven_nrodoc} todavía no está cobrada.",
+            ]);
+        }
+
+        // Acreditado por completo con nota de crédito: no queda nada que aplicar.
+        return $anticipo->disponibleAnticipo() > 0.01 ? $anticipo : null;
+    }
+
+    /**
+     * Aplica el anticipo POR ÍTEM (guía 29, condicion 2): solo líneas de la
+     * MISMA tasa que el anticipo (no se trasladan importes entre tasas),
+     * primero las de cantidad 1 (sin decimales por unidad). Lo que no
+     * alcanza a aplicarse queda disponible para devolverlo con NC.
+     *
+     * @return array{0: array<int, array<string, mixed>>, 1: float}
+     */
+    private function aplicarAnticipo(array $lineas, VentaCab $anticipo): array
+    {
+        $tasa      = (float) ($anticipo->detalle->first()?->vnd_tasa ?? self::TASA_SERVICIO);
+        $restante  = $anticipo->disponibleAnticipo();
+        $aplicado  = 0.0;
+
+        $orden = array_keys(array_filter($lineas, fn ($l) => (float) $l['vnd_tasa'] == $tasa));
+
+        usort($orden, function ($a, $b) use ($lineas) {
+            $ua = (float) $lineas[$a]['vnd_cantidad'] == 1.0 ? 0 : 1;
+            $ub = (float) $lineas[$b]['vnd_cantidad'] == 1.0 ? 0 : 1;
+
+            return [$ua, $lineas[$a]['vnd_nroitem']] <=> [$ub, $lineas[$b]['vnd_nroitem']];
+        });
+
+        foreach ($orden as $i) {
+            if ($restante <= 0.009) {
+                break;
+            }
+
+            $cantidad = (float) $lineas[$i]['vnd_cantidad'];
+            $precio   = (float) $lineas[$i]['vnd_precio'];
+
+            $aplicar = min($restante, round($cantidad * $precio, 2));
+            $unidad  = min(round($aplicar / $cantidad, 4), $precio);
+            $real    = round($unidad * $cantidad, 2);
+
+            if ($real <= 0) {
+                continue;
+            }
+
+            $neto = round($cantidad * ($precio - $unidad), 2);
+
+            $lineas[$i]['vnd_anticipo']   = $unidad;
+            $lineas[$i]['vnd_valorventa'] = $neto;
+            $lineas[$i]['vnd_iva']        = $this->ivaPorDentro($neto, (float) $lineas[$i]['vnd_tasa']);
+
+            $aplicado += $real;
+            $restante  = round($restante - $real, 2);
+        }
+
+        if ($aplicado <= 0) {
+            throw ValidationException::withMessages([
+                'factura' => 'El anticipo no se puede aplicar: la factura no tiene líneas con la misma tasa de IVA que el anticipo.',
+            ]);
+        }
+
+        return [$lineas, round($aplicado, 2)];
+    }
+
+    private function lineaAnticipo(SolicitudServicio $s, float $monto): array
+    {
+        return [
+            'vnd_prdid'       => null,
+            'vnd_nroitem'     => 1,
+            'vnd_codigo'      => 'ANTICIPO',
+            'vnd_descripcion' => mb_substr("Anticipo - Servicio técnico {$s->sse_numero}", 0, 150),
+            'vnd_umedida'     => 'UN',
+            'vnd_cantidad'    => 1,
+            'vnd_precio'      => $monto,
+            'vnd_descuento'   => 0,
+            'vnd_tasa'        => self::TASA_SERVICIO,
+            'vnd_valorventa'  => $monto,
+            'vnd_iva'         => $this->ivaPorDentro($monto, self::TASA_SERVICIO),
+            'vnd_cosuni'      => null,
+        ];
+    }
+
+    // ---------- Pagos declarados ----------
+
+    /** Pagos no rechazados del anticipo o del saldo. */
+    private function pagosDeclarados(SolicitudServicio $s, bool $anticipo): Collection
+    {
+        return $s->pagos()
+            ->with(['metodoPago', 'estadoPago', 'comprobante'])
+            ->get()
+            ->filter(fn (ServicioPago $p) => $p->estadoPago?->epa_codigo !== EstadoPago::RECHAZADO
+                                          && $p->esAnticipo() === $anticipo)
+            ->values();
+    }
+
+    /** No se factura lo que no se miró: comprobantes web validados. */
+    private function exigirComprobantesValidados(Collection $pagos): void
+    {
+        foreach ($pagos as $p) {
+            if ($p->spa_canal !== ServicioPago::CANAL_WEB || !$p->metodoPago?->mpa_requcom) {
+                continue;
+            }
+
+            if (!$p->comprobante?->sco_verifi) {
+                throw ValidationException::withMessages([
+                    'factura' => "Validá el comprobante del pago {$p->spa_orden} antes de generar la factura.",
+                ]);
+            }
+        }
+    }
+
+    private function exigirPagosDelNeto(Collection $pagos, float $neto, float $aplicado): void
+    {
+        $declarado = round((float) $pagos->sum(fn ($p) => (float) $p->spa_monto), 2);
+        $gs        = fn ($m) => number_format($m, 0, ',', '.');
+
+        if ($neto <= 0.01 && $pagos->isEmpty()) {
+            return;
+        }
+
+        if (abs($declarado - $neto) > 0.01) {
+            throw ValidationException::withMessages([
+                'pagos' => "Los pagos declarados del saldo suman Gs. {$gs($declarado)} y la factura final queda en Gs. {$gs($neto)}"
+                    . ($aplicado > 0 ? " (anticipo aplicado Gs. {$gs($aplicado)})" : '')
+                    . '. Declará los medios por el saldo exacto.',
+            ]);
+        }
+    }
+
+    // ---------- Líneas del servicio ----------
 
     /** @return array<int, array<string, mixed>> */
-    private function construirLineas(SolicitudServicio $s, Sucursal $sucursal): array
+    private function construirLineas(SolicitudServicio $s): array
     {
         $orden = $s->ordenServicio;
         $item  = 0;
@@ -206,10 +465,6 @@ class FacturaServicioService
         return $lineas;
     }
 
-    /**
-     * Mano de obra de todas las versiones APROBADAS. La v2+ solo contiene lo
-     * adicional, así que se suman todas sin duplicar nada.
-     */
     private function lineasManoObra(?OrdenServicio $orden, int &$item): array
     {
         if (!$orden) {
@@ -256,7 +511,6 @@ class FacturaServicioService
         return $lineas;
     }
 
-    /** Repuestos realmente usados (Regla 4: puede ser menos que lo aprobado). */
     private function lineasRepuestos(?OrdenServicio $orden, int &$item): array
     {
         if (!$orden) {
@@ -294,11 +548,6 @@ class FacturaServicioService
         return $lineas;
     }
 
-    /**
-     * No reparable: la revisión no se guarda como línea, quedó solo en
-     * sse_subtot (OrdenTrabajoService::cerrarNoReparable). Se reconstruye
-     * con ese monto y la tasa del trabajo REVISION.
-     */
     private function lineaRevision(SolicitudServicio $s, int &$item): array
     {
         $monto = round((float) $s->sse_subtot, 2);
@@ -326,7 +575,6 @@ class FacturaServicioService
         ]];
     }
 
-    /** Retiro / envío: prestación de servicio gravada al 10 %. */
     private function lineaServicio(int $item, string $codigo, string $descripcion, float $monto): array
     {
         return [
@@ -345,20 +593,14 @@ class FacturaServicioService
         ];
     }
 
-    // ---------- Totales (mismo cálculo que VentaService, que no se toca) ----------
+    // ---------- Totales ----------
 
-    /** IVA por dentro, a 2 decimales como en venta_detalle del pedido. */
     private function ivaPorDentro(float $monto, float $tasa): float
     {
         return $tasa > 0 ? round($monto * $tasa / (100 + $tasa), 2) : 0.0;
     }
 
-    /**
-     * Suma vertical del detalle: los CHECK de venta_cab exigen
-     * subtotal = exenta + grav5 + grav10 y totiva = iva5 + iva10.
-     *
-     * @return array<string, float>
-     */
+    /** @return array<string, float> */
     private function calcularTotales(array $lineas): array
     {
         $acum = ['exenta' => 0.0, 'grav5' => 0.0, 'grav10' => 0.0, 'iva5' => 0.0, 'iva10' => 0.0];
@@ -398,12 +640,7 @@ class FacturaServicioService
         ];
     }
 
-    /**
-     * A diferencia del pedido (que solo deja un log), acá SÍ se frena: la
-     * factura al contado declara pagos que suman sse_total, y si las líneas
-     * dieran otro número la API la rechazaría y quedaría trabada. Es mejor
-     * que el cobro no se confirme y el mensaje diga qué revisar.
-     */
+    /** Las líneas BRUTAS (antes del anticipo) tienen que dar sse_total. */
     private function verificarTotal(SolicitudServicio $s, float $total): void
     {
         $esperado = (float) $s->sse_total;
@@ -419,12 +656,8 @@ class FacturaServicioService
         }
     }
 
-    // ---------- Configuración fiscal (mismo criterio que VentaService) ----------
+    // ---------- Configuración fiscal ----------
 
-    /**
-     * Sucursal emisora: la de la solicitud (mostrador o retiro en local); si
-     * es NULL (web con retiro a domicilio), la casa matriz.
-     */
     private function resolverSucursal(SolicitudServicio $s): Sucursal
     {
         $sucursal = $s->sse_sucid
@@ -440,7 +673,7 @@ class FacturaServicioService
         return $sucursal;
     }
 
-    /** La caja es el punto de expedición y debe coincidir con el del talonario. */
+    /** Caja activa del local: aporta el punto de expedición (también en transferencias). */
     private function resolverCaja(Sucursal $sucursal, string $puntoExpedicion): Caja
     {
         $caja = Caja::where('caj_sucid', $sucursal->suc_id)
@@ -458,7 +691,6 @@ class FacturaServicioService
         return $caja;
     }
 
-    /** CPP sin IVA del repuesto en el depósito del que salió (para el margen). */
     private function costoUnitario(?int $productoId, ?int $depositoId): ?float
     {
         if (!$productoId || !$depositoId) {
@@ -470,5 +702,11 @@ class FacturaServicioService
             ->value('sto_cosprm');
 
         return $costo !== null ? round((float) $costo, 4) : 0.0;
+    }
+
+    private function bloquear(SolicitudServicio $s): SolicitudServicio
+    {
+        return SolicitudServicio::whereKey($s->sse_id)->lockForUpdate()
+            ->with(['estadoServicio', 'ordenServicio'])->firstOrFail();
     }
 }

@@ -1,0 +1,123 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>Reseñas de productos</strong>
+  </c-card-header>
+  <c-card-body>
+    <c-alert color="info" class="small">
+      Las reseñas se publican al instante y solo las pueden escribir clientes con un pedido <strong>entregado</strong>.
+      Ocultá las que no cumplan las normas (el cliente verá el motivo) y respondé públicamente cuando aporte valor.
+      <br />Total: <strong>{{ resumen.total }}</strong> · Ocultas: <strong>{{ resumen.ocultas }}</strong>
+      · Visibles sin responder: <strong>{{ resumen.sin_respuesta }}</strong>
+    </c-alert>
+
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <input cFormControl placeholder="Buscar por producto, cliente, C.I., pedido o texto..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtroCalificacion" (ngModelChange)="cargar(1)">
+          <option value="">Todas las estrellas</option>
+          <option *ngFor="let n of [5, 4, 3, 2, 1]" [value]="n">{{ n }} ★</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar(1)">
+          <option value="">Todas</option>
+          <option value="1">Visibles</option>
+          <option value="0">Ocultas</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtroRespuesta" (ngModelChange)="cargar(1)">
+          <option value="">Con y sin respuesta</option>
+          <option value="sin">Sin respuesta</option>
+          <option value="con">Respondidas</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button cButton color="secondary" variant="outline" class="w-100" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <div class="table-responsive" *ngIf="!cargando">
+    <table cTable striped hover>
+      <thead>
+        <tr>
+          <th>Fecha</th><th>Producto</th><th>Cliente</th><th>Calificación</th><th>Reseña</th>
+          <th class="text-center">Estado</th><th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of resenas">
+          <td class="text-nowrap small">{{ r.res_creado | date: 'dd/MM/yyyy HH:mm' }}</td>
+          <td class="small">
+            {{ r.producto }}
+            <div class="text-muted" *ngIf="r.pedido">Pedido {{ r.pedido }}</div>
+          </td>
+          <td class="small">
+            {{ r.cliente }}
+            <div class="text-muted" *ngIf="r.cedula">C.I. {{ r.cedula }}</div>
+          </td>
+          <td class="text-nowrap">
+            <span *ngFor="let n of ESTRELLAS" [class.text-warning]="n <= r.res_califi" [class.text-body-tertiary]="n > r.res_califi">★</span>
+          </td>
+          <td class="small" [title]="r.res_coment">
+            <strong *ngIf="r.res_titulo">{{ r.res_titulo }}<br /></strong>
+            {{ r.res_coment | slice: 0 : 90 }}{{ r.res_coment.length > 90 ? '…' : '' }}
+            <div class="mt-1">
+              <c-badge color="info" class="me-1" *ngIf="r.res_respue">Respondida</c-badge>
+              <c-badge color="secondary" *ngIf="r.res_editad">Editada</c-badge>
+            </div>
+          </td>
+          <td class="text-center">
+            <c-badge [color]="r.visible ? 'success' : 'secondary'">{{ r.visible ? 'Visible' : 'Oculta' }}</c-badge>
+            <div class="small text-muted mt-1" *ngIf="!r.visible && r.res_motocu" [title]="r.res_motocu">
+              {{ r.res_motocu | slice: 0 : 40 }}{{ r.res_motocu.length > 40 ? '…' : '' }}
+            </div>
+          </td>
+          <td class="text-end text-nowrap">
+            <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrirResponder(r)">
+              {{ r.res_respue ? 'Ver / Editar respuesta' : 'Responder' }}
+            </button>
+            <button cButton size="sm" [color]="r.visible ? 'warning' : 'success'" class="me-2 text-white" (click)="cambiarEstado(r)">
+              {{ r.visible ? 'Ocultar' : 'Mostrar' }}
+            </button>
+            <button cButton size="sm" color="danger" class="text-white" (click)="abrirEliminar(r)">Eliminar</button>
+          </td>
+        </tr>
+        <tr *ngIf="resenas.length === 0"><td colspan="7" class="text-center">No hay reseñas registradas</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <!-- ====== PAGINACIÓN ====== -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" *ngIf="!cargando && total > 0">
+      <div class="text-muted small">Mostrando {{ rangoDesde }}-{{ rangoHasta }} de {{ total }}</div>
+      <nav *ngIf="lastPage > 1">
+        <ul cPagination class="mb-0">
+          <li cPageItem [disabled]="currentPage === 1">
+            <a cPageLink role="button" (click)="cambiarPagina(currentPage - 1)">&#9664;</a>
+          </li>
+          <li cPageItem *ngFor="let p of pagesArray" [active]="p === currentPage">
+            <a cPageLink role="button" (click)="cambiarPagina(p)">{{ p }}</a>
+          </li>
+          <li cPageItem [disabled]="currentPage === lastPage">
+            <a cPageLink role="button" (click)="cambiarPagina(currentPage + 1)">&#9654;</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </c-card-body>
+</c-card>
+
+<app-form-resena [visible]="formModalVisible" [resena]="resenaSeleccionada"
+  (visibleChange)="formModalVisible = $event" (guardado)="cargar()"></app-form-resena>
+
+<app-ocultar-resena [visible]="ocultarModalVisible" [resena]="resenaSeleccionada"
+  (visibleChange)="ocultarModalVisible = $event" (guardado)="cargar()"></app-ocultar-resena>
+
+<app-delete-resena [visible]="deleteModalVisible" [resena]="resenaSeleccionada"
+  (visibleChange)="deleteModalVisible = $event" (confirmar)="confirmarEliminar()"></app-delete-resena>

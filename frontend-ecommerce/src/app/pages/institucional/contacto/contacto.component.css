@@ -1,0 +1,77 @@
+.con-hero {
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+
+.con-btn-wa {
+  background: #25d366;
+}
+
+.con-btn-wa:hover {
+  background: #1ebe5b;
+}
+
+.con-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-radius: 12px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.con-icono {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(30, 135, 240, 0.1);
+  color: var(--uk-global-primary-background, #1e87f0);
+}
+
+.con-icono-wa {
+  background: rgba(37, 211, 102, 0.12);
+  color: #1ebe5b;
+}
+
+.con-min {
+  min-width: 0;
+}
+
+.con-corte {
+  overflow-wrap: anywhere;
+}
+
+.con-horario {
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
+.con-redes a {
+  color: #555;
+}
+
+.con-redes a:hover {
+  color: var(--uk-global-primary-background, #1e87f0);
+}
+
+.con-mapa {
+  position: relative;
+  width: 100%;
+  min-height: 380px;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+}
+
+.con-mapa iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}

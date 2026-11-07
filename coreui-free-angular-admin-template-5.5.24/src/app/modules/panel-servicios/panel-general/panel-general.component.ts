@@ -3,9 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { Subject, Subscription, debounceTime } from 'rxjs';
-import {
-  BadgeModule, ButtonModule, CardModule, FormModule, PaginationModule, SpinnerModule, TableModule,
-} from '@coreui/angular';
+import {BadgeModule, ButtonModule, CardModule, FormModule, PaginationModule, SpinnerModule, TableModule,} from '@coreui/angular';
 import { MedioContacto, PanelConfig, PanelFila, PanelResumen } from '../models/panel-servicio.model';
 import { PanelServiciosService, TipoConstancia } from '../service/panel-servicios.service';
 import { ReasignarTecnicoComponent } from '../reasignar-tecnico/reasignar-tecnico.component';
@@ -13,6 +11,8 @@ import { RegistrarEntregaComponent } from '../registrar-entrega/registrar-entreg
 import { RegistrarRespuestaComponent } from '../registrar-respuesta/registrar-respuesta.component';
 import { RegistrarContactoComponent } from '../registrar-contacto/registrar-contacto.component';
 import { DetalleSolicitudComponent } from '../../solicitudes-servicio/detalle-solicitud/detalle-solicitud.component';
+import { CancelarSolicitudComponent } from '../cancelar-solicitud/cancelar-solicitud.component';
+
 
 /** A3 - Panel general del servicio técnico (RF-040). */
 @Component({
@@ -21,7 +21,7 @@ import { DetalleSolicitudComponent } from '../../solicitudes-servicio/detalle-so
   imports: [
     CommonModule, FormsModule, BadgeModule, ButtonModule, CardModule, FormModule, PaginationModule, SpinnerModule, TableModule,
     ReasignarTecnicoComponent, RegistrarEntregaComponent, DetalleSolicitudComponent,
-    RegistrarRespuestaComponent, RegistrarContactoComponent,
+    RegistrarRespuestaComponent, RegistrarContactoComponent, CancelarSolicitudComponent,
   ],
   templateUrl: './panel-general.component.html',
 })
@@ -44,6 +44,7 @@ export class PanelGeneralComponent implements OnInit, OnDestroy {
   seleccionada: PanelFila | null = null;
   reasignarVisible = false;
   entregaVisible = false;
+  cancelarVisible = false;
   detalleVisible = false;
   respuestaVisible = false;
   contactoVisible = false;
@@ -114,7 +115,7 @@ export class PanelGeneralComponent implements OnInit, OnDestroy {
     this.cargar(page);
   }
 
-  abrir(modal: 'reasignar' | 'entrega' | 'detalle' | 'respuesta' | 'contacto', f: PanelFila, medio: MedioContacto | null = null): void {
+  abrir(modal: 'reasignar' | 'entrega' | 'detalle' | 'respuesta' | 'contacto' | 'cancelar', f: PanelFila, medio: MedioContacto | null = null): void {
     this.seleccionada = f;
     this.medioContacto = medio;
     this.reasignarVisible = modal === 'reasignar';
@@ -122,6 +123,7 @@ export class PanelGeneralComponent implements OnInit, OnDestroy {
     this.detalleVisible = modal === 'detalle';
     this.respuestaVisible = modal === 'respuesta';
     this.contactoVisible = modal === 'contacto';
+    this.cancelarVisible = modal === 'cancelar';
   }
 
   /** D.13-b: abre WhatsApp y enseguida pide confirmar el contacto (el clic no garantiza el envío). */

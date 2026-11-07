@@ -10,6 +10,7 @@ use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\Venta\CobroVenta;
 
 /**
  * Pago del servicio técnico (espejo de PedidoPago + datos del cobro presencial).
@@ -82,5 +83,16 @@ class ServicioPago extends Model
     public function sucursal(): BelongsTo
     {
         return $this->belongsTo(Sucursal::class, 'spa_sucid', 'suc_id');
+    }
+
+    public function esAnticipo(): bool
+    {
+        return $this->spa_tipo === self::TIPO_ANTICIPO;
+    }
+
+    /** Cobro ACTIVO registrado contra la factura (de anticipo o final). */
+    public function cobro(): HasOne
+    {
+        return $this->hasOne(CobroVenta::class, 'cob_spaid', 'spa_id')->activo();
     }
 }

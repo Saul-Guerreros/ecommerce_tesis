@@ -6,148 +6,118 @@ use App\Models\Pedido\EstadoPago;
 use App\Models\Pedido\MetodoPago;
 use App\Models\Servicio\EntregaServicio;
 use App\Models\Servicio\EstadoServicio;
-use App\Models\Servicio\PresupuestoServicio;
 use App\Models\Servicio\ServicioPago;
 use App\Models\Servicio\SolicitudServicio;
-use App\Models\Servicio\EstadoPresupuesto;
 use App\Models\Usuario;
+use App\Models\Venta\VentaCab;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Cobro PRESENCIAL del servicio (canal MOSTRADOR del pago). Lo usa quien
- * tenga servicios.cobros.confirmar (el permiso lo exige la ruta; sin él no
- * se registran cobros - decisión 12-a).
+ * Operaciones PRESENCIALES del cobro del servicio (servicios.cobros.confirmar).
  *
- * El cobro queda CONFIRMADO en el acto: el funcionario recibió el dinero o
- * vio la transferencia/giro. Por eso siempre guarda quién cobró y en qué
- * sucursal (también lo exige ck_spa_mostrador).
+ * El cajero DECLARA los medios (intención, PAGO_VERIFICAR) y en la misma
+ * operación se emite la factura. El dinero se registra después con
+ * PagoServicioVerificacionService::registrarCobro(), cuando la factura ya
+ * tiene su documento (guía 29: "factura antes de registrar el cobro").
  *
- *   - ANTICIPO: desde RECIBIDA hasta antes de LISTA, opcional y sin mínimo
- *     (6-a). Tope: lo aprobado en presupuestos, si ya hay alguno.
- *   - SALDO / TOTAL: en LISTA, hasta el saldo pendiente.
- *   - "Cobrar y entregar" (A5): cobro del saldo + entrega en una transacción.
+ *   declararAnticipo()  medios del anticipo + factura de anticipo.
+ *   generarFactura()    medios del saldo (opcional) + factura final.
+ *   cobrarYEntregar()   A5: exige factura final; cobra el pendiente y entrega.
  */
 class CobroMostradorService
 {
-    /** Estados en los que se acepta un anticipo (antes de LISTA, fuera de garantía). */
-    private const ESTADOS_ANTICIPO = [
-        EstadoServicio::RECIBIDA,
-        EstadoServicio::EN_DIAGNOSTICO,
-        EstadoServicio::PRESUPUESTADA,
-        EstadoServicio::APROBADA,
-        EstadoServicio::EN_REPARACION,
-    ];
-
     public function __construct(
         private EstadoPagoServicioService $estadoPago,
         private RegistroPagoServicio $registro,
         private SolicitudServicioService $solicitudes,
+        private FacturaServicioService $facturas,
+        private PagoServicioVerificacionService $verificacion,
         private EntregaServicioService $entregas,
     ) {}
 
-    /**
-     * Registra un cobro presencial ya confirmado.
-     *
-     * @param array{mpa_codigo: string, monto: int, nro_transaccion: ?string, banco: ?string,
-     *              fecha_pago: ?string, observacion: ?string, comprobante?: ?\Illuminate\Http\UploadedFile} $d
-     */
-    public function registrarCobro(SolicitudServicio $s, array $d, Usuario $usuario): SolicitudServicio
+    /** @param array{pagos: array<int, array{mpa_codigo: string, monto: int}>} $d */
+    public function declararAnticipo(SolicitudServicio $s, array $d, Usuario $usuario): VentaCab
     {
-        $archivos = [];
-
-        try {
-            return DB::transaction(function () use ($s, $d, $usuario, &$archivos) {
-                $s = $this->bloquear($s);
-
-                $this->estadoPago->exigirQueAdmitaPagos($s);
-                $this->validarSucursal($s, $usuario);
-
-                $metodo = MetodoPago::porCodigo($d['mpa_codigo']);
-                $monto  = (int) $d['monto'];
-
-                $this->validarReferencia($metodo, $d);
-                $tope = $this->tope($s);
-
-                if ($tope !== null && $monto > $tope) {
-                    throw ValidationException::withMessages([
-                        'monto' => 'El monto supera lo pendiente de cobro (Gs. ' . $this->gs($tope) . ').',
-                    ]);
-                }
-
-                $total = (int) round((float) $s->sse_total);
-                $this->crearConfirmado($s, $metodo, $monto, $d, $usuario, $archivos,
-                    unicoQueCubreTodo: $this->estadoPago->consolidado($s)
-                        && $monto === $total && $this->estadoPago->resumen($s)['comprometido'] === 0);
-
-                $consolidado = $this->estadoPago->consolidado($s);
-                $this->estadoPago->recalcular($s, $usuario->usu_id, sprintf(
-                    '%s cobrado en mostrador — %s Gs. %s',
-                    $consolidado ? 'Pago' : 'Anticipo',
-                    $metodo->mpa_descri,
-                    $this->gs($monto),
-                ));
-
-                return $s->fresh(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'estadoPago']);
-            });
-        } catch (\Throwable $e) {
-            $this->registro->borrarArchivos($archivos);
-            throw $e;
-        }
-    }
-
-    /**
-     * El cliente eligió en la web "pagar al retirar" y ahora paga en efectivo:
-     * el cajero confirma ESE pago y queda como quien cobró. Si el cliente
-     * decide pagar de otra forma, el pago se rechaza (queda libre) y se
-     * registra un cobro nuevo.
-     */
-    public function confirmarAlRetirar(SolicitudServicio $s, int $pagoId, Usuario $usuario): SolicitudServicio
-    {
-        return DB::transaction(function () use ($s, $pagoId, $usuario) {
+        return DB::transaction(function () use ($s, $d, $usuario) {
             $s = $this->bloquear($s);
-            $this->validarSucursal($s, $usuario);
 
-            $pago = ServicioPago::where('spa_id', $pagoId)->where('spa_sseid', $s->sse_id)
-                ->lockForUpdate()->with(['estadoPago', 'metodoPago'])->first();
-
-            abort_if(!$pago, 404, 'El pago no pertenece a esta solicitud.');
-
-            if ($pago->metodoPago?->mpa_codigo !== MetodoPago::CONTRAENTREGA
-                || $pago->estadoPago?->epa_codigo !== EstadoPago::PAGO_VERIFICAR) {
+            if (!in_array($s->codigoServicio(), EstadoPagoServicioService::ESTADOS_ANTICIPO, true)) {
                 throw ValidationException::withMessages([
-                    'pago' => 'Solo se confirma así un pago "al retirar" que esté en verificación.',
+                    'pagos' => 'El anticipo se registra con el equipo recibido y antes de que esté listo.',
                 ]);
             }
 
-            $pago->update([
-                'spa_epaid'   => EstadoPago::porCodigo(EstadoPago::CONFIRMADO)->epa_id,
-                'spa_montver' => $pago->spa_monto,
-                'spa_fechpag' => now()->toDateString(),
-                'spa_usuver'  => $usuario->usu_id,
-                'spa_fechver' => now(),
-                // canal sigue WEB (lo declaró el cliente), pero queda quién cobró y dónde
-                'spa_usucob'  => $usuario->usu_id,
-                'spa_sucid'   => $s->sse_sucid,
-            ]);
+            $this->estadoPago->exigirQueAdmitaPagos($s);
+            $this->validarSucursal($s, $usuario);
+            $this->estadoPago->exigirSinAnticipo($s);
 
-            $this->estadoPago->recalcular($s, $usuario->usu_id,
-                "Pago {$pago->spa_orden} (al retirar) cobrado en mostrador — Gs. " . $this->gs((float) $pago->spa_monto));
+            $medios = $this->armarMedios($d['pagos'] ?? []);
 
-            return $s->fresh(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'estadoPago']);
+            if ($medios === []) {
+                throw ValidationException::withMessages(['pagos' => 'Indique el medio y el monto del anticipo.']);
+            }
+
+            $monto = array_sum(array_column($medios, 'monto'));
+            $tope  = $this->estadoPago->topeAnticipo($s);
+
+            if ($tope !== null && $monto > $tope) {
+                throw ValidationException::withMessages([
+                    'pagos' => 'El anticipo supera lo aprobado en el presupuesto (Gs. ' . $this->gs($tope) . ').',
+                ]);
+            }
+
+            $this->crearDeclarados($s, $medios, $usuario, ServicioPago::TIPO_ANTICIPO);
+
+            return $this->facturas->generarAnticipo($s, $usuario);
         });
     }
 
     /**
-     * A5 "Cobrar y entregar": cobra el saldo completo y registra la entrega
-     * en UNA transacción. Si la entrega falla (accesorios sin justificar,
-     * receptor sin C.I.), el cobro tampoco queda registrado.
+     * Factura final. Si el cliente paga en el local, el cajero declara los
+     * medios por el SALDO exacto (total − anticipo − pagos web ya declarados).
+     * Sin medios: la factura usa los pagos web ya validados.
      *
-     * La regla 7 no cambia: EntregaServicioService::registrar() vuelve a
-     * exigir CONFIRMADO; acá solo se garantiza que el cobro cubra el saldo.
+     * @param array{pagos?: array<int, array{mpa_codigo: string, monto: int}>} $d
+     */
+    public function generarFactura(SolicitudServicio $s, array $d, Usuario $usuario): VentaCab
+    {
+        return DB::transaction(function () use ($s, $d, $usuario) {
+            $s = $this->bloquear($s);
+
+            if ($s->codigoServicio() !== EstadoServicio::LISTA) {
+                throw ValidationException::withMessages(['factura' => 'La factura final se genera con el equipo LISTO.']);
+            }
+
+            $medios = $this->armarMedios($d['pagos'] ?? []);
+
+            if ($medios !== []) {
+                $this->validarSucursal($s, $usuario);
+
+                $saldo    = $this->estadoPago->resumen($s)['saldo'];
+                $asignado = array_sum(array_column($medios, 'monto'));
+
+                if ($asignado !== $saldo) {
+                    throw ValidationException::withMessages([
+                        'pagos' => 'Los medios suman Gs. ' . $this->gs($asignado)
+                            . ' y el saldo pendiente es Gs. ' . $this->gs($saldo) . '.',
+                    ]);
+                }
+
+                $this->crearDeclarados($s, $medios, $usuario);
+            }
+
+            return $this->facturas->generarFinal($s, $usuario);
+        });
+    }
+
+    /**
+     * A5 "Cobrar y entregar": exige la factura final. Cobra el ÚNICO pago
+     * pendiente (por su monto declarado) y registra la entrega en la misma
+     * transacción. Con varios pendientes, se cobran uno por uno.
      *
-     * @param array $cobro   mismos campos que registrarCobro() (sin monto: es el saldo)
-     * @param array $entrega mismos campos que el modal A5
+     * @param array $cobro   nro_transaccion, banco, fecha_pago, observacion, comprobante
+     * @param array $entrega campos del modal A5
      */
     public function cobrarYEntregar(SolicitudServicio $s, array $cobro, array $entrega, Usuario $usuario): EntregaServicio
     {
@@ -158,73 +128,69 @@ class CobroMostradorService
                 throw ValidationException::withMessages(['pago' => 'Solo se cobra y entrega un equipo LISTO.']);
             }
 
-            $r = $this->estadoPago->resumen($s);
+            if ((float) $s->sse_total > 0 && !$s->sse_garant && !$s->factura()->exists()) {
+                throw ValidationException::withMessages(['pago' => 'Generá la factura final antes de cobrar y entregar.']);
+            }
 
-            if ($r['en_verificacion'] > 0) {
+            $pendientes = $s->pagos()
+                ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', EstadoPago::PAGO_VERIFICAR))
+                ->get();
+
+            if ($pendientes->count() > 1) {
                 throw ValidationException::withMessages([
-                    'pago' => 'Hay pagos en verificación: confirmalos o rechazalos antes de cobrar el saldo.',
+                    'pago' => 'Hay varios pagos pendientes: registrá cada cobro antes de entregar.',
                 ]);
             }
 
-            if ($r['saldo'] > 0) {
-                $s = $this->registrarCobro($s, $cobro + ['monto' => $r['saldo']], $usuario);
+            if ($pago = $pendientes->first()) {
+                $s = $this->verificacion->registrarCobro($s, $pago->spa_id,
+                    $cobro + ['monto_verificado' => (float) $pago->spa_monto], $usuario);
             }
 
-            // Con el estado recalculado, registrar() vuelve a aplicar la regla 7.
             return $this->entregas->registrar($s->fresh(['estadoServicio', 'estadoPago']), $entrega, $usuario);
         });
     }
 
-    // ---------- Reglas ----------
+    // ---------- Helpers ----------
 
-    /**
-     * Máximo cobrable ahora. NULL = sin tope (anticipo sin presupuesto
-     * aprobado todavía: decisión 6-a, sin mínimo ni máximo fijado).
-     */
-    private function tope(SolicitudServicio $s): ?int
+    /** @return array<int, array{metodo: MetodoPago, monto: int}> */
+    private function armarMedios(array $pagos): array
     {
-        $r = $this->estadoPago->resumen($s);
+        $medios = [];
 
-        if ($r['consolidado']) {
-            if ($r['saldo'] <= 0) {
-                throw ValidationException::withMessages([
-                    'monto' => $r['en_verificacion'] > 0
-                        ? 'El saldo está cubierto por pagos en verificación.'
-                        : 'Este servicio no tiene saldo pendiente.',
-                ]);
+        foreach (array_values($pagos) as $p) {
+            $monto = (int) ($p['monto'] ?? 0);
+
+            if ($monto <= 0) {
+                throw ValidationException::withMessages(['pagos' => 'Cada medio de pago necesita un monto mayor a cero.']);
             }
 
-            return $r['saldo'];
+            $medios[] = ['metodo' => MetodoPago::porCodigo($p['mpa_codigo']), 'monto' => $monto];
         }
 
-        if (!in_array($s->codigoServicio(), self::ESTADOS_ANTICIPO, true)) {
-            throw ValidationException::withMessages([
-                'monto' => 'El anticipo se registra con el equipo recibido y antes de que esté listo.',
-            ]);
-        }
-
-        $aprobado = (int) round((float) PresupuestoServicio::query()
-            ->where('pse_oseid', $s->ordenServicio?->ose_id ?? 0)
-            ->whereHas('estado', fn ($q) => $q->where('epr_codigo', EstadoPresupuesto::APROBADO))
-            ->sum('pse_total'));
-
-        if ($aprobado <= 0) {
-            return null;
-        }
-
-        // Los presupuestos complementarios (v2+) solo traen lo adicional: se suman.
-        $disponible = $aprobado + (int) round((float) $s->sse_cosret) - $r['comprometido'];
-
-        if ($disponible <= 0) {
-            throw ValidationException::withMessages([
-                'monto' => 'El anticipo ya cubre todo lo aprobado en el presupuesto.',
-            ]);
-        }
-
-        return $disponible;
+        return $medios;
     }
 
-    /** El cobro se hace en la sucursal del equipo y el funcionario tiene que estar asignado a ella. */
+    /** Intenciones de pago del mostrador: quién las registró y en qué sucursal. */
+    private function crearDeclarados(SolicitudServicio $s, array $medios, Usuario $usuario, ?string $tipo = null): void
+    {
+        $verificar = EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR)->epa_id;
+        $cubreTodo = $tipo === null && count($medios) === 1
+            && $medios[0]['monto'] === (int) round((float) $s->sse_total);
+
+        foreach ($medios as $m) {
+            $this->registro->crear($s, [
+                'metodo' => $m['metodo'],
+                'monto'  => $m['monto'],
+                'canal'  => ServicioPago::CANAL_MOSTRADOR,
+                'epaid'  => $verificar,
+                'tipo'   => $tipo,
+                'usucob' => $usuario->usu_id,
+                'sucid'  => $s->sse_sucid,
+            ], $cubreTodo);
+        }
+    }
+
     private function validarSucursal(SolicitudServicio $s, Usuario $usuario): void
     {
         $permitida = $this->solicitudes->sucursalesMostrador($usuario)->contains('suc_id', $s->sse_sucid);
@@ -234,38 +200,6 @@ class CobroMostradorService
                 'pago' => 'Solo se cobra en la sucursal donde está el equipo y en la que usted está asignado.',
             ]);
         }
-    }
-
-    /** Transferencia y giro Tigo: sin la referencia no hay forma de rastrear el dinero. */
-    private function validarReferencia(MetodoPago $metodo, array $d): void
-    {
-        if ($metodo->mpa_requcom && blank($d['nro_transaccion'] ?? null)) {
-            throw ValidationException::withMessages([
-                'nro_transaccion' => $metodo->mpa_codigo === MetodoPago::BILLETERA_MOVIL
-                    ? 'Ingrese la referencia del giro.'
-                    : 'Ingrese el número de la transferencia.',
-            ]);
-        }
-    }
-
-    private function crearConfirmado(SolicitudServicio $s, MetodoPago $metodo, int $monto, array $d, Usuario $usuario, array &$archivos, bool $unicoQueCubreTodo): void
-    {
-        $this->registro->crear($s, [
-            'metodo'      => $metodo,
-            'monto'       => $monto,
-            'canal'       => ServicioPago::CANAL_MOSTRADOR,
-            'epaid'       => EstadoPago::porCodigo(EstadoPago::CONFIRMADO)->epa_id,
-            'comprobante' => $this->registro->guardarArchivo($s, $d['comprobante'] ?? null, $archivos),
-            'nrotrx'      => $d['nro_transaccion'] ?? null,
-            'banco'       => $d['banco'] ?? null,
-            'fechpag'     => $d['fecha_pago'] ?? now()->toDateString(),
-            'observ'      => $d['observacion'] ?? null,
-            'montver'     => $monto,
-            'usuver'      => $usuario->usu_id,
-            'fechver'     => now(),
-            'usucob'      => $usuario->usu_id,
-            'sucid'       => $s->sse_sucid,
-        ], $unicoQueCubreTodo);
     }
 
     private function bloquear(SolicitudServicio $s): SolicitudServicio

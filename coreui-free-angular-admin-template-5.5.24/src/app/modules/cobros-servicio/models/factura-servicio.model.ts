@@ -41,13 +41,40 @@ export interface GuardarFacturacion {
   correo?: string | null;
 }
 
-/** GET .../factura (FacturaServicioConsultaService::resumenPanel). null = sin factura. */
+/** VENTA = factura final; ANTICIPO = tipo_transaccion 9. */
+export type TipoFactura = 'VENTA' | 'ANTICIPO';
+export type EstadoFe = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'PREPARADA' | 'RETIRADA' | 'CANCELADA' | 'INUTILIZADA';
+
+/**
+ * Anticipo de una factura:
+ *   - en la final: lo aplicado y de qué factura de anticipo;
+ *   - en el anticipo: aplicado / acreditado / disponible.
+ */
+export interface AnticipoFactura {
+  aplicado: number;
+  acreditado?: number;
+  disponible?: number;
+  factura_final?: string | null;
+  total_servicio?: number;
+  factura_anticipo?: string | null;
+  cdc_anticipo?: string | null;
+}
+
+/** FacturaServicioConsultaService::resumenPanel(). */
 export interface FacturaServicio {
   ven_id: number;
+  tipo: TipoFactura;
   numero: string;
   timbrado: string;
   fecha: string | null;
   total: number;
+  estado: 'EMITIDA' | 'COBRADA';
+  cobrado: number;
+    /** Estado de negocio calculado (VentaCab::estadoDetalle). */
+  estado_detalle: { codigo: string; etiqueta: string };
+  /** Dinero cobrado de más que hay que devolver. */
+  por_devolver: number;
+  anticipo: AnticipoFactura | null;
   razon_social: string;
   documento: string;
   tipo_doc: TipoDocumentoFiscal;
@@ -55,19 +82,42 @@ export interface FacturaServicio {
   telefono: string | null;
   recibe: CanalFactura | null;
   fe: {
-    estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA';
+    estado: EstadoFe;
+    /** PREPARADA: archivos provisionales, aprobación en curso. */
+    provisional: boolean;
+    /** CDC + XML + PDF guardados: ya se puede registrar el cobro. */
+    documento: boolean;
     cdc: string | null;
     ambiente: string | null;
     prueba: boolean;
     mensaje: string | null;
     aviso: string | null;
     error: string | null;
+    reintentable: boolean;
+    corregible: boolean;
+    /** Rechazada, retirada, cancelada o inutilizada: no es un documento vigente. */
+    sin_validez: boolean;
     qr: string | null;
     intentos: number;
     tiene_pdf: boolean;
     tiene_xml: boolean;
-    correo: { enviado: boolean; detalle: string | null } | null;
+    correo: { enviado: boolean; pendiente: boolean; programado: boolean; detalle: string | null } | null;
   } | null;
   /** Lo decide el backend. */
-  acciones: { reintentar: boolean; reenviar: boolean };
+    /** Lo decide el backend (anular ya incluye el permiso). */
+  acciones: { reintentar: boolean; reenviar: boolean; anular: boolean };
+  
+}
+
+/** Factura anulada de la solicitud (trazabilidad). */
+export interface FacturaAnulada {
+  ven_id: number;
+  tipo: TipoFactura;
+  numero: string;
+  fecha: string | null;
+  total: number;
+  anulada: string | null;
+  motivo: string | null;
+  por: string | null;
+  fe: { estado: EstadoFe; mensaje: string | null } | null;
 }

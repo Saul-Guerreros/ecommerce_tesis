@@ -404,10 +404,10 @@ class VitrinaController extends Controller
             'descuento_pct' => $descuentoPct,
             'oferta_fin' => $ofertaFin,
             'es_flash' => $esFlash,
-            // Todavía no existe un módulo de reseñas: se manda null a
-            // propósito para que el frontend NO invente estrellas ni
-            // cantidad de reseñas falsas.
-            'rating' => null,
+            // Promedio y cantidad de reseñas VISIBLES del modelo (compartidas
+            // entre variantes). Desnormalizados por ResenaService::recalcular().
+            'rating' => $pub->pub_rating !== null ? (float) $pub->pub_rating : null,
+            'total_resenas' => (int) ($pub->pub_nresen ?? 0),
             // Inventario real: ya no existe prd_stock (ver migración
             // adapt_producto_table_to_der), así que se suma la tabla stock.
             // controla_stock = false significa "no se controla stock para

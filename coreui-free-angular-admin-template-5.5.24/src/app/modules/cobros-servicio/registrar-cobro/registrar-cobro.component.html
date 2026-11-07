@@ -1,43 +1,53 @@
 <c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" backdrop="static">
   <c-modal-header>
-    <h5 cModalTitle>{{ esAnticipo ? 'Registrar anticipo' : 'Registrar cobro' }} — {{ detalle?.sse_numero }}</h5>
+    <h5 cModalTitle>Registrar cobro — {{ detalle?.sse_numero }}</h5>
     <button cButtonClose (click)="cerrar()"></button>
   </c-modal-header>
 
-  <c-modal-body *ngIf="detalle">
-    <c-alert color="info" class="py-2 small" *ngIf="esAnticipo">
-      El servicio todavía no tiene total final. El anticipo es opcional y se descuenta del saldo al terminar la reparación.
-    </c-alert>
-    <c-alert color="light" class="py-2 small" *ngIf="!esAnticipo">
-      Total Gs. {{ formatoGs(detalle.resumen.total) }} · Pagado Gs. {{ formatoGs(detalle.resumen.confirmado) }} ·
-      <strong>Saldo Gs. {{ formatoGs(detalle.resumen.saldo) }}</strong>
+  <c-modal-body *ngIf="pago">
+    <c-alert color="light" class="py-2 small">
+      Pago {{ pago.orden }} · {{ pago.tipo === 'ANTICIPO' ? 'Anticipo' : 'Saldo' }} ·
+      {{ pago.metodo.descri }} ({{ pago.canal === 'WEB' ? 'web' : 'mostrador' }}) ·
+      <strong>Gs. {{ formatoGs(pago.monto_asignado) }}</strong>
+      <div *ngIf="factura">
+        Se cobra contra la {{ pago.tipo === 'ANTICIPO' ? 'factura de anticipo' : 'factura' }} <strong>{{ factura.numero }}</strong>.
+      </div>
     </c-alert>
 
     <form [formGroup]="form">
       <div class="row g-3">
         <div class="col-md-6">
-          <label cLabel>Forma de pago <span class="text-danger">*</span></label>
-          <select cSelect formControlName="mpa_codigo" [class.is-invalid]="campoInvalido('mpa_codigo') || errorBackend('mpa_codigo')">
-            <option value="">Seleccione...</option>
-            <option *ngFor="let m of metodos" [value]="m.mpa_codigo">{{ m.mpa_descri }}</option>
-          </select>
-          <div class="text-danger small" *ngIf="campoInvalido('mpa_codigo') || errorBackend('mpa_codigo')">
-            {{ errorBackend('mpa_codigo') || 'Seleccione la forma de pago.' }}
+          <label cLabel>Monto recibido <span class="text-danger">*</span></label>
+          <input cFormControl type="number" min="1" formControlName="monto_verificado"
+                 [class.is-invalid]="campoInvalido('monto_verificado') || errorBackend('monto_verificado') || menor" />
+          <div class="text-danger small" *ngIf="menor">
+            Menor que lo declarado (Gs. {{ formatoGs(pago.monto_asignado) }}): un cobro menor no se registra.
+          </div>
+          <div class="text-danger small" *ngIf="!menor && (campoInvalido('monto_verificado') || errorBackend('monto_verificado'))">
+            {{ errorBackend('monto_verificado') || 'Ingrese el monto recibido.' }}
           </div>
         </div>
         <div class="col-md-6">
-          <label cLabel>Monto <span class="text-danger">*</span></label>
-          <input cFormControl type="number" min="1" formControlName="monto"
-                 [class.is-invalid]="campoInvalido('monto') || errorBackend('monto') || excedeSaldo" />
-          <div class="text-danger small" *ngIf="excedeSaldo">Supera el saldo (Gs. {{ formatoGs(detalle.resumen.saldo) }}).</div>
-          <div class="text-danger small" *ngIf="!excedeSaldo && (campoInvalido('monto') || errorBackend('monto'))">
-            {{ errorBackend('monto') || 'Ingrese un monto mayor que cero.' }}
+          <label cLabel>Fecha del pago</label>
+          <input cFormControl type="date" formControlName="fecha_pago" [class.is-invalid]="errorBackend('fecha_pago')" />
+          <div class="text-danger small" *ngIf="errorBackend('fecha_pago')">{{ errorBackend('fecha_pago') }}</div>
+        </div>
+
+        <div class="col-12" *ngIf="mayor">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="confDif" formControlName="confirmar_diferencia" />
+            <label class="form-check-label" for="confDif">
+              Confirmo el excedente de Gs. {{ formatoGs(monto - pago.monto_asignado) }}.
+            </label>
           </div>
         </div>
 
-        <ng-container *ngIf="requiereReferencia">
+        <ng-container *ngIf="pago.metodo.requcom">
           <div class="col-md-6">
-            <label cLabel>{{ esGiro ? 'Referencia del giro' : 'N° de transferencia' }} <span class="text-danger">*</span></label>
+            <label cLabel>
+              {{ esGiro ? 'Referencia del giro' : 'N° de transferencia' }}
+              <span class="text-danger" *ngIf="pideReferencia">*</span>
+            </label>
             <input cFormControl formControlName="nro_transaccion" maxlength="50"
                    [class.is-invalid]="campoInvalido('nro_transaccion') || errorBackend('nro_transaccion')" />
             <div class="text-danger small" *ngIf="campoInvalido('nro_transaccion') || errorBackend('nro_transaccion')">
@@ -48,12 +58,7 @@
             <label cLabel>Banco / Billetera</label>
             <input cFormControl formControlName="banco" maxlength="60" />
           </div>
-          <div class="col-md-6">
-            <label cLabel>Fecha del pago</label>
-            <input cFormControl type="date" formControlName="fecha_pago" [class.is-invalid]="errorBackend('fecha_pago')" />
-            <div class="text-danger small" *ngIf="errorBackend('fecha_pago')">{{ errorBackend('fecha_pago') }}</div>
-          </div>
-          <div class="col-md-6">
+          <div class="col-md-6" *ngIf="esMostrador && !pago.comprobante">
             <label cLabel>Comprobante (opcional)</label>
             <input cFormControl type="file" accept=".jpg,.jpeg,.png,.pdf" (change)="onArchivo($event)" />
             <div class="text-danger small" *ngIf="errorArchivo || errorBackend('comprobante')">{{ errorArchivo || errorBackend('comprobante') }}</div>
@@ -66,22 +71,13 @@
         </div>
       </div>
     </form>
-
-    <!-- Datos de facturación: solo en LISTA (el anticipo no factura) -->
-    <ng-container *ngIf="visible && !esAnticipo">
-      <hr />
-      <h6 class="text-muted text-uppercase small">Datos de facturación</h6>
-      <div class="form-text mb-2">La factura se emite automáticamente cuando el cobro cubre el saldo.</div>
-      <app-datos-facturacion-servicio [solicitudId]="detalle.sse_id"></app-datos-facturacion-servicio>
-    </ng-container>
-
   </c-modal-body>
 
   <c-modal-footer>
     <button cButton color="secondary" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
     <button cButton color="success" class="text-white" (click)="guardar()" [disabled]="guardando">
       <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
-      {{ esAnticipo ? 'Registrar anticipo' : 'Registrar cobro' }}
+      Registrar cobro
     </button>
   </c-modal-footer>
 </c-modal>

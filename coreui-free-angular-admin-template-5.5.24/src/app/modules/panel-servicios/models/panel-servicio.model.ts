@@ -37,7 +37,7 @@ export interface PanelFila {
   sse_total: number;
   tecnico: { usu_id: number; nombre: string | null } | null;
   acciones: {
-    reasignar: boolean; entregar: boolean; const_recepcion: boolean; const_retiro: boolean;
+    reasignar: boolean; entregar: boolean; cancelar: boolean; const_recepcion: boolean; const_retiro: boolean;
     responder: boolean; contacto: boolean; pdf_presupuesto: boolean;
   };
 }
@@ -98,4 +98,17 @@ export interface EntregaConfig {
 export interface PanelPaginado {
   data: PanelFila[];
   meta: { current_page: number; last_page: number; per_page: number; total: number; desde: number; hasta: number };
+}
+
+/** Etapa 3B: datos del modal de cancelación. */
+export interface CancelacionConfig {
+  sse_numero: string;
+  cliente: string | null;
+  equipo: string;
+  estado: string;
+  cancelable: boolean;
+  motivo_bloqueo: string | null;
+  recibido: boolean;
+  /** Solo si el equipo está en el taller. */
+  devolucion: Omit<EntregaConfig, 'cobro' | 'sse_numero' | 'cliente' | 'equipo' | 'ingreso_a_domicilio' | 'sse_dirid' | 'sse_sucid'> | null;
 }

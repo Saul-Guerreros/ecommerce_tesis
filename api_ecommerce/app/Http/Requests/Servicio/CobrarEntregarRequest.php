@@ -3,18 +3,22 @@
 namespace App\Http\Requests\Servicio;
 
 /**
- * A5 "Cobrar y entregar": los datos del modal de entrega (EntregaServicioRequest)
- * + el bloque "cobro". El monto no viaja: es el saldo que calcula el backend.
+ * A5 "Cobrar y entregar": datos de la entrega (EntregaServicioRequest) + el
+ * bloque "cobro" del único pago pendiente. El medio y el monto no viajan:
+ * salen del pago declarado en la factura final. Sin pago pendiente (ya
+ * cobrado, o final cubierta por el anticipo), "cobro" puede omitirse.
  */
 class CobrarEntregarRequest extends EntregaServicioRequest
 {
     public function rules(): array
     {
-        return parent::rules() + ['cobro' => ['required', 'array']] + CobroMostradorRequest::reglasCobro('cobro.');
+        return parent::rules()
+            + ['cobro' => ['nullable', 'array']]
+            + RegistrarCobroServicioRequest::reglasCobro('cobro.');
     }
 
     public function messages(): array
     {
-        return parent::messages() + CobroMostradorRequest::mensajesCobro('cobro.');
+        return parent::messages() + RegistrarCobroServicioRequest::mensajesCobro('cobro.');
     }
 }

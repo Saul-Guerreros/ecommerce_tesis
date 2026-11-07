@@ -110,8 +110,14 @@ use App\Http\Controllers\VinculacionPresencialController;
 use App\Http\Controllers\Admin\Configuracion\PaginaInformativaController;
 use App\Http\Controllers\Api\PaginaInformativaPublicaController;
 use App\Http\Controllers\Api\FaqPublicoController;
-
+use App\Http\Controllers\Api\ResenaPublicaController;
+use App\Http\Controllers\Api\ResenaClienteController;
+use App\Http\Controllers\Admin\Catalogo\ResenaController;
 use App\Http\Controllers\Admin\Venta\NotaCreditoVentaController;
+use App\Http\Controllers\Admin\Configuracion\PaginaNosotrosController;
+use App\Http\Controllers\Admin\Configuracion\DatosContactoController;
+use App\Http\Controllers\Api\PaginaInstitucionalController;
+use App\Http\Controllers\Admin\Servicio\AnticipoDevolucionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -160,10 +166,16 @@ Route::group([
     Route::get('sliders', [VitrinaController::class, 'sliders']);
     Route::get('producto/{slug}', [VitrinaController::class, 'detalle']);
     Route::get('producto/{slug}/stock-sucursales', [VitrinaController::class, 'stockSucursales']);   // <-- nueva
+        // Reseñas visibles de un producto (público).
+    Route::get('producto/{slug}/resenas', [ResenaPublicaController::class, 'index'])->middleware('throttle:60,1');
+    // Testimonios del Home (reseñas reales destacadas).
+    Route::get('resenas/destacadas', [ResenaPublicaController::class, 'destacadas'])->middleware('throttle:60,1');
 
-    // Atención al Cliente (público)
-    Route::get('paginas/{slug}', [PaginaInformativaPublicaController::class, 'show']);
+    // Atención al Cliente y páginas institucionales (público)
+    Route::get('paginas/{slug}', [PaginaInformativaPublicaController::class, 'show'])->middleware('throttle:60,1');
     Route::get('faq', [FaqPublicoController::class, 'index']);
+    Route::get('nosotros', [PaginaInstitucionalController::class, 'nosotros'])->middleware('throttle:60,1');
+    Route::get('contacto', [PaginaInstitucionalController::class, 'contacto'])->middleware('throttle:60,1');
 
     // NUEVO — filtro avanzado / catálogo con búsqueda:
     Route::get('productos/filtros', [VitrinaController::class, 'configFiltros']);
@@ -207,6 +219,13 @@ Route::group([
     Route::get('favoritos', [FavoritoController::class, 'index']);
     Route::post('favoritos', [FavoritoController::class, 'store']);
     Route::delete('favoritos/{producto}', [FavoritoController::class, 'destroy'])->whereNumber('producto');
+        // --- Reseñas de productos ---
+    Route::get('producto/{slug}/resenas/mia', [ResenaClienteController::class, 'mia']);
+    Route::post('producto/{slug}/resenas', [ResenaClienteController::class, 'store'])->middleware('throttle:10,1');
+    Route::put('resenas/{id}', [ResenaClienteController::class, 'update'])->whereNumber('id')->middleware('throttle:10,1');
+    Route::delete('resenas/{id}', [ResenaClienteController::class, 'destroy'])->whereNumber('id')->middleware('throttle:10,1');
+    Route::get('pedidos/{numero}/resenas', [ResenaClienteController::class, 'porPedido']);
+    
     // Debe ir ANTES del apiResource: si no, 'carrito/{carrito}' (destroy)
     // la intercepta y Laravel intenta castear "modalidad" como car_id.
     Route::delete('carrito/modalidad/{modalidad}', [CarritoController::class, 'vaciarModalidad']);
@@ -247,6 +266,9 @@ Route::group([
         Route::get('pagos/{pago}/comprobante', [PagoServicioController::class, 'comprobante'])->whereNumber('pago');
         Route::post('pagos/{pago}/comprobante', [PagoServicioController::class, 'reemplazarComprobante'])->whereNumber('pago');
 
+        // Anticipo (seña) antes de LISTA: transferencia o billetera con comprobante
+        Route::post('anticipo', [PagoServicioController::class, 'registrarAnticipo'])->middleware('throttle:10,1');
+        Route::get('anticipo/kude', [FacturaServicioClienteController::class, 'kude'])->defaults('tipo', 'ANTICIPO');
         // Facturación del servicio: CI/RUC antes de pagar y descarga del KuDE
         Route::get('facturacion', [FacturaServicioClienteController::class, 'show']);
         Route::put('facturacion', [FacturaServicioClienteController::class, 'update'])->middleware('throttle:20,1');
@@ -370,10 +392,21 @@ Route::group([
     Route::patch('empresas/{id}/estado', [EmpresaController::class, 'toggleEstado']);
     Route::apiResource('empresas', EmpresaController::class);
 
-    // Atención al Cliente (páginas informativas)
-    Route::get('paginas-informativas', [PaginaInformativaController::class, 'index']);
-    Route::get('paginas-informativas/{id}', [PaginaInformativaController::class, 'show']);
-    Route::patch('paginas-informativas/{id}', [PaginaInformativaController::class, 'update']);
+    // Contenido del sitio web: Atención al Cliente, Sobre nosotros y Contacto.
+    // Antes solo exigía 'dashboard.ver' (cualquier usuario del panel podía editar Términos).
+    Route::middleware('permiso:contenido-web.gestionar')->group(function () {
+        Route::get('paginas-informativas', [PaginaInformativaController::class, 'index']);
+        Route::get('paginas-informativas/{id}', [PaginaInformativaController::class, 'show']);
+        Route::patch('paginas-informativas/{id}', [PaginaInformativaController::class, 'update']);
+
+        Route::get('pagina-nosotros', [PaginaNosotrosController::class, 'show']);
+        Route::put('pagina-nosotros', [PaginaNosotrosController::class, 'update']);
+        Route::post('pagina-nosotros/imagen', [PaginaNosotrosController::class, 'subirImagen'])->middleware('throttle:10,1');
+        Route::delete('pagina-nosotros/imagen', [PaginaNosotrosController::class, 'eliminarImagen']);
+
+        Route::get('datos-contacto', [DatosContactoController::class, 'show']);
+        Route::put('datos-contacto', [DatosContactoController::class, 'update']);
+    });
 
     //Sucursales
     Route::get('sucursales/config', [SucursalController::class, 'config']);
@@ -597,6 +630,14 @@ Route::group([
 
 	 // --- MÓDULO 6 - ChatBot: información de la tienda ---
     Route::middleware('permiso:chatbot.gestionar')->group(function () {
+       // --- Reseñas de productos (moderación) ---
+    Route::middleware('permiso:resenas.gestionar')->group(function () {
+        Route::get('resenas', [ResenaController::class, 'index']);
+        Route::patch('resenas/{id}/estado', [ResenaController::class, 'cambiarEstado'])->whereNumber('id');
+        Route::put('resenas/{id}/respuesta', [ResenaController::class, 'responder'])->whereNumber('id');
+        Route::delete('resenas/{id}', [ResenaController::class, 'destroy'])->whereNumber('id');
+    });
+   
     Route::get('faq-tienda/config', [FaqTiendaController::class, 'config']);
     Route::patch('faq-tienda/{id}/estado', [FaqTiendaController::class, 'toggleEstado']);
     Route::apiResource('faq-tienda', FaqTiendaController::class)->except(['show'])->parameters(['faq-tienda' => 'id']);
@@ -691,9 +732,16 @@ Route::prefix('admin/servicios/panel')->middleware('auth:api')->group(function (
         Route::get('/{id}/entrega', [PanelServicioController::class, 'entregaConfig'])->whereNumber('id');
         Route::post('/{id}/entrega', [PanelServicioController::class, 'entregar'])->whereNumber('id');
     });
+
+    // Cancelación hasta antes de LISTA (con devolución del equipo si está en el taller)
+    Route::middleware('permiso:servicios.solicitudes.cancelar')->group(function () {
+        Route::get('/{id}/cancelacion', [PanelServicioController::class, 'cancelacionConfig'])->whereNumber('id');
+        Route::post('/{id}/cancelar', [PanelServicioController::class, 'cancelar'])->whereNumber('id');
+    });
 });
 
-// Servicio técnico - Cobro del servicio (bandeja, verificación web y cobro en mostrador)
+// Servicio técnico - Cobro del servicio. Ciclo comprobante -> factura -> cobro
+// (igual que admin/pedidos). 'ANTICIPO' = VentaCab::TIPO_ANTICIPO.
 Route::prefix('admin/servicios/cobros')->middleware('auth:api')->group(function () {
     // Literales antes de {id}
     Route::get('/config', [CobroServicioController::class, 'config'])
@@ -701,47 +749,87 @@ Route::prefix('admin/servicios/cobros')->middleware('auth:api')->group(function 
     Route::get('/', [CobroServicioController::class, 'index'])
         ->middleware('permiso:servicios.cobros.ver');
 
-    // Sección "Pagos" del detalle (A1/A3) y del modal A5
+    // Lectura: sección "Pagos" y facturas (final y anticipo)
     Route::middleware('permiso:servicios.cobros.ver,servicios.panel.ver,servicios.solicitudes.ver')->group(function () {
         Route::get('/{id}', [CobroServicioController::class, 'show'])->whereNumber('id');
         Route::get('/{id}/pagos/{pago}/comprobante', [CobroServicioController::class, 'comprobante'])
             ->whereNumber('id')->whereNumber('pago');
-    });
 
-    // Verificación de pagos web: mismo permiso que en pedidos (decisión 14-b)
-    Route::middleware('permiso:pedidos.pago.verificar')->group(function () {
-        Route::post('/{id}/pagos/{pago}/confirmar', [CobroServicioController::class, 'confirmar'])->whereNumber('id')->whereNumber('pago');
-        Route::post('/{id}/pagos/{pago}/rechazar', [CobroServicioController::class, 'rechazar'])->whereNumber('id')->whereNumber('pago');
-    });
-
-    // Cobro presencial: sin este permiso no se registran cobros (decisión 12-a)
-    Route::middleware('permiso:servicios.cobros.confirmar')->group(function () {
-        Route::post('/{id}/cobros', [CobroServicioController::class, 'registrarCobro'])->whereNumber('id');
-        Route::post('/{id}/pagos/{pago}/cobrar-al-retirar', [CobroServicioController::class, 'cobrarAlRetirar'])
-            ->whereNumber('id')->whereNumber('pago');
-        // A5: además exige el acceso al panel (dos middleware = se exigen los DOS permisos)
-        Route::post('/{id}/cobrar-entregar', [CobroServicioController::class, 'cobrarYEntregar'])
-            ->whereNumber('id')->middleware('permiso:servicios.panel.ver');
-    });
-
-    // Facturación del servicio: consulta (los mismos permisos que la sección "Pagos")
-    Route::middleware('permiso:servicios.cobros.ver,servicios.panel.ver,servicios.solicitudes.ver')->group(function () {
         Route::get('/{id}/facturacion', [FacturaServicioController::class, 'datosFiscales'])->whereNumber('id');
+
         Route::get('/{id}/factura', [FacturaServicioController::class, 'show'])->whereNumber('id');
         Route::get('/{id}/factura/kude', [FacturaServicioController::class, 'kude'])->whereNumber('id');
         Route::get('/{id}/factura/xml', [FacturaServicioController::class, 'xml'])->whereNumber('id');
+
+        Route::get('/{id}/anticipo/factura', [FacturaServicioController::class, 'show'])
+            ->whereNumber('id')->defaults('tipo', 'ANTICIPO');
+        Route::get('/{id}/anticipo/factura/kude', [FacturaServicioController::class, 'kude'])
+            ->whereNumber('id')->defaults('tipo', 'ANTICIPO');
+        Route::get('/{id}/anticipo/factura/xml', [FacturaServicioController::class, 'xml'])
+            ->whereNumber('id')->defaults('tipo', 'ANTICIPO');
     });
 
-    // Datos fiscales: quien cobra en mostrador o quien verifica pagos web (con coma = cualquiera)
-    Route::put('/{id}/facturacion', [FacturaServicioController::class, 'guardarDatosFiscales'])
-        ->whereNumber('id')->middleware('permiso:servicios.cobros.confirmar,pedidos.pago.verificar');
+    // 1. Comprobante: validar no mueve dinero (mismo permiso que pedidos, decisión 14-b)
+    Route::middleware('permiso:pedidos.pago.verificar')->group(function () {
+        Route::post('/{id}/pagos/{pago}/comprobante/validar', [CobroServicioController::class, 'validarComprobante'])
+            ->whereNumber('id')->whereNumber('pago');
+        Route::post('/{id}/pagos/{pago}/rechazar', [CobroServicioController::class, 'rechazar'])
+            ->whereNumber('id')->whereNumber('pago');
+    });
 
-    // Acciones sobre la factura: mismo criterio que facturas-venta
+    // 2 y 3. Facturas y cobro: cajero o verificador (coma = cualquiera).
+    // La regla de sucursal para efectivo y mostrador la aplica el service.
+    Route::middleware('permiso:servicios.cobros.confirmar,pedidos.pago.verificar')->group(function () {
+        Route::post('/{id}/anticipo/factura/generar', [CobroServicioController::class, 'generarFacturaAnticipo'])
+            ->whereNumber('id');
+        Route::post('/{id}/factura/generar', [CobroServicioController::class, 'generarFactura'])
+            ->whereNumber('id');
+        Route::post('/{id}/pagos/{pago}/cobrar', [CobroServicioController::class, 'registrarCobro'])
+            ->whereNumber('id')->whereNumber('pago');
+
+        Route::put('/{id}/facturacion', [FacturaServicioController::class, 'guardarDatosFiscales'])->whereNumber('id');
+    });
+
+    // Mostrador: anticipo presencial y A5 (sin este permiso no se registran cobros, decisión 12-a)
+    Route::middleware('permiso:servicios.cobros.confirmar')->group(function () {
+        Route::post('/{id}/anticipo', [CobroServicioController::class, 'declararAnticipo'])->whereNumber('id');
+        // A5: además exige el acceso al panel (dos middleware = se exigen los DOS permisos)
+        Route::post('/{id}/cobrar-entregar', [CobroServicioController::class, 'cobrarYEntregar'])
+            ->whereNumber('id')->middleware('permiso:servicios.panel.ver');
+        Route::patch('/{id}/cobros/{cobro}/anular', [CobroServicioController::class, 'anularCobro'])
+            ->whereNumber('id')->whereNumber('cobro');
+    });
+
+    // Acciones sobre las facturas: mismo criterio que facturas-venta
     Route::middleware('permiso:servicios.cobros.confirmar,facturas-venta.ver')->group(function () {
         Route::post('/{id}/factura/reintentar', [FacturaServicioController::class, 'reintentar'])
             ->whereNumber('id')->middleware('throttle:10,1');
         Route::post('/{id}/factura/reenviar', [FacturaServicioController::class, 'reenviar'])
             ->whereNumber('id')->middleware('throttle:5,1');
+        Route::post('/{id}/anticipo/factura/reintentar', [FacturaServicioController::class, 'reintentar'])
+            ->whereNumber('id')->defaults('tipo', 'ANTICIPO')->middleware('throttle:10,1');
+        Route::post('/{id}/anticipo/factura/reenviar', [FacturaServicioController::class, 'reenviar'])
+            ->whereNumber('id')->defaults('tipo', 'ANTICIPO')->middleware('throttle:5,1');
+    });
+
+        // Devolución del anticipo: NC (documento fiscal) y devolución del dinero (hecho de caja)
+    Route::post('/{id}/anticipo/nota-credito', [AnticipoDevolucionController::class, 'acreditar'])
+        ->whereNumber('id')->middleware('permiso:notas-credito-venta.ver');
+
+    Route::post('/{id}/factura/anticipo/liberar', [AnticipoDevolucionController::class, 'liberar'])
+        ->whereNumber('id')->middleware('permiso:notas-credito-venta.ver'); 
+    Route::middleware('permiso:servicios.cobros.confirmar')->group(function () {
+        Route::post('/{id}/anticipo/notas-credito/{nota}/devoluciones', [AnticipoDevolucionController::class, 'devolver'])
+            ->whereNumber('id')->whereNumber('nota');
+        Route::patch('/{id}/anticipo/devoluciones/{devolucion}/anular', [AnticipoDevolucionController::class, 'anular'])
+            ->whereNumber('id')->whereNumber('devolucion');
+    });
+
+        // Anular una factura del servicio (FE rechazada o que nunca llegó): permite re-emitir
+    Route::middleware('permiso:servicios.facturas.anular')->group(function () {
+        Route::post('/{id}/factura/anular', [FacturaServicioController::class, 'anular'])->whereNumber('id');
+        Route::post('/{id}/anticipo/factura/anular', [FacturaServicioController::class, 'anular'])
+            ->whereNumber('id')->defaults('tipo', 'ANTICIPO');
     });
 });
 

@@ -111,8 +111,8 @@
                   <span class="pd-star" uk-icon="icon: star; ratio: .7"></span>
                 </span>
 
-                <a href="javascript:void(0)" (click)="seleccionarTab('resenas')" class="pd-reviews-link">
-                  {{ producto.rating ? '(' + producto.rating + ')' : 'Sin reseñas todavía' }}
+               <a href="javascript:void(0)" (click)="irAResenas()" class="pd-reviews-link">
+                  {{ producto.rating ? producto.rating + ' (' + (producto.total_resenas ?? 0) + ' ' + ((producto.total_resenas ?? 0) === 1 ? 'reseña' : 'reseñas') + ')' : 'Sin reseñas todavía' }}
                 </a>
               </div>
 			  
@@ -330,7 +330,7 @@
                 Especificaciones
               </button>
               <button type="button" class="pd-tab-btn" [class.is-active]="tabActiva === 'resenas'" (click)="seleccionarTab('resenas')">
-                Reseñas <span class="pd-tab-count">({{ producto.rating ? 1 : 0 }})</span>
+                 Reseñas <span class="pd-tab-count">({{ producto.total_resenas ?? 0 }})</span>
               </button>
             </nav>
 
@@ -355,17 +355,14 @@
                 </table>
               </div>
 
-              <div *ngIf="tabActiva === 'resenas'">
-                <div class="pd-reviews">
-                  <div class="pd-reviews-summary">
-                    <div class="pd-reviews-summary-label">Calificación promedio</div>
-                    <div class="pd-reviews-summary-value">{{ producto.rating ? producto.rating : '—' }}</div>
-                    <div class="pd-reviews-summary-count">basada en 0 reseñas</div>
-                  </div>
-                  <div class="pd-reviews-empty">
-                    <p>Este producto todavía no tiene reseñas. Sé el primero en probarlo y contar tu experiencia.</p>
-                  </div>
-                </div>
+                            <!-- [hidden] y no *ngIf: las reseñas se cargan una vez por producto, no en cada cambio de pestaña -->
+              <div [hidden]="tabActiva !== 'resenas'">
+                <app-resenas-producto
+                  *ngIf="slugActual"
+                  [slug]="slugActual"
+                  [abrirFormulario]="abrirFormResena"
+                  (resumenCambio)="actualizarResumenResenas($event)"
+                ></app-resenas-producto>
               </div>
             </div>
           </div>

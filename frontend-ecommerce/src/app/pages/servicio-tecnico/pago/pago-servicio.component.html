@@ -164,7 +164,7 @@
                 <strong>{{ resumen.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
               </div>
               <div class="uk-flex uk-flex-between" *ngIf="resumen.confirmado > 0">
-                <span>Ya pagado</span>
+                <span>{{ resumen.anticipo > 0 ? 'Ya pagado (incluye anticipo)' : 'Ya pagado' }}</span>
                 <strong class="uk-text-success">- {{ resumen.confirmado | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
               </div>
               <div class="uk-flex uk-flex-between" *ngIf="resumen.comprometido - resumen.confirmado > 0">

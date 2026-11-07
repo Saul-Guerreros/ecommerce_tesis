@@ -26,10 +26,12 @@ class ServicioEstadoService
         EstadoServicio::SOLICITADA     => [EstadoServicio::RECIBIDA, EstadoServicio::CANCELADA],
         // GESTION_GARANTIA solo para garantía de compra (lo exige GarantiaProveedorService).
         EstadoServicio::RECIBIDA       => [EstadoServicio::EN_DIAGNOSTICO, EstadoServicio::GESTION_GARANTIA, EstadoServicio::CANCELADA],
-        EstadoServicio::EN_DIAGNOSTICO => [EstadoServicio::PRESUPUESTADA, EstadoServicio::APROBADA, EstadoServicio::LISTA],
-        EstadoServicio::PRESUPUESTADA  => [EstadoServicio::APROBADA, EstadoServicio::LISTA],
-        EstadoServicio::APROBADA       => [EstadoServicio::EN_REPARACION],
-        EstadoServicio::EN_REPARACION  => [EstadoServicio::PRESUPUESTADA, EstadoServicio::LISTA],
+        // Cancelación hasta antes de LISTA (decisión de negocio). LISTA se
+        // entrega; garantía (GESTION_GARANTIA / EN_EMPRESA) se decide aparte.
+        EstadoServicio::EN_DIAGNOSTICO => [EstadoServicio::PRESUPUESTADA, EstadoServicio::APROBADA, EstadoServicio::LISTA, EstadoServicio::CANCELADA],
+        EstadoServicio::PRESUPUESTADA  => [EstadoServicio::APROBADA, EstadoServicio::LISTA, EstadoServicio::CANCELADA],
+        EstadoServicio::APROBADA       => [EstadoServicio::EN_REPARACION, EstadoServicio::CANCELADA],
+        EstadoServicio::EN_REPARACION  => [EstadoServicio::PRESUPUESTADA, EstadoServicio::LISTA, EstadoServicio::CANCELADA],
         // Garantía de compra: el taller gestiona con la empresa. Si la empresa no la acepta sin
         // haberla recibido todavía, se cierra directo; si no, pasa por la empresa y vuelve LISTA.
         EstadoServicio::GESTION_GARANTIA => [EstadoServicio::EN_EMPRESA, EstadoServicio::LISTA],
@@ -67,6 +69,21 @@ class ServicioEstadoService
         if (!in_array($destino, self::TRANSICIONES_SERVICIO[$actual] ?? [], true)) {
             throw ValidationException::withMessages([
                 'estado' => "No se puede pasar la solicitud de {$actual} a {$destino}.",
+            ]);
+        }
+
+        // Un anticipo cobrado o facturado no desaparece con la cancelación:
+        // se rechaza el pago declarado o se devuelve con nota de crédito.
+        if ($destino === EstadoServicio::CANCELADA && $s->anticipoSinResolver() > 0.01) {
+            throw ValidationException::withMessages([
+                'estado' => 'La solicitud tiene un anticipo sin resolver: rechazá el pago declarado o devolvelo con nota de crédito antes de cancelar.',
+            ]);
+        }
+
+        // La cancelación nunca ocurre en LISTA: una final vigente es una incoherencia.
+        if ($destino === EstadoServicio::CANCELADA && $s->factura()->exists()) {
+            throw ValidationException::withMessages([
+                'estado' => 'La solicitud tiene una factura final vigente: no se puede cancelar.',
             ]);
         }
 

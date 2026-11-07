@@ -71,6 +71,11 @@ export const navItems: INavData[] = [
     ]
   },
   {
+    name: 'Reseñas',
+    url: '/resenas',
+    iconComponent: { name: 'cil-star' }
+  },
+  {
     name: 'Asistente Virtual',
     iconComponent: { name: 'cil-comment-square' },
     children: [
@@ -353,7 +358,9 @@ export const navItems: INavData[] = [
       { name: 'Términos y Condiciones', url: '/atencion-cliente/terminos-y-condiciones' },
       { name: 'Condiciones de compra', url: '/atencion-cliente/condiciones-compra' },
       { name: 'Política de Privacidad', url: '/atencion-cliente/politica-privacidad' },
-      { name: 'Preguntas frecuentes', url: '/chatbot/informacion' }
+      { name: 'Preguntas frecuentes', url: '/chatbot/informacion' },
+      { name: 'Sobre nosotros', url: '/sitio-web/nosotros' },
+      { name: 'Contacto', url: '/sitio-web/contacto' },
     ]
   },
 

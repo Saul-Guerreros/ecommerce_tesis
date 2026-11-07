@@ -1,0 +1,45 @@
+<div class="uk-card uk-card-default uk-card-body uk-margin cp-card" *ngIf="cargado && items.length > 0">
+  <div class="cp-head">
+    <span class="cp-head-icon" uk-icon="icon: star; ratio: .9"></span>
+    <div>
+      <h4 class="cp-title">Calificá tus productos</h4>
+      <p class="cp-subtitle">
+        {{ pendientes > 0
+            ? 'Tu opinión ayuda a otros clientes a elegir mejor.'
+            : '¡Gracias! Ya calificaste todos los productos.' }}
+      </p>
+    </div>
+  </div>
+
+  <div class="cp-item" *ngFor="let item of items">
+    <div class="cp-thumb">
+      <img *ngIf="muestraImagen(item); else sinImagen" [src]="item.imagen" [alt]="item.nombre"
+           loading="lazy" (error)="marcarRota(item)" />
+      <ng-template #sinImagen>
+        <span class="cp-thumb-icon" uk-icon="icon: image; ratio: 1.1"></span>
+      </ng-template>
+    </div>
+
+    <div class="cp-info">
+      <div class="cp-nombre" [title]="item.nombre">{{ item.nombre }}</div>
+
+      <div class="cp-estado" *ngIf="item.resenada">
+        <span class="cp-stars">
+          <span *ngFor="let n of ESTRELLAS" [class.is-filled]="n <= (item.calificacion ?? 0)">★</span>
+        </span>
+        <span class="cp-ok">Calificado</span>
+      </div>
+
+      <ng-container *ngIf="item.slug; else noDisponible">
+        <a class="cp-accion" [class.is-primary]="!item.resenada"
+           [routerLink]="['/producto', item.slug]" [queryParams]="{ resena: 1 }">
+          {{ item.resenada ? 'Editar reseña' : 'Calificar producto' }}
+          <span uk-icon="icon: chevron-right; ratio: .7"></span>
+        </a>
+      </ng-container>
+      <ng-template #noDisponible>
+        <span class="cp-no-disp">Producto ya no disponible</span>
+      </ng-template>
+    </div>
+  </div>
+</div>

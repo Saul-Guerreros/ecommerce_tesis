@@ -85,7 +85,7 @@
           </div>
         }
 
-        <!-- Pago del servicio (C4): saldo, botón Pagar y pagos registrados -->
+               <!-- Pago del servicio (C4): anticipo, saldo y pagos registrados -->
         @if (s.pago; as pg) {
           <div class="uk-card uk-card-default uk-card-body uk-margin">
             <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap" style="gap: 10px;">
@@ -93,19 +93,37 @@
                 <h4 class="uk-card-title uk-margin-remove">Pago del servicio</h4>
                 @if (pg.estado) { <div class="uk-text-meta">{{ pg.estado }}</div> }
               </div>
-              @if (pg.pagable) {
-                <a class="uk-button uk-button-primary" [routerLink]="['/mis-servicios', s.sse_numero, 'pago']">
-                  Pagar {{ pg.saldo | currency:'PYG':'symbol-narrow':'1.0-0' }}
-                </a>
-              }
+              <div class="uk-flex uk-flex-wrap" style="gap: 8px;">
+               @if (pg.anticipo.permitido) {
+                  <a class="uk-button uk-button-default" [routerLink]="['/mis-servicios', s.sse_numero, 'anticipo']">
+                    Pagar anticipo
+                  </a>
+                }
+                @if (pg.pagable) {
+                  <a class="uk-button uk-button-primary" [routerLink]="['/mis-servicios', s.sse_numero, 'pago']">
+                    Pagar {{ pg.saldo | currency:'PYG':'symbol-narrow':'1.0-0' }}
+                  </a>
+                }
+              </div>
             </div>
 
             <dl class="uk-description-list uk-margin-small-top ds-montos">
-              <dt>Total</dt><dd>{{ pg.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd>
+              <dt>Total</dt>
+              <dd>
+                @if (pg.total > 0) { {{ pg.total | currency:'PYG':'symbol-narrow':'1.0-0' }} }
+                @else { <span class="uk-text-meta">Se define al terminar la reparación</span> }
+              </dd>
               @if (pg.pagado > 0) { <dt>Pagado</dt><dd>{{ pg.pagado | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd> }
               @if (pg.en_verificacion > 0) { <dt>En verificación</dt><dd>{{ pg.en_verificacion | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd> }
               @if (pg.saldo > 0) { <dt>Saldo</dt><dd><strong>{{ pg.saldo | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong></dd> }
             </dl>
+
+            @if (pg.anticipo.permitido) {
+              <p class="uk-text-meta uk-margin-small-top uk-margin-remove-bottom">
+                Podés adelantar un monto mientras reparamos tu equipo; se descuenta del total al retirarlo.
+                @if (pg.anticipo.tope !== null) { Máximo {{ pg.anticipo.tope | currency:'PYG':'symbol-narrow':'1.0-0' }}. }
+              </p>
+            }
 
             @if (pg.pagos.length) {
               <app-tarjeta-pagos
@@ -120,31 +138,48 @@
           </div>
         }
 
-        <!-- Factura del servicio: aparece cuando se confirma el pago -->
-        @if (factura; as f) {
+        <!-- Facturas del servicio: la del anticipo y la final -->
+        @for (f of facturasCliente; track f.tipo) {
           <div class="uk-card uk-card-default uk-card-body uk-margin">
             <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap" style="gap: 10px;">
               <div>
-                <h4 class="uk-card-title uk-margin-remove">Factura</h4>
+                <h4 class="uk-card-title uk-margin-remove">{{ f.tipo === 'ANTICIPO' ? 'Factura del anticipo' : 'Factura' }}</h4>
                 <div class="uk-text-meta">N.º {{ f.numero }} · {{ f.fecha | date:'dd/MM/yyyy' }}</div>
               </div>
               @if (f.disponible) {
-                <button type="button" class="uk-button uk-button-primary" [disabled]="descargandoFactura" (click)="descargarFactura()">
-                  @if (descargandoFactura) { <span uk-spinner="ratio: 0.6"></span> } @else { <span uk-icon="icon: download"></span> }
-                  Descargar factura
+                <button type="button" class="uk-button uk-button-primary" [disabled]="descargandoTipo !== null" (click)="descargarFactura(f)">
+                  @if (descargandoTipo === f.tipo) { <span uk-spinner="ratio: 0.6"></span> } @else { <span uk-icon="icon: download"></span> }
+                  Descargar
                 </button>
               }
             </div>
 
             <dl class="uk-description-list uk-margin-small-top ds-montos">
               <dt>A nombre de</dt><dd>{{ f.nombre }} ({{ f.documento }})</dd>
+              @if (f.anticipo) {
+                <dt>Anticipo descontado</dt><dd>- {{ f.anticipo | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd>
+              }
               <dt>Total</dt><dd>{{ f.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd>
             </dl>
 
             @if (!f.disponible) {
-              <p class="uk-text-meta uk-margin-remove-bottom">
-                Estamos procesando tu factura electrónica. En unos minutos vas a poder descargarla.
-              </p>
+              @switch (f.estado) {
+                @case ('CON_PROBLEMA') {
+                  <p class="uk-text-warning uk-margin-remove-bottom">
+                    Estamos revisando un inconveniente con tu factura electrónica. Te avisamos cuando esté lista.
+                  </p>
+                }
+                @case ('SIN_FE') {
+                  <p class="uk-text-meta uk-margin-remove-bottom">
+                    Esta factura no tiene comprobante electrónico. Podés solicitar una copia en la sucursal.
+                  </p>
+                }
+                @default {
+                  <p class="uk-text-meta uk-margin-remove-bottom">
+                    Estamos procesando tu factura electrónica. En unos minutos vas a poder descargarla.
+                  </p>
+                }
+              }
             }
             @if (f.disponible && f.qr) {
               <p class="uk-text-meta uk-margin-remove-bottom">

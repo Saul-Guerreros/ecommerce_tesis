@@ -177,14 +177,50 @@ class SolicitudServicio extends Model
         return $this->hasOne(ServicioFacturacion::class, 'sfa_sseid', 'sse_id');
     }
 
-    /**
-     * Factura VIGENTE del servicio (las anuladas quedan fuera, igual que
-     * uq_venta_servicio). Se define de este lado para no modificar VentaCab.
-     */
+        /** Factura FINAL vigente (ven_tipo VENTA). */
     public function factura(): HasOne
     {
         return $this->hasOne(VentaCab::class, 'ven_sseid', 'sse_id')
+            ->where('ven_tipo', VentaCab::TIPO_VENTA)
             ->where('ven_estado', '<>', VentaCab::ESTADO_ANULADA);
+    }
+
+    /** Factura de ANTICIPO vigente (tipo_transaccion 9). Como máximo una. */
+    public function facturaAnticipo(): HasOne
+    {
+        return $this->hasOne(VentaCab::class, 'ven_sseid', 'sse_id')
+            ->where('ven_tipo', VentaCab::TIPO_ANTICIPO)
+            ->where('ven_estado', '<>', VentaCab::ESTADO_ANULADA);
+    }
+
+    /** Facturas anuladas (final y anticipo): se muestran para trazabilidad. */
+    public function facturasAnuladas(): HasMany
+    {
+        return $this->hasMany(VentaCab::class, 'ven_sseid', 'sse_id')
+            ->where('ven_estado', VentaCab::ESTADO_ANULADA)
+            ->orderByDesc('ven_id');
+    }
+
+       /**
+     * Importe de anticipo que todavía no está resuelto. Con factura de
+     * anticipo, el mayor de:
+     *   - saldo FISCAL: lo que no se aplicó ni se acreditó con NC;
+     *   - dinero recibido que no se aplicó ni se devolvió.
+     * Sin factura: lo declarado (no rechazado) que espera facturarse.
+     * Mientras sea > 0 la solicitud no se cancela ni se entrega.
+     */
+    public function anticipoSinResolver(): float
+    {
+        $factura = $this->facturaAnticipo()->first();
+
+        if ($factura) {
+            return max($factura->disponibleAnticipo(), $factura->dineroAnticipoPorDevolver());
+        }
+
+        return round((float) $this->pagos()
+            ->where('spa_tipo', ServicioPago::TIPO_ANTICIPO)
+            ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', '<>', EstadoPago::RECHAZADO))
+            ->sum('spa_monto'), 2);
     }
 
     public function historial(): HasMany

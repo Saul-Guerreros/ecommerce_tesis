@@ -1,0 +1,44 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Validar comprobante — {{ detalle?.sse_numero }}</h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="pago">
+    <c-alert color="light" class="py-2 small">
+      Pago {{ pago.orden }} · {{ pago.tipo === 'ANTICIPO' ? 'Anticipo' : 'Saldo' }} · {{ pago.metodo.descri }}
+      · <strong>Gs. {{ formatoGs(pago.monto_asignado) }}</strong>
+      <div class="text-muted" *ngIf="pago.comprobante">Subido {{ pago.comprobante.subido }}</div>
+    </c-alert>
+
+    <button cButton size="sm" color="info" class="text-white mb-3" [disabled]="abriendo" (click)="verComprobante()">
+      <c-spinner size="sm" *ngIf="abriendo" class="me-1"></c-spinner>
+      Ver comprobante
+    </button>
+
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="confirmaMonto" [(ngModel)]="confirma" />
+      <label class="form-check-label" for="confirmaMonto">
+        El comprobante es legible y cubre Gs. {{ formatoGs(pago.monto_asignado) }}.
+      </label>
+    </div>
+
+    <label cLabel>Observación (opcional)</label>
+    <textarea cFormControl rows="2" maxlength="255" [(ngModel)]="observacion"></textarea>
+
+    <div class="form-text">
+      Validar no registra el cobro: después se genera la factura y se cobra con “Cobrar”.
+    </div>
+    <div class="text-danger small mt-2" *ngIf="error">{{ error }}</div>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="pedirRechazo()" [disabled]="guardando"
+            *ngIf="pago?.puede_rechazar">Rechazar</button>
+    <button cButton color="success" class="text-white" (click)="validar()" [disabled]="guardando">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      Validar comprobante
+    </button>
+  </c-modal-footer>
+</c-modal>

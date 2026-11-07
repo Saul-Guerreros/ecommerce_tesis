@@ -239,6 +239,11 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/faq-tienda/faq-tienda.module').then(m => m.FaqTiendaModule),
         data: { title: 'Información del asistente' },
       },
+      {
+        path: 'resenas',
+        loadChildren: () => import('./modules/resenas/resenas.module').then(m => m.ResenasModule),
+        data: { title: 'Reseñas de productos' },
+      },
 
       {
         path: 'inventario/ajustes',
@@ -396,6 +401,16 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./modules/paginas-informativas/paginas-informativas.module').then(m => m.PaginasInformativasModule),
         data: { title: 'Atención al Cliente' },
+      },
+      {
+        path: 'sitio-web/nosotros',
+        loadChildren: () => import('./modules/pagina-nosotros/pagina-nosotros.module').then(m => m.PaginaNosotrosModule),
+        data: { title: 'Sobre nosotros' },
+      },
+      {
+        path: 'sitio-web/contacto',
+        loadChildren: () => import('./modules/datos-contacto/datos-contacto.module').then(m => m.DatosContactoModule),
+        data: { title: 'Contacto' },
       },
     {
       //Fuera del FrontEnd

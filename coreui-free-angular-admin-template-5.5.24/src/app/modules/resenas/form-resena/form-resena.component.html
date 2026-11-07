@@ -1,0 +1,50 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static" size="lg">
+  <c-modal-header><h5 cModalTitle>Responder reseña</h5></c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body *ngIf="resena">
+      <!-- Reseña del cliente (solo lectura) -->
+      <div class="border rounded p-3 mb-3 bg-body-tertiary">
+        <div class="d-flex justify-content-between flex-wrap gap-2 mb-1">
+          <div>
+            <span *ngFor="let n of ESTRELLAS" [class.text-warning]="n <= resena.res_califi"
+                  [class.text-body-tertiary]="n > resena.res_califi">★</span>
+            <c-badge class="ms-2" [color]="resena.visible ? 'success' : 'secondary'">
+              {{ resena.visible ? 'Visible' : 'Oculta' }}
+            </c-badge>
+          </div>
+          <small class="text-muted">{{ resena.res_creado | date: 'dd/MM/yyyy HH:mm' }}</small>
+        </div>
+        <div class="small text-muted mb-2">
+          {{ resena.cliente }} · {{ resena.producto }}<span *ngIf="resena.pedido"> · Pedido {{ resena.pedido }}</span>
+        </div>
+        <strong *ngIf="resena.res_titulo" class="d-block mb-1">{{ resena.res_titulo }}</strong>
+        <p class="mb-0" style="white-space: pre-line">{{ resena.res_coment }}</p>
+      </div>
+
+      <label cLabel for="res_respue">Respuesta pública de la tienda</label>
+      <textarea cFormControl id="res_respue" rows="5" formControlName="res_respue" [maxlength]="MAX_RESPUESTA"
+                placeholder="Ej: ¡Gracias por tu compra! Nos alegra que el equipo cumpla con lo que necesitabas."></textarea>
+      <div class="d-flex justify-content-between small mt-1">
+        <span class="text-danger" *ngIf="campoInvalido('res_respue')">
+          {{ errorBackend('res_respue') || 'Máximo ' + MAX_RESPUESTA + ' caracteres.' }}
+        </span>
+        <span class="text-muted ms-auto">{{ largoRespuesta }} / {{ MAX_RESPUESTA }}</span>
+      </div>
+      <div class="form-text">
+        Se muestra debajo de la reseña en la tienda. Dejala vacía y guardá para quitar la respuesta.
+        <span *ngIf="resena.res_fecres">
+          Última respuesta: {{ resena.res_fecres | date: 'dd/MM/yyyy HH:mm' }}<span *ngIf="resena.respondido_por"> por {{ resena.respondido_por }}</span>.
+        </span>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="primary" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : 'Guardar respuesta' }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

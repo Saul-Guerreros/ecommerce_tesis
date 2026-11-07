@@ -1,22 +1,46 @@
-<div class="text-center py-2" *ngIf="cargando && !factura"><c-spinner size="sm" color="primary"></c-spinner></div>
-
-<div class="small text-muted" *ngIf="!cargando && !factura">
-  Sin factura emitida. Se emite automáticamente cuando el cobro del servicio queda confirmado.
-</div>
-
 <ng-container *ngIf="factura as f">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
     <div class="small">
       <div>
-        <strong>Factura {{ f.numero }}</strong> · Timbrado {{ f.timbrado }} · {{ f.fecha | date:'dd/MM/yyyy HH:mm' }}
+        <strong>{{ etiqueta }} {{ f.numero }}</strong> · Timbrado {{ f.timbrado }} · {{ f.fecha | date:'dd/MM/yyyy HH:mm' }}
         <c-badge class="ms-2" [color]="colorEstado(f.fe.estado)" *ngIf="f.fe">{{ f.fe.estado }}</c-badge>
         <c-badge class="ms-2" color="secondary" *ngIf="!f.fe">Sin facturación electrónica</c-badge>
+    <c-badge class="ms-1" [color]="colorDetalle(f.estado_detalle.codigo)"
+                 [textColor]="colorDetalle(f.estado_detalle.codigo) === 'light' ? 'dark' : 'white'">
+          {{ f.estado_detalle.etiqueta }}
+        </c-badge>
+        <c-badge class="ms-1" color="danger" *ngIf="f.por_devolver > 0">
+          Por devolver Gs. {{ formatoGs(f.por_devolver) }}
+    </c-badge>
       </div>
       <div>{{ f.tipo_doc }} {{ f.documento }} — {{ f.razon_social }}</div>
-      <div>Total <strong>Gs. {{ formatoGs(f.total) }}</strong></div>
+
+      <!-- Final con anticipo aplicado -->
+      <ng-container *ngIf="!esAnticipo && f.anticipo">
+        <div>
+          Servicio Gs. {{ formatoGs(f.anticipo.total_servicio) }} − anticipo {{ f.anticipo.factura_anticipo }}
+          Gs. {{ formatoGs(f.anticipo.aplicado) }} = <strong>Gs. {{ formatoGs(f.total) }}</strong>
+        </div>
+      </ng-container>
+      <div *ngIf="esAnticipo || !f.anticipo">Total <strong>Gs. {{ formatoGs(f.total) }}</strong></div>
+
+      <div *ngIf="f.total > 0">Cobrado Gs. {{ formatoGs(f.cobrado) }}</div>
+
+      <!-- Anticipo: cuánto queda -->
+      <div class="text-muted" *ngIf="esAnticipo && f.anticipo">
+        Aplicado Gs. {{ formatoGs(f.anticipo.aplicado) }}
+        <span *ngIf="f.anticipo.factura_final">(factura {{ f.anticipo.factura_final }})</span>
+        · Acreditado Gs. {{ formatoGs(f.anticipo.acreditado) }}
+        · Disponible <strong>Gs. {{ formatoGs(f.anticipo.disponible) }}</strong>
+      </div>
+
       <div class="text-muted text-break" *ngIf="f.fe?.cdc">CDC {{ f.fe?.cdc }}</div>
-      <div class="text-muted" *ngIf="f.fe?.correo">
-        Correo: {{ f.fe?.correo?.enviado ? 'enviado a ' + f.fe?.correo?.detalle : 'no enviado (' + f.fe?.correo?.detalle + ')' }}
+
+      <div class="text-muted" *ngIf="f.fe?.correo as c">
+        Correo:
+        <ng-container *ngIf="c.pendiente">pendiente de envío</ng-container>
+        <ng-container *ngIf="!c.pendiente && c.programado">enviado a {{ c.detalle }} (seguimiento de la API)</ng-container>
+        <ng-container *ngIf="!c.pendiente && !c.programado">{{ c.enviado ? 'enviado a ' + c.detalle : 'no enviado (' + c.detalle + ')' }}</ng-container>
       </div>
     </div>
 
@@ -31,26 +55,49 @@
               (click)="abrirReenvio()">Reenviar por correo</button>
       <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="f.acciones.reenviar && whatsappUrl"
               (click)="abrirWhatsapp()">WhatsApp</button>
-      <button cButton size="sm" color="light" class="me-2" *ngIf="f.fe?.estado === 'PENDIENTE'"
-              [disabled]="cargando" (click)="cargar()">Actualizar</button>
+      <button cButton size="sm" color="dark" class="me-2 text-white"
+              *ngIf="f.fe?.estado === 'PENDIENTE' || f.fe?.estado === 'PREPARADA'" (click)="actualizar()">Actualizar</button>
+      <button cButton size="sm" color="danger" class="me-2 text-white" *ngIf="f.acciones.anular"
+              (click)="abrirAnular()">Anular</button>
     </div>
   </div>
 
   <c-alert color="warning" class="py-2 small mt-2 mb-0" *ngIf="f.fe?.prueba">
     Comprobante de prueba (ambiente {{ f.fe?.ambiente }}): no tiene valor fiscal.
   </c-alert>
+  <c-alert color="info" class="py-2 small mt-2 mb-0" *ngIf="f.fe?.provisional">
+    Documento provisional: la DNIT todavía está aprobando la factura. Ya se puede registrar el cobro;
+    <span *ngIf="esAnticipo">la factura final se habilita cuando el anticipo esté aprobado.</span>
+  </c-alert>
   <c-alert color="info" class="py-2 small mt-2 mb-0" *ngIf="f.fe?.aviso">{{ f.fe?.aviso }}</c-alert>
-  <c-alert color="danger" class="py-2 small mt-2 mb-0"
-           *ngIf="f.fe && f.fe.estado !== 'APROBADA' && f.fe.mensaje">
-    {{ f.fe.estado === 'RECHAZADA' ? 'Rechazada por la DNIT' : 'Pendiente de declarar' }}: {{ f.fe.mensaje }}
-    <span *ngIf="f.fe.intentos"> ({{ f.fe.intentos }} intento{{ f.fe.intentos === 1 ? '' : 's' }})</span>
+    <c-alert color="danger" class="py-2 small mt-2 mb-0" *ngIf="f.fe?.estado === 'RECHAZADA'">
+    Rechazada por la DNIT: {{ f.fe?.mensaje }}
+    <div class="mt-1" *ngIf="f.acciones.anular">Anulala y volvé a emitirla con los datos corregidos.</div>
+  </c-alert>
+    <c-alert color="danger" class="py-2 small mt-2 mb-0" *ngIf="f.fe?.estado === 'RETIRADA'">
+    Envío retirado en el portal de facturación: no es un documento vigente.
+    <div class="mt-1">
+      Si se reactivó en el portal, usá <strong>Reintentar</strong>; si no, anulala y volvé a emitirla con número nuevo.
+    </div>
+  </c-alert>
+  <c-alert color="dark" class="py-2 small mt-2 mb-0" *ngIf="f.fe?.estado === 'CANCELADA' || f.fe?.estado === 'INUTILIZADA'">
+    {{ f.fe?.estado === 'CANCELADA' ? 'Cancelada ante la DNIT' : 'Número inutilizado' }}: el documento no tiene validez.
+    <span *ngIf="f.acciones.anular">Anulala en el sistema para poder emitir otra.</span>
+  </c-alert>
+  <c-alert color="danger" class="py-2 small mt-2 mb-0" *ngIf="f.fe?.estado === 'PENDIENTE' && f.fe?.corregible">
+    No se pudo declarar: {{ f.fe?.mensaje }}
+    <div class="mt-1">Hay que corregir un dato: {{ f.acciones.anular ? 'anulala y volvé a emitirla.' : 'revisá la configuración y reintentá.' }}</div>
+  </c-alert>
+  <c-alert color="warning" class="py-2 small mt-2 mb-0" *ngIf="f.fe?.estado === 'PENDIENTE' && !f.fe?.corregible && f.fe?.mensaje">
+    Declaración en curso: {{ f.fe?.mensaje }}
+    <span *ngIf="f.fe?.intentos"> ({{ f.fe?.intentos }} intento{{ f.fe?.intentos === 1 ? '' : 's' }}). Se reintenta automáticamente.</span>
   </c-alert>
 </ng-container>
 
 <!-- Reenvío por correo -->
 <c-modal [visible]="reenvioVisible" (visibleChange)="reenvioVisible = $event" backdrop="static">
   <c-modal-header>
-    <h5 cModalTitle>Reenviar factura {{ factura?.numero }}</h5>
+    <h5 cModalTitle>Reenviar {{ etiqueta | lowercase }} {{ factura?.numero }}</h5>
     <button cButtonClose (click)="reenvioVisible = false"></button>
   </c-modal-header>
   <c-modal-body>
@@ -64,6 +111,29 @@
     <button cButton color="primary" class="text-white" (click)="reenviar()" [disabled]="procesando === 'reenviar'">
       <c-spinner size="sm" *ngIf="procesando === 'reenviar'" class="me-1"></c-spinner>
       Enviar
+    </button>
+  </c-modal-footer>
+</c-modal>
+
+<c-modal [visible]="anularVisible" (visibleChange)="anularVisible = $event" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Anular {{ etiqueta | lowercase }} {{ factura?.numero }}</h5>
+    <button cButtonClose (click)="anularVisible = false"></button>
+  </c-modal-header>
+  <c-modal-body>
+    <p class="small mb-2">
+      La factura no se borra: queda anulada con su número. Después se puede volver a emitir y,
+      si hace falta, corregir antes los datos de facturación.
+    </p>
+    <label cLabel>Motivo <span class="text-danger">*</span></label>
+    <textarea cFormControl rows="2" maxlength="255" [(ngModel)]="motivoAnular" [class.is-invalid]="errorAnular"></textarea>
+    <div class="text-danger small" *ngIf="errorAnular">{{ errorAnular }}</div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="anularVisible = false" [disabled]="procesando === 'anular'">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="anular()" [disabled]="procesando === 'anular'">
+      <c-spinner size="sm" *ngIf="procesando === 'anular'" class="me-1"></c-spinner>
+      Anular
     </button>
   </c-modal-footer>
 </c-modal>

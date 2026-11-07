@@ -17,14 +17,13 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Canal WEB del cobro del servicio (C4 - /mis-servicios/:numero).
- * Espejo de PagoPedidoService, con las reglas del servicio:
  *
- *   - Solo se paga en LISTA y por el SALDO pendiente (decisión 7-b): sin
- *     anticipos por la web (lo impide también ck_spa_anticipo).
- *   - Los pagos quedan en PAGO_VERIFICAR. El efectivo ("pagar al retirar",
- *     CONTRAENTREGA) lo confirma el cajero en el mostrador al cobrarlo.
- *   - Sin plazo (decisión 10-a): el equipo queda en el taller, no hay
- *     reserva que liberar ni barrido de expiración.
+ *   - registrarAnticipo(): con el equipo recibido y antes de LISTA, UN
+ *     anticipo por transferencia o billetera, con comprobante.
+ *   - registrar(): en LISTA, el SALDO (total − anticipo − lo ya declarado).
+ *
+ * Todo pago nace en PAGO_VERIFICAR: el admin valida el comprobante, genera
+ * la factura (de anticipo o final) y registra el cobro.
  */
 class PagoServicioService
 {
@@ -49,48 +48,73 @@ class PagoServicioService
         $s = $this->solicitudes->detalleDelCliente($usuario, $numero);
 
         return $this->configuracion->datosIniciales() + [
-            'resumen' => $this->estadoPago->resumen($s),
-            'pagos'   => $s->pagos()->with(['metodoPago', 'estadoPago', 'comprobante', 'motivoRechazo'])->get(),
+            'resumen'  => $this->estadoPago->resumen($s),
+            'anticipo' => $this->estadoPago->anticipoWeb($s),
+            'pagos'    => $s->pagos()->with(['metodoPago', 'estadoPago', 'comprobante', 'motivoRechazo'])->get(),
         ];
     }
 
     // ---------- Escritura ----------
 
-    /**
-     * @param array $datos $request->validated() con el mismo formato que el
-     *                     checkout: modo, mpa_codigo, comprobante | pagos[]
+       /**
+     * Anticipo web: transferencia o billetera con comprobante. El monto lo
+     * elige el cliente, con tope en lo aprobado del presupuesto (si hay).
+     *
+     * @param array{mpa_codigo: string, monto: int, comprobante: UploadedFile} $datos
      */
-    public function registrar(Usuario $usuario, string $numero, array $datos): SolicitudServicio
+    public function registrarAnticipo(Usuario $usuario, string $numero, array $datos): SolicitudServicio
     {
         $archivos = [];
 
         try {
             return DB::transaction(function () use ($usuario, $numero, $datos, &$archivos) {
                 $s = $this->bloquear($this->solicitudes->detalleDelCliente($usuario, $numero));
-                $saldo = $this->saldoPagable($s);
 
-                $esDividido = ($datos['modo'] ?? self::MODO_UNICO) === self::MODO_DIVIDIDO;
+                $this->estadoPago->exigirQueAdmitaPagos($s);
 
-                $pagos = $esDividido
-                    ? $this->armarDividido($s, $datos['pagos'] ?? [], $saldo, $archivos)
-                    : [$this->armarPago($s, $datos['mpa_codigo'], $saldo, $datos['comprobante'] ?? null, $archivos)];
-
-                $verificar = EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR)->epa_id;
-                $cubreTodo = count($pagos) === 1 && $saldo === (int) round((float) $s->sse_total);
-
-                foreach ($pagos as $p) {
-                    $this->registro->crear($s, [
-                        'metodo'      => $p['metodo'],
-                        'monto'       => $p['monto'],
-                        'canal'       => ServicioPago::CANAL_WEB,
-                        'epaid'       => $verificar,
-                        'comprobante' => $p['comprobante'],
-                    ], $cubreTodo);
+                if (!in_array($s->codigoServicio(), EstadoPagoServicioService::ESTADOS_ANTICIPO, true)) {
+                    throw ValidationException::withMessages([
+                        'pago' => 'El anticipo se paga con el equipo ya recibido y antes de que esté listo.',
+                    ]);
                 }
 
-                $this->estadoPago->recalcular($s, $usuario->usu_id, count($pagos) > 1
-                    ? 'Cliente declaró su pago dividido en ' . count($pagos) . ' pagos'
-                    : 'Cliente declaró su pago: ' . $pagos[0]['metodo']->mpa_descri);
+                $this->estadoPago->exigirSinAnticipo($s);
+
+                $metodo = MetodoPago::porCodigo($datos['mpa_codigo']);
+
+                if (!$metodo->mpa_requcom) {
+                    throw ValidationException::withMessages([
+                        'mpa_codigo' => 'El anticipo por la web se paga por transferencia o billetera, con comprobante.',
+                    ]);
+                }
+
+                $monto = (int) $datos['monto'];
+                $tope  = $this->estadoPago->topeAnticipo($s);
+
+                if ($monto <= 0 || ($tope !== null && $monto > $tope)) {
+                    throw ValidationException::withMessages([
+                        'monto' => $tope !== null
+                            ? 'El anticipo tiene que ser mayor a cero y no superar Gs. ' . $this->gs($tope) . '.'
+                            : 'El anticipo tiene que ser mayor a cero.',
+                    ]);
+                }
+
+                $pago = $this->armarPago($s, $metodo->mpa_codigo, $monto, $datos['comprobante'] ?? null, $archivos);
+
+                $this->registro->crear($s, [
+                    'metodo'      => $pago['metodo'],
+                    'monto'       => $pago['monto'],
+                    'canal'       => ServicioPago::CANAL_WEB,
+                    'epaid'       => EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR)->epa_id,
+                    'tipo'        => ServicioPago::TIPO_ANTICIPO,
+                    'comprobante' => $pago['comprobante'],
+                ]);
+
+                $this->estadoPago->recalcular($s, $usuario->usu_id, sprintf(
+                    'Cliente declaró un anticipo de Gs. %s (%s)',
+                    $this->gs($monto),
+                    $metodo->mpa_descri,
+                ));
 
                 return $s->fresh(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'estadoPago']);
             });
@@ -252,7 +276,7 @@ class PagoServicioService
     /** SELECT ... FOR UPDATE: dos envíos simultáneos se serializan. */
     private function bloquear(SolicitudServicio $s): SolicitudServicio
     {
-        return SolicitudServicio::whereKey($s->sse_id)->lockForUpdate()->with('estadoServicio')->firstOrFail();
+        return SolicitudServicio::whereKey($s->sse_id)->lockForUpdate()->with(['estadoServicio', 'ordenServicio'])->firstOrFail();
     }
 
     private function gs(int|float $monto): string

@@ -10,50 +10,42 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Alta física de filas en servicio_pago / servicio_comprobante. La usan el
- * canal web (PagoServicioService) y el mostrador (CobroMostradorService),
- * así el número de orden, el tipo y la carpeta de los comprobantes se
- * deciden en un solo lugar.
+ * Alta física de filas en servicio_pago / servicio_comprobante (web y
+ * mostrador). Todo pago nace como INTENCIÓN (PAGO_VERIFICAR): pasa a
+ * CONFIRMADO recién cuando se registra su cobro contra la factura.
  *
- * No valida reglas de negocio ni recalcula el agregado: eso es del service
- * que orquesta.
+ * El comprobante nace SIN validar: validarlo es un paso propio.
+ * No valida reglas de negocio ni recalcula el agregado.
  */
 class RegistroPagoServicio
 {
     public function __construct(private EstadoPagoServicioService $estadoPago) {}
 
     /**
-     * @param array{metodo: MetodoPago, monto: int, canal: string, epaid: int,
-     *              tipo?: ?string, comprobante?: ?string, nrotrx?: ?string, banco?: ?string,
-     *              fechpag?: ?string, montver?: ?int, usuver?: ?int, fechver?: mixed,
-     *              usucob?: ?int, sucid?: ?int, observ?: ?string} $d
+     * @param array{metodo: MetodoPago, monto: int, canal: string, epaid: int, tipo?: ?string,
+     *              comprobante?: ?string, usucob?: ?int, sucid?: ?int, observ?: ?string} $d
      */
     public function crear(SolicitudServicio $s, array $d, bool $unicoQueCubreTodo = false): ServicioPago
     {
         $pago = ServicioPago::create([
-            'spa_sseid'   => $s->sse_id,
-            'spa_orden'   => $this->siguienteOrden($s),
-            'spa_tipo'    => $d['tipo'] ?? $this->tipo($s, $unicoQueCubreTodo),
-            'spa_canal'   => $d['canal'],
-            'spa_mpaid'   => $d['metodo']->mpa_id,
-            'spa_monto'   => $d['monto'],
-            'spa_epaid'   => $d['epaid'],
-            'spa_observ'  => $d['observ'] ?? null,
-            'spa_nrotrx'  => $d['nrotrx'] ?? null,
-            'spa_banco'   => $d['banco'] ?? null,
-            'spa_fechpag' => $d['fechpag'] ?? null,
-            'spa_montver' => $d['montver'] ?? null,
-            'spa_usuver'  => $d['usuver'] ?? null,
-            'spa_fechver' => $d['fechver'] ?? null,
-            'spa_usucob'  => $d['usucob'] ?? null,
-            'spa_sucid'   => $d['sucid'] ?? null,
+            'spa_sseid'  => $s->sse_id,
+            'spa_orden'  => $this->siguienteOrden($s),
+            'spa_tipo'   => $d['tipo'] ?? $this->tipo($s, $unicoQueCubreTodo),
+            'spa_canal'  => $d['canal'],
+            'spa_mpaid'  => $d['metodo']->mpa_id,
+            'spa_monto'  => $d['monto'],
+            'spa_epaid'  => $d['epaid'],
+            'spa_observ' => $d['observ'] ?? null,
+            // Mostrador: quién lo registró y dónde (ck_spa_mostrador).
+            'spa_usucob' => $d['usucob'] ?? null,
+            'spa_sucid'  => $d['sucid'] ?? null,
         ]);
 
         if (!empty($d['comprobante'])) {
             ServicioComprobante::create([
                 'sco_spaid'  => $pago->spa_id,
                 'sco_archiv' => $d['comprobante'],
-                'sco_verifi' => ($d['montver'] ?? null) !== null,
+                'sco_verifi' => false,
             ]);
         }
 
@@ -61,9 +53,8 @@ class RegistroPagoServicio
     }
 
     /**
-     * Guarda el archivo en storage/app/public/servicios/{sse_id}/comprobantes
-     * (misma raíz que AdjuntoServicio). Storage no participa del rollback:
-     * la ruta se agrega a $archivos para que el llamador la borre si falla.
+     * Guarda el archivo en storage/app/public/servicios/{sse_id}/comprobantes.
+     * Storage no participa del rollback: la ruta se agrega a $archivos.
      */
     public function guardarArchivo(SolicitudServicio $s, ?UploadedFile $archivo, array &$archivos): ?string
     {
@@ -84,19 +75,12 @@ class RegistroPagoServicio
         }
     }
 
-    /**
-     * Se calcula con lock tomado sobre la solicitud: dos cobros simultáneos
-     * no pueden obtener el mismo número (además lo impide uq_spa_sse_orden).
-     */
     private function siguienteOrden(SolicitudServicio $s): int
     {
         return (int) ServicioPago::where('spa_sseid', $s->sse_id)->max('spa_orden') + 1;
     }
 
-    /**
-     * ANTICIPO = antes de LISTA. TOTAL = un único pago que cubre todo el
-     * total en LISTA. SALDO = cualquier otro pago en LISTA.
-     */
+    /** ANTICIPO antes de LISTA; TOTAL si un único pago cubre todo; SALDO el resto. */
     private function tipo(SolicitudServicio $s, bool $unicoQueCubreTodo): string
     {
         if (!$this->estadoPago->consolidado($s)) {

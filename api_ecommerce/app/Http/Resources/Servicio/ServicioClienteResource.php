@@ -204,6 +204,8 @@ class ServicioClienteResource extends JsonResource
             'estado'  => $this->estadoPago?->epa_descri,
             'total'   => $resumen['total'],
             'pagado'  => $resumen['confirmado'],
+             // Seña antes de LISTA: el backend decide si se puede y con qué tope.
+            'anticipo' => $estadoPago->anticipoWeb($this->resource),
             'en_verificacion' => $resumen['en_verificacion'],
             'saldo'   => $resumen['saldo'],
             'pagable' => $this->estadoServicio?->ets_codigo === 'LISTA'

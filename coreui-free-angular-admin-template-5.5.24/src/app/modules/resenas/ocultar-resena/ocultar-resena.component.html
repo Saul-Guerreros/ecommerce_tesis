@@ -1,0 +1,31 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header><h5 cModalTitle>Ocultar reseña</h5></c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+      <p class="mb-2">
+        La reseña de <strong>{{ resena?.cliente }}</strong> sobre <strong>{{ resena?.producto }}</strong>
+        dejará de mostrarse en la tienda y no contará en el promedio.
+      </p>
+
+      <label cLabel for="res_motocu">Motivo <span class="text-danger">*</span></label>
+      <div class="d-flex flex-wrap gap-1 mb-2">
+        <button *ngFor="let m of MOTIVOS_FRECUENTES" type="button" cButton size="sm" color="secondary"
+                variant="outline" (click)="usarMotivo(m)">{{ m }}</button>
+      </div>
+      <textarea cFormControl id="res_motocu" rows="3" formControlName="res_motocu" [maxlength]="MAX_MOTIVO"
+                placeholder="El cliente verá este motivo en su reseña."></textarea>
+      <div class="text-danger small" *ngIf="campoInvalido('res_motocu')">
+        {{ errorBackend('res_motocu') || 'Indicá el motivo (máx. 255 caracteres).' }}
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cerrar()" [disabled]="guardando">Cancelar</button>
+      <button cButton color="warning" class="text-white" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Ocultando...' : 'Ocultar' }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

@@ -52,6 +52,7 @@ class NotaCreditoVentaService
     public function __construct(
         private NumeracionVentaService $numeracion,
         private NotaCreditoPayloadBuilder $builderFe,
+        private AnticipoAplicacionService $aplicaciones,
     ) {}
 
     // =================================================================
@@ -90,7 +91,18 @@ class NotaCreditoVentaService
             // 1. Líneas calculadas en el servidor.
             [$detalle, $totales] = $this->armarDetalle($factura, $lineas, $motivo);
 
-                       // 2. Validación de pre-vuelo: la NC NACE ELECTRÓNICA.
+            // Anticipo (guía 29-30): solo se acredita lo que NO se aplicó en
+            // la factura final. Vale también para la NC hecha desde el módulo
+            // general, no solo desde el servicio técnico.
+            if ($factura->esAnticipo() && $totales['total'] > $factura->disponibleAnticipo() + 0.01) {
+                throw new \DomainException(sprintf(
+                    'Del anticipo %s solo se puede acreditar lo que no se aplicó en la factura final (Gs. %s).',
+                    $factura->ven_nrodoc,
+                    number_format($factura->disponibleAnticipo(), 0, ',', '.')
+                ));
+            }
+
+            // 2. Validación de pre-vuelo: la NC NACE ELECTRÓNICA.
             //
             // Todo lo que la DNIT exige y este sistema puede saber sin llamar
             // a la API se comprueba ACÁ, antes de tomar un número. Si la NC no
@@ -185,6 +197,9 @@ class NotaCreditoVentaService
                 DeclararNotaCreditoElectronica::dispatch($nota->ncv_id)->afterCommit();
             }
 
+            // 7. Si la NC deja una final con anticipo acreditada por completo,
+            //    el anticipo aplicado se libera (guía 30: conciliar la liquidación).
+            $this->aplicaciones->alEmitirNota($nota, $usuario);
             return $nota->fresh(['motivo', 'detalle.producto', 'factura', 'fe']);
         });
     }
@@ -536,11 +551,21 @@ class NotaCreditoVentaService
             );
         }
 
+         // Si ya salió dinero contra esta NC, anularla dejaría una devolución
+        // sin respaldo fiscal. Primero se anulan las devoluciones.
+        if ($nota->totalDevuelto() > 0) {
+            throw new \DomainException(
+                "La nota de crédito {$nota->ncv_nrodoc} tiene devoluciones de dinero registradas: anulalas antes."
+            );
+        }
+        
         if ($nota->anulada()) {
             throw new \DomainException('Esta nota de crédito ya está anulada.');
         }
 
         return DB::transaction(function () use ($nota, $usuario, $motivo) {
+         // Si esta NC había liberado un anticipo, vuelve a quedar aplicado.
+            $this->aplicaciones->alAnularNota($nota, $usuario);
             $nota->loadMissing(['detalle', 'fe']);
 
             foreach ($nota->detalle as $dnv) {

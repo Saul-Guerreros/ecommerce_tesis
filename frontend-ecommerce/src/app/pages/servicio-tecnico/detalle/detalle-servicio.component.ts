@@ -6,10 +6,10 @@ import { ToastrService } from 'ngx-toastr';
 import { URL_BACKEND } from '../../../config/config';
 import { ServicioCliente } from '../../../core/models/servicio-tecnico.model';
 import { PagoServicioService } from '../../../core/services/pago-servicio.service';
-import { FacturaServicioCliente } from '../../../core/models/factura-servicio.model';
 import { FacturaServicioService } from '../../../core/services/factura-servicio.service';
 import { ServicioTecnicoService } from '../../../core/services/servicio-tecnico.service';
 import { PagoTarjeta, TarjetaPagosComponent } from '../../../shared/components/tarjeta-pagos/tarjeta-pagos.component';
+import { FacturaServicioCliente, TipoFacturaCliente } from '../../../core/models/factura-servicio.model';
 
 /**
  * C4 - Detalle del servicio: timeline de 5 estados, datos y presupuesto
@@ -38,9 +38,9 @@ export class DetalleServicioComponent implements OnInit {
   abriendoId: number | null = null;
   subiendoId: number | null = null;
 
-  // Factura del servicio (se emite al confirmarse el pago)
-  factura: FacturaServicioCliente | null = null;
-  descargandoFactura = false;
+    // Facturas del servicio: la del anticipo y la final (cada una aparece al emitirse)
+  facturasCliente: FacturaServicioCliente[] = [];
+  descargandoTipo: TipoFacturaCliente | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -88,34 +88,36 @@ export class DetalleServicioComponent implements OnInit {
 
   // ---------- Factura ----------
 
-  /** Solo si el servicio tiene cobro: la garantía no se factura. */
+   /** Anticipo y final. Sin bloque de pago (garantía) no hay nada que facturar. */
   private cargarFactura(): void {
     const s = this.servicio;
-    if (!s?.pago || s.pago.total <= 0) { this.factura = null; return; }
+    if (!s?.pago) { this.facturasCliente = []; return; }
 
     this.facturas.opciones(s.sse_numero).subscribe({
-      next: (res) => (this.factura = res.data.factura ?? null),
-      error: () => (this.factura = null),   // no bloquea el detalle
+      next: (res) => {
+        this.facturasCliente = [res.data.anticipo, res.data.factura]
+          .filter((f): f is FacturaServicioCliente => !!f);
+      },
+      error: () => (this.facturasCliente = []),   // no bloquea el detalle
     });
   }
 
-  descargarFactura(): void {
-    if (!this.servicio || !this.factura?.disponible || this.descargandoFactura) return;
+  descargarFactura(f: FacturaServicioCliente): void {
+    if (!this.servicio || !f.disponible || this.descargandoTipo) return;
 
-    const numero = this.factura.numero;
-    this.descargandoFactura = true;
-    this.facturas.kude(this.servicio.sse_numero).subscribe({
+    this.descargandoTipo = f.tipo;
+    this.facturas.kude(this.servicio.sse_numero, f.tipo).subscribe({
       next: (pdf) => {
-        this.descargandoFactura = false;
+        this.descargandoTipo = null;
         const url = URL.createObjectURL(pdf);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Factura_${numero}.pdf`;
+        a.download = `${f.tipo === 'ANTICIPO' ? 'Anticipo' : 'Factura'}_${f.numero}.pdf`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 30_000);
       },
       error: () => {
-        this.descargandoFactura = false;
+        this.descargandoTipo = null;
         this.toastr.error('No pudimos descargar tu factura.', 'Servicio técnico');
       },
     });

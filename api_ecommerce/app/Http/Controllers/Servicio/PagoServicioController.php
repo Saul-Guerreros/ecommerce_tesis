@@ -15,6 +15,7 @@ use App\Services\Servicio\SolicitudServicioService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Http\Requests\Servicio\AnticipoServicioRequest;
 
 /**
  * C4 - Pago del servicio desde la tienda. Espejo de PagoPedidoController:
@@ -36,6 +37,7 @@ class PagoServicioController extends Controller
         return response()->json([
             'servicio'            => ['sse_numero' => $numero],
             'resumen'             => $d['resumen'],
+            'anticipo'            => $d['anticipo'],
             'metodos'             => MetodoPagoResource::collection($d['metodos']),
             'datos_transferencia' => $d['datos_transferencia'],
             'datos_billetera'     => $d['datos_billetera'],
@@ -50,6 +52,17 @@ class PagoServicioController extends Controller
         $s = $this->pagos->registrar($this->clienteAutenticado(), $numero, $this->conArchivos($request));
 
         return $this->respuesta('Recibimos tu pago. Te avisamos apenas lo verifiquemos.', $s, 201);
+    }
+
+    // POST /api/tienda/servicios/{numero}/anticipo
+    public function registrarAnticipo(AnticipoServicioRequest $request, string $numero): JsonResponse
+    {
+        $datos = $request->validated();
+        $datos['comprobante'] = $request->file('comprobante');
+
+        $s = $this->pagos->registrarAnticipo($this->clienteAutenticado(), $numero, $datos);
+
+        return $this->respuesta('Recibimos tu anticipo. Lo verificamos y te enviamos la factura.', $s, 201);
     }
 
     // POST /api/tienda/servicios/{numero}/pagos/{pago}/comprobante

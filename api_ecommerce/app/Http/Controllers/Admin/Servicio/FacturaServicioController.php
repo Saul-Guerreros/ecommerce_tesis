@@ -6,20 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Servicio\FacturacionServicioRequest;
 use App\Http\Requests\Servicio\ReenviarFacturaServicioRequest;
 use App\Models\Servicio\SolicitudServicio;
+use App\Models\Venta\VentaCab;
 use App\Services\Servicio\FacturacionServicioService;
 use App\Services\Servicio\FacturaServicioConsultaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Http\Requests\Servicio\AnularFacturaServicioRequest;
 
 /**
- * Facturación del servicio en el panel:
- *   - Datos fiscales que el cajero carga antes de "Registrar cobro".
- *   - Sección "Factura" del detalle: estado SIFEN, KuDE, XML, reintentar y reenviar.
+ * Facturación del servicio en el panel: datos fiscales y las secciones
+ * "Factura" y "Factura de anticipo" del detalle.
  *
- * Los permisos se exigen en routes/api.php. El controlador no persiste:
- * delega en los services de app/Services/Servicio.
+ * $tipo llega por ->defaults('tipo', 'ANTICIPO') en las rutas /anticipo/*;
+ * sin default, es la factura final.
  */
 class FacturaServicioController extends Controller
 {
@@ -46,56 +47,71 @@ class FacturaServicioController extends Controller
         ], 200);
     }
 
-    // GET /api/admin/servicios/cobros/{id}/factura
-    public function show(int $id): JsonResponse
+    // GET .../{id}/factura   |   GET .../{id}/anticipo/factura
+    public function show(int $id, string $tipo = VentaCab::TIPO_VENTA): JsonResponse
     {
-        return response()->json(['data' => $this->consulta->resumenPanel(SolicitudServicio::findOrFail($id))], 200);
+        return response()->json(['data' => $this->consulta->resumenPanel(SolicitudServicio::findOrFail($id), $tipo)], 200);
     }
 
-    // GET /api/admin/servicios/cobros/{id}/factura/kude
-    public function kude(int $id): StreamedResponse
+    // GET .../factura/kude   |   GET .../anticipo/factura/kude
+    public function kude(int $id, string $tipo = VentaCab::TIPO_VENTA): StreamedResponse
     {
-        return $this->archivo($id, 'pdf', 'inline');
+        return $this->archivo($id, 'pdf', 'inline', $tipo);
     }
 
-    // GET /api/admin/servicios/cobros/{id}/factura/xml
-    public function xml(int $id): StreamedResponse
+    // GET .../factura/xml   |   GET .../anticipo/factura/xml
+    public function xml(int $id, string $tipo = VentaCab::TIPO_VENTA): StreamedResponse
     {
-        return $this->archivo($id, 'xml', 'attachment');
+        return $this->archivo($id, 'xml', 'attachment', $tipo);
     }
 
-    // POST /api/admin/servicios/cobros/{id}/factura/reintentar
-    public function reintentar(int $id): JsonResponse
+    // POST .../factura/reintentar   |   POST .../anticipo/factura/reintentar
+    public function reintentar(int $id, string $tipo = VentaCab::TIPO_VENTA): JsonResponse
     {
-        $this->consulta->reintentar(SolicitudServicio::findOrFail($id));
+        $this->consulta->reintentar(SolicitudServicio::findOrFail($id), $tipo);
 
         return response()->json(['message' => 'Reintento en curso. El estado se actualiza en unos segundos.'], 202);
     }
 
-    // POST /api/admin/servicios/cobros/{id}/factura/reenviar
-    public function reenviar(ReenviarFacturaServicioRequest $request, int $id): JsonResponse
+    // POST .../factura/reenviar   |   POST .../anticipo/factura/reenviar
+    public function reenviar(ReenviarFacturaServicioRequest $request, int $id, string $tipo = VentaCab::TIPO_VENTA): JsonResponse
     {
         $s     = SolicitudServicio::findOrFail($id);
         $datos = $request->validated();
 
         try {
-            $destino = $this->consulta->reenviar($s, $datos['canal'] ?? null, $datos['destino'] ?? null);
+            $destino = $this->consulta->reenviar($s, $datos['canal'] ?? null, $datos['destino'] ?? null, $tipo);
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 502);
         }
 
         return response()->json([
             'message' => "Factura enviada a {$destino}.",
-            'data'    => $this->consulta->resumenPanel($s),
+            'data'    => $this->consulta->resumenPanel($s, $tipo),
+        ], 200);
+    }
+
+        // POST .../factura/anular   |   POST .../anticipo/factura/anular
+    public function anular(AnularFacturaServicioRequest $request, int $id, string $tipo = VentaCab::TIPO_VENTA): JsonResponse
+    {
+        $venta = $this->consulta->anular(
+            SolicitudServicio::findOrFail($id),
+            $request->validated()['motivo'],
+            auth('api')->user(),
+            $tipo,
+        );
+
+        return response()->json([
+            'message' => ($venta->esAnticipo() ? 'Factura de anticipo ' : 'Factura ')
+                       . "{$venta->ven_nrodoc} anulada. Ya se puede volver a emitir.",
         ], 200);
     }
 
     // ---------- Helpers ----------
 
-    /** El panel manda el JWT en una cabecera: el front pide el archivo como Blob. */
-    private function archivo(int $id, string $tipo, string $disposicion): StreamedResponse
+    private function archivo(int $id, string $formato, string $disposicion, string $tipo): StreamedResponse
     {
-        $a = $this->consulta->archivo(SolicitudServicio::findOrFail($id), $tipo);
+        $a = $this->consulta->archivo(SolicitudServicio::findOrFail($id), $formato, $tipo);
 
         return Storage::disk('local')->response($a['ruta'], $a['nombre'], ['Content-Type' => $a['mime']], $disposicion);
     }

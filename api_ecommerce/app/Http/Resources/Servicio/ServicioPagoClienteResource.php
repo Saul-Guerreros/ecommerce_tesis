@@ -28,6 +28,7 @@ class ServicioPagoClienteResource extends JsonResource
         return [
             'spa_id'            => (int) $this->spa_id,
             'orden'             => (int) $this->spa_orden,
+            'tipo'              => $this->spa_tipo,   // ANTICIPO | SALDO | TOTAL
             'metodo'            => $this->metodoPago?->mpa_descri,
             'monto'             => (float) $this->spa_monto,
             'estado'            => $this->estadoPago?->epa_codigo,

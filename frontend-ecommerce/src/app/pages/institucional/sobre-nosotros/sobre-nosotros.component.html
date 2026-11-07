@@ -1,0 +1,126 @@
+<main>
+  @if (cargando) {
+    <div class="uk-flex uk-flex-center uk-padding-large"><div uk-spinner="ratio: 1.5"></div></div>
+  } @else if (noDisponible || !pagina) {
+    <section class="uk-section">
+      <div class="uk-container uk-text-center">
+        <h1 class="uk-heading-small">Sobre nosotros</h1>
+        <p class="uk-text-muted">Estamos preparando esta sección. Volvé pronto.</p>
+        <a routerLink="/" class="uk-button uk-button-primary">Ir al inicio</a>
+      </div>
+    </section>
+  } @else {
+    <!-- ===== Encabezado ===== -->
+    <section class="uk-section uk-section-muted nos-hero">
+      <div class="uk-container">
+        <ul class="uk-breadcrumb uk-margin-small-bottom">
+          <li><a routerLink="/">Inicio</a></li>
+          <li><span>{{ pagina.pno_titulo }}</span></li>
+        </ul>
+        <h1 class="uk-heading-small uk-margin-remove">{{ pagina.pno_titulo }}</h1>
+        @if (pagina.pno_subtitulo) {
+          <p class="uk-text-lead uk-margin-small-top">{{ pagina.pno_subtitulo }}</p>
+        }
+      </div>
+    </section>
+
+    <!-- ===== Historia + imagen ===== -->
+    @if (parrafos.length || pagina.pno_imagen_url) {
+      <section class="uk-section">
+        <div class="uk-container">
+          <div class="uk-grid-large uk-flex-middle" uk-grid>
+            @if (pagina.pno_imagen_url) {
+              <div class="uk-width-1-2@m">
+                <img class="nos-imagen" [src]="pagina.pno_imagen_url" [alt]="pagina.pno_titulo" loading="lazy">
+              </div>
+            }
+            @if (parrafos.length) {
+              <div [class]="pagina.pno_imagen_url ? 'uk-width-1-2@m' : 'uk-width-1-1'">
+                <h2 class="uk-h3">Nuestra historia</h2>
+                @for (p of parrafos; track $index) {
+                  <p class="nos-texto">{{ p }}</p>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- ===== Cifras ===== -->
+    @if (pagina.pno_cifras.length) {
+      <section class="uk-section uk-section-small uk-section-primary uk-light">
+        <div class="uk-container">
+          <div class="uk-grid-small uk-child-width-1-2 uk-child-width-expand@m uk-text-center" uk-grid>
+            @for (c of pagina.pno_cifras; track $index) {
+              <div>
+                <div class="nos-cifra">{{ c.valor }}</div>
+                <div class="uk-text-small">{{ c.etiqueta }}</div>
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- ===== Misión y visión ===== -->
+    @if (pagina.pno_mision || pagina.pno_vision) {
+      <section class="uk-section">
+        <div class="uk-container">
+          <div class="uk-grid-match uk-child-width-1-2@m" uk-grid>
+            @if (pagina.pno_mision) {
+              <div>
+                <div class="uk-card uk-card-default uk-card-body nos-card">
+                  <h3 class="uk-card-title"><span uk-icon="icon: future; ratio: 1.2" class="uk-margin-small-right"></span>Misión</h3>
+                  <p class="nos-texto uk-margin-remove">{{ pagina.pno_mision }}</p>
+                </div>
+              </div>
+            }
+            @if (pagina.pno_vision) {
+              <div>
+                <div class="uk-card uk-card-default uk-card-body nos-card">
+                  <h3 class="uk-card-title"><span uk-icon="icon: world; ratio: 1.2" class="uk-margin-small-right"></span>Visión</h3>
+                  <p class="nos-texto uk-margin-remove">{{ pagina.pno_vision }}</p>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- ===== Valores ===== -->
+    @if (pagina.pno_valores.length) {
+      <section class="uk-section uk-section-muted">
+        <div class="uk-container">
+          <h2 class="uk-h3 uk-text-center">Nuestros valores</h2>
+          <div class="uk-grid-match uk-child-width-1-2@s uk-child-width-1-3@m uk-margin-medium-top" uk-grid>
+            @for (v of pagina.pno_valores; track $index) {
+              <div>
+                <div class="uk-card uk-card-default uk-card-body uk-text-center nos-card">
+                  <span class="nos-icono" [attr.uk-icon]="'icon: ' + v.icono + '; ratio: 1.5'"></span>
+                  <h4 class="uk-margin-small">{{ v.titulo }}</h4>
+                  @if (v.descripcion) {
+                    <p class="uk-text-small uk-margin-remove">{{ v.descripcion }}</p>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- ===== Llamado a la acción ===== -->
+    <section class="uk-section">
+      <div class="uk-container uk-text-center">
+        <h2 class="uk-h3">¿Hablamos?</h2>
+        <p class="uk-text-muted">Consultanos por productos, pedidos o servicio técnico.</p>
+        <div class="uk-flex uk-flex-center uk-flex-wrap nos-acciones">
+          <a routerLink="/contacto" class="uk-button uk-button-primary">Contactanos</a>
+          <a routerLink="/productos-busqueda" class="uk-button uk-button-default">Ver productos</a>
+        </div>
+      </div>
+    </section>
+  }
+</main>

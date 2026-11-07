@@ -154,6 +154,7 @@
               <button cButton size="sm" color="info" class="me-2 text-white" (click)="abrir('detalle', f)">Ver</button>
               <button cButton size="sm" color="warning" class="me-2 text-white" *ngIf="f.acciones.reasignar" (click)="abrir('reasignar', f)">Reasignar</button>
               <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="f.acciones.entregar" (click)="abrir('entrega', f)">Entregar</button>
+              <button cButton size="sm" color="danger" class="me-2 text-white" *ngIf="f.acciones.cancelar" (click)="abrir('cancelar', f)">Cancelar</button>
               <button cButton size="sm" color="secondary" class="me-2 text-white" *ngIf="f.acciones.const_recepcion" (click)="constancia(f, 'recepcion')" title="Constancia de recepción">PDF ingreso</button>
               <button cButton size="sm" color="dark" class="me-2 text-white" *ngIf="f.acciones.const_retiro" (click)="constancia(f, 'retiro')" title="Constancia de retiro">PDF retiro</button>
               <button cButton size="sm" color="primary" class="me-2 text-white" *ngIf="f.acciones.responder" (click)="abrir('respuesta', f)">Respuesta</button>
@@ -196,3 +197,6 @@
 
 <app-registrar-entrega [visible]="entregaVisible" [fila]="seleccionada"
   (visibleChange)="entregaVisible = $event" (guardado)="refrescar()"></app-registrar-entrega>
+
+<app-cancelar-solicitud [visible]="cancelarVisible" [fila]="seleccionada"
+  (visibleChange)="cancelarVisible = $event" (guardado)="refrescar()"></app-cancelar-solicitud>

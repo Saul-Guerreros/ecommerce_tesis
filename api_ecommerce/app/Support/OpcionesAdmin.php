@@ -34,6 +34,8 @@ class OpcionesAdmin
                     ['permiso' => 'cupones.ver', 'nombre' => 'Cupones', 'urls' => ['/cupones/list'], 'fijo' => false],
                     ['permiso' => 'descuentos.ver', 'nombre' => 'Campañas de descuento', 'urls' => ['/discounts/list'], 'fijo' => false],
                     ['permiso' => 'chatbot.gestionar', 'nombre' => 'Asistente virtual', 'urls' => ['/chatbot/informacion'], 'fijo' => false],
+                     ['permiso' => 'resenas.gestionar', 'nombre' => 'Reseñas de productos', 'urls' => ['/resenas'], 'fijo' => false],
+                    ['permiso' => 'contenido-web.gestionar', 'nombre' => 'Contenido del sitio (Nosotros, Contacto, Atención al cliente)', 'urls' => ['/sitio-web', '/atencion-cliente'], 'fijo' => false],
                 ],
             ],
             [
@@ -125,6 +127,10 @@ class OpcionesAdmin
 					['permiso' => 'servicios.cobros.ver',       'nombre' => 'Cobros de servicios',        'urls' => ['/servicios/cobros'], 'fijo' => false],
 					// Acción sin pantalla propia: cobrar en el mostrador (anticipo, saldo, "Cobrar y entregar").
 					['permiso' => 'servicios.cobros.confirmar', 'nombre' => 'Cobrar servicios en el mostrador', 'urls' => [], 'fijo' => false],
+                    // Acción sin pantalla propia: anular una factura del servicio para re-emitirla.
+					['permiso' => 'servicios.facturas.anular', 'nombre' => 'Anular facturas de servicios', 'urls' => [], 'fijo' => false],
+                    					// Acción sin pantalla propia: cancelar una solicitud (devuelve el equipo si está en el taller).
+					['permiso' => 'servicios.solicitudes.cancelar', 'nombre' => 'Cancelar solicitudes de servicio', 'urls' => [], 'fijo' => false],
 				],
 			],
             [

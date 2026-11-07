@@ -1,0 +1,151 @@
+<ng-container *ngIf="dev as v">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+    <div class="small">
+      <div>Anticipo disponible para acreditar: <strong>Gs. {{ formatoGs(v.disponible) }}</strong></div>
+      <div>Dinero por devolver: <strong [class.text-danger]="v.por_devolver > 0">Gs. {{ formatoGs(v.por_devolver) }}</strong></div>
+      <div class="text-muted" *ngIf="v.liberacion && v.liberacion.liberado > 0">
+        Anticipo de Gs. {{ formatoGs(v.liberacion.liberado) }} liberado de la factura final el {{ v.liberacion.fecha }}
+        ({{ v.liberacion.automatica ? 'por la nota de crédito total' : 'manual' }}).
+      </div>
+    </div>
+    <div class="text-nowrap">
+      <button cButton size="sm" color="warning" class="me-2 text-white" *ngIf="v.puede_liberar" (click)="abrirLiberar()">
+        Liberar anticipo
+      </button>
+      <button cButton size="sm" color="primary" class="me-2 text-white" *ngIf="v.puede_acreditar" (click)="abrirAcreditar()">
+        Nota de crédito del anticipo
+      </button>
+    </div>
+  </div>
+
+  <div class="small text-muted" *ngIf="v.notas.length === 0">Sin notas de crédito.</div>
+
+  <div class="table-responsive" *ngIf="v.notas.length > 0">
+    <table cTable small striped class="mb-0">
+      <thead>
+        <tr><th>NC</th><th>Sobre</th><th class="text-end">Total</th><th>DNIT</th><th class="text-end">Devuelto</th><th>Devoluciones</th><th class="text-end">Acciones</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let n of v.notas">
+          <td class="small">{{ n.numero }}<div class="text-muted">{{ n.fecha }}</div></td>
+          <td class="small">{{ n.factura === 'ANTICIPO' ? 'Anticipo' : 'Factura final' }}</td>
+          <td class="text-end text-nowrap">Gs. {{ formatoGs(n.total) }}</td>
+          <td>
+            <c-badge color="secondary" *ngIf="n.anulada">ANULADA</c-badge>
+            <c-badge [color]="colorFe(n.fe.estado)" *ngIf="!n.anulada && n.fe">{{ n.fe.estado }}</c-badge>
+          </td>
+          <td class="text-end text-nowrap">
+            Gs. {{ formatoGs(n.devuelto) }}
+            <div class="small text-danger" *ngIf="n.por_devolver > 0">Falta Gs. {{ formatoGs(n.por_devolver) }}</div>
+          </td>
+          <td class="small">
+            <div *ngFor="let d of n.devoluciones" class="d-flex justify-content-between align-items-center gap-2 mb-1">
+              <span [class.text-decoration-line-through]="d.anulada">
+                {{ d.fecha }} · {{ d.metodo }} Gs. {{ formatoGs(d.monto) }}
+                <span *ngIf="d.nro_transaccion"> · Ref. {{ d.nro_transaccion }}</span>
+                <span class="text-muted" *ngIf="d.por"> · {{ d.por }}</span>
+                <span class="text-muted" *ngIf="d.anulada"> (anulada: {{ d.motivo_anulacion }})</span>
+              </span>
+              <button cButton size="sm" color="danger" class="me-2 text-white" *ngIf="d.puede_anular"
+                      (click)="abrirAnular(n, d)">Anular</button>
+            </div>
+          </td>
+          <td class="text-end text-nowrap">
+            <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="n.puede_devolver"
+                    (click)="abrirDevolver(n)">Registrar devolución</button>
+            <span class="small text-muted" *ngIf="!n.puede_devolver && n.por_devolver > 0 && n.fe?.estado !== 'APROBADA'">
+              Esperando aprobación de la NC
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</ng-container>
+
+<c-modal [visible]="visible" (visibleChange)="visible = $event" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>{{ titulo }}</h5>
+    <button cButtonClose (click)="visible = false"></button>
+  </c-modal-header>
+
+  <c-modal-body>
+    <!-- Acreditar -->
+    <ng-container *ngIf="modo === 'acreditar'">
+      <c-alert color="info" class="py-2 small">
+        Se emite una nota de crédito (motivo “Devolución de anticipo”) asociada al CDC de la factura de anticipo.
+        La devolución del dinero se registra después, cuando la DNIT la apruebe.
+      </c-alert>
+      <label cLabel>Monto a acreditar <span class="text-danger">*</span></label>
+      <input cFormControl type="number" min="1" [(ngModel)]="f.monto" [class.is-invalid]="errores['monto']" />
+      <div class="form-text">Máximo Gs. {{ formatoGs(dev?.disponible) }} (lo no aplicado en la factura final).</div>
+      <div class="text-danger small" *ngIf="errores['monto']">{{ errores['monto'] }}</div>
+      <label cLabel class="mt-2">Observación</label>
+      <textarea cFormControl rows="2" maxlength="255" [(ngModel)]="f.observacion"></textarea>
+    </ng-container>
+
+    <!-- Devolver -->
+    <ng-container *ngIf="modo === 'devolver'">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label cLabel>Forma de devolución <span class="text-danger">*</span></label>
+          <select cSelect [(ngModel)]="f.mpa_codigo" [class.is-invalid]="errores['mpa_codigo']">
+            <option value="">Seleccione...</option>
+            <option *ngFor="let m of metodos" [value]="m.mpa_codigo">{{ m.mpa_descri }}</option>
+          </select>
+          <div class="text-danger small" *ngIf="errores['mpa_codigo']">{{ errores['mpa_codigo'] }}</div>
+        </div>
+        <div class="col-md-6">
+          <label cLabel>Monto <span class="text-danger">*</span></label>
+          <input cFormControl type="number" min="1" [(ngModel)]="f.monto" [class.is-invalid]="errores['monto']" />
+          <div class="form-text">Pendiente Gs. {{ formatoGs(nota?.por_devolver) }}.</div>
+          <div class="text-danger small" *ngIf="errores['monto']">{{ errores['monto'] }}</div>
+        </div>
+        <ng-container *ngIf="requiereReferencia">
+          <div class="col-md-6">
+            <label cLabel>Referencia <span class="text-danger">*</span></label>
+            <input cFormControl maxlength="50" [(ngModel)]="f.nro_transaccion" [class.is-invalid]="errores['nro_transaccion']" />
+            <div class="text-danger small" *ngIf="errores['nro_transaccion']">{{ errores['nro_transaccion'] }}</div>
+          </div>
+          <div class="col-md-6">
+            <label cLabel>Banco / Billetera</label>
+            <input cFormControl maxlength="60" [(ngModel)]="f.banco" />
+          </div>
+        </ng-container>
+        <div class="col-md-6">
+          <label cLabel>Fecha</label>
+          <input cFormControl type="date" [(ngModel)]="f.fecha" [class.is-invalid]="errores['fecha']" />
+          <div class="text-danger small" *ngIf="errores['fecha']">{{ errores['fecha'] }}</div>
+        </div>
+        <div class="col-12">
+          <label cLabel>Observación</label>
+          <textarea cFormControl rows="2" maxlength="255" [(ngModel)]="f.observacion"></textarea>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Anular / liberar: motivo -->
+    <ng-container *ngIf="modo === 'anular' || modo === 'liberar'">
+      <c-alert color="warning" class="py-2 small" *ngIf="modo === 'liberar'">
+        La factura final quedó en cero porque el anticipo cubrió todo. Al liberarlo, el anticipo vuelve a quedar
+        disponible para acreditarlo con nota de crédito y devolverlo.
+      </c-alert>
+      <c-alert color="warning" class="py-2 small" *ngIf="modo === 'anular'">
+        Devolución de Gs. {{ formatoGs(devolucion?.monto) }} del {{ devolucion?.fecha }}. Se anula; no se borra.
+      </c-alert>
+      <label cLabel>Motivo <span class="text-danger">*</span></label>
+      <textarea cFormControl rows="2" maxlength="255" [(ngModel)]="f.motivo" [class.is-invalid]="errores['motivo']"></textarea>
+      <div class="text-danger small" *ngIf="errores['motivo']">{{ errores['motivo'] }}</div>
+    </ng-container>
+
+    <c-alert color="danger" class="py-2 small mt-3 mb-0" *ngIf="errores['general']">{{ errores['general'] }}</c-alert>
+  </c-modal-body>
+
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="visible = false" [disabled]="guardando">Cancelar</button>
+    <button cButton [color]="modo === 'anular' ? 'danger' : 'success'" class="text-white" (click)="guardar()" [disabled]="guardando">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      {{ modo === 'acreditar' ? 'Emitir nota de crédito' : modo === 'devolver' ? 'Registrar devolución' : modo === 'anular' ? 'Anular' : 'Liberar' }}
+    </button>
+  </c-modal-footer>
+</c-modal>

@@ -3,30 +3,39 @@
 namespace App\Http\Controllers\Admin\Servicio;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Pedido\ConfirmarPagoRequest;
 use App\Http\Requests\Pedido\RechazarPagoRequest;
+use App\Http\Requests\Pedido\ValidarComprobanteRequest;
+use App\Http\Requests\Servicio\AnticipoMostradorRequest;
 use App\Http\Requests\Servicio\CobrarEntregarRequest;
-use App\Http\Requests\Servicio\CobroMostradorRequest;
 use App\Http\Requests\Servicio\CobroServicioIndexRequest;
+use App\Http\Requests\Servicio\GenerarFacturaServicioRequest;
+use App\Http\Requests\Servicio\RegistrarCobroServicioRequest;
 use App\Http\Resources\Servicio\CobroServicioListaResource;
-use App\Http\Resources\Servicio\ServicioPagoResource;
 use App\Models\Servicio\ServicioPago;
 use App\Models\Servicio\SolicitudServicio;
+use App\Models\Venta\VentaCab;
 use App\Services\Servicio\CobroMostradorService;
 use App\Services\Servicio\CobroServicioConsultaService;
+use App\Services\Servicio\FacturaServicioService;
 use App\Services\Servicio\PagoServicioVerificacionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Http\Requests\Servicio\AnularCobroRequest;
 
 /**
- * Cobro del servicio técnico en el panel:
- *   - Bandeja "Cobros de servicios" (servicios.cobros.ver).
- *   - Verificación de pagos web (pedidos.pago.verificar, decisión 14-b).
- *   - Cobro presencial y "Cobrar y entregar" (servicios.cobros.confirmar).
+ * Cobro del servicio técnico en el panel. Ciclo comprobante -> factura ->
+ * cobro (igual que PedidoGestionController):
  *
- * Los permisos se exigen en routes/api.php. El controlador no persiste:
- * delega en los services de app/Services/Servicio.
+ *   validarComprobante()      pedidos.pago.verificar
+ *   rechazar()                pedidos.pago.verificar (solo sin factura)
+ *   declararAnticipo()        servicios.cobros.confirmar (mostrador)
+ *   generarFacturaAnticipo()  cajero o verificador (anticipo web)
+ *   generarFactura()          cajero o verificador (final)
+ *   registrarCobro()          cajero o verificador (efectivo: cajero en sucursal)
+ *   cobrarYEntregar()         A5
+ *
+ * Los permisos se exigen en routes/api.php; las reglas, en los services.
  */
 class CobroServicioController extends Controller
 {
@@ -34,6 +43,7 @@ class CobroServicioController extends Controller
         private CobroServicioConsultaService $consulta,
         private PagoServicioVerificacionService $verificacion,
         private CobroMostradorService $mostrador,
+        private FacturaServicioService $facturas,
     ) {}
 
     // GET /api/admin/servicios/cobros/config
@@ -61,10 +71,10 @@ class CobroServicioController extends Controller
         ], 200);
     }
 
-    // GET /api/admin/servicios/cobros/{id}  — sección "Pagos" del detalle y de A5
+    // GET /api/admin/servicios/cobros/{id}
     public function show(int $id): JsonResponse
     {
-        return response()->json(['data' => $this->detalle(SolicitudServicio::findOrFail($id))], 200);
+        return response()->json(['data' => $this->detalle($id)], 200);
     }
 
     // GET /api/admin/servicios/cobros/{id}/pagos/{pago}/comprobante
@@ -79,66 +89,104 @@ class CobroServicioController extends Controller
         return Storage::disk('public')->response($archivo, basename($archivo));
     }
 
-    // POST /api/admin/servicios/cobros/{id}/pagos/{pago}/confirmar
-    public function confirmar(ConfirmarPagoRequest $request, int $id, int $pago): JsonResponse
+    // POST /api/admin/servicios/cobros/{id}/pagos/{pago}/comprobante/validar
+    public function validarComprobante(ValidarComprobanteRequest $request, int $id, int $pago): JsonResponse
     {
-        $s = $this->verificacion->confirmar(SolicitudServicio::findOrFail($id), $pago, $request->validated(), auth('api')->user());
+        $this->verificacion->validarComprobante($this->solicitud($id), $pago, $request->validated(), auth('api')->user());
 
-        return $this->respuesta('Pago confirmado correctamente.', $s);
+        return $this->respuesta('Comprobante validado. Ya se puede generar la factura y registrar el cobro.', $id);
     }
 
     // POST /api/admin/servicios/cobros/{id}/pagos/{pago}/rechazar
     public function rechazar(RechazarPagoRequest $request, int $id, int $pago): JsonResponse
     {
-        $s = $this->verificacion->rechazar(SolicitudServicio::findOrFail($id), $pago, $request->validated(), auth('api')->user());
+        $this->verificacion->rechazar($this->solicitud($id), $pago, $request->validated(), auth('api')->user());
 
-        return $this->respuesta('Pago rechazado. El cliente podrá subir un nuevo comprobante.', $s);
+        return $this->respuesta('Pago rechazado.', $id);
     }
 
-    // POST /api/admin/servicios/cobros/{id}/cobros  — anticipo o saldo en el mostrador
-    public function registrarCobro(CobroMostradorRequest $request, int $id): JsonResponse
+    // POST /api/admin/servicios/cobros/{id}/anticipo
+    public function declararAnticipo(AnticipoMostradorRequest $request, int $id): JsonResponse
+    {
+        $venta = $this->mostrador->declararAnticipo($this->solicitud($id), $request->validated(), auth('api')->user());
+
+        return $this->respuesta(
+            "Factura de anticipo {$venta->ven_nrodoc} emitida. Registrá el cobro cuando su documento esté disponible.",
+            $id, 201
+        );
+    }
+
+    // POST /api/admin/servicios/cobros/{id}/anticipo/factura/generar
+    public function generarFacturaAnticipo(int $id): JsonResponse
+    {
+        $venta = $this->facturas->generarAnticipo($this->solicitud($id), auth('api')->user());
+
+        return $this->respuesta(
+            "Factura de anticipo {$venta->ven_nrodoc} emitida. Registrá el cobro cuando su documento esté disponible.",
+            $id, 201
+        );
+    }
+
+    // POST /api/admin/servicios/cobros/{id}/factura/generar
+    public function generarFactura(GenerarFacturaServicioRequest $request, int $id): JsonResponse
+    {
+        $venta = $this->mostrador->generarFactura($this->solicitud($id), $request->validated(), auth('api')->user());
+
+        return $this->respuesta(
+            $venta->ven_estado === VentaCab::ESTADO_COBRADA
+                ? "Factura {$venta->ven_nrodoc} emitida: el anticipo cubre el total del servicio."
+                : "Factura {$venta->ven_nrodoc} emitida. Registrá el cobro cuando su documento esté disponible.",
+            $id, 201
+        );
+    }
+
+    // POST /api/admin/servicios/cobros/{id}/pagos/{pago}/cobrar
+    public function registrarCobro(RegistrarCobroServicioRequest $request, int $id, int $pago): JsonResponse
     {
         $datos = $request->validated();
         $datos['comprobante'] = $request->file('comprobante');
 
-        $s = $this->mostrador->registrarCobro(SolicitudServicio::findOrFail($id), $datos, auth('api')->user());
+        $this->verificacion->registrarCobro($this->solicitud($id), $pago, $datos, auth('api')->user());
 
-        return $this->respuesta('Cobro registrado.', $s, 201);
+        return $this->respuesta('Cobro registrado.', $id);
     }
 
-    // POST /api/admin/servicios/cobros/{id}/pagos/{pago}/cobrar-al-retirar
-    public function cobrarAlRetirar(int $id, int $pago): JsonResponse
+        // PATCH /api/admin/servicios/cobros/{id}/cobros/{cobro}/anular
+    public function anularCobro(AnularCobroRequest $request, int $id, int $cobro): JsonResponse
     {
-        $s = $this->mostrador->confirmarAlRetirar(SolicitudServicio::findOrFail($id), $pago, auth('api')->user());
+        $this->verificacion->anularCobro($this->solicitud($id), $cobro, $request->validated()['motivo'], auth('api')->user());
 
-        return $this->respuesta('Pago en efectivo cobrado.', $s);
+        return $this->respuesta('Cobro anulado. El pago vuelve a quedar pendiente de cobro.', $id);
     }
 
     // POST /api/admin/servicios/cobros/{id}/cobrar-entregar  — A5
     public function cobrarYEntregar(CobrarEntregarRequest $request, int $id): JsonResponse
     {
         $datos = $request->validated();
-        $cobro = $datos['cobro'];
+        $cobro = $datos['cobro'] ?? [];
         $cobro['comprobante'] = $request->file('cobro.comprobante');
         unset($datos['cobro']);
 
-        $this->mostrador->cobrarYEntregar(SolicitudServicio::findOrFail($id), $cobro, $datos, auth('api')->user());
+        $this->mostrador->cobrarYEntregar($this->solicitud($id), $cobro, $datos, auth('api')->user());
 
         return response()->json(['message' => 'Cobro y entrega registrados. Puede imprimir la constancia de retiro.'], 201);
     }
 
     // ---------- Helpers ----------
 
-    private function respuesta(string $mensaje, SolicitudServicio $s, int $status = 200): JsonResponse
+    private function solicitud(int $id): SolicitudServicio
     {
-        return response()->json(['message' => $mensaje, 'data' => $this->detalle($s)], $status);
+        return SolicitudServicio::findOrFail($id);
     }
 
-    private function detalle(SolicitudServicio $s): array
+    /** Siempre lee de nuevo: el detalle refleja lo que quedó después del commit. */
+    private function detalle(int $id): array
     {
-        $d = $this->consulta->detalle($s->fresh(), auth('api')->user());
-        $d['pagos'] = ServicioPagoResource::collection($d['pagos']);
+        return $this->consulta->detalle($this->solicitud($id), auth('api')->user());
+    }
 
-        return $d;
+    private function respuesta(string $mensaje, int $id, int $status = 200): JsonResponse
+    {
+        return response()->json(['message' => $mensaje, 'data' => $this->detalle($id)], $status);
     }
 }

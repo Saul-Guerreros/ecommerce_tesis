@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { URL_SERVICIOS } from '../../config/config';
-import { FacturacionServicioOpciones, GuardarFacturacionServicio } from '../models/factura-servicio.model';
+import { FacturacionServicioOpciones, GuardarFacturacionServicio, TipoFacturaCliente } from '../models/factura-servicio.model';
 
 /**
  * Facturación del servicio técnico desde la tienda: datos fiscales (CI/RUC)
@@ -22,9 +22,10 @@ export class FacturaServicioService {
     return this.http.put<{ message: string; data: FacturacionServicioOpciones }>(
       `${this.URL}/${encodeURIComponent(numero)}/facturacion`, datos);
   }
-
-  /** El KuDE exige el token: se pide como Blob (igual que la constancia). */
-  kude(numero: string): Observable<Blob> {
-    return this.http.get(`${this.URL}/${encodeURIComponent(numero)}/factura/kude`, { responseType: 'blob' });
+  
+    /** El KuDE exige el token: se pide como Blob. ANTICIPO descarga la factura de la seña. */
+  kude(numero: string, tipo: TipoFacturaCliente = 'VENTA'): Observable<Blob> {
+    const ruta = tipo === 'ANTICIPO' ? 'anticipo/kude' : 'factura/kude';
+    return this.http.get(`${this.URL}/${encodeURIComponent(numero)}/${ruta}`, { responseType: 'blob' });
   }
 }

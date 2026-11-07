@@ -48,6 +48,19 @@ export class PagoServicioService {
     return this.http.post<RespuestaPagoServicio>(`${this.URL}/${encodeURIComponent(numero)}/pago`, formData);
   }
 
+    /**
+   * Anticipo (seña) con el equipo ya recibido y antes de que esté listo.
+   * Un solo pago, por transferencia o billetera, con comprobante.
+   */
+  registrarAnticipo(numero: string, datos: { mpa_codigo: string; monto: number; comprobante: File }): Observable<RespuestaPagoServicio> {
+    const formData = new FormData();
+    formData.append('mpa_codigo', datos.mpa_codigo);
+    formData.append('monto', String(datos.monto));
+    formData.append('comprobante', datos.comprobante);
+
+    return this.http.post<RespuestaPagoServicio>(`${this.URL}/${encodeURIComponent(numero)}/anticipo`, formData);
+  }
+  
   reemplazarComprobante(numero: string, spaId: number, archivo: File): Observable<RespuestaPagoServicio> {
     const formData = new FormData();
     formData.append('comprobante', archivo);

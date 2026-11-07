@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 
 class VentaCab extends Model
@@ -22,6 +23,8 @@ class VentaCab extends Model
 
     public const CONDICION_CONTADO = 1;
     public const CONDICION_CREDITO = 2;    
+    public const TIPO_VENTA    = 'VENTA';
+    public const TIPO_ANTICIPO = 'ANTICIPO';
 
     protected $table      = 'venta_cab';
     protected $primaryKey = 'ven_id';
@@ -35,6 +38,7 @@ class VentaCab extends Model
         'ven_exenta', 'ven_grav5', 'ven_grav10', 'ven_subtotal', 'ven_total',
         'ven_iva5', 'ven_iva10', 'ven_totiva',
         'ven_estado', 'ven_obs', 'ven_anulado', 'ven_anusid', 'ven_motanu',
+        'ven_tipo', 'ven_antvenid', 'ven_antapl', 'ven_antlib', 'ven_fechlib', 'ven_usulib', 'ven_ncvlib',
     ];
 
     protected $casts = [
@@ -61,6 +65,12 @@ class VentaCab extends Model
         'ven_totiva'      => 'decimal:2',
         'ven_creado'      => 'datetime',
         'ven_anulado'     => 'datetime',
+        'ven_antvenid'    => 'integer',
+        'ven_antapl'      => 'decimal:2',
+        'ven_antlib'      => 'decimal:2',
+        'ven_fechlib'     => 'datetime',
+        'ven_usulib'      => 'integer',
+        'ven_ncvlib'      => 'integer',
     ];
 
     /**
@@ -185,4 +195,182 @@ class VentaCab extends Model
         return round((float) $this->ven_total - $this->totalAcreditado() - $this->totalCobrado(), 2);
     }
 
+    // ---------- Anticipo ----------
+
+    public function esAnticipo(): bool
+    {
+        return $this->ven_tipo === self::TIPO_ANTICIPO;
+    }
+
+    /** En una final: la factura de anticipo que aplica. */
+    public function anticipoAplicado(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'ven_antvenid', 'ven_id');
+    }
+
+    /** En un anticipo: las finales que lo aplican (vigente, como máximo una). */
+    public function aplicaciones(): HasMany
+    {
+        return $this->hasMany(self::class, 'ven_antvenid', 'ven_id');
+    }
+
+      /** En un anticipo: importe consumido por finales vigentes, menos lo liberado. */
+    public function totalAplicado(): float
+    {
+        return (float) $this->aplicaciones()->vigente()
+            ->selectRaw('COALESCE(SUM(ven_antapl - ven_antlib), 0) AS aplicado')
+            ->value('aplicado');
+    }
+
+     /** En una final: ¿el anticipo que aplicó sigue consumido? */
+    public function anticipoLiberado(): bool
+    {
+        return (float) $this->ven_antlib > 0;
+    }
+
+    /**
+     * En un anticipo: lo que todavía se puede aplicar o devolver.
+     * La API no lleva este saldo (guía 0.54.1, cap. 29): es de este sistema.
+     */
+    public function disponibleAnticipo(): float
+    {
+        if (!$this->esAnticipo() || !$this->esVigente()) {
+            return 0.0;
+        }
+
+        return max(0.0, round(
+            (float) $this->ven_total - $this->totalAcreditado() - $this->totalAplicado(), 2
+        ));
+    }
+
+    /** En una final: total antes de aplicar el anticipo (neto + aplicado). */
+    public function totalBruto(): float
+    {
+        return round((float) $this->ven_total + (float) $this->ven_antapl, 2);
+    }
+
+        /** Devoluciones de dinero respaldadas por las NC de esta factura. */
+    public function devoluciones(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            DevolucionVenta::class, NotaCreditoVenta::class,
+            'ncv_venid', 'dev_ncvid', 'ven_id', 'ncv_id'
+        );
+    }
+
+    public function totalDevuelto(): float
+    {
+        return (float) $this->devoluciones()
+            ->where('devolucion_venta.dev_estado', DevolucionVenta::ESTADO_ACTIVA)
+            ->sum('dev_monto');
+    }
+
+    /**
+     * En un anticipo: dinero RECIBIDO que no se aplicó en la final ni se
+     * devolvió todavía. Distinto de disponibleAnticipo(), que es el saldo
+     * FISCAL (lo que falta acreditar con NC).
+     */
+    public function dineroAnticipoPorDevolver(): float
+    {
+        if (!$this->esAnticipo()) {
+            return 0.0;
+        }
+
+        return max(0.0, round($this->totalCobrado() - $this->totalAplicado() - $this->totalDevuelto(), 2));
+    }
+
+    /**
+     * Dinero cobrado de más que hay que devolver al cliente.
+     *   Anticipo: recibido − aplicado − devuelto.
+     *   Otra factura: cobrado − lo que sigue debiendo (total − NC) − devuelto.
+     */
+    public function dineroPorDevolver(): float
+    {
+        if ($this->esAnticipo()) {
+            return $this->dineroAnticipoPorDevolver();
+        }
+
+        $deuda = max(0.0, (float) $this->ven_total - $this->totalAcreditado());
+
+        return max(0.0, round($this->totalCobrado() - $deuda - $this->totalDevuelto(), 2));
+    }
+
+        // ---------- Estado detallado (calculado) ----------
+
+    public function anuladaPor(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Usuario::class, 'ven_anusid', 'usu_id');
+    }
+
+    /**
+     * Estado de negocio calculado a partir de datos existentes: no se
+     * guarda ni amplía ck_ven_estado (ven_estado sigue siendo 1, 2 o 9).
+     *
+     * Final:    ANULADA · ACREDITADA_TOTAL · ACREDITADA_PARCIAL · COBRADA · PARCIAL · EMITIDA
+     * Anticipo: ANULADO · APLICADO · DEVUELTO · ACREDITADO · APLICADO_PARCIAL ·
+     *           ACREDITADO_PARCIAL · COBRADO · PARCIAL · EMITIDO
+     *
+     * @return array{codigo: string, etiqueta: string}
+     */
+    public function estadoDetalle(): array
+    {
+        $tol = 0.01;
+
+        if ($this->anulada()) {
+            return $this->esAnticipo() ? $this->etiquetaEstado('ANULADO', 'Anulado') : $this->etiquetaEstado('ANULADA', 'Anulada');
+        }
+
+        $total      = (float) $this->ven_total;
+        $cobrado    = $this->totalCobrado();
+        $acreditado = $this->totalAcreditado();
+
+        if ($this->esAnticipo()) {
+            $aplicado = $this->totalAplicado();
+
+            if ($aplicado + $acreditado + $tol >= $total) {
+                if ($aplicado > $tol) {
+                    return $this->etiquetaEstado('APLICADO', 'Aplicado');
+                }
+                if ($cobrado > $tol && $this->totalDevuelto() + $tol >= $cobrado) {
+                    return $this->etiquetaEstado('DEVUELTO', 'Devuelto');
+                }
+                return $this->etiquetaEstado('ACREDITADO', 'Acreditado');
+            }
+
+            return match (true) {
+                $aplicado > $tol                         => $this->etiquetaEstado('APLICADO_PARCIAL', 'Aplicado parcial'),
+                $acreditado > $tol                       => $this->etiquetaEstado('ACREDITADO_PARCIAL', 'Acreditado parcial'),
+                $this->ven_estado === self::ESTADO_COBRADA => $this->etiquetaEstado('COBRADO', 'Cobrado'),
+                $cobrado > $tol                          => $this->etiquetaEstado('PARCIAL', 'Pago parcial'),
+                default                                  => $this->etiquetaEstado('EMITIDO', 'Emitido'),
+            };
+        }
+
+        return match (true) {
+            $total > $tol && $acreditado + $tol >= $total => $this->etiquetaEstado('ACREDITADA_TOTAL', 'Acreditada total'),
+            $acreditado > $tol                         => $this->etiquetaEstado('ACREDITADA_PARCIAL', 'Acreditada parcial'),
+            $this->ven_estado === self::ESTADO_COBRADA => $this->etiquetaEstado('COBRADA', 'Cobrada'),
+            $cobrado > $tol                            => $this->etiquetaEstado('PARCIAL', 'Pago parcial'),
+            default                                    => $this->etiquetaEstado('EMITIDA', 'Emitida'),
+        };
+    }
+
+    /**
+     * ¿Se puede anular en el sistema? Mismas reglas que VentaService::anular()
+     * para servicio técnico; solo habilita el botón, la regla real vive allá.
+     */
+    public function anulableEnServicio(): bool
+    {
+        return !$this->anulada()
+            && !$this->fe?->bloqueaAnulacion()
+            && $this->totalAcreditado() <= 0
+            && !$this->cobros()->activo()->exists()
+            && !($this->esAnticipo() && $this->aplicaciones()->vigente()->exists());
+    }
+
+    /** @return array{codigo: string, etiqueta: string} */
+    private function etiquetaEstado(string $codigo, string $etiqueta): array
+    {
+        return ['codigo' => $codigo, 'etiqueta' => $etiqueta];
+    }
 }

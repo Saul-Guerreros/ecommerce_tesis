@@ -1,6 +1,102 @@
-/* Subtítulos de las columnas del footer: sin mayúsculas forzadas */
-.tm-footer-titulo {
-  margin-bottom: 12px;
-  font-size: 0.9375rem;
-  text-transform: none;
+/* Footer compacto: sin uk-section (que agrega mucho padding) */
+.tm-ft {
+  padding: 36px 0 0;
+}
+
+/* Mismo blanco suave para todo el texto secundario */
+.tm-ft-desc,
+.tm-ft-links a,
+.tm-ft-contacto li,
+.tm-ft-contacto a,
+.tm-ft-redes a,
+.tm-ft-inferior,
+.tm-ft-inferior .uk-text-muted {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Íconos (UIkit usa currentColor): heredan el mismo blanco suave */
+.tm-ft-contacto [uk-icon],
+.tm-ft-contacto svg,
+.tm-ft-redes svg,
+.tm-ft-inferior [uk-icon],
+.tm-ft-inferior svg {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.tm-ft-links a:hover,
+.tm-ft-contacto a:hover,
+.tm-ft-redes a:hover {
+  color: #fff !important;
+  text-decoration: none;
+}
+
+.tm-ft-desc {
+  margin: 12px 0 0;
+  max-width: 320px;
+  line-height: 1.6;
+}
+
+/* Títulos: blanco fuerte */
+.tm-ft-titulo {
+  margin: 0 0 12px;
+  color: #fff !important;
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tm-ft-links {
+  margin: 0;
+}
+
+.tm-ft-links > li {
+  margin-top: 6px !important;
+  font-size: 0.875rem;
+}
+
+.tm-ft-links > li:first-child {
+  margin-top: 0 !important;
+}
+
+.tm-ft-contacto {
+  margin: 14px 0 0;
+}
+
+.tm-ft-contacto > li {
+  margin-top: 4px !important;
+}
+
+.tm-ft-redes {
+  margin-top: 14px;
+}
+
+/* Barra inferior: íconos al lado del texto */
+.tm-ft-inferior {
+  gap: 14px;
+  margin-top: 28px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tm-ft-inferior .uk-iconnav {
+  margin: 0;
+}
+
+@media (max-width: 959px) {
+  .tm-ft {
+    padding-top: 28px;
+  }
+
+  .tm-ft-titulo {
+    white-space: normal;
+  }
+}
+
+/* Íconos en línea: toman el color del texto (currentColor) */
+.tm-ft-ico {
+  width: 17px;
+  height: 17px;
+  margin-right: 8px;
+  vertical-align: -3px;
+  flex-shrink: 0;
 }

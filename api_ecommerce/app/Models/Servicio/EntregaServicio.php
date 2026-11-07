@@ -12,9 +12,11 @@ class EntregaServicio extends Model
     protected $table = 'entrega_servicio';
     protected $primaryKey = 'ese_id';
     public $timestamps = false;
+        public const TIPO_ENTREGA    = 'ENTREGA';
+    public const TIPO_DEVOLUCION = 'DEVOLUCION';
 
     protected $fillable = [
-        'ese_sseid', 'ese_tenid', 'ese_sucid', 'ese_dirid',
+        'ese_sseid', 'ese_tipo', 'ese_tenid', 'ese_sucid', 'ese_dirid',
         'ese_nrodoc', 'ese_nombre', 'ese_apelli', 'ese_telef', 'ese_titula',
         'ese_departa', 'ese_ciudad', 'ese_barrio', 'ese_calle', 'ese_nrocasa', 'ese_referencia',
         'ese_cosenv', 'ese_obs', 'ese_fecha', 'ese_usuid',

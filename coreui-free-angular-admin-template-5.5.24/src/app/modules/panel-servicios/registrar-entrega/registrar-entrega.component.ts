@@ -1,18 +1,14 @@
-import { Component, DestroyRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
+import { Component, DestroyRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
-import { of, switchMap } from 'rxjs';
 import { ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
 import { EntregaConfig, PanelFila } from '../models/panel-servicio.model';
 import { PanelServiciosService } from '../service/panel-servicios.service';
-import { CobroDetalle, MetodoPagoOpcion } from '../../cobros-servicio/models/cobro-servicio.model';
+import { ERROR_FACTURACION,} from '../../cobros-servicio/datos-facturacion-servicio/datos-facturacion-servicio.component';
+import { CobroDetalle, PagoServicio , MetodoPagoOpcion} from '../../cobros-servicio/models/cobro-servicio.model';
 import { CobrosServicioService } from '../../cobros-servicio/service/cobros-servicio.service';
-import {
-  DatosFacturacionServicioComponent, ERROR_FACTURACION,
-} from '../../cobros-servicio/datos-facturacion-servicio/datos-facturacion-servicio.component';
-
 /**
  * A5 - Registrar entrega. Receptor (titular o tercero con C.I.), checklist
  * de accesorios devueltos y, al terminar, la constancia de retiro.
@@ -28,7 +24,7 @@ import {
 @Component({
   selector: 'app-registrar-entrega',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonModule, FormModule, ModalModule, SpinnerModule, DatosFacturacionServicioComponent],
+  imports: [CommonModule, ReactiveFormsModule, ButtonModule, FormModule, ModalModule, SpinnerModule],
   templateUrl: './registrar-entrega.component.html',
 })
 export class RegistrarEntregaComponent implements OnChanges {
@@ -38,9 +34,6 @@ export class RegistrarEntregaComponent implements OnChanges {
   @Input() fila: PanelFila | null = null;
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() guardado = new EventEmitter<void>();
-
-  /** Solo existe cuando se cobra y entrega en la misma operación. */
-  @ViewChild(DatosFacturacionServicioComponent) datosFacturacion?: DatosFacturacionServicioComponent;
 
   cfg: EntregaConfig | null = null;
   form: FormGroup;
@@ -55,6 +48,8 @@ export class RegistrarEntregaComponent implements OnChanges {
   guardando = false;
   entregado = false;
   devueltos = new Set<number>();
+    /** Único pago pendiente de la factura final (lo cobra A5). */
+  pendiente: PagoServicio | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -62,10 +57,11 @@ export class RegistrarEntregaComponent implements OnChanges {
     private cobros: CobrosServicioService,
     private toastr: ToastrService,
   ) {
+    // El medio y el monto salen del pago declarado en la factura final.
     this.cobroForm = this.fb.group({
-      mpa_codigo: ['', Validators.required],
       nro_transaccion: ['', Validators.maxLength(50)],
       banco: ['', Validators.maxLength(60)],
+      fecha_pago: [''],
       observacion: ['', Validators.maxLength(255)],
     });
     this.cobroForm.get('mpa_codigo')!.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
@@ -124,24 +120,57 @@ export class RegistrarEntregaComponent implements OnChanges {
     this.ajustar();
   }
 
-  /** Datos del cobro: solo hacen falta si la entrega está bloqueada por la regla 7. */
+   /** Datos del cobro: solo hacen falta si la entrega está bloqueada por la regla 7. */
   private cargarCobro(): void {
     if (!this.fila) return;
-    this.cobros.config().subscribe({ next: (res) => (this.metodos = res.data.metodos) });
+    this.pendiente = null;
     this.cobros.detalle(this.fila.sse_id).subscribe({
-      next: (res) => (this.cobro = res.data),
+      next: (res) => {
+        this.cobro = res.data;
+        const pendientes = res.data.pagos.filter((p) => p.estado.codigo === 'PAGO_VERIFICAR');
+        this.pendiente = pendientes.length === 1 ? pendientes[0] : null;
+
+        const ref = this.cobroForm.get('nro_transaccion')!;
+        ref.setValidators(this.cobroRequiereReferencia ? [Validators.required, Validators.maxLength(50)] : [Validators.maxLength(50)]);
+        ref.updateValueAndValidity({ emitEvent: false });
+      },
       error: () => (this.cobro = null),   // sin permiso de cobros: queda el bloqueo de siempre
     });
-    this.cobroForm.reset({ mpa_codigo: '', nro_transaccion: '', banco: '', observacion: '' });
+    const d = new Date();
+    this.cobroForm.reset({
+      nro_transaccion: '', banco: '', observacion: '',
+      fecha_pago: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+    });
     this.archivoCobro = null;
     this.errorArchivoCobro = null;
   }
 
-  /** Lo habilita el backend (acciones.cobrar) y que no haya pagos web esperando verificación. */
+  /** Factura final emitida, un único pago pendiente y cobrable por este usuario. */
   get puedeCobrarYEntregar(): boolean {
     const c = this.cobro;
-    return !!this.cfg && !this.cfg.cobro.habilitado && !!c?.acciones.cobrar
-      && c.resumen.saldo > 0 && c.resumen.en_verificacion === 0;
+    return !!this.cfg && !this.cfg.cobro.habilitado && !!c?.acciones.cobrar_entregar
+      && !!c.facturas.final && !!this.pendiente?.puede_cobrar;
+  }
+
+  /** Por qué no se puede cobrar acá (se resuelve en la sección Pagos). */
+  get motivoSinCobro(): string | null {
+    const c = this.cobro;
+    if (!c || this.puedeCobrarYEntregar) return null;
+    if (!c.facturas.final) return 'Primero generá la factura en la sección Pagos.';
+    const pendientes = c.pagos.filter((p) => p.estado.codigo === 'PAGO_VERIFICAR').length;
+    if (pendientes > 1) return 'Hay varios pagos pendientes: cobralos uno por uno en la sección Pagos.';
+    if (this.pendiente && !this.pendiente.puede_cobrar) {
+      return this.pendiente.comprobante && !this.pendiente.comprobante.validado
+        ? 'El comprobante del pago web todavía no fue validado.'
+        : 'La factura todavía no tiene su documento electrónico.';
+    }
+    return null;
+  }
+
+
+  /** Transferencia o giro declarado en el mostrador: la referencia es obligatoria. */
+  get cobroRequiereReferencia(): boolean {
+    return !!this.pendiente?.metodo.requcom && this.pendiente.canal === 'MOSTRADOR';
   }
 
   get pagosEnVerificacion(): boolean {
@@ -150,11 +179,6 @@ export class RegistrarEntregaComponent implements OnChanges {
 
   get mostrarFormulario(): boolean {
     return !!this.cfg && (this.cfg.cobro.habilitado || this.puedeCobrarYEntregar);
-  }
-
-  get cobroRequiereReferencia(): boolean {
-    const codigo = this.cobroForm?.get('mpa_codigo')?.value;
-    return this.metodos.find((m) => m.mpa_codigo === codigo)?.mpa_requcom ?? false;
   }
 
   cobroInvalido(campo: string): boolean {
@@ -250,24 +274,24 @@ export class RegistrarEntregaComponent implements OnChanges {
     });
   }
 
-  /** Cobro del saldo + entrega en una transacción (si algo falla, no queda ni el cobro). */
+    /** Cobro del pago pendiente + entrega en una transacción (si algo falla, no queda ni el cobro). */
   private cobrarYEntregar(entrega: Record<string, unknown>): void {
-    if (this.cobroForm.invalid || this.errorArchivoCobro || !this.fila || this.datosFacturacion?.cargando) {
+    if (this.cobroForm.invalid || this.errorArchivoCobro || !this.fila) {
       this.cobroForm.markAllAsTouched();
       return;
     }
 
-    const sseId = this.fila.sse_id;
-    const facturacion$ = this.datosFacturacion ? this.datosFacturacion.guardar() : of(null);
     const datos = CobrosServicioService.formData({
       ...entrega,
       accesorios: [...this.devueltos],
-      cobro: { ...this.cobroForm.getRawValue(), comprobante: this.archivoCobro },
+      cobro: {
+        ...this.cobroForm.getRawValue(),
+        comprobante: this.pendiente?.canal === 'MOSTRADOR' ? this.archivoCobro : null,
+      },
     });
 
     this.guardando = true;
-    // 1) datos fiscales  2) cobro + entrega (una transacción en el backend)
-    facturacion$.pipe(switchMap(() => this.cobros.cobrarYEntregar(sseId, datos))).subscribe({
+    this.cobros.cobrarYEntregar(this.fila.sse_id, datos).subscribe({
       next: (res) => {
         this.guardando = false;
         this.entregado = true;
@@ -276,10 +300,8 @@ export class RegistrarEntregaComponent implements OnChanges {
       },
       error: (err) => {
         this.guardando = false;
-        if (err === ERROR_FACTURACION) return;   // ya marcado junto a los campos fiscales
         if (err.status === 422 && err.error?.errors) {
           Object.entries(err.error.errors as Record<string, string[]>).forEach(([c, m]) => {
-            // Los errores del cobro llegan como "cobro.campo".
             const control = c.startsWith('cobro.') ? this.cobroForm.get(c.slice(6)) : this.form.get(c);
             if (control) { control.setErrors({ backend: m[0] }); control.markAsTouched(); }
             else this.toastr.error(m[0], 'Validación');

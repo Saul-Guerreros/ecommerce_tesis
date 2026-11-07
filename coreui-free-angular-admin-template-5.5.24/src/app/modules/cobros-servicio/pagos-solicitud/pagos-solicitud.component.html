@@ -1,26 +1,35 @@
 <div class="text-center py-3" *ngIf="cargando && !detalle"><c-spinner size="sm" color="primary"></c-spinner></div>
 
 <ng-container *ngIf="detalle as d">
+  <!-- Resumen y acciones generales -->
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
     <div class="small">
       <ng-container *ngIf="d.resumen.consolidado">
-        Total <strong>Gs. {{ formatoGs(d.resumen.total) }}</strong> ·
-        Pagado <strong class="text-success">Gs. {{ formatoGs(d.resumen.confirmado) }}</strong>
-        <ng-container *ngIf="d.resumen.en_verificacion > 0"> · En verificación Gs. {{ formatoGs(d.resumen.en_verificacion) }}</ng-container>
-        · Saldo <strong [class.text-danger]="d.resumen.saldo > 0">Gs. {{ formatoGs(d.resumen.saldo) }}</strong>
+        Total <strong>Gs. {{ formatoGs(d.resumen.total) }}</strong>
+        <ng-container *ngIf="d.resumen.anticipo > 0"> · Anticipo Gs. {{ formatoGs(d.resumen.anticipo) }}</ng-container>
+        · Cobrado <strong class="text-success">Gs. {{ formatoGs(d.resumen.confirmado) }}</strong>
+        <ng-container *ngIf="d.resumen.en_verificacion > 0"> · Por cobrar Gs. {{ formatoGs(d.resumen.en_verificacion) }}</ng-container>
+        · Saldo sin medio <strong [class.text-danger]="d.resumen.saldo > 0">Gs. {{ formatoGs(d.resumen.saldo) }}</strong>
       </ng-container>
       <ng-container *ngIf="!d.resumen.consolidado">
         Total aún no definido (se fija al terminar la reparación).
-        <ng-container *ngIf="d.resumen.confirmado > 0"> Anticipos: <strong>Gs. {{ formatoGs(d.resumen.confirmado) }}</strong>.</ng-container>
+        <ng-container *ngIf="d.resumen.anticipo > 0"> Anticipo: <strong>Gs. {{ formatoGs(d.resumen.anticipo) }}</strong>.</ng-container>
       </ng-container>
       <c-badge class="ms-2" [color]="colorEstado(d.estado_pago.codigo)" *ngIf="d.estado_pago">{{ d.estado_pago.descripcion }}</c-badge>
-      <div class="text-muted" *ngIf="!d.resumen.admite_pagos">Este servicio no genera cobros (garantía o sin monto).</div>
+      <div class="text-muted" *ngIf="!d.resumen.admite_pagos && !d.devolucion">Este servicio no genera cobros (garantía o sin monto).</div>
     </div>
-    <button cButton size="sm" color="success" class="text-white" *ngIf="puedeRegistrarCobro" (click)="cobroVisible = true">
-      {{ d.resumen.consolidado ? 'Registrar cobro' : 'Registrar anticipo' }}
-    </button>
+
+    <div class="text-nowrap">
+      <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="d.acciones.declarar_anticipo"
+              (click)="abrirGenerar('anticipo')">Registrar anticipo</button>
+      <button cButton size="sm" color="primary" class="me-2 text-white" *ngIf="d.acciones.generar_anticipo"
+              (click)="abrirGenerar('anticipo-web')">Generar factura de anticipo</button>
+      <button cButton size="sm" color="primary" class="me-2 text-white" *ngIf="d.acciones.generar_factura"
+              (click)="abrirGenerar('final')">Generar factura</button>
+    </div>
   </div>
 
+  <!-- Pagos -->
   <div class="small text-muted" *ngIf="d.pagos.length === 0">Sin pagos registrados.</div>
 
   <div class="table-responsive" *ngIf="d.pagos.length > 0">
@@ -31,46 +40,127 @@
       <tbody>
         <tr *ngFor="let p of d.pagos">
           <td>{{ p.orden }}</td>
-          <td class="small">{{ p.tipo }}<div class="text-muted">{{ p.canal === 'WEB' ? 'Web' : 'Mostrador' }}</div></td>
+          <td class="small">{{ p.tipo === 'ANTICIPO' ? 'Anticipo' : p.tipo === 'TOTAL' ? 'Total' : 'Saldo' }}
+            <div class="text-muted">{{ p.canal === 'WEB' ? 'Web' : 'Mostrador' }}</div></td>
           <td class="small">{{ p.metodo.descri }}</td>
           <td class="text-end text-nowrap">Gs. {{ formatoGs(p.monto_asignado) }}</td>
-          <td><c-badge [color]="colorEstado(p.estado.codigo)">{{ p.estado.descripcion }}</c-badge></td>
+          <td><c-badge [color]="colorEstado(p.estado.codigo)">{{ etiquetaEstado(p) }}</c-badge></td>
           <td class="small">
-            <div *ngIf="p.cobro">Cobró {{ p.cobro.por }}<span *ngIf="p.cobro.sucursal"> · {{ p.cobro.sucursal }}</span></div>
-            <div *ngIf="p.verificacion && !p.cobro">Verificó {{ p.verificacion.por }} · {{ p.verificacion.fecha }}</div>
-            <div *ngIf="p.verificacion?.nro_transaccion">Ref. {{ p.verificacion?.nro_transaccion }}</div>
+            <div *ngIf="p.comprobante">
+              Comprobante {{ p.comprobante.validado ? 'validado' : 'sin validar' }}
+              <span *ngIf="p.comprobante.validacion"> por {{ p.comprobante.validacion.por }} · {{ p.comprobante.validacion.fecha }}</span>
+            </div>
+            <div *ngIf="p.cobro">
+              Cobró {{ p.cobro.por }} · {{ p.cobro.fecha }} · Gs. {{ formatoGs(p.cobro.monto) }}
+              <span *ngIf="p.cobro.nro_transaccion"> · Ref. {{ p.cobro.nro_transaccion }}</span>
+            </div>
+            <div *ngIf="p.cajero && !p.cobro">Registró {{ p.cajero.por }}<span *ngIf="p.cajero.sucursal"> · {{ p.cajero.sucursal }}</span></div>
+            <div *ngIf="p.verificacion">Verificó {{ p.verificacion.por }} · {{ p.verificacion.fecha }}</div>
+            <div class="text-info" *ngIf="esperandoDocumento(p)">Esperando el documento electrónico de la factura…</div>
             <div class="text-danger" *ngIf="p.rechazo">{{ p.rechazo.motivo }}<span *ngIf="p.rechazo.detalle && p.rechazo.detalle !== p.rechazo.motivo">: {{ p.rechazo.detalle }}</span></div>
             <div class="text-muted" *ngIf="p.observacion">{{ p.observacion }}</div>
           </td>
           <td class="text-end text-nowrap">
             <button cButton size="sm" color="info" class="me-2 text-white" *ngIf="p.comprobante"
                     [disabled]="procesandoId === p.spa_id" (click)="verComprobante(p)">Comprobante</button>
-            <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="puedeVerificar(p)"
-                    (click)="abrir('confirmar', p)">Verificar</button>
-            <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="puedeCobrarAlRetirar(p)"
-                    [disabled]="procesandoId === p.spa_id" (click)="cobrarAlRetirar(p)">Cobrar efectivo</button>
-            <button cButton size="sm" color="danger" class="me-2 text-white" *ngIf="puedeRechazarEfectivo(p)"
+            <button cButton size="sm" color="primary" class="me-2 text-white" *ngIf="p.puede_validar"
+                    (click)="abrir('validar', p)">Validar</button>
+            <button cButton size="sm" color="success" class="me-2 text-white" *ngIf="p.puede_cobrar"
+                    (click)="abrir('cobrar', p)">Cobrar</button>
+            <button cButton size="sm" color="danger" class="me-2 text-white" *ngIf="p.puede_rechazar"
                     (click)="abrir('rechazar', p)">Rechazar</button>
+            <button cButton size="sm" color="danger" class="me-2 text-white" *ngIf="p.cobro?.puede_anular"
+                    (click)="abrirAnularCobro(p)">Anular cobro</button>
           </td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <!-- Factura del servicio (garantía / sin monto: no hay factura que mostrar) -->
-  <ng-container *ngIf="d.resumen.admite_pagos || d.resumen.total > 0">
+  <!-- Factura de anticipo -->
+  <ng-container *ngIf="d.facturas.anticipo">
+    <hr />
+    <h6 class="text-muted text-uppercase small">Factura de anticipo</h6>
+    <app-factura-servicio [solicitudId]="d.sse_id" tipo="ANTICIPO" [factura]="d.facturas.anticipo"
+                          (cambio)="recargar()"></app-factura-servicio>
+  </ng-container>
+
+  <!-- Factura final -->
+  <ng-container *ngIf="d.facturas.final || (d.resumen.consolidado && d.resumen.total > 0)">
     <hr />
     <h6 class="text-muted text-uppercase small">Factura</h6>
-    <app-factura-servicio [solicitudId]="d.sse_id" [refresco]="refrescoFactura"></app-factura-servicio>
+    <app-factura-servicio *ngIf="d.facturas.final" [solicitudId]="d.sse_id" tipo="VENTA" [factura]="d.facturas.final"
+                          (cambio)="recargar()"></app-factura-servicio>
+    <div class="small text-muted" *ngIf="!d.facturas.final">
+      Sin factura. Se genera con el equipo LISTO desde “Generar factura”.
+    </div>
+  </ng-container>
+
+    <!-- Facturas anuladas (trazabilidad) -->
+  <ng-container *ngIf="d.anuladas.length > 0">
+    <hr />
+    <button cButton size="sm" color="link" class="p-0 text-decoration-none" (click)="verAnuladas = !verAnuladas">
+      {{ verAnuladas ? '▾' : '▸' }} Facturas anuladas ({{ d.anuladas.length }})
+    </button>
+    <div class="table-responsive mt-2" *ngIf="verAnuladas">
+      <table cTable small striped class="mb-0">
+        <thead>
+          <tr><th>Factura</th><th>Tipo</th><th class="text-end">Total</th><th>DNIT</th><th>Anulada</th><th>Motivo</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let a of d.anuladas">
+            <td class="small">{{ a.numero }}<div class="text-muted">{{ a.fecha }}</div></td>
+            <td class="small">{{ a.tipo === 'ANTICIPO' ? 'Anticipo' : 'Final' }}</td>
+            <td class="text-end text-nowrap">Gs. {{ formatoGs(a.total) }}</td>
+            <td class="small">{{ a.fe?.estado ?? 'Sin FE' }}</td>
+            <td class="small">{{ a.anulada }}<div class="text-muted" *ngIf="a.por">{{ a.por }}</div></td>
+            <td class="small">{{ a.motivo }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+
+  <!-- Devoluciones -->
+  <ng-container *ngIf="d.devolucion">
+    <hr />
+    <h6 class="text-muted text-uppercase small">Notas de crédito y devoluciones</h6>
+    <app-devolucion-servicio [detalle]="d" (guardado)="onGuardado($event)"></app-devolucion-servicio>
   </ng-container>
 </ng-container>
 
-<app-confirmar-pago-servicio [visible]="confirmarVisible" [detalle]="detalle" [pago]="seleccionado"
-  (visibleChange)="confirmarVisible = $event" (guardado)="onGuardado($event)"
-  (rechazar)="abrir('rechazar', $event)"></app-confirmar-pago-servicio>
+<app-validar-comprobante-servicio [visible]="validarVisible" [detalle]="detalle" [pago]="seleccionado"
+  (visibleChange)="validarVisible = $event" (guardado)="onGuardado($event)"
+  (rechazar)="abrir('rechazar', $event)"></app-validar-comprobante-servicio>
 
 <app-rechazar-pago-servicio [visible]="rechazarVisible" [detalle]="detalle" [pago]="seleccionado"
   (visibleChange)="rechazarVisible = $event" (guardado)="onGuardado($event)"></app-rechazar-pago-servicio>
 
-<app-registrar-cobro [visible]="cobroVisible" [detalle]="detalle"
+<app-registrar-cobro [visible]="cobroVisible" [detalle]="detalle" [pago]="seleccionado"
   (visibleChange)="cobroVisible = $event" (guardado)="onGuardado($event)"></app-registrar-cobro>
+
+<app-generar-factura-servicio [visible]="generarVisible" [detalle]="detalle" [modo]="modoGenerar"
+  (visibleChange)="generarVisible = $event" (guardado)="onGuardado($event)"></app-generar-factura-servicio>
+
+<c-modal [visible]="anularVisible" (visibleChange)="anularVisible = $event" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>Anular cobro — pago {{ cobroAnular?.orden }}</h5>
+    <button cButtonClose (click)="anularVisible = false"></button>
+  </c-modal-header>
+  <c-modal-body>
+    <p class="small mb-2">
+      Cobro de <strong>Gs. {{ formatoGs(cobroAnular?.cobro?.monto ?? 0) }}</strong> del {{ cobroAnular?.cobro?.fecha }}.
+      El pago vuelve a quedar pendiente y se cobra de nuevo con los datos correctos. El cobro no se borra: queda anulado.
+    </p>
+    <label cLabel>Motivo <span class="text-danger">*</span></label>
+    <textarea cFormControl rows="2" maxlength="255" [(ngModel)]="motivoAnular" [class.is-invalid]="errorAnular"></textarea>
+    <div class="text-danger small" *ngIf="errorAnular">{{ errorAnular }}</div>
+  </c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="anularVisible = false" [disabled]="anulando">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="anularCobro()" [disabled]="anulando">
+      <c-spinner size="sm" *ngIf="anulando" class="me-1"></c-spinner>
+      Anular cobro
+    </button>
+  </c-modal-footer>
+</c-modal>

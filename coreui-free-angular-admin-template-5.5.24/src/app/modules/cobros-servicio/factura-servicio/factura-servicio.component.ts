@@ -1,19 +1,19 @@
-import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { AlertModule, BadgeModule, ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
-import { FacturaServicio } from '../models/factura-servicio.model';
+import { FacturaServicio, TipoFactura } from '../models/factura-servicio.model';
 import { CobrosServicioService } from '../service/cobros-servicio.service';
 
 /**
- * Sección "Factura" de una solicitud: número, cliente, estado ante la DNIT
- * (SIFEN) y acciones (KuDE, XML, reintentar, reenviar por correo y WhatsApp
- * asistido). Equivale a lo que el detalle del pedido muestra de su factura.
+ * Una factura del servicio (final o de anticipo): número, estado ante la
+ * DNIT, anticipo aplicado/disponible y acciones (KuDE, XML, reintentar,
+ * reenviar, WhatsApp asistido).
  *
- * La factura la emite el backend al quedar CONFIRMADO el cobro: acá no se
- * emite nada. 'refresco' cambia cada vez que la sección Pagos registra algo.
- * Qué acciones se ven lo decide el backend (acciones.reintentar / reenviar).
+ * Recibe la factura ya armada en el detalle de cobro (no hace su propia
+ * petición). Tras reintentar o reenviar emite 'cambio' y el contenedor
+ * vuelve a leer el detalle.
  */
 @Component({
   selector: 'app-factura-servicio',
@@ -21,46 +21,50 @@ import { CobrosServicioService } from '../service/cobros-servicio.service';
   imports: [CommonModule, FormsModule, AlertModule, BadgeModule, ButtonModule, FormModule, ModalModule, SpinnerModule],
   templateUrl: './factura-servicio.component.html',
 })
-export class FacturaServicioComponent implements OnChanges, OnDestroy {
+export class FacturaServicioComponent implements OnDestroy {
   @Input() solicitudId: number | null = null;
-  @Input() refresco = 0;
+  @Input() tipo: TipoFactura = 'VENTA';
+  @Input() factura: FacturaServicio | null = null;
+  @Output() cambio = new EventEmitter<void>();
 
-  factura: FacturaServicio | null = null;
-  cargando = false;
-  procesando: 'kude' | 'xml' | 'reintentar' | 'reenviar' | null = null;
-
+   procesando: 'kude' | 'xml' | 'reintentar' | 'reenviar' | 'anular' | null = null;
   reenvioVisible = false;
   destino = '';
   errorDestino: string | null = null;
+  anularVisible = false;
+  motivoAnular = '';
+  errorAnular: string | null = null;
 
   private espera?: ReturnType<typeof setTimeout>;
 
   constructor(private service: CobrosServicioService, private toastr: ToastrService) {}
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if ((changes['solicitudId'] || changes['refresco']) && this.solicitudId) this.cargar();
-  }
-
   ngOnDestroy(): void {
     clearTimeout(this.espera);
   }
 
-  cargar(): void {
-    if (!this.solicitudId) return;
-    this.cargando = true;
-    this.service.factura(this.solicitudId).subscribe({
-      next: (res) => { this.factura = res.data; this.cargando = false; },
-      error: () => { this.cargando = false; this.toastr.error('No se pudo cargar la factura', 'Error'); },
-    });
-  }
-
-  // ---------- Vista ----------
+  get esAnticipo(): boolean { return this.tipo === 'ANTICIPO'; }
+  get etiqueta(): string { return this.esAnticipo ? 'Factura de anticipo' : 'Factura'; }
 
   colorEstado(estado?: string): string {
-    return ({ APROBADA: 'success', PENDIENTE: 'warning', RECHAZADA: 'danger' } as Record<string, string>)[estado ?? ''] ?? 'secondary';
+    return ({
+      APROBADA: 'success', PREPARADA: 'info', PENDIENTE: 'warning',
+      RECHAZADA: 'danger', RETIRADA: 'danger', CANCELADA: 'dark', INUTILIZADA: 'dark',
+    } as Record<string, string>)[estado ?? ''] ?? 'secondary';
   }
 
-  formatoGs(valor: number): string {
+    /** Color del estado de negocio (estado_detalle). */
+  colorDetalle(codigo?: string): string {
+    return ({
+      COBRADA: 'success', COBRADO: 'success', APLICADO: 'success',
+      PARCIAL: 'warning', APLICADO_PARCIAL: 'info',
+      ACREDITADA_PARCIAL: 'info', ACREDITADO_PARCIAL: 'info',
+      ACREDITADA_TOTAL: 'dark', ACREDITADO: 'dark', DEVUELTO: 'dark',
+      ANULADA: 'secondary', ANULADO: 'secondary',
+    } as Record<string, string>)[codigo ?? ''] ?? 'light';
+  }
+
+  formatoGs(valor: number | undefined | null): string {
     return new Intl.NumberFormat('es-PY', { maximumFractionDigits: 0 }).format(valor ?? 0);
   }
 
@@ -69,7 +73,7 @@ export class FacturaServicioComponent implements OnChanges, OnDestroy {
   verKude(): void {
     if (!this.solicitudId || this.procesando) return;
     this.procesando = 'kude';
-    this.service.kudeFactura(this.solicitudId).subscribe({
+    this.service.kudeFactura(this.solicitudId, this.tipo).subscribe({
       next: (blob) => { this.procesando = null; this.service.abrirBlob(blob); },
       error: () => { this.procesando = null; this.toastr.error('El KuDE no está disponible', 'Error'); },
     });
@@ -78,8 +82,9 @@ export class FacturaServicioComponent implements OnChanges, OnDestroy {
   descargarXml(): void {
     if (!this.solicitudId || !this.factura || this.procesando) return;
     this.procesando = 'xml';
-    this.service.xmlFactura(this.solicitudId).subscribe({
-      next: (blob) => { this.procesando = null; this.service.descargarBlob(blob, `Factura_${this.factura!.numero}.xml`); },
+    const prefijo = this.esAnticipo ? 'Anticipo' : 'Factura';
+    this.service.xmlFactura(this.solicitudId, this.tipo).subscribe({
+      next: (blob) => { this.procesando = null; this.service.descargarBlob(blob, `${prefijo}_${this.factura!.numero}.xml`); },
       error: () => { this.procesando = null; this.toastr.error('El XML no está disponible', 'Error'); },
     });
   }
@@ -90,19 +95,22 @@ export class FacturaServicioComponent implements OnChanges, OnDestroy {
   reintentar(): void {
     if (!this.solicitudId || this.procesando) return;
     this.procesando = 'reintentar';
-    this.service.reintentarFactura(this.solicitudId).subscribe({
+    this.service.reintentarFactura(this.solicitudId, this.tipo).subscribe({
       next: (res) => {
         this.procesando = null;
-        this.toastr.info(res.message, 'Factura');
+        this.toastr.info(res.message, this.etiqueta);
         clearTimeout(this.espera);
-        this.espera = setTimeout(() => this.cargar(), 5000);
+        this.espera = setTimeout(() => this.cambio.emit(), 5000);
       },
       error: (err) => {
         this.procesando = null;
-        const errores = err?.error?.errors as Record<string, string[]> | undefined;
-        this.toastr.error(errores ? Object.values(errores)[0][0] : err?.error?.message ?? 'No se pudo reintentar', 'Error');
+        this.toastr.error(CobrosServicioService.mensajeError(err, 'No se pudo reintentar'), 'Error');
       },
     });
+  }
+
+  actualizar(): void {
+    this.cambio.emit();
   }
 
   abrirReenvio(): void {
@@ -117,23 +125,49 @@ export class FacturaServicioComponent implements OnChanges, OnDestroy {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destino)) { this.errorDestino = 'Ingrese un correo válido.'; return; }
 
     this.procesando = 'reenviar';
-    this.service.reenviarFactura(this.solicitudId, { canal: 'CORREO', destino }).subscribe({
+    this.service.reenviarFactura(this.solicitudId, { canal: 'CORREO', destino }, this.tipo).subscribe({
       next: (res) => {
         this.procesando = null;
         this.reenvioVisible = false;
         this.factura = res.data;
-        this.toastr.success(res.message, 'Factura enviada');
+        this.toastr.success(res.message, `${this.etiqueta} enviada`);
+        this.cambio.emit();
       },
       error: (err) => {
         this.procesando = null;
-        const errores = err?.error?.errors as Record<string, string[]> | undefined;
-        if (err?.status === 422 && errores) { this.errorDestino = Object.values(errores)[0][0]; return; }
+        if (err?.status === 422 && err?.error?.errors) { this.errorDestino = CobrosServicioService.mensajeError(err, ''); return; }
         this.toastr.error(err?.error?.message ?? 'No se pudo reenviar la factura', 'Error');
       },
     });
   }
 
-  // ---------- WhatsApp asistido (mismo criterio que el pedido) ----------
+    abrirAnular(): void {
+    this.motivoAnular = '';
+    this.errorAnular = null;
+    this.anularVisible = true;
+  }
+
+  anular(): void {
+    if (!this.solicitudId || this.procesando) return;
+    const motivo = this.motivoAnular.trim();
+    if (motivo.length < 5) { this.errorAnular = 'El motivo debe tener al menos 5 caracteres.'; return; }
+
+    this.procesando = 'anular';
+    this.service.anularFactura(this.solicitudId, motivo, this.tipo).subscribe({
+      next: (res) => {
+        this.procesando = null;
+        this.anularVisible = false;
+        this.toastr.success(res.message, this.etiqueta);
+        this.cambio.emit();
+      },
+      error: (err) => {
+        this.procesando = null;
+        this.errorAnular = CobrosServicioService.mensajeError(err, 'No se pudo anular la factura');
+      },
+    });
+  }
+
+  // ---------- WhatsApp asistido ----------
 
   /** Celular paraguayo en formato internacional sin "+": 0981123456 -> 595981123456. */
   private normalizarCelularPy(texto: string | null): string | null {
@@ -149,13 +183,13 @@ export class FacturaServicioComponent implements OnChanges, OnDestroy {
     if (!f || !numero) return null;
 
     const nombre = f.tipo_doc === 'CI' ? f.razon_social.trim().split(/\s+/)[0] : f.razon_social.trim();
+    const que = this.esAnticipo ? 'la factura del anticipo' : 'la factura';
     const consulta = f.fe?.qr ? ` Podés verificarla en: ${f.fe.qr}` : '';
-    const texto = `Hola ${nombre}, te enviamos la factura N.º ${f.numero} de tu servicio técnico.${consulta} ¡Gracias por confiar en nosotros!`;
+    const texto = `Hola ${nombre}, te enviamos ${que} N.º ${f.numero} de tu servicio técnico.${consulta} ¡Gracias por confiar en nosotros!`;
 
     return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
   }
 
-  /** Abre el chat; el KuDE se adjunta a mano (se descarga con "Ver KuDE"). */
   abrirWhatsapp(): void {
     const url = this.whatsappUrl;
     if (url) window.open(url, '_blank', 'noopener');

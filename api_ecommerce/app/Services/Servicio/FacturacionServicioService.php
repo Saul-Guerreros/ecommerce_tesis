@@ -73,9 +73,10 @@ class FacturacionServicioService
         ];
     }
 
+    /** Los datos fiscales se congelan con la primera factura (anticipo o final). */
     public function editable(SolicitudServicio $s): bool
     {
-        return !$s->factura()->exists();
+        return !$s->factura()->exists() && !$s->facturaAnticipo()->exists();
     }
 
     // ---------- Alta / cambio ----------

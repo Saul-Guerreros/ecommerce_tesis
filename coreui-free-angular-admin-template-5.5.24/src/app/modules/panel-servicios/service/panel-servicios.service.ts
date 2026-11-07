@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
-  CanalRespuesta, EntregaConfig, MedioContacto, PanelConfig, PanelPaginado, PanelResumen, ResultadoContacto,
+  CanalRespuesta, CancelacionConfig, EntregaConfig, MedioContacto, PanelConfig, PanelPaginado, PanelResumen, ResultadoContacto,
 } from '../models/panel-servicio.model';
 import { environment } from '../../../../environments/environment';
 
@@ -40,6 +40,14 @@ export class PanelServiciosService {
 
   registrarEntrega(id: number, datos: Record<string, unknown>): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.apiUrl}/${id}/entrega`, datos);
+  }
+
+  cancelacionConfig(id: number): Observable<{ data: CancelacionConfig }> {
+    return this.http.get<{ data: CancelacionConfig }>(`${this.apiUrl}/${id}/cancelacion`);
+  }
+
+  cancelar(id: number, datos: Record<string, unknown>): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/${id}/cancelar`, datos);
   }
 
   // ---------- Paso 2: aprobación asistida, contacto y PDF del presupuesto ----------

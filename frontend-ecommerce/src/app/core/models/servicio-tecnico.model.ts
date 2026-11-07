@@ -84,6 +84,7 @@ export interface ServicioCliente {
 export interface PagoServicioCliente {
   spa_id: number;
   orden: number;
+  tipo: 'ANTICIPO' | 'SALDO' | 'TOTAL';
   metodo: string | null;
   monto: number;
   estado: string | null;
@@ -94,7 +95,14 @@ export interface PagoServicioCliente {
   reemplazable: boolean;
 }
 
-/** Bloque "pago" del detalle C4. 'pagable' lo decide el backend. */
+/** EstadoPagoServicioService::anticipoWeb(): lo decide el backend. */
+export interface AnticipoWeb {
+  permitido: boolean;
+  /** null = sin tope (todavía no hay presupuesto aprobado). */
+  tope: number | null;
+}
+
+/** Bloque "pago" del detalle C4. 'pagable' y 'anticipo' los decide el backend. */
 export interface PagoServicioBloque {
   estado: string | null;
   total: number;
@@ -102,6 +110,7 @@ export interface PagoServicioBloque {
   en_verificacion: number;
   saldo: number;
   pagable: boolean;
+  anticipo: AnticipoWeb;
   pagos: PagoServicioCliente[];
 }
 
@@ -109,6 +118,7 @@ export interface PagoServicioBloque {
 export interface ResumenPagoServicio {
   total: number;
   consolidado: boolean;
+  anticipo: number;
   confirmado: number;
   en_verificacion: number;
   comprometido: number;
@@ -119,6 +129,7 @@ export interface ResumenPagoServicio {
 export interface ConfigPagoServicioResponse {
   servicio: { sse_numero: string };
   resumen: ResumenPagoServicio;
+  anticipo: AnticipoWeb;
   metodos: MetodoPagoOpcion[];
   datos_transferencia: DatosTransferencia;
   datos_billetera: DatosBilletera;

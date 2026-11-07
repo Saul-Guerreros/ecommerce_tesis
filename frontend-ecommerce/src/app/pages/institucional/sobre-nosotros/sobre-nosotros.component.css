@@ -1,0 +1,50 @@
+.nos-hero {
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+
+.nos-imagen {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Respeta los saltos de línea simples que cargó el admin */
+.nos-texto {
+  white-space: pre-line;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.nos-card {
+  border-radius: 12px;
+}
+
+.nos-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(30, 135, 240, 0.1);
+  color: var(--uk-global-primary-background, #1e87f0);
+}
+
+.nos-cifra {
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.nos-acciones {
+  gap: 12px;
+}
+
+@media (max-width: 639px) {
+  .nos-cifra {
+    font-size: 1.7rem;
+  }
+}

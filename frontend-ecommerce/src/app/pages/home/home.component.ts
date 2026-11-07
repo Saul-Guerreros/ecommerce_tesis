@@ -1,5 +1,3 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, OnInit, afterNextRender } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomSanitizer, SafeHtml, SafeStyle } from '@angular/platform-browser';
 import { Producto } from '../../core/models/producto.model';
@@ -23,6 +21,10 @@ import { CarritoUiService } from '../../core/services/carrito-ui.service';
 import { HomeService } from './service/home.service';
 import { CategoriaMenu } from '../../core/models/categoria-menu.model';
 import { CategoriaIconoComponent } from '../../shared/components/categoria-icono/categoria-icono.component';
+import { CommonModule, CurrencyPipe, isPlatformBrowser } from '@angular/common';
+import { Component, OnInit, PLATFORM_ID, afterNextRender, inject } from '@angular/core';
+import { ResenaService } from '../../core/services/resena.service';
+import { ResenaDestacada } from '../../core/models/resena.model';
 
 declare const UIkit: any;
 
@@ -55,6 +57,11 @@ export class HomeComponent implements OnInit {
   slidersSecundariosDerecha: SliderVitrina[] = [];
   slidersTerciarios: SliderVitrina[] = [];
 
+  // Testimonios reales (GET /api/tienda/resenas/destacadas).
+  testimonios: ResenaDestacada[] = [];
+  readonly ESTRELLAS = [1, 2, 3, 4, 5];
+  private readonly resenaService = inject(ResenaService);
+  private readonly esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
   // Se usa cuando el producto publicado todavía no tiene imagen cargada.
   readonly imagenFallback = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22300%22%20height%3D%22225%22%20viewBox%3D%220%200%20300%20225%22%3E%3Crect%20width%3D%22300%22%20height%3D%22225%22%20fill%3D%22%23e9e9e9%22/%3E%3Ctext%20x%3D%22150%22%20y%3D%22117%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%2216%22%20fill%3D%22%23999%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ESin%20imagen%3C/text%3E%3C/svg%3E';
 
@@ -77,11 +84,12 @@ export class HomeComponent implements OnInit {
     afterNextRender(() => this.inicializarHero());
 	}
 
-  ngOnInit(): void {
+ ngOnInit(): void {
     this.cargarProductosPublicados();
     this.cargarVitrinaHome();
     this.cargarSliders();
     this.cargarCategoriasHome();
+    this.cargarTestimonios();
   }
 
 cargarVitrinaHome(): void {
@@ -111,6 +119,35 @@ cargarVitrinaHome(): void {
       next: (resp: any) => (this.categoriasHome = resp?.data ?? []),
       error: () => (this.categoriasHome = []),
     });
+  }
+  
+    /**
+   * Solo en el navegador: el slider se inserta con *ngIf después de la
+   * hidratación y UIkit lo inicializa una sola vez con el ancho ya
+   * calculado (evita que la 4.ª tarjeta caiga a otra fila).
+   */
+  cargarTestimonios(): void {
+    if (!this.esNavegador) return;
+
+    this.resenaService.destacadas().subscribe({
+      next: (res) => (this.testimonios = res.data ?? []),
+      error: () => (this.testimonios = []),
+    });
+  }
+
+  /** "Juan P." -> "JP" para el avatar. */
+  iniciales(autor: string): string {
+    return autor
+      .replace(/\./g, '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p.charAt(0).toUpperCase())
+      .join('');
+  }
+
+  trackByTestimonio(_: number, t: ResenaDestacada): number {
+    return t.id;
   }
 
   /**

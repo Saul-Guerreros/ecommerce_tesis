@@ -1,0 +1,200 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <strong>Página "Sobre nosotros"</strong>
+    <small class="text-body-secondary" *ngIf="actualizado">Última actualización: {{ actualizado }}</small>
+  </c-card-header>
+
+  <c-card-body>
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <ng-container *ngIf="!cargando">
+      <!-- ===== Imagen principal (se guarda aparte del texto) ===== -->
+      <h6 class="mb-1">Imagen principal</h6>
+      <p class="text-body-secondary small mb-3">
+        Foto del local o del equipo. JPG, PNG o WEBP, máximo {{ MAX_MB }} MB, mínimo 600x400 px.
+      </p>
+
+      <div class="row g-3 align-items-start mb-4">
+        <div class="col-md-5">
+          <div class="border rounded d-flex align-items-center justify-content-center bg-body-tertiary"
+               style="aspect-ratio: 4 / 3; overflow: hidden;">
+            <img *ngIf="vistaPrevia || imagenUrl" [src]="vistaPrevia || imagenUrl" alt="Imagen de Sobre nosotros"
+                 style="width: 100%; height: 100%; object-fit: cover;">
+            <span *ngIf="!vistaPrevia && !imagenUrl" class="text-body-secondary small">Sin imagen</span>
+          </div>
+        </div>
+        <div class="col-md-7">
+          <input cFormControl type="file" accept="image/jpeg,image/png,image/webp"
+                 (change)="seleccionarImagen($event)" [disabled]="subiendoImagen">
+
+          <div class="mt-3 d-flex flex-wrap gap-2">
+            <ng-container *ngIf="archivo">
+              <button cButton color="primary" size="sm" type="button" (click)="subirImagen()" [disabled]="subiendoImagen">
+                <c-spinner *ngIf="subiendoImagen" size="sm" class="me-1"></c-spinner>
+                Subir imagen
+              </button>
+              <button cButton color="secondary" variant="outline" size="sm" type="button"
+                      (click)="cancelarImagen()" [disabled]="subiendoImagen">Cancelar</button>
+            </ng-container>
+            <button *ngIf="!archivo && imagenUrl" cButton color="danger" size="sm" class="text-white" type="button"
+                    (click)="modalEliminarImagen = true" [disabled]="subiendoImagen">Quitar imagen</button>
+          </div>
+          <p class="small text-body-secondary mt-2 mb-0" *ngIf="archivo">
+            Vista previa: la imagen todavía no se guardó.
+          </p>
+        </div>
+      </div>
+
+      <hr>
+
+      <form [formGroup]="form" (ngSubmit)="guardar()">
+        <!-- ===== Encabezado ===== -->
+        <h6 class="mb-3">Encabezado</h6>
+        <div class="row g-3 mb-4">
+          <div class="col-lg-5">
+            <label cLabel for="pno_titulo">Título *</label>
+            <input cFormControl id="pno_titulo" formControlName="pno_titulo" maxlength="120"
+                   [valid]="invalido('pno_titulo') ? false : undefined">
+            <div class="text-danger small" *ngIf="invalido('pno_titulo')">
+              {{ errorBackend('pno_titulo') ?? 'El título es obligatorio.' }}
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <label cLabel for="pno_subtitulo">Subtítulo</label>
+            <input cFormControl id="pno_subtitulo" formControlName="pno_subtitulo" maxlength="255">
+            <div class="text-danger small" *ngIf="errorBackend('pno_subtitulo')">{{ errorBackend('pno_subtitulo') }}</div>
+          </div>
+        </div>
+
+        <!-- ===== Historia ===== -->
+        <h6 class="mb-1">Nuestra historia</h6>
+        <p class="text-body-secondary small mb-2">Texto plano. Dejá una línea en blanco para separar párrafos.</p>
+        <textarea cFormControl id="pno_historia" rows="7" formControlName="pno_historia" maxlength="5000"></textarea>
+        <div class="d-flex justify-content-between small mb-4">
+          <span class="text-danger">{{ errorBackend('pno_historia') }}</span>
+          <span class="text-body-secondary">{{ largo('pno_historia') }}/5000</span>
+        </div>
+
+        <!-- ===== Misión y visión ===== -->
+        <div class="row g-3 mb-4">
+          <div class="col-lg-6">
+            <label cLabel for="pno_mision">Misión</label>
+            <textarea cFormControl id="pno_mision" rows="4" formControlName="pno_mision" maxlength="600"></textarea>
+            <div class="d-flex justify-content-between small">
+              <span class="text-danger">{{ errorBackend('pno_mision') }}</span>
+              <span class="text-body-secondary">{{ largo('pno_mision') }}/600</span>
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <label cLabel for="pno_vision">Visión</label>
+            <textarea cFormControl id="pno_vision" rows="4" formControlName="pno_vision" maxlength="600"></textarea>
+            <div class="d-flex justify-content-between small">
+              <span class="text-danger">{{ errorBackend('pno_vision') }}</span>
+              <span class="text-body-secondary">{{ largo('pno_vision') }}/600</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Valores ===== -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">Valores <small class="text-body-secondary">({{ valores.length }}/{{ MAX_VALORES }})</small></h6>
+          <button cButton color="primary" variant="outline" size="sm" type="button"
+                  (click)="agregarValor()" [disabled]="valores.length >= MAX_VALORES">+ Agregar valor</button>
+        </div>
+        <p class="text-body-secondary small" *ngIf="!valores.length">Sin valores cargados: la sección no se muestra en la tienda.</p>
+
+        <div formArrayName="pno_valores" class="mb-4">
+          <div class="border rounded p-3 mb-2" *ngFor="let v of valores.controls; let i = index; let ultimo = last; let primero = first" [formGroupName]="i">
+            <div class="row g-2 align-items-start">
+              <div class="col-md-3">
+                <label cLabel class="small">Ícono</label>
+                <select cSelect formControlName="icono">
+                  <option *ngFor="let ic of iconos" [value]="ic.valor">{{ ic.etiqueta }}</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label cLabel class="small">Título *</label>
+                <input cFormControl formControlName="titulo" maxlength="60">
+                <div class="text-danger small" *ngIf="invalido('pno_valores.' + i + '.titulo')">
+                  {{ errorBackend('pno_valores.' + i + '.titulo') ?? 'Obligatorio.' }}
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label cLabel class="small">Descripción</label>
+                <input cFormControl formControlName="descripcion" maxlength="200">
+              </div>
+              <div class="col-md-2 d-flex gap-1 justify-content-md-end" style="padding-top: 1.75rem;">
+                <button cButton color="secondary" variant="ghost" size="sm" type="button" title="Subir"
+                        (click)="mover(valores, i, -1)" [disabled]="primero">↑</button>
+                <button cButton color="secondary" variant="ghost" size="sm" type="button" title="Bajar"
+                        (click)="mover(valores, i, 1)" [disabled]="ultimo">↓</button>
+                <button cButton color="danger" size="sm" class="text-white" type="button" title="Quitar"
+                        (click)="quitarValor(i)">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Cifras ===== -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">Cifras destacadas <small class="text-body-secondary">({{ cifras.length }}/{{ MAX_CIFRAS }})</small></h6>
+          <button cButton color="primary" variant="outline" size="sm" type="button"
+                  (click)="agregarCifra()" [disabled]="cifras.length >= MAX_CIFRAS">+ Agregar cifra</button>
+        </div>
+        <p class="text-body-secondary small">Ej.: "10+" / "Años de experiencia", "5.000" / "Clientes atendidos". Usá datos reales.</p>
+
+        <div formArrayName="pno_cifras" class="mb-4">
+          <div class="border rounded p-3 mb-2" *ngFor="let c of cifras.controls; let i = index; let ultimo = last; let primero = first" [formGroupName]="i">
+            <div class="row g-2 align-items-start">
+              <div class="col-md-3">
+                <label cLabel class="small">Valor *</label>
+                <input cFormControl formControlName="valor" maxlength="20">
+                <div class="text-danger small" *ngIf="invalido('pno_cifras.' + i + '.valor')">
+                  {{ errorBackend('pno_cifras.' + i + '.valor') ?? 'Obligatorio.' }}
+                </div>
+              </div>
+              <div class="col-md-7">
+                <label cLabel class="small">Etiqueta *</label>
+                <input cFormControl formControlName="etiqueta" maxlength="60">
+                <div class="text-danger small" *ngIf="invalido('pno_cifras.' + i + '.etiqueta')">
+                  {{ errorBackend('pno_cifras.' + i + '.etiqueta') ?? 'Obligatorio.' }}
+                </div>
+              </div>
+              <div class="col-md-2 d-flex gap-1 justify-content-md-end" style="padding-top: 1.75rem;">
+                <button cButton color="secondary" variant="ghost" size="sm" type="button" title="Subir"
+                        (click)="mover(cifras, i, -1)" [disabled]="primero">↑</button>
+                <button cButton color="secondary" variant="ghost" size="sm" type="button" title="Bajar"
+                        (click)="mover(cifras, i, 1)" [disabled]="ultimo">↓</button>
+                <button cButton color="danger" size="sm" class="text-white" type="button" title="Quitar"
+                        (click)="quitarCifra(i)">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr>
+
+        <!-- ===== Publicación ===== -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+          <div class="form-check form-switch mb-0">
+            <input cFormCheckInput type="checkbox" role="switch" id="pno_publicado" formControlName="pno_publicado">
+            <label cFormCheckLabel for="pno_publicado">Publicada en la tienda</label>
+          </div>
+          <button cButton color="primary" type="submit" [disabled]="guardando || form.pristine">
+            <c-spinner *ngIf="guardando" size="sm" class="me-1"></c-spinner>
+            Guardar cambios
+          </button>
+        </div>
+      </form>
+    </ng-container>
+  </c-card-body>
+</c-card>
+
+<c-modal [visible]="modalEliminarImagen" (visibleChange)="modalEliminarImagen = $event">
+  <c-modal-header><h5 cModalTitle>Quitar imagen</h5></c-modal-header>
+  <c-modal-body>¿Seguro que querés quitar la imagen de "Sobre nosotros"? Se elimina del servidor.</c-modal-body>
+  <c-modal-footer>
+    <button cButton color="secondary" (click)="modalEliminarImagen = false">Cancelar</button>
+    <button cButton color="danger" class="text-white" (click)="confirmarEliminarImagen()" [disabled]="subiendoImagen">Quitar</button>
+  </c-modal-footer>
+</c-modal>
