@@ -30,6 +30,12 @@ class OpcionesAdminPermisoSeeder extends Seeder
         // Recibir dinero: solo por asignación explícita
         'servicios.cobros.confirmar',
         'inventario-inteligente.ver', 'inventario-inteligente.gestionar',
+        // Decidir sobre un credito compromete dinero: solo por asignacion explicita.
+        'solicitudes-credito.gestionar',
+        // Recibir plata de una cuota: mismo criterio que servicios.cobros.confirmar.
+        'cuentas-por-cobrar.cobrar',
+        // Recibir plata de una cuota: mismo criterio que servicios.cobros.confirmar.
+        'cuentas-por-cobrar.cobrar',
     ];
 
     public function run(): void

@@ -48,15 +48,34 @@ class ConfiguracionCuota extends Model
         return $q->where('cfc_estado', true);
     }
 
-    /** Precio financiado = Precio contado + (Precio contado × recargo% / 100) */
-    public function precioFinanciado(float $precioContado): float
+        /**
+     * Precio con recargo SIN ajustar: Precio contado + (Precio contado × recargo% / 100).
+     *
+     * Es solo un paso intermedio para obtener la cuota. NO se muestra ni se
+     * cobra: el precio financiado real es montoCuota() × cantidad de cuotas.
+     */
+    private function precioConRecargo(float $precioContado): float
     {
         return round($precioContado * (1 + ((float) $this->cfc_recargo_pct / 100)));
     }
 
-    /** Monto de cuota = Precio financiado / Número de cuotas */
+    /** Monto de cuota = Precio con recargo / Número de cuotas, en guaraníes enteros. */
     public function montoCuota(float $precioContado): float
     {
-        return round($this->precioFinanciado($precioContado) / $this->cfc_cantidad);
+        return round($this->precioConRecargo($precioContado) / $this->cfc_cantidad);
+    }
+
+    /**
+     * Precio financiado = Monto de cuota × Número de cuotas.
+     *
+     * Se deriva de la cuota (y no al revés) para que el total sea SIEMPRE
+     * múltiplo del número de cuotas. Así todas las cuotas del cronograma son
+     * iguales: antes, un total impar (ej. 4.949.999 en 2 cuotas) dejaba la
+     * última cuota 1 Gs. por debajo de las demás. La diferencia contra el
+     * recargo exacto es de unos pocos guaraníes (máximo cantidad/2).
+     */
+    public function precioFinanciado(float $precioContado): float
+    {
+        return $this->montoCuota($precioContado) * $this->cfc_cantidad;
     }
 }

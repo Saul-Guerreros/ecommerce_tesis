@@ -23,8 +23,11 @@ class EstadoSolicitud extends Model
     public const PENDIENTE   = 'PENDIENTE';
     public const EN_REVISION = 'EN_REVISION';
     public const APROBADA    = 'APROBADA';
+    public const ACEPTADA    = 'ACEPTADA';   // ← AGREGAR (etapa D)
     public const RECHAZADA   = 'RECHAZADA';
     public const ANULADA     = 'ANULADA';
+
+    public const CONVERTIDA  = 'CONVERTIDA'; // el pedido ya se generó (etapa D)
 
     protected $fillable = ['esc_codigo', 'esc_descri', 'esc_orden', 'esc_estado'];
 

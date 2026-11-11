@@ -25,6 +25,7 @@ use App\Models\Configuracion\Timbrado;
 
 /**
  * Emisión de la Nota de Crédito de una factura de venta.
+ * obs: La tabla cobro_venta ahora se llama recibo
  *
  * Qué hace, en una sola transacción:
  *   1. Bloquea la factura y recalcula el saldo acreditable de cada línea.

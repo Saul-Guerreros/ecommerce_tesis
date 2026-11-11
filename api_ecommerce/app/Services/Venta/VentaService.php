@@ -17,6 +17,8 @@ use App\Models\Configuracion\Deposito;
 use App\Models\Pedido\EstadoPedido;
 use App\Jobs\DeclararFacturaElectronica;
 use App\Models\Venta\VentaFe;
+
+use App\Models\Venta\CtaCobrar;
 /**
  * Emision del comprobante fiscal a partir de un pedido.
  *
@@ -65,7 +67,7 @@ class VentaService
     public function generarDesdePedido(Pedido $pedido, Usuario $usuario): VentaCab
     {
         return DB::transaction(function () use ($pedido, $usuario) {
-            $pedido->loadMissing('estadoPedido', 'pagos.metodoPago', 'pagos.comprobante');
+                        $pedido->loadMissing('estadoPedido', 'pagos.metodoPago', 'pagos.comprobante', 'pagos.cheque');
 
             if ($pedido->estadoPedido?->est_codigo === EstadoPedido::CANCELADO) {
                 throw ValidationException::withMessages([
@@ -109,6 +111,15 @@ class VentaService
      */
     private function validarHabilitacion(Pedido $pedido): void
     {
+        // Un pedido de crédito no tiene pagos: las reglas de abajo
+        // (comprobantes, cheques, efectivo) no le aplican y se cumplirían
+        // solas desde el primer segundo.
+        if ($pedido->esDeCredito()) {
+            $this->validarHabilitacionCredito($pedido);
+
+            return;
+        }
+
         $sinValidar = $pedido->pagos
             ->filter(fn ($pago) => (bool) $pago->metodoPago?->mpa_requcom)
             ->filter(fn ($pago) => !$pago->comprobante?->pco_verifi)
@@ -134,6 +145,27 @@ class VentaService
             ]);
         }
 
+                if ($chequesSinRecibir > 0) {
+            throw ValidationException::withMessages([
+                'factura' => 'Falta confirmar la recepción del cheque en la sucursal antes de generar la factura.',
+            ]);
+        }
+
+        // El cheque recibido tiene que estar completo: la DNIT exige su
+        // número y su banco dentro del comprobante. Sin esto la factura se
+        // emite igual y recién falla al declararla, cuando el número fiscal
+        // ya se consumió y no hay forma de corregirlo.
+        $chequesIncompletos = $pedido->pagos
+            ->filter(fn ($pago) => $pago->cheque && !$pago->cheque->datosCompletos())
+            ->count();
+
+        if ($chequesIncompletos > 0) {
+            throw ValidationException::withMessages([
+                'factura' => 'Faltan datos del cheque (banco, número, titular o fecha de cobro). '
+                    . 'Completalos en la gestión del cheque antes de generar la factura.',
+            ]);
+        }
+
         $hayEfectivo = $pedido->pagos
             ->contains(fn ($pago) => !$pago->metodoPago?->requiereVerificacion());
 
@@ -142,6 +174,22 @@ class VentaService
                 'factura' => 'Este pedido tiene un pago en efectivo: la factura se genera cuando el pedido está LISTO para entregar.',
             ]);
         }
+    }
+
+    /**
+     * Habilitación de la factura de un pedido a crédito: el pedido tiene que
+     * estar LISTO para entrega/retiro. La factura se entrega en mano junto
+     * con el producto y la documentación firmada, así que antes de LISTO no
+     * hay nada que entregar.
+    */
+    private function validarHabilitacionCredito(Pedido $pedido): void
+    {
+        if ($pedido->estadoPedido?->est_codigo !== EstadoPedido::LISTO) {
+            throw ValidationException::withMessages([
+                'factura' => 'La factura a crédito se genera cuando el pedido está LISTO para entrega/retiro.',
+            ]);
+        }
+
     }
 
     public function emitirDesdePedido(Pedido $pedido, ?Usuario $usuario = null): VentaCab
@@ -187,10 +235,7 @@ class VentaService
             );
         }
 
-        $lineas   = $this->construirLineas($pedido, $sucursal);
-        $totales  = $this->calcularTotales($lineas);
-
-        [$lineas, $totales] = $this->armarDocumento($pedido);
+        [$lineas, $totales] = $this->armarDocumento($pedido, $sucursal);
 
         $venta = VentaCab::create($this->datosComunes($pedido, $totales) + [
             'ven_timid'       => $timbrado->tim_id,
@@ -211,11 +256,81 @@ class VentaService
 
         $this->guardarLineas($venta, $lineas);
 
+        // El cronograma a cobrar nace con la factura: antes de este punto
+        // solo existe la OFERTA aceptada por el cliente.
+        $this->generarCuotas($venta, $pedido);
+
         $this->programarDeclaracion($venta);
 
         return $venta->load('detalle');
     }
 
+    /**
+     * Copia el cronograma aceptado de la solicitud a cta_cobrar.
+     *
+     * Es una COPIA, no una lectura por referencia: desde que la factura se
+     * emite, el cronograma a cobrar es independiente de la solicitud.
+     * Mismo criterio de snapshot que ya se usa con el precio unitario.
+     *
+     * No hay recalculo: los importes y vencimientos son exactamente los
+     * que el cliente acepto. Recalcular aca abriria la puerta a que la
+     * deuda no coincida con lo que el cliente firmo.
+     */
+    private function generarCuotas(VentaCab $venta, Pedido $pedido): void
+    {
+        if (!$pedido->esDeCredito()) {
+            return;
+        }
+
+        $solicitud = $pedido->solicitudCredito;
+
+        if (!$solicitud) {
+            throw new EmisionFacturaException(
+                "El pedido {$pedido->ped_numero} es a crédito pero no tiene solicitud asociada."
+            );
+        }
+
+        $cronograma = $solicitud->cuotas()->get();
+
+        if ($cronograma->isEmpty()) {
+            throw new EmisionFacturaException(
+                "La solicitud {$solicitud->scr_numero} no tiene cronograma: no se puede facturar a crédito."
+            );
+        }
+
+        // La suma de las cuotas tiene que dar el total facturado. Si no da,
+        // la factura y la deuda dirian cosas distintas: mejor no emitir.
+        $sumaCuotas = round((float) $cronograma->sum('scc_import'), 2);
+        $totalVenta = round((float) $venta->ven_total, 2);
+
+        if (abs($sumaCuotas - $totalVenta) > 0.01) {
+            throw new EmisionFacturaException(
+                "El cronograma suma {$sumaCuotas} y la factura {$totalVenta}: no coinciden."
+            );
+        }
+
+        // La emision de la cuota es la fecha de la factura: antes de este
+        // momento la deuda no existia.
+        $emision = $venta->ven_fchaem;
+
+        foreach ($cronograma as $cuota) {
+            // ck_cco_vencim exige vencimiento >= emision. Una cuota cuyo
+            // vencimiento ya paso (credito aprobado hace tiempo, entrega
+            // demorada) rompe esa regla: se corre al dia de la emision.
+            $vencimiento = $cuota->scc_fecven->lt($emision) ? $emision : $cuota->scc_fecven;
+
+            CtaCobrar::create([
+                'cco_venid'  => $venta->ven_id,
+                'cco_nrocuo' => $cuota->scc_numero,
+                'cco_femisi' => $emision,
+                'cco_vencim' => $vencimiento,
+                'cco_monto'  => $cuota->scc_import,
+                'cco_saldo'  => $cuota->scc_import,   // sin parciales: saldo = monto
+                'cco_compos' => $cuota->scc_compos,
+                'cco_estado' => CtaCobrar::ESTADO_PENDIENTE,
+            ]);
+        }
+    }
 
     /**
      * Deja la declaracion electronica programada. El registro venta_fe se crea
@@ -277,9 +392,9 @@ class VentaService
 
 
     /** @return array{0: array<int, array<string, mixed>>, 1: array<string, float>} */
-    private function armarDocumento(Pedido $pedido): array
+        private function armarDocumento(Pedido $pedido, Sucursal $sucursal): array
     {
-        $lineas  = $this->construirLineas($pedido);
+        $lineas  = $this->construirLineas($pedido, $sucursal);
         $totales = $this->calcularTotales($lineas);
 
         $this->verificarCoherencia($pedido, $totales['total']);
@@ -297,8 +412,16 @@ class VentaService
             ...$this->datosAdquirente($pedido),
 
             // E-commerce al contado (el crédito tiene su propio flujo).
-            'ven_condicion'   => VentaCab::CONDICION_CONTADO,
-            'ven_cant_cuotas' => null,
+            // La condicion la define el origen del pedido: si nacio de una
+            // solicitud de credito, la factura es a credito y lleva el plazo
+            // pactado. El CHECK ck_ven_condicion exige que las dos columnas
+            // sean coherentes entre si.
+            'ven_condicion'   => $pedido->esDeCredito()
+                ? VentaCab::CONDICION_CREDITO
+                : VentaCab::CONDICION_CONTADO,
+            'ven_cant_cuotas' => $pedido->esDeCredito()
+                ? $pedido->solicitudCredito?->cuotas()->count()
+                : null,
 
             'ven_exenta'   => $totales['exenta'],
             'ven_grav5'    => $totales['grav5'],
@@ -343,12 +466,17 @@ class VentaService
             ->value('dpo_id');
 
         foreach ($pedido->detalles as $detalle) {
-            $producto = $detalle->producto;
-
-            // El precio del pedido ya viene con IVA incluido, igual que
+                        // El precio del pedido ya viene con IVA incluido, igual que
             // en toda la tienda (Producto::ivaIncluidoEn()).
             $valorVenta = round((float) $detalle->dpd_total, 2);
+            $cantidad   = (float) $detalle->dpd_cantid;
             $tasa       = (float) ($producto?->tipoIva?->tiv_tasa ?? 10);
+
+            // El unitario se deriva del valor de la linea, no se copia de
+            // dpd_precio: asi cantidad x precio = valorventa siempre, que
+            // es lo que la DNIT recalcula. Si el pedido guardo el precio
+            // de contado y el total financiado, la factura igual sale bien.
+            $precioUnit = $cantidad > 0 ? round($valorVenta / $cantidad, 4) : 0.0;
 
             $lineas[] = [
                 'vnd_prdid'       => $detalle->dpd_prdid,
@@ -356,8 +484,8 @@ class VentaService
                 'vnd_codigo'      => $producto?->prd_codinv ?? (string) $detalle->dpd_prdid,
                 'vnd_descripcion' => mb_substr($detalle->dpd_descri, 0, 150),
                 'vnd_umedida'     => $producto?->unidadMedida?->umd_codigo ?? 'UN',
-                'vnd_cantidad'    => (float) $detalle->dpd_cantid,
-                'vnd_precio'      => (float) $detalle->dpd_precio,
+                'vnd_cantidad'    => $cantidad,
+                'vnd_precio'      => $precioUnit,
                 'vnd_descuento'   => 0,
                 'vnd_tasa'        => $tasa,
                 'vnd_valorventa'  => $valorVenta,

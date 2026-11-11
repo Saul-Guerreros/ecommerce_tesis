@@ -19,6 +19,15 @@ use Illuminate\Support\Facades\Http;
 class FacturacionApiClient
 {
     /**
+     * POST /facturas: factura electronica. Es la ruta propia de la factura;
+     * nota de credito, nota de debito y demas documentos van por
+     * emitirDocumento() (POST /documentos).
+    */
+    public function emitirFactura(array $payload): RespuestaApi
+    {
+        return $this->enviar('POST', '/facturas', $payload);
+    }
+    /**
     * POST /documentos: nota de credito, nota de debito, autofactura y
     * nota de remision. La factura tiene su propia ruta (/facturas); el
     * resto se distingue por el campo "tipo" del cuerpo (guia 11).

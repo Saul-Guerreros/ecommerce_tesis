@@ -4,7 +4,7 @@ namespace App\Http\Resources\Venta;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\Venta\CobroVenta;
+use App\Models\Venta\Recibo;
 use App\Models\Venta\NotaCreditoVenta;
 
 class VentaCabResource extends JsonResource
@@ -20,7 +20,7 @@ class VentaCabResource extends JsonResource
 
         $cobrado = $this->relationLoaded('cobros')
             ? round((float) $this->cobros
-                ->where('cob_estado', CobroVenta::ESTADO_ACTIVO)->sum('cob_monto'), 2)
+                ->where('rec_estado', Recibo::ESTADO_ACTIVO)->sum('rec_monto'), 2)
             : null;
 
         return [

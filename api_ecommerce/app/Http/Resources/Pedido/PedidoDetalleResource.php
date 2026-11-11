@@ -32,7 +32,7 @@ class PedidoDetalleResource extends JsonResource
         // respaldo para los pedidos cobrados con el flujo anterior.
         $montoVerificado = (float) $pagos
             ->filter(fn ($p) => $p->estadoPago?->epa_codigo === EstadoPago::CONFIRMADO)
-            ->sum(fn ($p) => (float) ($p->cobro?->cob_monto ?? $p->ppa_montver ?? $p->ppa_monto));
+            ->sum(fn ($p) => (float) ($p->cobro?->rec_monto ?? $p->ppa_montver ?? $p->ppa_monto));
 
         // Cuantos comprobantes faltan validar: con uno pendiente, la factura
         // del pedido todavia no se puede emitir y el cobro queda bloqueado.
@@ -64,10 +64,18 @@ class PedidoDetalleResource extends JsonResource
         // documento fiscal.
         $chequesPendientes = $cheques->count() - $chequesRecibidos;
 
+                // Pedido nacido de una solicitud de crédito: no tiene pagos, así que
+        // las condiciones de comprobantes, cheques y efectivo se cumplen solas
+        // desde el primer segundo. Su única condición es que el admin lo haya
+        // dejado en LISTO para entrega/retiro.
+        $esCredito = $this->ped_scrid !== null;
+
         $puedeGenerarFactura = !$tieneFactura
-            && $comprobantesPendientes === 0
-            && $chequesPendientes === 0
-            && (!$hayEfectivo || $estaListo);
+            && ($esCredito
+                ? $estaListo
+                : ($comprobantesPendientes === 0
+                    && $chequesPendientes === 0
+                    && (!$hayEfectivo || $estaListo)));
 
         return [
             // ---------- 1. Encabezado ----------
@@ -88,6 +96,11 @@ class PedidoDetalleResource extends JsonResource
 
             // Tercer eje de la cabecera. null si el pedido no tiene cheques.
             'estado_cheque' => $this->estadoCheque(),
+
+            // true si el pedido nace de una solicitud de crédito (ped_scrid).
+            // Angular lo usa para el orden de las tarjetas y la etiqueta del
+            // botón de factura.
+            'es_credito' => $esCredito,
 
             // Los dos relojes del documento de máquinas de estado (pago y
             // retiro) nunca corren a la vez: en la práctica sólo uno de

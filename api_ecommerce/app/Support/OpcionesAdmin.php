@@ -42,6 +42,12 @@ class OpcionesAdmin
                     ['permiso' => 'pedidos.ver', 'nombre' => 'Pedidos', 'urls' => ['/pedidos'], 'fijo' => false],
                     ['permiso' => 'facturas-venta.ver', 'nombre' => 'Facturas de venta', 'urls' => ['/facturas-venta'], 'fijo' => false],
                     ['permiso' => 'notas-credito-venta.ver', 'nombre' => 'Notas de crédito de venta', 'urls' => ['/notas-credito-venta'], 'fijo' => false],
+                    ['permiso' => 'solicitudes-credito.ver', 'nombre' => 'Gestión de créditos', 'urls' => ['/solicitudes-credito'], 'fijo' => false],
+                    ['permiso' => 'solicitudes-credito.gestionar', 'nombre' => 'Aprobar / rechazar créditos', 'urls' => [], 'fijo' => false],
+                    ['permiso' => 'cuentas-por-cobrar.ver', 'nombre' => 'Cuentas por cobrar', 'urls' => ['/cuentas-por-cobrar'], 'fijo' => false],
+                    ['permiso' => 'cuentas-por-cobrar.cobrar', 'nombre' => 'Registrar / anular cobros de cuotas', 'urls' => [], 'fijo' => false],
+                    ['permiso' => 'cuentas-por-cobrar.ver', 'nombre' => 'Cuentas por cobrar', 'urls' => ['/cuentas-por-cobrar'], 'fijo' => false],
+                    ['permiso' => 'cuentas-por-cobrar.cobrar', 'nombre' => 'Registrar / anular cobros de cuotas', 'urls' => [], 'fijo' => false],
                 ],
             ],
             [

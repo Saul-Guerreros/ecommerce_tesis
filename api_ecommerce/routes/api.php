@@ -113,6 +113,16 @@ use App\Http\Controllers\Api\FaqPublicoController;
 
 use App\Http\Controllers\Admin\Venta\NotaCreditoVentaController;
 
+use App\Http\Controllers\Admin\Credito\SolicitudCreditoAdminController;
+
+use App\Http\Controllers\Credito\CheckoutCreditoController;
+
+use App\Http\Controllers\Admin\Venta\CuentaPorCobrarController;
+
+use App\Http\Controllers\Credito\MisCuotasController;
+
+
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -276,6 +286,8 @@ Route::group([
         Route::post('{numero}/pagos/{pago}/comprobante', [PagoPedidoController::class, 'reemplazarComprobante']); // 200
     });                                                       // 201
 
+    Route::get('credito/disponibilidad', [SolicitudCreditoController::class, 'disponibilidad']);
+
     // --- Solicitud de Crédito (continúa el flujo del Carrito a Crédito) ---
     Route::get('credito/config', [SolicitudCreditoController::class, 'config']);
 
@@ -286,10 +298,58 @@ Route::group([
     Route::get('credito/confirmacion', [SolicitudCreditoController::class, 'configConfirmacion']);
     Route::post('credito/generar',     [SolicitudCreditoController::class, 'generar']);
 
-    Route::get('credito/solicitudes',      [SolicitudCreditoController::class, 'index']);
-    Route::get('credito/solicitudes/{id}', [SolicitudCreditoController::class, 'show']);
+    // --- "Mis solicitudes" y respuesta a la oferta aprobada (etapa D) ---
+    // 'pendientes' va ANTES de '{id}': si no, Laravel intentaría tratar
+    // "pendientes" como un scr_id. whereNumber() cierra el mismo hueco.
+    Route::get('credito/solicitudes/pendientes', [SolicitudCreditoController::class, 'pendientes']);
+    Route::get('credito/solicitudes',            [SolicitudCreditoController::class, 'index']);
+    Route::get('credito/solicitudes/{id}',       [SolicitudCreditoController::class, 'show'])
+        ->whereNumber('id');
 
+    Route::post('credito/solicitudes/{id}/aceptar',  [SolicitudCreditoController::class, 'aceptar'])
+        ->whereNumber('id')
+        ->middleware('throttle:20,1');
+
+    Route::post('credito/solicitudes/{id}/rechazar', [SolicitudCreditoController::class, 'rechazar'])
+        ->whereNumber('id')
+        ->middleware('throttle:20,1');
+
+    // --- Checkout de la solicitud aceptada (etapa D) ---
+    Route::get('credito/solicitudes/{id}/checkout', [CheckoutCreditoController::class, 'contexto'])
+        ->whereNumber('id');
+
+    Route::post('credito/solicitudes/{id}/checkout/confirmar', [CheckoutCreditoController::class, 'confirmar'])
+        ->whereNumber('id')
+        ->middleware('throttle:10,1');
+
+        // --- Mis Cuotas: sección propia del cliente ---
+    Route::get('cuotas', [MisCuotasController::class, 'listar']);
+
+    Route::get('cuotas/pedido/{numero}', [MisCuotasController::class, 'index']);
+    Route::get('cuotas/pedido/{numero}/factura', [MisCuotasController::class, 'factura']);
+
+    // Pantalla de pago: las cuotas elegidas viajan en la query, así el
+    // link es reanudable (el cliente puede recargar sin perder nada).
+    Route::get('cuotas/pedido/{numero}/pago', [MisCuotasController::class, 'configPago']);
+
+    // Las cuotas viajan en el cuerpo: un cobro puede cubrir varias.
+    Route::post('cuotas/pagar', [MisCuotasController::class, 'pagar'])
+        ->middleware('throttle:20,1');
+
+    Route::get('cuotas/pagos/{pago}/resultado', [MisCuotasController::class, 'resultadoPago'])
+        ->whereNumber('pago');
+
+    // El comprobante cuelga del MEDIO, no de la declaración: un cobro
+    // dividido en dos transferencias lleva dos archivos distintos.
+    Route::get('cuotas/medios/{medio}/comprobante', [MisCuotasController::class, 'verComprobante'])
+        ->whereNumber('medio');
+
+    Route::post('cuotas/medios/{medio}/comprobante', [MisCuotasController::class, 'reemplazarComprobante'])
+        ->whereNumber('medio')
+        ->middleware('throttle:20,1');
  });
+
+
  
  // Servicio técnico - Bandeja de solicitudes (A1) y recepción (A2)
 Route::prefix('admin/servicios/solicitudes')->middleware('auth:api')->group(function () {
@@ -926,6 +986,125 @@ Route::prefix('admin/notas-credito-venta')->middleware('auth:api')->group(functi
 
     Route::patch('/{id}/anular', [NotaCreditoVentaController::class, 'anular'])
         ->middleware('permiso:notas-credito-venta.ver');
+});
+    /*
+|--------------------------------------------------------------------------
+| Gestion de Solicitudes de Credito — Panel Admin
+|--------------------------------------------------------------------------
+| Orden obligatorio: config -> rutas con subrecurso -> {id}. Si {id}
+| fuera primero, Laravel intentaria castear "config" como un scr_id.
+|
+| 'ver' alcanza para la bandeja y el detalle; toda escritura exige
+| 'gestionar'. Los dos middleware se declaran por ruta y no por grupo
+| porque los del grupo se acumulan (AND) y bloquearian al perfil que
+| solo tiene 'ver'.
+*/
+Route::prefix('admin/credito/solicitudes')->middleware('auth:api')->group(function () {
+
+    Route::get('/config', [SolicitudCreditoAdminController::class, 'config'])
+        ->middleware('permiso:solicitudes-credito.ver');
+
+    Route::get('/', [SolicitudCreditoAdminController::class, 'index'])
+        ->middleware('permiso:solicitudes-credito.ver');
+
+    // --- Subrecurso: lineas de la compra ---
+    Route::get('/{id}/detalle/{detalle}/planes', [SolicitudCreditoAdminController::class, 'planes'])
+        ->whereNumber(['id', 'detalle'])
+        ->middleware('permiso:solicitudes-credito.ver');
+
+    Route::patch('/{id}/detalle/{detalle}/plan', [SolicitudCreditoAdminController::class, 'cambiarPlan'])
+        ->whereNumber(['id', 'detalle'])
+        ->middleware('permiso:solicitudes-credito.gestionar');
+
+    // --- Acciones sobre la cabecera ---
+    Route::patch('/{id}/evaluar', [SolicitudCreditoAdminController::class, 'tomar'])
+        ->whereNumber('id')
+        ->middleware('permiso:solicitudes-credito.gestionar');
+
+    Route::put('/{id}/observaciones', [SolicitudCreditoAdminController::class, 'observaciones'])
+        ->whereNumber('id')
+        ->middleware('permiso:solicitudes-credito.gestionar');
+
+    Route::put('/{id}/cronograma', [SolicitudCreditoAdminController::class, 'cronograma'])
+        ->whereNumber('id')
+        ->middleware('permiso:solicitudes-credito.gestionar');
+
+    Route::post('/{id}/decision', [SolicitudCreditoAdminController::class, 'decidir'])
+            ->whereNumber('id')
+            ->middleware(['permiso:solicitudes-credito.gestionar', 'throttle:30,1']);
+
+        // Siempre al final: captura cualquier id numerico.
+        Route::get('/{id}', [SolicitudCreditoAdminController::class, 'show'])
+            ->whereNumber('id')
+            ->middleware('permiso:solicitudes-credito.ver');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Cuentas por Cobrar — Panel Admin
+|--------------------------------------------------------------------------
+| Espejo de cuentas-por-pagar. Mismo orden obligatorio que en las
+| solicitudes: config y subrecursos ANTES de /{id}, porque si no Laravel
+| intentaria castear "config" o "cuotas" como un ven_id.
+|
+| 'ver' alcanza para la cartera y el detalle; registrar o anular un cobro
+| exige 'cobrar', porque mueve dinero.
+*/
+Route::prefix('admin/cuentas-por-cobrar')->middleware('auth:api')->group(function () {
+
+    Route::get('/config', [CuentaPorCobrarController::class, 'config'])
+        ->middleware('permiso:cuentas-por-cobrar.ver');
+
+    Route::get('/', [CuentaPorCobrarController::class, 'index'])
+        ->middleware('permiso:cuentas-por-cobrar.ver');
+
+        // Las cuotas viajan en el cuerpo, no en la URL: un recibo puede
+    // cubrir varias.
+    Route::post('/cobrar', [CuentaPorCobrarController::class, 'cobrar'])
+        ->middleware(['permiso:cuentas-por-cobrar.cobrar', 'throttle:30,1']);
+
+    Route::patch('/recibos/{recibo}/anular', [CuentaPorCobrarController::class, 'anularCobro'])
+        ->whereNumber('recibo')
+        ->middleware(['permiso:cuentas-por-cobrar.cobrar', 'throttle:30,1']);
+
+    // Siempre al final: captura cualquier id numerico.
+    Route::get('/{venta}', [CuentaPorCobrarController::class, 'show'])
+        ->whereNumber('venta')
+        ->middleware('permiso:cuentas-por-cobrar.ver');
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Cuentas por Cobrar — Panel Admin
+|--------------------------------------------------------------------------
+| Espejo de cuentas-por-pagar. Mismo orden obligatorio que en las
+| solicitudes: config y subrecursos ANTES de /{id}, porque si no Laravel
+| intentaria castear "config" o "cuotas" como un ven_id.
+|
+| 'ver' alcanza para la cartera y el detalle; registrar o anular un cobro
+| exige 'cobrar', porque mueve dinero.
+*/
+Route::prefix('admin/cuentas-por-cobrar')->middleware('auth:api')->group(function () {
+
+    Route::get('/config', [CuentaPorCobrarController::class, 'config'])
+        ->middleware('permiso:cuentas-por-cobrar.ver');
+
+    Route::get('/', [CuentaPorCobrarController::class, 'index'])
+        ->middleware('permiso:cuentas-por-cobrar.ver');
+
+    Route::post('/cuotas/{cuota}/cobrar', [CuentaPorCobrarController::class, 'cobrar'])
+        ->whereNumber('cuota')
+        ->middleware(['permiso:cuentas-por-cobrar.cobrar', 'throttle:30,1']);
+
+    Route::patch('/cobros/{cobro}/anular', [CuentaPorCobrarController::class, 'anularCobro'])
+        ->whereNumber('cobro')
+        ->middleware(['permiso:cuentas-por-cobrar.cobrar', 'throttle:30,1']);
+
+    // Siempre al final: captura cualquier id numerico.
+    Route::get('/{venta}', [CuentaPorCobrarController::class, 'show'])
+        ->whereNumber('venta')
+        ->middleware('permiso:cuentas-por-cobrar.ver');
 });
 
 /*

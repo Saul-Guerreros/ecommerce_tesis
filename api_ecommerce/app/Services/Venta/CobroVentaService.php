@@ -4,7 +4,7 @@ namespace App\Services\Venta;
 
 use App\Models\Pedido\PedidoPago;
 use App\Models\Usuario;
-use App\Models\Venta\CobroVenta;
+use App\Models\Venta\Recibo;
 use App\Models\Venta\VentaCab;
 use Illuminate\Validation\ValidationException;
 
@@ -32,7 +32,7 @@ class CobroVentaService
      * @param array{monto_verificado: float, nro_transaccion: ?string, banco: ?string,
      *              fecha_pago: ?string, observacion: ?string} $datos
      */
-    public function registrar(VentaCab $factura, PedidoPago $pago, array $datos, Usuario $usuario): CobroVenta
+    public function registrar(VentaCab $factura, PedidoPago $pago, array $datos, Usuario $usuario): Recibo
     {
         if (!$factura->esVigente()) {
             throw ValidationException::withMessages([
@@ -40,9 +40,9 @@ class CobroVentaService
             ]);
         }
 
-        // uq_cob_ppa_activo ya lo impide en la base. Aca se adelanta para
+        // uq_rec_ppa_activo ya lo impide en la base. Aca se adelanta para
         // devolver un mensaje entendible en lugar de un error de SQL.
-        $existente = CobroVenta::where('cob_ppaid', $pago->ppa_id)
+        $existente = Recibo::where('rec_ppaid', $pago->ppa_id)
             ->activo()
             ->lockForUpdate()
             ->first();
@@ -53,22 +53,24 @@ class CobroVentaService
             ]);
         }
 
-        $cobro = CobroVenta::create([
-            'cob_venid'  => $factura->ven_id,
-            'cob_mpaid'  => $pago->ppa_mpaid,
-            'cob_monto'  => $datos['monto_verificado'],
-            'cob_nrotrx' => $datos['nro_transaccion'] ?? null,
-            'cob_banco'  => $datos['banco'] ?? null,
+        $cobro = Recibo::create([
+            // rec_numero queda NULL: en una venta al contado el documento
+            // del cliente es la factura, no un recibo.
+            'rec_venid'  => $factura->ven_id,
+            'rec_mpaid'  => $pago->ppa_mpaid,
+            'rec_monto'  => $datos['monto_verificado'],
+            'rec_nrotrx' => $datos['nro_transaccion'] ?? null,
+            'rec_banco'  => $datos['banco'] ?? null,
 
             // La fecha del cobro es la del extracto bancario. Si el admin no
-            // la carga se usa hoy: cob_fecha es NOT NULL y una fecha vacia
+            // la carga se usa hoy: rec_fecha es NOT NULL y una fecha vacia
             // dejaria el cobro fuera de cualquier arqueo por periodo.
-            'cob_fecha'  => $datos['fecha_pago'] ?? now()->toDateString(),
+            'rec_fecha'  => $datos['fecha_pago'] ?? now()->toDateString(),
 
-            'cob_observ' => $datos['observacion'] ?? null,
-            'cob_ppaid'  => $pago->ppa_id,
-            'cob_usuid'  => $usuario->usu_id,
-            'cob_estado' => CobroVenta::ESTADO_ACTIVO,
+            'rec_observ' => $datos['observacion'] ?? null,
+            'rec_ppaid'  => $pago->ppa_id,
+            'rec_usuid'  => $usuario->usu_id,
+            'rec_estado' => Recibo::ESTADO_ACTIVO,
         ]);
 
         $this->actualizarEstadoFactura($factura);

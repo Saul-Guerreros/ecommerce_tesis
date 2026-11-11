@@ -74,15 +74,17 @@ class PedidoPagoDetalleResource extends JsonResource
             // ---------- Tarjeta Pago ----------
             'cobro' => $cobro
                 ? [
-                    'cob_id'          => $cobro->cob_id,
-                    'monto'           => (float) $cobro->cob_monto,
+                    // La clave 'cob_id' se mantiene: el panel la consume.
+                    // Renombrarla acá obligaría a tocar Angular sin necesidad.
+                    'cob_id'          => $cobro->rec_id,
+                    'monto'           => (float) $cobro->rec_monto,
                     'metodo'          => $cobro->metodoPago?->mpa_descri,
-                    'nro_transaccion' => $cobro->cob_nrotrx,
-                    'banco'           => $cobro->cob_banco,
-                    'fecha'           => $cobro->cob_fecha?->format('d/m/Y'),
-                    'observacion'     => $cobro->cob_observ,
+                    'nro_transaccion' => $cobro->rec_nrotrx,
+                    'banco'           => $cobro->rec_banco,
+                    'fecha'           => $cobro->rec_fecha?->format('d/m/Y'),
+                    'observacion'     => $cobro->rec_observ,
                     'por'             => $this->nombre($cobro->usuario),
-                    'registrado'      => $cobro->cob_creado?->format('d/m/Y H:i'),
+                    'registrado'      => $cobro->rec_creado?->format('d/m/Y H:i'),
                 ]
                 : null,
 
@@ -178,7 +180,7 @@ class PedidoPagoDetalleResource extends JsonResource
                 : null,
 
             // Una observación sin rechazo es una nota del admin al cobrar.
-            'observacion' => $this->ppa_mrpid ? null : ($cobro?->cob_observ ?? $this->ppa_observ),
+            'observacion' => $this->ppa_mrpid ? null : ($cobro?->rec_observ ?? $this->ppa_observ),
         ];
     }
 

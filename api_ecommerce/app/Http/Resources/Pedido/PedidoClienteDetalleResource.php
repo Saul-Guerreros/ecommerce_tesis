@@ -43,6 +43,9 @@ class PedidoClienteDetalleResource extends JsonResource
                 true,
             ) ? $this->ped_vence?->toIso8601String() : null,
             'pagable'    => $this->pagable(),
+            // true si el pedido nace de una solicitud de crédito (ped_scrid).
+            // La tienda lo usa para mostrar «Mis Cuotas» en lugar de «Pagos».
+            'es_credito' => $this->ped_scrid !== null,
 
             // Intentos que le quedan antes de que el pedido se cancele solo.
             'rechazos_restantes' => $this->rechazosRestantes(),
