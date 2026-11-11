@@ -302,8 +302,16 @@ class FacturaServicioService
         }
 
         if ($anticipo->ven_estado !== VentaCab::ESTADO_COBRADA) {
+            // Con cheque, "Cobrada" = acreditado por el banco: un anticipo no
+            // acreditado no es dinero recibido y no se aplica en la final.
+            $conCheque = $this->pagosDeclarados($s, anticipo: true)
+                ->contains(fn (ServicioPago $p) => $p->cheque && !$p->cheque->fueAcreditado());
+
             throw ValidationException::withMessages([
-                'factura' => "La factura de anticipo {$anticipo->ven_nrodoc} todavía no está cobrada.",
+                'factura' => $conCheque
+                    ? "El anticipo se pagó con cheque y todavía no se acreditó: la factura {$anticipo->ven_nrodoc} "
+                      . 'pasa a Cobrada al registrar su cobro, y recién ahí se aplica en la final.'
+                    : "La factura de anticipo {$anticipo->ven_nrodoc} todavía no está cobrada.",
             ]);
         }
 
@@ -393,7 +401,7 @@ class FacturaServicioService
     private function pagosDeclarados(SolicitudServicio $s, bool $anticipo): Collection
     {
         return $s->pagos()
-            ->with(['metodoPago', 'estadoPago', 'comprobante'])
+            ->with(['metodoPago', 'estadoPago', 'comprobante', 'cheque'])
             ->get()
             ->filter(fn (ServicioPago $p) => $p->estadoPago?->epa_codigo !== EstadoPago::RECHAZADO
                                           && $p->esAnticipo() === $anticipo)
@@ -404,6 +412,12 @@ class FacturaServicioService
     private function exigirComprobantesValidados(Collection $pagos): void
     {
         foreach ($pagos as $p) {
+            if ($p->cheque && !$p->cheque->fueRecibido()) {
+                throw ValidationException::withMessages([
+                    'factura' => "Falta confirmar la recepción del cheque del pago {$p->spa_orden} antes de generar la factura.",
+                ]);
+            }
+            
             if ($p->spa_canal !== ServicioPago::CANAL_WEB || !$p->metodoPago?->mpa_requcom) {
                 continue;
             }

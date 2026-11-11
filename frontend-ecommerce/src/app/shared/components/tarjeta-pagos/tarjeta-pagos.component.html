@@ -17,6 +17,14 @@
     </div>
     <div class="uk-text-bold">{{ p.monto | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
   </div>
+    <!-- Cheque declarado: mismos datos que muestra pedido-detalle -->
+  <div class="uk-text-small uk-margin-small-top" *ngIf="p.cheque as chq">
+    <span class="uk-text-meta">{{ chq.tipo_descri }}</span>
+    <span *ngIf="chq.banco"> · {{ chq.banco }}</span>
+    <span *ngIf="chq.nro"> · N° {{ chq.nro }}</span>
+    <span *ngIf="chq.fecha_cobro"> · cobro {{ chq.fecha_cobro }}</span>
+    <div class="uk-text-meta">Estado del cheque: {{ chq.estado_label }}</div>
+  </div>
 
   <!-- Pago rechazado: alerta propia debajo de su pago -->
   <div class="tp-rechazo" *ngIf="p.motivo_rechazo">

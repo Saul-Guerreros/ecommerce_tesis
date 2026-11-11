@@ -40,7 +40,7 @@
               <select cSelect formControlName="mpa_codigo"
                       [class.is-invalid]="m.get('mpa_codigo')?.invalid && m.get('mpa_codigo')?.touched">
                 <option value="">Seleccione...</option>
-                <option *ngFor="let op of metodos" [value]="op.mpa_codigo">{{ op.mpa_descri }}</option>
+                <option *ngFor="let op of metodosDisponibles" [value]="op.mpa_codigo">{{ op.mpa_descri }}</option>
               </select>
             </div>
             <div class="col-md-4">
@@ -52,6 +52,42 @@
               <button cButton size="sm" color="danger" class="me-2 text-white" type="button"
                       *ngIf="medios.length > 1" (click)="quitarMedio(i)">Quitar</button>
             </div>
+            <div class="col-12" *ngIf="esCheque(m)" formGroupName="cheque">
+              <div class="border rounded p-2">
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <label cLabel class="small">Tipo de cheque</label>
+                    <select cSelect formControlName="tipo">
+                      <option *ngFor="let t of tiposCheque" [value]="t.codigo">{{ t.descri }}</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label cLabel class="small">Banco emisor</label>
+                    <input cFormControl formControlName="banco" maxlength="80" />
+                  </div>
+                  <div class="col-md-4">
+                    <label cLabel class="small">N° de cheque</label>
+                    <input cFormControl formControlName="nro" maxlength="20" />
+                  </div>
+                  <div class="col-md-4">
+                    <label cLabel class="small">Titular</label>
+                    <input cFormControl formControlName="nombre" maxlength="150" />
+                  </div>
+                  <div class="col-md-4">
+                    <label cLabel class="small">CI del titular</label>
+                    <input cFormControl formControlName="nrodoc" maxlength="20" />
+                  </div>
+                  <div class="col-md-4" *ngIf="esDiferido(m)">
+                    <label cLabel class="small">Fecha de cobro</label>
+                    <input cFormControl type="date" formControlName="fecha_cobro" />
+                  </div>
+                </div>
+                <div class="text-danger small mt-1" *ngIf="chequeIncompleto(m) && m.touched">
+                  Completá banco, número, titular y CI<span *ngIf="esDiferido(m)">, y la fecha de cobro</span>.
+                </div>
+                <div class="form-text">El cheque queda registrado como recibido en la sucursal.</div>
+              </div>
+            </div>
           </div>
         </div>
       </form>
@@ -61,6 +97,9 @@
         <span class="small">Suma: <strong>Gs. {{ formatoGs(suma) }}</strong></span>
       </div>
       <div class="text-danger small mb-2" *ngIf="errorSuma">{{ errorSuma }}</div>
+      <div class="text-muted small mb-2" *ngIf="!d.acciones.cheque_habilitado && d.acciones.cheque_motivo">
+          Cheque no disponible: {{ d.acciones.cheque_motivo }}
+        </div>
       <div class="form-text mb-2">
         Son los medios con que paga el cliente: van en la factura. El dinero se registra después con “Cobrar”.
       </div>

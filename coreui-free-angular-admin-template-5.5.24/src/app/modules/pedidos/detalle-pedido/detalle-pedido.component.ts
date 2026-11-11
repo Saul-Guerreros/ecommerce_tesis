@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import {
@@ -8,12 +9,13 @@ import {
   ProgressModule, SpinnerModule, TableModule, TooltipModule, ModalModule,
 } from '@coreui/angular';
 
-import { PagoItem, PedidoDetalle } from '../models/pedido-detalle.model';
+import { ChequePago, PagoItem, PedidoDetalle } from '../models/pedido-detalle.model';
 import { PedidosService } from '../service/pedidos.service';
 import { ValidarComprobanteComponent } from '../validar-comprobante/validar-comprobante.component';
 import { RealizarCobroComponent } from '../realizar-cobro/realizar-cobro.component';
 import { RechazarPagoComponent } from '../rechazar-pago/rechazar-pago.component';
-
+import { RecibirChequeComponent } from '../recibir-cheque/recibir-cheque.component';
+import { RechazarChequeComponent } from '../rechazar-cheque/rechazar-cheque.component';
 /**
  * Pantalla de Gestión del Pedido.
  *
@@ -26,10 +28,11 @@ import { RechazarPagoComponent } from '../rechazar-pago/rechazar-pago.component'
   selector: 'app-detalle-pedido',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, CardModule, TableModule, ButtonModule,
-    BadgeModule, SpinnerModule, FormModule, AlertModule, ProgressModule,
-    TooltipModule, ValidarComprobanteComponent, RealizarCobroComponent,
-    RechazarPagoComponent, ModalModule,
+    CommonModule, FormsModule, ReactiveFormsModule, CardModule, TableModule,
+    ButtonModule, BadgeModule, SpinnerModule, FormModule, AlertModule,
+    ProgressModule, TooltipModule, ValidarComprobanteComponent,
+    RealizarCobroComponent, RechazarPagoComponent, ModalModule,
+    RecibirChequeComponent, RechazarChequeComponent,
   ],
   templateUrl: './detalle-pedido.component.html',
 })
@@ -46,6 +49,26 @@ export class DetallePedidoComponent implements OnInit {
   cobrarVisible = false;
   rechazarVisible = false;
   pagoSeleccionado: PagoItem | null = null;
+
+  // ---------- Cheques ----------
+  recibirChequeVisible = false;
+  rechazarChequeVisible = false;
+  descartarVisible = false;
+
+  /**
+   * ppa_id del cheque en edición. Se guarda el id y no el objeto porque
+   * cada respuesta de la API reemplaza el PedidoDetalle entero: una
+   * referencia al PagoItem viejo quedaría apuntando a datos muertos.
+   */
+  chequeEditandoId: number | null = null;
+  formCheque!: FormGroup;
+  guardandoCheque = false;
+
+  motivoDescarte = '';
+  descartando = false;
+
+  /** Política configurada en Métodos de Pago; la usa el aviso del modal. */
+  stockAlRecibir = true;
 
   // Generación de factura
   generandoFactura = false;
@@ -65,7 +88,17 @@ export class DetallePedidoComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private toastr: ToastrService,
-  ) {}
+    private fb: FormBuilder,
+  ) {
+    this.formCheque = this.fb.group({
+      tipo: ['VISTA', [Validators.required]],
+      banco: ['', [Validators.required, Validators.maxLength(80)]],
+      nombre: ['', [Validators.required, Validators.maxLength(150)]],
+      nrodoc: ['', [Validators.required, Validators.maxLength(20)]],
+      nro: ['', [Validators.required, Validators.maxLength(20)]],
+      fecha_cobro: [''],
+    });
+  }
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -75,6 +108,7 @@ export class DetallePedidoComponent implements OnInit {
       return;
     }
 
+    this.cargarConfigCheque();
     this.cargar(id);
   }
 
@@ -127,6 +161,228 @@ export class DetallePedidoComponent implements OnInit {
     this.pagoSeleccionado = null;
   }
 
+    // ---------- Cheques ----------
+
+  /**
+   * El aviso del modal de recepción cambia según dónde se descuenta el
+   * stock, y eso sólo lo sabe la API. Un fallo acá no rompe la pantalla:
+   * se asume el valor por defecto (RECEPCION).
+   */
+  private cargarConfigCheque(): void {
+    this.service.configGestion().subscribe({
+      next: (res) => { this.stockAlRecibir = res.cheque?.stock_al_recibir ?? true; },
+      error: () => {},
+    });
+  }
+
+  esCheque(pago: PagoItem): boolean {
+    return !!pago.cheque;
+  }
+
+  /** Oculta la tarjeta COMPROBANTE cuando no hay nada que validar ahí. */
+  get soloCheques(): boolean {
+    const pago = this.pedido?.pago;
+    return !!pago && pago.cantidad > 0 && pago.cheques_total === pago.cantidad;
+  }
+
+  /** Contador del encabezado: «1 de 2 cheques recibidos». */
+  get contadorCheques(): string {
+    const pago = this.pedido?.pago;
+    if (!pago) return '';
+
+    return pago.cheques_total === 1
+      ? (pago.cheques_recibidos === 1 ? 'Cheque recibido' : 'Cheque en espera')
+      : `${pago.cheques_recibidos} de ${pago.cheques_total} cheques recibidos`;
+  }
+
+  colorEstadoCheque(estado: string | null | undefined): string {
+    switch (estado) {
+      case 'ACREDITADO':   return 'success';
+      case 'RECIBIDO':     return 'info';
+      case 'EN_ESPERA':    return 'warning';
+      case 'DESCARTADO':   return 'info';
+      case 'NO_ENTREGADO': return 'danger';
+      case 'RECHAZADO':    return 'danger';
+      default:             return 'secondary';
+    
+    }
+  }
+
+  /**
+   * Tiempo que le queda al cliente para acercar el papel.
+   *
+   * El «ya venció» lo decide `chq.vencido` en el backend, no esta cuenta:
+   * de ese dato depende que el pedido se anule, y el reloj del navegador
+   * del administrador puede estar corrido. Acá sólo se traduce a algo
+   * legible para sucursal.
+   */
+  plazoRestante(chq: ChequePago): string {
+    if (!chq.vence) return '';
+
+    const restanteMs = new Date(chq.vence).getTime() - Date.now();
+    if (restanteMs <= 0) return 'Plazo vencido';
+
+    const horas = Math.floor(restanteMs / 3600000);
+    const minutos = Math.floor((restanteMs % 3600000) / 60000);
+
+    return horas > 0 ? `Quedan ${horas} h ${minutos} min` : `Quedan ${minutos} min`;
+  }
+
+  // ----- Edición en línea -----
+
+  editando(pago: PagoItem): boolean {
+    return this.chequeEditandoId === pago.ppa_id;
+  }
+
+  /**
+   * [Editar] carga el formulario con lo que hay. En un cheque descartado
+   * los campos vienen vacíos a propósito: es el estado en que el admin
+   * tiene que cargar los datos del papel que trajo el cliente.
+   */
+  iniciarEdicion(pago: PagoItem): void {
+    const chq = pago.cheque;
+    if (!chq) return;
+
+    this.formCheque.reset({
+      tipo: chq.tipo ?? 'VISTA',
+      banco: chq.banco ?? '',
+      nombre: chq.nombre ?? '',
+      nrodoc: chq.nrodoc ?? '',
+      nro: chq.nro ?? '',
+      fecha_cobro: this.aIsoFecha(chq.fecha_cobro),
+    });
+
+    this.chequeEditandoId = pago.ppa_id;
+  }
+
+  /** La API devuelve dd/mm/yyyy; <input type="date"> exige yyyy-mm-dd. */
+  private aIsoFecha(fecha: string | null): string {
+    if (!fecha) return '';
+
+    const partes = fecha.split('/');
+    return partes.length === 3 ? `${partes[2]}-${partes[1]}-${partes[0]}` : fecha;
+  }
+
+  cancelarEdicion(): void {
+    this.chequeEditandoId = null;
+    this.formCheque.reset({ tipo: 'VISTA', banco: '', nombre: '', nrodoc: '', nro: '', fecha_cobro: '' });
+  }
+
+  /** La fecha de cobro sólo existe en el diferido. */
+  get chequeEsDiferido(): boolean {
+    return this.formCheque.value.tipo === 'DIFERIDO';
+  }
+
+  get puedeGuardarCheque(): boolean {
+    if (!this.formCheque.valid || this.guardandoCheque) return false;
+    if (this.chequeEsDiferido && !this.formCheque.value.fecha_cobro) return false;
+    return true;
+  }
+
+  errorCheque(campo: string): string | null {
+    return this.formCheque.get(campo)?.errors?.['backend'] ?? null;
+  }
+
+  guardarCheque(pago: PagoItem): void {
+    if (!this.pedido || !this.puedeGuardarCheque) {
+      this.formCheque.markAllAsTouched();
+      return;
+    }
+
+    this.guardandoCheque = true;
+
+    this.service
+      .actualizarCheque(this.pedido.ped_id, pago.ppa_id, {
+        tipo: this.formCheque.value.tipo,
+        banco: this.formCheque.value.banco.trim(),
+        nombre: this.formCheque.value.nombre.trim(),
+        nrodoc: this.formCheque.value.nrodoc.trim(),
+        nro: this.formCheque.value.nro.trim(),
+        fecha_cobro: this.chequeEsDiferido ? this.formCheque.value.fecha_cobro : null,
+      })
+      .subscribe({
+        next: (res) => {
+          this.toastr.success(res.message, 'Cheque actualizado');
+          this.aplicar(res.data);
+          this.guardandoCheque = false;
+          this.cancelarEdicion();
+        },
+        error: (err) => {
+          this.guardandoCheque = false;
+          this.mostrarErrores(err, 'No se pudo actualizar el cheque', this.formCheque);
+        },
+      });
+  }
+
+  // ----- Descartar -----
+
+  abrirDescartar(pago: PagoItem): void {
+    this.pagoSeleccionado = pago;
+    this.motivoDescarte = '';
+    this.descartarVisible = true;
+  }
+
+  confirmarDescarte(): void {
+    const pago = this.pagoSeleccionado;
+    if (!this.pedido || !pago || this.descartando) return;
+
+    this.descartando = true;
+
+    this.service
+      .descartarCheque(this.pedido.ped_id, pago.ppa_id, {
+        confirma: true,
+        motivo: this.motivoDescarte.trim() || null,
+      })
+      .subscribe({
+        next: (res) => {
+          this.toastr.success(res.message, 'Cheque descartado');
+          this.aplicar(res.data);
+          this.descartando = false;
+          this.descartarVisible = false;
+
+          // Queda listo para cargar los datos del papel que sí trajo.
+          const actualizado = res.data.pago.items.find((p) => p.ppa_id === pago.ppa_id);
+          if (actualizado) this.iniciarEdicion(actualizado);
+        },
+        error: (err) => {
+          this.descartando = false;
+          this.toastr.error(
+            err?.error?.errors?.cheque?.[0] ?? err?.error?.message ?? 'No se pudo descartar el cheque',
+            'Error',
+          );
+        },
+      });
+  }
+
+  // ----- Modales -----
+
+  abrirRecibirCheque(pago: PagoItem): void {
+    this.cancelarEdicion();
+    this.pagoSeleccionado = pago;
+    this.recibirChequeVisible = true;
+  }
+
+  abrirRechazarCheque(pago: PagoItem): void {
+    this.cancelarEdicion();
+    this.pagoSeleccionado = pago;
+    this.rechazarChequeVisible = true;
+  }
+
+  /** Vuelca los errores de validación de la API sobre el formulario. */
+  private mostrarErrores(err: any, titulo: string, form: FormGroup): void {
+    const errores = err?.error?.errors;
+
+    if (errores) {
+      Object.entries(errores).forEach(([campo, mensajes]) => {
+        form.get(campo)?.setErrors({ backend: (mensajes as string[])[0] });
+      });
+      this.toastr.error((Object.values(errores)[0] as string[])[0], titulo);
+      return;
+    }
+
+    this.toastr.error(err?.error?.message ?? titulo, 'Error');
+  }
+
   /**
    * Las reglas de validar y cobrar las calcula la API (puede_validar /
    * puede_cobrar) y acá sólo se les suma el estado del pedido. La pantalla
@@ -172,6 +428,15 @@ export class DetallePedidoComponent implements OnInit {
         : `Quedan ${pago.comprobantes_pendientes} comprobantes sin validar.`;
     }
 
+    // Un cheque sin recibir bloquea la factura por el mismo motivo que un
+    // comprobante sin validar: todavía no hay nada que respalde el documento.
+    const chequesPendientes = pago.cheques_total - pago.cheques_recibidos;
+    if (chequesPendientes > 0) {
+      return chequesPendientes === 1
+        ? 'Falta confirmar la recepción del cheque en la sucursal.'
+        : `Faltan ${chequesPendientes} cheques por recibir en la sucursal.`;
+    }
+
     return 'Este pedido tiene un pago en efectivo: la factura se genera cuando el pedido está LISTO.';
   }
 
@@ -200,6 +465,8 @@ export class DetallePedidoComponent implements OnInit {
   /** Rechazar es la otra salida de la tarjeta Comprobante. */
   puedeRechazar(pago: PagoItem): boolean {
     if (!this.pedidoOperable()) return false;
+    // El cheque se rechaza desde su propia tarjeta, con su propio catálogo.
+    if (pago.cheque) return false;
     if (!pago.metodo.requcom) return false;
     return pago.estado.codigo !== 'CONFIRMADO' && pago.estado.codigo !== 'RECHAZADO';
   }

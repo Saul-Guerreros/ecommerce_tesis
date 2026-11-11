@@ -13,6 +13,14 @@ export interface PagoTarjeta {
   comprobante_url: string | null;
   motivo_rechazo: { motivo: string | null; detalle: string | null } | null;
   reemplazable: boolean;
+    /** Cheque declarado: el equivalente del comprobante (igual que pedido-detalle). */
+  cheque?: {
+    tipo_descri: string;
+    banco: string | null;
+    nro: string | null;
+    fecha_cobro: string | null;
+    estado_label: string;
+  } | null;
 }
 
 const TIPOS_COMPROBANTE = ['image/jpeg', 'image/png', 'application/pdf'];

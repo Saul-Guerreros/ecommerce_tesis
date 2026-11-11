@@ -50,6 +50,15 @@ class PedidoPago extends Model
         return $this->hasOne(PagoComprobante::class, 'pco_ppaid', 'ppa_id');
     }
 
+    /**
+     * Datos del cheque, cuando el método de este pago es CHEQUE. Es la
+     * contraparte de comprobante() para el método que no lleva archivo.
+    */
+    public function cheque(): HasOne
+    {
+        return $this->hasOne(PagoCheque::class, 'pch_ppaid', 'ppa_id');
+    }
+
     public function motivoRechazo(): BelongsTo
     {
         return $this->belongsTo(MotivoRechazoPago::class, 'ppa_mrpid', 'mrp_id');
@@ -65,4 +74,5 @@ class PedidoPago extends Model
     {
         return $this->hasOne(CobroVenta::class, 'cob_ppaid', 'ppa_id')->activo();
     }
+
 }

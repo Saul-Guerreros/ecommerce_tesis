@@ -9,6 +9,8 @@ use App\Models\Servicio\SolicitudServicio;
 use App\Models\Usuario;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\Pedido\PagoCheque;
+use App\Models\Servicio\ServicioPago;
 
 /**
  * Cancelación de una solicitud hasta antes de LISTA (decisión de negocio).
@@ -77,10 +79,21 @@ class CancelacionServicioService
                 => 'El equipo está en tránsito: registrá su recepción antes de cancelar, para dejar constancia de la devolución.',
             $s->factura()->exists()
                 => 'La solicitud tiene una factura final vigente: no se puede cancelar.',
+            $s->anticipoSinResolver() > 0.01 && $this->anticipoConCheque($s)
+                => 'El anticipo se pagó con cheque: si todavía no llegó, rechazá el cheque; si ya fue recibido, '
+                   . 'resolvelo con su factura de anticipo y nota de crédito, como cualquier anticipo.',
             $s->anticipoSinResolver() > 0.01
                 => 'Hay un anticipo sin resolver: rechazá el pago declarado, o acreditalo con nota de crédito y registrá la devolución del dinero.',
             default => null,
         };
+    }
+
+    private function anticipoConCheque(SolicitudServicio $s): bool
+    {
+        return $s->pagos()
+            ->where('spa_tipo', ServicioPago::TIPO_ANTICIPO)
+            ->whereHas('cheque', fn ($q) => $q->whereNotIn('sch_estado', [PagoCheque::RECHAZADO, PagoCheque::NO_ENTREGADO]))
+            ->exists();
     }
 
     /** @param array{motivo: string, devolucion?: ?array} $d */

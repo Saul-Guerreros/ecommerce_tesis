@@ -3,14 +3,15 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import {
-  DatosBilletera, DatosTransferencia, MetodoPagoCodigo, MetodoPagoOpcion,
-  ModoPago, PagoDividRequest, PedidoAPagar, RegistrarPagoRequest, ResumenCompra,
+  ChequeDeclarado, DatosBilletera, DatosCheque, DatosTransferencia, MetodoPagoCodigo,
+  MetodoPagoOpcion, ModoPago, PagoDividRequest, PedidoAPagar, RegistrarPagoRequest, ResumenCompra,
 } from '../../../core/models/checkout.model';
 import {
   EntregaResumenCard, FacturacionResumenCard, ProductoResumenCardItem,
 } from '../../../core/models/resumen-compra.model';
 import { PagoPedidoService } from '../../../core/services/pago-pedido.service';
 import { PagoDivididoComponent } from '../pago-dividido/pago-dividido.component';
+import { ChequeFormComponent, chequeCompleto, chequeVacio } from '../cheque-form/cheque-form.component';
 import { ProductosCarritoCardComponent } from '../../../shared/components/productos-carrito-card/productos-carrito-card.component';
 import { DatosEntregaCardComponent } from '../../../shared/components/datos-entrega-card/datos-entrega-card.component';
 import { DatosFacturacionCardComponent } from '../../../shared/components/datos-facturacion-card/datos-facturacion-card.component';
@@ -31,13 +32,16 @@ import { DatosFacturacionCardComponent } from '../../../shared/components/datos-
   selector: 'app-paso-pago',
   standalone: true,
   imports: [
-    CommonModule, CurrencyPipe, PagoDivididoComponent,
+    CommonModule, CurrencyPipe, PagoDivididoComponent, ChequeFormComponent,
     ProductosCarritoCardComponent, DatosEntregaCardComponent, DatosFacturacionCardComponent,
   ],
   templateUrl: './paso-pago.component.html',
   styleUrl: './paso-pago.component.css',
 })
 export class PasoPagoComponent implements OnInit, OnDestroy {
+  /** Segundos que permanece visible el aviso de "cheque no disponible". */
+  private static readonly SEGUNDOS_AVISO_CHEQUE = 5;
+
   numero = '';
   pedido!: PedidoAPagar;
 
@@ -45,6 +49,21 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
   datosTransferencia!: DatosTransferencia;
   datosBilletera!: DatosBilletera;
   mensajeEfectivo: string | null = null;
+  datosCheque!: DatosCheque;
+
+  /**
+   * El backend lo manda en false cuando el pedido es de envío a domicilio:
+   * el cheque se entrega en la sucursal. La tarjeta se muestra igual pero
+   * atenuada, y al hacer clic se explica por qué no se puede elegir.
+   */
+  chequeHabilitado = false;
+
+  /** Por qué el cheque no está disponible en este pedido (null si lo está). */
+  motivoChequeNoDisponible: string | null = null;
+
+  /** true durante unos segundos después de hacer clic en el cheque no disponible. */
+  avisoChequeVisible = false;
+  private temporizadorAviso?: ReturnType<typeof setTimeout>;
 
   /** Tarjetas de resumen de la columna lateral. */
   resumen!: ResumenCompra;
@@ -58,6 +77,9 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
   modoPago: ModoPago | null = null;
   metodoSeleccionado: MetodoPagoCodigo | null = null;
   comprobanteArchivo: File | null = null;
+
+  /** Datos del cheque cuando se paga con un solo método. */
+  cheque: ChequeDeclarado = chequeVacio();
 
   /**
    * Método del bloque que el cliente está editando en el pago dividido.
@@ -90,6 +112,7 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.reloj) clearInterval(this.reloj);
+    if (this.temporizadorAviso) clearTimeout(this.temporizadorAviso);
   }
 
   private cargar(): void {
@@ -102,6 +125,10 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
         this.datosTransferencia = resp.datos_transferencia;
         this.datosBilletera = resp.datos_billetera;
         this.mensajeEfectivo = resp.mensaje_efectivo;
+        this.datosCheque = resp.datos_cheque;
+        this.chequeHabilitado = resp.cheque_habilitado;
+
+        this.motivoChequeNoDisponible = resp.cheque_motivo;
 
         // Ya vienen normalizados del backend: ninguno necesita adaptarse.
         this.resumen = resp.resumen;
@@ -154,6 +181,10 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
     return this.modoPago === 'dividido';
   }
 
+  get metodoEsCheque(): boolean {
+    return this.metodoSeleccionado === 'CHEQUE';
+  }
+
   get metodoRequiereComprobante(): boolean {
     return this.metodos.find((m) => m.mpa_codigo === this.metodoSeleccionado)?.mpa_requcom ?? false;
   }
@@ -193,6 +224,7 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
     if (modo === 'dividido') {
       this.metodoSeleccionado = null;
       this.comprobanteArchivo = null;
+      this.cheque = chequeVacio();
     } else {
       this.pagosDivididos = [];
       this.pagosDivididosValidos = false;
@@ -200,11 +232,34 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
   }
 
   elegirMetodo(codigo: MetodoPagoCodigo): void {
+    // Cheque no disponible (pedido con envío): en vez de ignorar el clic se
+    // explica el motivo. Va antes del chequeo del pago dividido para que el
+    // aviso también aparezca en ese modo.
+    if (codigo === 'CHEQUE' && !this.chequeHabilitado) {
+      this.mostrarAvisoCheque();
+      return;
+    }
+
     // En pago dividido la tarjeta es sólo informativa: el método se elige
     // dentro de cada bloque de pago.
     if (this.esDividido) return;
 
     this.metodoSeleccionado = codigo;
+  }
+
+  /**
+   * Muestra el aviso y lo oculta solo a los pocos segundos. Si el cliente
+   * vuelve a hacer clic antes de que termine, el conteo se reinicia: así
+   * el mensaje no desaparece mientras lo está leyendo.
+   */
+  private mostrarAvisoCheque(): void {
+    this.avisoChequeVisible = true;
+
+    if (this.temporizadorAviso) clearTimeout(this.temporizadorAviso);
+
+    this.temporizadorAviso = setTimeout(() => {
+      this.avisoChequeVisible = false;
+    }, PasoPagoComponent.SEGUNDOS_AVISO_CHEQUE * 1000);
   }
 
   onCambioPagos(evento: { pagos: PagoDividRequest[]; valido: boolean }): void {
@@ -217,32 +272,43 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
     this.comprobanteArchivo = input.files?.[0] ?? null;
   }
 
+  onChequeCambio(cheque: ChequeDeclarado): void {
+    this.cheque = cheque;
+  }
+
   // ---------- Botón de envío ----------
 
   /**
-   * Los tres rótulos del instructivo salen de la composición real del
-   * pago, no de un if por código de método:
+   * Los rótulos salen de la composición real del pago, no de un if por
+   * código de método. Hay tres clases de pago:
    *
-   *   sólo comprobante          -> "Enviar comprobante"
-   *   comprobante + efectivo    -> "Enviar y confirmar pago"
-   *   sólo efectivo             -> "Confirmar pago contra entrega"
+   *   con comprobante (transferencia, billetera) -> "Enviar comprobante"
+   *   cheque                                      -> "Confirmar pago con cheque"
+   *   efectivo contra entrega                     -> "Confirmar pago contra entrega"
    *
-   * Calcularlo así hace que el pago dividido con dos transferencias caiga
-   * solo en el rótulo correcto, sin un caso especial.
+   * Si el pago mezcla dos o más clases, el rótulo es "Enviar y confirmar
+   * pago". Calcularlo así hace que el pago dividido con dos transferencias
+   * caiga solo en el rótulo correcto, sin un caso especial.
    */
   get textoBoton(): string {
-    const codigos = this.esDividido
+    const brutos: (MetodoPagoCodigo | null)[] = this.esDividido
       ? this.pagosDivididos.map((p) => p.mpa_codigo)
-      : (this.metodoSeleccionado ? [this.metodoSeleccionado] : []);
+      : [this.metodoSeleccionado];
+
+    const codigos = brutos.filter((c): c is MetodoPagoCodigo => !!c);
 
     const requiere = (c: MetodoPagoCodigo) =>
       this.metodos.find((m) => m.mpa_codigo === c)?.mpa_requcom ?? false;
 
     const conComprobante = codigos.some(requiere);
-    const conEfectivo = codigos.some((c) => !requiere(c));
+    const conCheque = codigos.some((c) => c === 'CHEQUE');
+    const conEfectivo = codigos.some((c) => c !== 'CHEQUE' && !requiere(c));
 
-    if (conComprobante && conEfectivo) return 'Enviar y confirmar pago';
+    const clases = [conComprobante, conCheque, conEfectivo].filter(Boolean).length;
+
+    if (clases > 1) return 'Enviar y confirmar pago';
     if (conComprobante) return codigos.length > 1 ? 'Enviar comprobantes' : 'Enviar comprobante';
+    if (conCheque) return codigos.length > 1 ? 'Confirmar pagos con cheque' : 'Confirmar pago con cheque';
     if (conEfectivo) return 'Confirmar pago contra entrega';
 
     return 'Confirmar pago';
@@ -250,8 +316,9 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
 
   /**
    * El botón se habilita recién cuando el pago está completo: con
-   * comprobante adjunto si el método lo exige, o con todos los bloques
-   * válidos en el pago dividido. Es lo que pide el instructivo.
+   * comprobante adjunto si el método lo exige, con los datos del cheque
+   * completos si es cheque, o con todos los bloques válidos en el pago
+   * dividido.
    */
   get puedeEnviar(): boolean {
     if (!this.modoPago) return false;
@@ -259,6 +326,8 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
     if (this.esDividido) return this.pagosDivididosValidos;
 
     if (!this.metodoSeleccionado) return false;
+
+    if (this.metodoEsCheque) return chequeCompleto(this.cheque);
 
     return !this.metodoRequiereComprobante || !!this.comprobanteArchivo;
   }
@@ -272,7 +341,14 @@ export class PasoPagoComponent implements OnInit, OnDestroy {
 
     const payload: RegistrarPagoRequest = this.esDividido
       ? { modo: 'dividido', pagos: this.pagosDivididos }
-      : { modo: 'unico', mpa_codigo: this.metodoSeleccionado!, comprobante: this.comprobanteArchivo };
+      : {
+          modo: 'unico',
+          mpa_codigo: this.metodoSeleccionado!,
+          comprobante: this.comprobanteArchivo,
+          // Sólo viaja si el método elegido es cheque: los datos de un
+          // cheque cargado y luego abandonado no deben llegar al backend.
+          cheque: this.metodoEsCheque ? this.cheque : null,
+        };
 
     this.enviando = true;
 

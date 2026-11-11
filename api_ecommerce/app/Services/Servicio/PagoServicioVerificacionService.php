@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use App\Models\Venta\CobroVenta;
 use Throwable;
+use App\Models\Pedido\PagoCheque;
+
 
 /**
  * Verificación y cobro de los pagos del servicio. Espejo de
@@ -102,6 +104,7 @@ class PagoServicioVerificacionService
 
                 $this->validarOperable($s);
                 $this->validarPendiente($pago);
+                $this->validarChequeRecibido($pago);
                 $this->validarComprobanteOReferencia($pago, $datos);
                 $this->validarMonto($pago, $datos);
 
@@ -132,6 +135,11 @@ class PagoServicioVerificacionService
                 }
 
                 $this->cobros->registrar($factura, $pago, $datos, $usuario);
+
+                // El cobro de un cheque es su acreditación: el banco pagó.
+                if ($pago->cheque && !$pago->cheque->fueAcreditado()) {
+                    $pago->cheque->update(['sch_estado' => PagoCheque::ACREDITADO]);
+                }
 
                 $pago->update([
                     'spa_epaid' => EstadoPago::porCodigo(EstadoPago::CONFIRMADO)->epa_id,
@@ -167,6 +175,15 @@ class PagoServicioVerificacionService
             $pago = $this->bloquearPago($s, $pagoId);
 
             $this->validarOperable($s);
+
+            if ($pago->cheque) {
+                throw ValidationException::withMessages([
+                    'pago' => $pago->cheque->fueRecibido()
+                        ? 'Este cheque ya fue recibido: no se rechaza. Si rebota, corresponde nota de crédito.'
+                        : 'Este pago es con cheque: usá [Rechazar cheque].',
+                ]);
+            }
+
             $this->validarPendiente($pago);
             $this->validarSinFactura($s, $pago);
 
@@ -319,7 +336,7 @@ class PagoServicioVerificacionService
 
         abort_if(!$pago, 404, 'El pago no pertenece a esta solicitud.');
 
-        return $pago->load(['estadoPago', 'metodoPago', 'comprobante']);
+        return $pago->load(['estadoPago', 'metodoPago', 'comprobante', 'cheque']);
     }
 
     private function validarOperable(SolicitudServicio $s): void
@@ -335,11 +352,21 @@ class PagoServicioVerificacionService
 
         if ($actual !== EstadoPago::PAGO_VERIFICAR) {
             throw ValidationException::withMessages([
-                'pago' => match ($actual) {
+                'pago' => $pago->cheque?->estaPendiente() ? 'El cheque de este pago todavía no fue recibido en la sucursal.' : match ($actual) {    
                     EstadoPago::CONFIRMADO => 'Este pago ya fue cobrado. Para revertirlo hay que anular el cobro y emitir una nota de crédito.',
                     EstadoPago::RECHAZADO  => 'Este pago ya fue rechazado: espera un comprobante nuevo del cliente.',
                     default                => 'Este pago no está pendiente.',
                 },
+            ]);
+        }
+    }
+
+    private function validarChequeRecibido(ServicioPago $pago): void
+    {
+        if ($pago->cheque && !$pago->cheque->fueRecibido()) {
+            throw ValidationException::withMessages([
+                'cobro' => 'El cheque de este pago todavía no fue recibido en la sucursal. '
+                    . 'Confirmá la recepción antes de registrar el cobro.',
             ]);
         }
     }
@@ -370,7 +397,7 @@ class PagoServicioVerificacionService
 
     private function fresco(SolicitudServicio $s): SolicitudServicio
     {
-        return $s->fresh(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'pagos.cobro', 'estadoPago']);
+        return $s->fresh(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'pagos.cheque', 'pagos.cobro', 'estadoPago']);
     }
 
     private function gs(int|float $monto): string
@@ -406,6 +433,11 @@ class PagoServicioVerificacionService
             $cobro->pagoServicio->update([
                 'spa_epaid' => EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR)->epa_id,
             ]);
+
+            $cheque = $cobro->pagoServicio->cheque;
+            if ($cheque?->fueAcreditado()) {
+                $cheque->update(['sch_estado' => PagoCheque::RECIBIDO]);
+            }
 
             $this->estadoPago->recalcular($s, $usuario->usu_id, sprintf(
                 'Cobro de Gs. %s anulado (factura %s) — %s',

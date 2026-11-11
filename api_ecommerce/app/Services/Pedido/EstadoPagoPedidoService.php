@@ -35,20 +35,30 @@ class EstadoPagoPedidoService
      *
      * @return bool true si el pedido ACABA de quedar totalmente pagado
      */
-    public function recalcular(Pedido $pedido): bool
+       public function recalcular(Pedido $pedido): bool
     {
         $anterior = $pedido->estadoPago?->epa_codigo;
 
-        $pagos = $pedido->pagos()->with('estadoPago')->get();
+        $pagos = $pedido->pagos()->with('estadoPago', 'cheque')->get();
 
         $total       = $pagos->count();
         $confirmados = $pagos->where('estadoPago.epa_codigo', EstadoPago::CONFIRMADO)->count();
         $rechazados  = $pagos->where('estadoPago.epa_codigo', EstadoPago::RECHAZADO)->count();
 
+        // Un cheque todavía no recibido no es un pago "en verificación":
+        // no hay nada que el admin pueda mirar hasta que el papel llegue a
+        // la sucursal. Mostrarlo en la bandeja de verificación le pediría
+        // al administrador una acción que no puede ejecutar.
+        $esperandoCheque = $pagos
+            ->filter(fn ($p) => $p->estadoPago?->epa_codigo !== EstadoPago::CONFIRMADO)
+            ->filter(fn ($p) => $p->estadoPago?->epa_codigo !== EstadoPago::RECHAZADO)
+            ->every(fn ($p) => $p->cheque?->estaPendiente() === true);
+
         $codigo = match (true) {
             $total > 0 && $confirmados === $total => EstadoPago::CONFIRMADO,
             $rechazados > 0                       => EstadoPago::RECHAZADO,
             $confirmados > 0                      => EstadoPago::PARCIAL,
+            $total > 0 && $esperandoCheque        => EstadoPago::PENDIENTE_PAGO,
             default                               => EstadoPago::PAGO_VERIFICAR,
         };
 

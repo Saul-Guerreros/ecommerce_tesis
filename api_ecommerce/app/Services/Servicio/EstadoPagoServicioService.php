@@ -85,25 +85,26 @@ class EstadoPagoServicioService
      */
     public function resumen(SolicitudServicio $s): array
     {
-        $pagos = $s->pagos()->with(['estadoPago', 'metodoPago'])->get();
+        $pagos = $s->pagos()->with(['estadoPago', 'metodoPago', 'cheque'])->get();
 
         $confirmado = $this->sumar($pagos, fn ($p) => $this->codigo($p) === EstadoPago::CONFIRMADO);
         $verificar  = $this->sumar($pagos, fn ($p) => $this->codigo($p) === EstadoPago::PAGO_VERIFICAR);
         $rechCorreg = $this->sumar($pagos, fn ($p) => $this->codigo($p) === EstadoPago::RECHAZADO
             && $p->metodoPago?->mpa_requcom);
+        $cheque     = $this->sumar($pagos, fn ($p) => $this->esperandoCheque($p));    
         $anticipo   = $this->sumar($pagos, fn ($p) => $p->esAnticipo()
             && $this->codigo($p) !== EstadoPago::RECHAZADO);
 
         $total        = (int) round((float) $s->sse_total);
         $consolidado  = $this->consolidado($s);
-        $comprometido = $confirmado + $verificar + $rechCorreg;
-
+        $comprometido = $confirmado + $verificar + $rechCorreg + $cheque;
         return [
             'total'           => $total,
             'consolidado'     => $consolidado,
             'anticipo'        => $anticipo,
             'confirmado'      => $confirmado,
             'en_verificacion' => $verificar,
+            'cheque_pendiente'=> $cheque,
             'comprometido'    => $comprometido,
             'saldo'           => $consolidado ? max(0, $total - $comprometido) : 0,
             'admite_pagos'    => $this->admitePagos($s),
@@ -215,6 +216,14 @@ class EstadoPagoServicioService
         };
     }
 
+    // método nuevo, antes de codigo()
+    /** Pago con cheque declarado que todavía no llegó a la sucursal. */
+    public function esperandoCheque(ServicioPago $p): bool
+    {
+        return $this->codigo($p) === EstadoPago::PENDIENTE_PAGO
+            && $p->cheque?->estaPendiente() === true;
+    }
+    
     private function codigo(ServicioPago $p): ?string
     {
         return $p->estadoPago?->epa_codigo;

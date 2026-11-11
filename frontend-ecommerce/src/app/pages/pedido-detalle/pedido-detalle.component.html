@@ -38,10 +38,24 @@
                 {{ pedido.estado_pedido.descripcion }}
               </span>
             </span>
+
+            <span class="pd-badge-grupo" *ngIf="pedido.estado_cheque as chq">
+              <span class="pd-badge-etiqueta">Cheque:</span>
+              <span class="uk-label" [ngClass]="claseEstadoCheque(chq.codigo)">
+                {{ chq.descripcion }}
+              </span>
+            </span>
+
             <span class="pd-badge-grupo">
               <span class="pd-badge-etiqueta">Pago:</span>
               <span class="uk-label" [ngClass]="claseEstadoPago(pedido.estado_pago.codigo)">
                 {{ pedido.estado_pago.descripcion }}
+              </span>
+            </span>
+            <span class="pd-badge-grupo" *ngIf="pedido.estado_cheque as chq">
+              <span class="pd-badge-etiqueta">Cheque:</span>
+              <span class="uk-label" [ngClass]="claseEstadoCheque(chq.codigo)">
+                {{ chq.descripcion }}
               </span>
             </span>
 
@@ -54,12 +68,31 @@
                   [class.uk-text-meta]="!vencidoRetiro(pedido.ped_vencret)">
               Retiro: {{ restanteRetiro(pedido.ped_vencret) }}
             </span>
+
+            <span class="uk-text-small" *ngIf="pedido.cheque as chq"
+                  [class.uk-text-danger]="vencidoCheque(chq.vence)"
+                  [class.uk-text-warning]="!vencidoCheque(chq.vence)">
+              <span uk-icon="icon: clock; ratio: 0.7"></span>
+              {{ chq.cantidad > 1 ? 'Cheques' : 'Cheque' }} a entregar ·
+              {{ restanteCheque(chq.vence) }}
+            </span>
           </div>
 
           <div class="uk-margin-top" *ngIf="pedido.pagable">
             <button type="button" class="uk-button uk-button-primary" (click)="pagarAhora()">
               Pagar ahora
             </button>
+          </div>
+
+          <!-- Qué tiene que hacer el cliente. En la cabecera va la cuenta
+               regresiva; acá la fecha concreta y la consecuencia. -->
+          <div class="uk-alert uk-alert-warning uk-margin-top" *ngIf="pedido.cheque as chq">
+            <p class="uk-margin-remove">
+              Entregá tu {{ chq.cantidad > 1 ? 'cheques' : 'cheque' }} en la sucursal antes del
+              <strong>{{ chq.vence | date:'dd/MM/yyyy HH:mm' }}</strong>
+              ({{ chq.horas_plazo }} horas). Pasado ese plazo, el pedido se anula
+              y se libera el stock.
+            </p>
           </div>
         </div>
 
@@ -138,7 +171,19 @@
                 </button>
               </div>
             </div>
+
+              <!-- Cheque declarado: el equivalente del comprobante adjunto
+              en los métodos que sí llevan archivo. -->
+              <div class="uk-text-small uk-margin-small-top" *ngIf="p.cheque as chq">
+                <span class="uk-text-meta">{{ chq.tipo_descri }}</span>
+                <span *ngIf="chq.banco"> · {{ chq.banco }}</span>
+                <span *ngIf="chq.nro"> · N° {{ chq.nro }}</span>
+                <span *ngIf="chq.fecha_cobro"> · cobro {{ chq.fecha_cobro }}</span>
+                <div class="uk-text-meta">Estado del cheque: {{ chq.estado_label }}</div>
+              </div>
           </ng-container>
+
+
         </div>
       </div>
 

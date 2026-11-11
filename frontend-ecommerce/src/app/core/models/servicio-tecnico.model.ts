@@ -1,4 +1,4 @@
-import { DatosBilletera, DatosTransferencia, MetodoPagoOpcion, SucursalRetiro } from './checkout.model';
+import { DatosBilletera, DatosCheque, DatosTransferencia, MetodoPagoOpcion, SucursalRetiro, TipoCheque } from './checkout.model';
 import { Direccion } from './direccion.model';
 
 export type ModalidadIngreso = 'sucursal' | 'domicilio';
@@ -93,6 +93,25 @@ export interface PagoServicioCliente {
   comprobante_url: string | null;
   motivo_rechazo: { motivo: string | null; detalle: string | null } | null;
   reemplazable: boolean;
+   /** Misma forma que el cheque de los pagos de Mis Pedidos. */
+  cheque: ChequePagoCliente | null;
+}
+
+export interface ChequePagoCliente {
+  tipo: TipoCheque;
+  tipo_descri: string;
+  banco: string | null;
+  nro: string | null;
+  fecha_cobro: string | null;
+  estado: string;
+  estado_label: string;
+}
+
+/** Plazo para entregar el cheque en la sucursal (igual que en Mis Pedidos). */
+export interface PlazoChequeServicio {
+  vence: string;
+  horas_plazo: number;
+  cantidad: number;
 }
 
 /** EstadoPagoServicioService::anticipoWeb(): lo decide el backend. */
@@ -108,10 +127,13 @@ export interface PagoServicioBloque {
   total: number;
   pagado: number;
   en_verificacion: number;
+  cheque_pendiente: number;
+  cheque: PlazoChequeServicio | null;
   saldo: number;
   pagable: boolean;
   anticipo: AnticipoWeb;
   pagos: PagoServicioCliente[];
+
 }
 
 /** EstadoPagoServicioService::resumen() */
@@ -121,6 +143,7 @@ export interface ResumenPagoServicio {
   anticipo: number;
   confirmado: number;
   en_verificacion: number;
+  cheque_pendiente: number;
   comprometido: number;
   saldo: number;
   admite_pagos: boolean;
@@ -134,6 +157,9 @@ export interface ConfigPagoServicioResponse {
   datos_transferencia: DatosTransferencia;
   datos_billetera: DatosBilletera;
   mensaje_efectivo: string | null;
+  datos_cheque: DatosCheque;
+  cheque_habilitado: boolean;
+  cheque_motivo: string | null;
   pagos: PagoServicioCliente[];
 }
 

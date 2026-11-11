@@ -2,8 +2,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, shareReplay } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { CobroConfig, CobroDetalle, CobrosPaginado, MedioDeclarado, RespuestaCobro } from '../models/cobro-servicio.model';
 import { FacturaServicio, GuardarFacturacion, OpcionesFacturacion, TipoFactura } from '../models/factura-servicio.model';
+import { ChequeDatos, CobroConfig, CobroDetalle, CobrosPaginado, MedioDeclarado, RespuestaCobro } from '../models/cobro-servicio.model';
+
 
 /**
  * Cobro del servicio técnico. Ciclo comprobante -> factura -> cobro:
@@ -49,6 +50,24 @@ export class CobrosServicioService {
 
   rechazar(sseId: number, spaId: number, datos: Record<string, unknown>): Observable<RespuestaCobro> {
     return this.http.post<RespuestaCobro>(`${this.apiUrl}/${sseId}/pagos/${spaId}/rechazar`, datos);
+  }
+
+  // ---------- 1.b Cheque (mismas acciones que en pedidos) ----------
+
+  actualizarCheque(sseId: number, spaId: number, datos: ChequeDatos): Observable<RespuestaCobro> {
+    return this.http.put<RespuestaCobro>(`${this.apiUrl}/${sseId}/pagos/${spaId}/cheque`, datos);
+  }
+
+  descartarCheque(sseId: number, spaId: number, datos: { confirma: boolean; motivo: string | null }): Observable<RespuestaCobro> {
+    return this.http.post<RespuestaCobro>(`${this.apiUrl}/${sseId}/pagos/${spaId}/cheque/descartar`, datos);
+  }
+
+  recibirCheque(sseId: number, spaId: number, datos: { confirma_monto: boolean; observacion: string | null }): Observable<RespuestaCobro> {
+    return this.http.post<RespuestaCobro>(`${this.apiUrl}/${sseId}/pagos/${spaId}/cheque/recibir`, datos);
+  }
+
+  rechazarCheque(sseId: number, spaId: number, datos: { motivo_id: number; detalle: string | null; confirma: boolean }): Observable<RespuestaCobro> {
+    return this.http.post<RespuestaCobro>(`${this.apiUrl}/${sseId}/pagos/${spaId}/cheque/rechazar`, datos);
   }
 
   // ---------- 2. Facturas ----------

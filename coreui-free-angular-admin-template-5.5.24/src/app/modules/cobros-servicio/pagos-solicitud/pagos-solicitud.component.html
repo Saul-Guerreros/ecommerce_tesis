@@ -9,6 +9,7 @@
         <ng-container *ngIf="d.resumen.anticipo > 0"> · Anticipo Gs. {{ formatoGs(d.resumen.anticipo) }}</ng-container>
         · Cobrado <strong class="text-success">Gs. {{ formatoGs(d.resumen.confirmado) }}</strong>
         <ng-container *ngIf="d.resumen.en_verificacion > 0"> · Por cobrar Gs. {{ formatoGs(d.resumen.en_verificacion) }}</ng-container>
+        <ng-container *ngIf="d.resumen.cheque_pendiente > 0"> · Cheque por recibir Gs. {{ formatoGs(d.resumen.cheque_pendiente) }}</ng-container>
         · Saldo sin medio <strong [class.text-danger]="d.resumen.saldo > 0">Gs. {{ formatoGs(d.resumen.saldo) }}</strong>
       </ng-container>
       <ng-container *ngIf="!d.resumen.consolidado">
@@ -46,6 +47,11 @@
           <td class="text-end text-nowrap">Gs. {{ formatoGs(p.monto_asignado) }}</td>
           <td><c-badge [color]="colorEstado(p.estado.codigo)">{{ etiquetaEstado(p) }}</c-badge></td>
           <td class="small">
+           <!-- Cheque: el detalle y sus acciones viven en la tarjeta de abajo -->
+            <div *ngIf="p.cheque as chq">
+              {{ chq.tipo_label }}<span *ngIf="chq.nro"> · N° {{ chq.nro }}</span> · {{ chq.estado_label }}
+              <div class="text-muted">Se gestiona en <strong>Recepción de cheque</strong>.</div>
+            </div>
             <div *ngIf="p.comprobante">
               Comprobante {{ p.comprobante.validado ? 'validado' : 'sin validar' }}
               <span *ngIf="p.comprobante.validacion"> por {{ p.comprobante.validacion.por }} · {{ p.comprobante.validacion.fecha }}</span>
@@ -76,6 +82,10 @@
       </tbody>
     </table>
   </div>
+ 
+  <div class="mt-3" *ngIf="d.pagos.length > 0">
+  <app-cheques-servicio [detalle]="d" (guardado)="onGuardado($event)"></app-cheques-servicio>
+</div>
 
   <!-- Factura de anticipo -->
   <ng-container *ngIf="d.facturas.anticipo">

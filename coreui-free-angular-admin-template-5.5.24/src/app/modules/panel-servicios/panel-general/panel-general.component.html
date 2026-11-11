@@ -101,7 +101,7 @@
     <div class="text-muted small mb-2" *ngIf="!cargando">{{ total }} resultado(s) encontrado(s)</div>
     <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
 
-    <div class="table-responsive" *ngIf="!cargando">
+    <div class="table-responsive tabla-scroll-fijo" *ngIf="!cargando">
       <table cTable striped hover class="align-middle">
         <thead>
           <tr>

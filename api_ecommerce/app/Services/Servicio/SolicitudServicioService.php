@@ -487,7 +487,7 @@ class SolicitudServicioService
                 // Garantía de compra: producto cubierto y gestión con la empresa responsable
                 'detallePedido:dpd_id,dpd_descri', 'garantiaProveedor.proveedor:pro_id,pro_razon',
                 // Pago del servicio (C4)
-                'estadoPago', 'pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'pagos.motivoRechazo',
+                'estadoPago', 'pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'pagos.cheque', 'pagos.motivoRechazo',
             ])
             ->firstOrFail();
     }

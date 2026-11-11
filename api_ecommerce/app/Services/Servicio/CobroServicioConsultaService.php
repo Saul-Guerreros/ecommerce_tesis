@@ -13,6 +13,8 @@ use App\Models\Servicio\SolicitudServicio;
 use App\Models\Usuario;
 use App\Models\Venta\VentaCab;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\Pedido\PagoCheque;
+use App\Models\Configuracion\ConfiguracionTienda;
 
 /**
  * Lecturas del panel para el cobro del servicio: bandeja, config de los
@@ -30,12 +32,14 @@ class CobroServicioConsultaService
         'cobro.metodoPago', 'cobro.usuario.persona:per_id,per_nombr1,per_apell1',
         'usuarioVerificador.persona:per_id,per_nombr1,per_apell1',
         'usuarioCobro.persona:per_id,per_nombr1,per_apell1',
+        'cheque.motivoRechazo', 'cheque.usuarioReceptor.persona:per_id,per_nombr1,per_apell1',
     ];
 
     public function __construct(
         private EstadoPagoServicioService $estadoPago,
         private SolicitudServicioService $solicitudes,
         private FacturaServicioConsultaService $facturas,
+        private PoliticaChequeServicio $politicaCheque,
     ) {}
 
     /** Bandeja: por defecto lo que espera verificación o cobro. */
@@ -43,7 +47,7 @@ class CobroServicioConsultaService
     {
         return ServicioPago::query()
             ->with([
-                'metodoPago', 'estadoPago', 'comprobante:sco_id,sco_spaid,sco_verifi',
+                'metodoPago', 'estadoPago', 'comprobante:sco_id,sco_spaid,sco_verifi','cheque',
                 'solicitud:sse_id,sse_numero,sse_cliid,sse_sucid,sse_etsid,sse_total',
                 'solicitud.estadoServicio', 'solicitud.sucursal:suc_id,suc_nombre',
                 'solicitud.cliente.persona:per_id,per_nombr1,per_apell1,per_cedula',
@@ -69,10 +73,25 @@ class CobroServicioConsultaService
     public function config(Usuario $usuario): array
     {
         return [
-            'estados'    => EstadoPago::whereIn('epa_codigo', [EstadoPago::PAGO_VERIFICAR, EstadoPago::CONFIRMADO, EstadoPago::RECHAZADO])
-                ->get(['epa_id', 'epa_codigo', 'epa_descri']),
+            'estados'    => EstadoPago::whereIn('epa_codigo', [
+                EstadoPago::PENDIENTE_PAGO, EstadoPago::PAGO_VERIFICAR, EstadoPago::CONFIRMADO, EstadoPago::RECHAZADO,
+            ])->get(['epa_id', 'epa_codigo', 'epa_descri']),
             'metodos'    => MetodoPago::activos()->orderBy('mpa_id')->get(['mpa_id', 'mpa_codigo', 'mpa_descri', 'mpa_requcom']),
-            'motivos'    => MotivoRechazoPago::activos()->get(['mrp_id', 'mrp_codigo', 'mrp_descri', 'mrp_requdet']),
+            'motivos'    => MotivoRechazoPago::activos()->delAmbito(MotivoRechazoPago::AMBITO_COMPROBANTE)
+                ->get(['mrp_id', 'mrp_codigo', 'mrp_descri', 'mrp_requdet']),
+            'motivos_rechazo_cheque' => MotivoRechazoPago::activos()->delAmbito(MotivoRechazoPago::AMBITO_CHEQUE)
+                ->where('mrp_codigo', '<>', MotivoRechazoPago::CHQ_FUERA_DE_PLAZO)
+                ->get(['mrp_id', 'mrp_codigo', 'mrp_descri', 'mrp_requdet']),
+            'cheque'     => [
+                'habilitado'         => ConfiguracionTienda::actual()->tiposChequeHabilitados() !== [],
+                'tipos'              => array_map(
+                    fn (string $t) => ['codigo' => $t, 'descri' => PagoCheque::DESCRIPCIONES[$t]],
+                    ConfiguracionTienda::actual()->tiposChequeHabilitados(),
+                ),
+                'estados'            => PagoCheque::ESTADOS,
+                'horas_plazo'        => PagoCheque::HORAS_PLAZO,
+                'entrega_al_recibir' => ConfiguracionTienda::actual()->chequeDescuentaEnRecepcion(),
+            ],
             'sucursales' => Sucursal::where('suc_estado', 1)->orderBy('suc_nombre')->get(['suc_id', 'suc_nombre']),
             'permisos'   => $this->permisos($usuario),
         ];
@@ -166,6 +185,8 @@ class CobroServicioConsultaService
             'declarar_medios'   => $cajero,
 
             'cobrar_entregar'   => $cajero && $codigo === EstadoServicio::LISTA,
+            'cheque_habilitado' => $this->politicaCheque->admite($s),
+            'cheque_motivo'     => $this->politicaCheque->motivo($s),
             'verificar'         => $permisos['verificar'],
             'cobrar'            => $cajero,
         ];

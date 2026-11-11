@@ -5,7 +5,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import {
-  ConfigEnvio, ModalidadEntrega, SucursalRetiro, TipoReceptor, TitularCheckout,
+  ChequeAceptado, ConfigEnvio, ModalidadEntrega, SucursalRetiro, TipoReceptor, TitularCheckout,
 } from '../../../core/models/checkout.model';
 import { CarritoItem } from '../../../core/models/carrito.model';
 import { Direccion } from '../../../core/models/direccion.model';
@@ -35,6 +35,12 @@ export class PasoEntregaComponent implements OnInit {
   direcciones: Direccion[] = [];
   titular!: TitularCheckout;
   envio!: ConfigEnvio;
+
+    /**
+   * Modalidades en las que el admin acepta cheque. El valor inicial es el
+   * de fábrica; se reemplaza apenas llega la configuración.
+   */
+  chequeAceptado: ChequeAceptado = { retiro: true, envio: false };
 
   /** Tarjeta "Productos en Carrito" del Paso 1. */
   productos: ProductoResumenCardItem[] = [];
@@ -149,6 +155,7 @@ export class PasoEntregaComponent implements OnInit {
         this.direcciones = resp.direcciones;
         this.titular     = resp.titular;
         this.envio       = resp.envio;
+        this.chequeAceptado = resp.cheque_aceptado ?? this.chequeAceptado;
         this.productos   = resp.items.map((item) => this.aProductoResumen(item));
 
         if (resp.entrega) {
@@ -209,6 +216,27 @@ export class PasoEntregaComponent implements OnInit {
    */
   get costoEnvio(): number {
     return this.esRetiro ? 0 : this.envio.costo;
+  }
+
+    /**
+   * Texto del aviso del cheque, o null si no hace falta. Si se acepta en
+   * las dos modalidades no hay nada que advertir; si sólo se acepta en una,
+   * se le dice al cliente cuál elegir.
+   */
+  get avisoCheque(): string | null {
+    const { retiro, envio } = this.chequeAceptado;
+
+    if (retiro && envio) return null;
+
+    if (envio) {
+      return 'Los pagos con cheque requieren entrega en dirección';
+    }
+
+    if (retiro) {
+      return 'Los pagos con cheque requieren retiro en sucursal.';
+    }
+
+    return null;
   }
 
   get mostrarCostoEnvio(): boolean {

@@ -40,11 +40,14 @@ class PagoPedidoController extends Controller
      * respuesta para mandar al cliente a la pantalla de resultado o a
      * "Mis pedidos" en vez de mostrar un formulario inútil.
      */
-    public function config(string $numero): JsonResponse
+        public function config(string $numero): JsonResponse
     {
         $usuario = $this->clienteAutenticado();
         $pedido  = $this->servicio->pedidoPagable($usuario, $numero);
-        $datos   = $this->servicio->datosIniciales();
+
+        // Recibe el pedido: los métodos disponibles dependen de su
+        // modalidad de entrega (el cheque exige retiro en sucursal).
+        $datos = $this->servicio->datosIniciales($pedido);
 
         return response()->json([
             'pedido' => [
@@ -57,11 +60,10 @@ class PagoPedidoController extends Controller
             'datos_transferencia' => $datos['datos_transferencia'],
             'datos_billetera'     => $datos['datos_billetera'],
             'mensaje_efectivo'    => $datos['mensaje_efectivo'],
+            'datos_cheque'        => $datos['datos_cheque'],
+            'cheque_habilitado'   => $datos['cheque_habilitado'],
+            'cheque_motivo'       => $datos['cheque_motivo'],
 
-            // Tarjetas de resumen del Paso 3 (Resumen de Compra, Productos
-            // en Carrito, Datos de Entrega, Datos de Facturación). El
-            // pedido ya está confirmado, así que estos datos no cambian:
-            // vienen de lo que PedidoService persistió, no de un borrador.
             'resumen' => [
                 'subtotal'    => (float) $pedido->ped_subtot,
                 'impuestos'   => (float) $pedido->ped_impues,

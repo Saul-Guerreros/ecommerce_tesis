@@ -42,6 +42,8 @@ export interface PagoServicio {
   puede_validar: boolean;
   puede_rechazar: boolean;
   puede_cobrar: boolean;
+   /** Tarjeta "Recepción de cheque" (misma forma que el cheque del pedido). */
+  cheque: ChequeServicio | null;
 
   /** Ciclo anterior (sin cobro_venta). */
   verificacion: {
@@ -53,6 +55,8 @@ export interface PagoServicio {
   observacion: string | null;
 }
 
+export type EstadoCheque = 'EN_ESPERA' | 'DESCARTADO' | 'RECIBIDO' | 'ACREDITADO' | 'NO_ENTREGADO' | 'RECHAZADO';
+
 /** EstadoPagoServicioService::resumen() */
 export interface ResumenPagoServicio {
   total: number;
@@ -60,10 +64,47 @@ export interface ResumenPagoServicio {
   anticipo: number;
   confirmado: number;
   en_verificacion: number;
+  cheque_pendiente: number;
   comprometido: number;
   saldo: number;
   admite_pagos: boolean;
 }
+
+export interface ChequeServicio {
+  sch_id: number;
+  tipo: 'VISTA' | 'DIFERIDO';
+  tipo_label: string;
+  diferido: boolean;
+  banco: string | null;
+  nombre: string | null;
+  nrodoc: string | null;
+  nro: string | null;
+  fecha_cobro: string | null;
+  fecha_cobro_iso: string | null;
+  estado: EstadoCheque;
+  estado_label: string;
+  vence: string | null;
+  vence_label: string | null;
+  vencido: boolean;
+  recepcion: { fecha: string; por: string | null; observacion: string | null } | null;
+  rechazo: { motivo: string | null; detalle: string | null } | null;
+  puede_editar: boolean;
+  puede_descartar: boolean;
+  puede_recibir: boolean;
+  puede_rechazar: boolean;
+  falta_datos: boolean;
+}
+
+/** Datos del cheque que se cargan (mostrador o edición). */
+export interface ChequeDatos {
+  tipo: 'VISTA' | 'DIFERIDO';
+  banco: string;
+  nombre: string;
+  nrodoc: string;
+  nro: string;
+  fecha_cobro: string | null;
+}
+
 
 /** Lo decide el backend (permiso + sucursal + estado). */
 export interface AccionesCobro {
@@ -74,6 +115,9 @@ export interface AccionesCobro {
   saldo_por_declarar: number;
   declarar_medios: boolean;
   cobrar_entregar: boolean;
+   /** Según los flags de Datos de Pago para la modalidad de la solicitud. */
+  cheque_habilitado: boolean;
+  cheque_motivo: string | null;
   verificar: boolean;
   cobrar: boolean;
 }
@@ -130,7 +174,7 @@ export interface CobroDetalle {
 }
 
 /** Medio que el cajero declara antes de emitir una factura. */
-export interface MedioDeclarado { mpa_codigo: string; monto: number }
+export interface MedioDeclarado { mpa_codigo: string; monto: number; cheque?: ChequeDatos | null }
 
 export interface MetodoPagoOpcion { mpa_id: number; mpa_codigo: string; mpa_descri: string; mpa_requcom: boolean }
 export interface MotivoRechazo { mrp_id: number; mrp_codigo: string; mrp_descri: string; mrp_requdet: boolean }
@@ -139,6 +183,15 @@ export interface CobroConfig {
   estados: { epa_id: number; epa_codigo: string; epa_descri: string }[];
   metodos: MetodoPagoOpcion[];
   motivos: MotivoRechazo[];
+   motivos_rechazo_cheque: MotivoRechazo[];
+  cheque: {
+    habilitado: boolean;
+    tipos: { codigo: 'VISTA' | 'DIFERIDO'; descri: string }[];
+    estados: Record<string, string>;
+    horas_plazo: number;
+    /** ctn_cheque_stock = RECEPCION: el equipo puede salir con el cheque recibido. */
+    entrega_al_recibir: boolean;
+  };
   sucursales: { suc_id: number; suc_nombre: string }[];
   permisos: { cobrar: boolean; verificar: boolean; nota_credito: boolean };
 }
@@ -183,4 +236,4 @@ export interface RespuestaCobro {
 }
 
 /** Medios que se pueden declarar en el mostrador (MediosPagoServicioRequest). */
-export const MEDIOS_MOSTRADOR = ['CONTRAENTREGA', 'TRANSFERENCIA', 'BILLETERA_MOVIL']; 
+export const MEDIOS_MOSTRADOR = ['CONTRAENTREGA', 'TRANSFERENCIA', 'BILLETERA_MOVIL', 'CHEQUE'];

@@ -1,0 +1,82 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" size="lg"
+         backdrop="static" alignment="center" [scrollable]="true">
+  <c-modal-header>
+    <h5 cModalTitle class="text-break" *ngIf="pago && detalle">
+      CONFIRMAR RECEPCIÓN DEL CHEQUE {{ pago.orden }} — {{ detalle.sse_numero }}
+    </h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="pago && cheque as chq">
+    <form [formGroup]="form">
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-sm-6">
+          <label class="form-label small text-muted mb-1">Tipo</label>
+          <div class="fw-semibold">{{ chq.tipo_label }}</div>
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label small text-muted mb-1">Monto asignado</label>
+          <div class="fw-semibold">Gs. {{ formatoGs(pago.monto_asignado) }}</div>
+        </div>
+      </div>
+
+      <div class="border rounded p-3 mb-3">
+        <div class="small text-muted mb-2">Datos registrados del cheque</div>
+        <div class="row g-2 small">
+          <div class="col-12 col-sm-6"><span class="text-muted">Banco:</span><span class="ms-1 fw-semibold text-break">{{ chq.banco }}</span></div>
+          <div class="col-12 col-sm-6"><span class="text-muted">N° de cheque:</span><span class="ms-1 fw-semibold">{{ chq.nro }}</span></div>
+          <div class="col-12 col-sm-6"><span class="text-muted">Titular:</span><span class="ms-1 fw-semibold text-break">{{ chq.nombre }}</span></div>
+          <div class="col-12 col-sm-6"><span class="text-muted">CI:</span><span class="ms-1 fw-semibold">{{ chq.nrodoc }}</span></div>
+          <div class="col-12 col-sm-6" *ngIf="chq.diferido"><span class="text-muted">Fecha de cobro:</span><span class="ms-1 fw-semibold">{{ chq.fecha_cobro }}</span></div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Fecha y hora de recepción</label>
+        <input cFormControl type="datetime-local" formControlName="fecha_recepcion" />
+        <div class="form-text">La registra el servidor al confirmar. Si hubo una demora, explicala en la observación.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Observación (opcional)</label>
+        <textarea cFormControl rows="2" formControlName="observacion" placeholder="Coincide con lo declarado"
+                  [class.is-invalid]="errorBackend('observacion')"></textarea>
+        <div class="invalid-feedback d-block" *ngIf="errorBackend('observacion')">{{ errorBackend('observacion') }}</div>
+      </div>
+
+      <c-alert [color]="entregaAlRecibir ? 'info' : 'secondary'" class="py-2 small">
+        Al confirmar se habilita la <strong>factura</strong> de este pago.
+        <span *ngIf="entregaAlRecibir">
+          Con el cheque recibido, el equipo ya se puede <strong>entregar</strong>; el cobro se registra
+          cuando el banco lo acredite.
+        </span>
+        <span *ngIf="!entregaAlRecibir">
+          El equipo se entrega recién cuando se registre el <strong>cobro</strong> del cheque
+          (acreditación): así está configurado en Métodos de Pago.
+        </span>
+      </c-alert>
+
+      <c-alert color="warning" class="mb-0">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="confirmaMontoChequeServicio" formControlName="confirma_monto" />
+          <label class="form-check-label" for="confirmaMontoChequeServicio">
+            Confirmo que el cheque físico coincide con lo declarado y está emitido
+            por <strong>Gs. {{ formatoGs(pago.monto_asignado) }}</strong>.
+          </label>
+        </div>
+        <p class="mb-0 mt-2 small">
+          Ese monto es el que se factura después. Una vez declarada, la factura sólo se corrige con nota de crédito.
+        </p>
+      </c-alert>
+    </form>
+  </c-modal-body>
+
+  <c-modal-footer class="flex-wrap gap-2">
+    <button cButton color="secondary" variant="outline" (click)="cerrar()">Cancelar</button>
+    <button cButton color="danger" variant="outline" [disabled]="guardando" (click)="pedirRechazo()">Rechazar cheque</button>
+    <button cButton color="success" class="text-white" [disabled]="!puedeGuardar" (click)="confirmar()">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      Confirmar recepción
+    </button>
+  </c-modal-footer>
+</c-modal>

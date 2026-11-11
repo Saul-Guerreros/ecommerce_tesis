@@ -22,6 +22,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Http\Requests\Servicio\AnularCobroRequest;
+use App\Http\Requests\Pedido\ActualizarChequeRequest;
+use App\Http\Requests\Pedido\ConfirmarRecepcionChequeRequest;
+use App\Http\Requests\Pedido\DescartarChequeRequest;
+use App\Http\Requests\Servicio\RechazarChequeServicioRequest;
+use App\Services\Servicio\ChequeServicioGestionService;
 
 /**
  * Cobro del servicio técnico en el panel. Ciclo comprobante -> factura ->
@@ -44,6 +49,7 @@ class CobroServicioController extends Controller
         private PagoServicioVerificacionService $verificacion,
         private CobroMostradorService $mostrador,
         private FacturaServicioService $facturas,
+        private ChequeServicioGestionService $cheques,
     ) {}
 
     // GET /api/admin/servicios/cobros/config
@@ -171,6 +177,38 @@ class CobroServicioController extends Controller
 
         return response()->json(['message' => 'Cobro y entrega registrados. Puede imprimir la constancia de retiro.'], 201);
     }
+
+    // PUT /api/admin/servicios/cobros/{id}/pagos/{pago}/cheque
+        public function actualizarCheque(ActualizarChequeRequest $request, int $id, int $pago): JsonResponse
+        {
+            $this->cheques->actualizarDatos($this->solicitud($id), $pago, $request->validated(), auth('api')->user());
+
+            return $this->respuesta('Datos del cheque actualizados.', $id);
+        }
+
+        // POST /api/admin/servicios/cobros/{id}/pagos/{pago}/cheque/descartar
+        public function descartarCheque(DescartarChequeRequest $request, int $id, int $pago): JsonResponse
+        {
+            $this->cheques->descartar($this->solicitud($id), $pago, $request->validated(), auth('api')->user());
+
+            return $this->respuesta('Datos del cheque descartados. Cargá los del cheque presentado.', $id);
+        }
+
+        // POST /api/admin/servicios/cobros/{id}/pagos/{pago}/cheque/recibir
+        public function recibirCheque(ConfirmarRecepcionChequeRequest $request, int $id, int $pago): JsonResponse
+        {
+            $this->cheques->confirmarRecepcion($this->solicitud($id), $pago, $request->validated(), auth('api')->user());
+
+            return $this->respuesta('Recepción del cheque confirmada. Ya se puede generar la factura.', $id);
+        }
+
+        // POST /api/admin/servicios/cobros/{id}/pagos/{pago}/cheque/rechazar
+        public function rechazarCheque(RechazarChequeServicioRequest $request, int $id, int $pago): JsonResponse
+        {
+            $this->cheques->rechazar($this->solicitud($id), $pago, $request->validated(), auth('api')->user());
+
+            return $this->respuesta('Cheque rechazado. El saldo vuelve a quedar pendiente de pago.', $id);
+        }
 
     // ---------- Helpers ----------
 

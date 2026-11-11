@@ -3,6 +3,8 @@
 namespace App\Services\Servicio;
 
 use App\Models\Pedido\MetodoPago;
+use App\Models\Pedido\PagoCheque;
+use App\Models\Servicio\ServicioCheque;
 use App\Models\Servicio\ServicioComprobante;
 use App\Models\Servicio\ServicioPago;
 use App\Models\Servicio\SolicitudServicio;
@@ -10,11 +12,8 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Alta física de filas en servicio_pago / servicio_comprobante (web y
- * mostrador). Todo pago nace como INTENCIÓN (PAGO_VERIFICAR): pasa a
- * CONFIRMADO recién cuando se registra su cobro contra la factura.
- *
- * El comprobante nace SIN validar: validarlo es un paso propio.
+ * Alta física de servicio_pago / servicio_comprobante / servicio_cheque.
+ * El cheque nace EN_ESPERA (web, 48 h) o RECIBIDO (mostrador).
  * No valida reglas de negocio ni recalcula el agregado.
  */
 class RegistroPagoServicio
@@ -23,7 +22,8 @@ class RegistroPagoServicio
 
     /**
      * @param array{metodo: MetodoPago, monto: int, canal: string, epaid: int, tipo?: ?string,
-     *              comprobante?: ?string, usucob?: ?int, sucid?: ?int, observ?: ?string} $d
+     *              comprobante?: ?string, cheque?: ?array, cheque_recibido_por?: ?int,
+     *              usucob?: ?int, sucid?: ?int, observ?: ?string} $d
      */
     public function crear(SolicitudServicio $s, array $d, bool $unicoQueCubreTodo = false): ServicioPago
     {
@@ -36,7 +36,6 @@ class RegistroPagoServicio
             'spa_monto'  => $d['monto'],
             'spa_epaid'  => $d['epaid'],
             'spa_observ' => $d['observ'] ?? null,
-            // Mostrador: quién lo registró y dónde (ck_spa_mostrador).
             'spa_usucob' => $d['usucob'] ?? null,
             'spa_sucid'  => $d['sucid'] ?? null,
         ]);
@@ -49,13 +48,32 @@ class RegistroPagoServicio
             ]);
         }
 
+        if (!empty($d['cheque'])) {
+            $this->crearCheque($pago, $d['cheque'], $d['cheque_recibido_por'] ?? null);
+        }
+
         return $pago;
     }
 
-    /**
-     * Guarda el archivo en storage/app/public/servicios/{sse_id}/comprobantes.
-     * Storage no participa del rollback: la ruta se agrega a $archivos.
-     */
+    /** null si el método no es CHEQUE. La fecha de cobro solo en el diferido. */
+    public function normalizarCheque(MetodoPago $metodo, ?array $cheque): ?array
+    {
+        if ($metodo->mpa_codigo !== MetodoPago::CHEQUE || !$cheque) {
+            return null;
+        }
+
+        $tipo = $cheque['tipo'];
+
+        return [
+            'tipo'        => $tipo,
+            'banco'       => trim((string) $cheque['banco']),
+            'nrodoc'      => trim((string) $cheque['nrodoc']),
+            'nombre'      => trim((string) $cheque['nombre']),
+            'nro'         => trim((string) ($cheque['nro'] ?? '')),
+            'fecha_cobro' => $tipo === PagoCheque::TIPO_DIFERIDO ? ($cheque['fecha_cobro'] ?? null) : null,
+        ];
+    }
+
     public function guardarArchivo(SolicitudServicio $s, ?UploadedFile $archivo, array &$archivos): ?string
     {
         if (!$archivo instanceof UploadedFile) {
@@ -75,12 +93,30 @@ class RegistroPagoServicio
         }
     }
 
+    private function crearCheque(ServicioPago $pago, array $c, ?int $recibidoPor): ServicioCheque
+    {
+        $recibido = $recibidoPor !== null;
+
+        return ServicioCheque::create([
+            'sch_spaid'  => $pago->spa_id,
+            'sch_tipo'   => $c['tipo'],
+            'sch_banco'  => $c['banco'],
+            'sch_nrodoc' => $c['nrodoc'],
+            'sch_nombre' => $c['nombre'],
+            'sch_nro'    => $c['nro'] !== '' ? $c['nro'] : null,
+            'sch_fecobr' => $c['fecha_cobro'],
+            'sch_estado' => $recibido ? PagoCheque::RECIBIDO : PagoCheque::EN_ESPERA,
+            'sch_fevcto' => $recibido ? null : ServicioCheque::calcularVencimiento(),
+            'sch_frecep' => $recibido ? now() : null,
+            'sch_usurec' => $recibidoPor,
+        ]);
+    }
+
     private function siguienteOrden(SolicitudServicio $s): int
     {
         return (int) ServicioPago::where('spa_sseid', $s->sse_id)->max('spa_orden') + 1;
     }
 
-    /** ANTICIPO antes de LISTA; TOTAL si un único pago cubre todo; SALDO el resto. */
     private function tipo(SolicitudServicio $s, bool $unicoQueCubreTodo): string
     {
         if (!$this->estadoPago->consolidado($s)) {

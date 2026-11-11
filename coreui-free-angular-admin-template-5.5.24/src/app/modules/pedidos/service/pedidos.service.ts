@@ -5,8 +5,9 @@ import { Observable } from 'rxjs';
 import { PedidoFiltros, PedidosConfig, PedidosPaginados } from '../models/pedido.model';
 
 import {
-  MotivoRechazo, PedidoDetalle, RechazarPagoPayload,
-  RegistrarCobroPayload, ValidarComprobantePayload,
+  ActualizarChequePayload, DescartarChequePayload, GestionConfig,
+  MotivoRechazo, PedidoDetalle, RechazarChequePayload, RechazarPagoPayload,
+  RecibirChequePayload, RegistrarCobroPayload, ValidarComprobantePayload,
 } from '../models/pedido-detalle.model';
 
 import { environment } from '../../../../environments/environment';
@@ -48,9 +49,9 @@ export class PedidosService {
     return this.http.get<{ data: PedidoDetalle }>(`${this.apiUrl}/${pedidoId}`);
   }
 
-  /** Catálogo de motivos para el modal de rechazo. */
-  configGestion(): Observable<{ motivos_rechazo: MotivoRechazo[] }> {
-    return this.http.get<{ motivos_rechazo: MotivoRechazo[] }>(`${this.apiUrl}/gestion/config`);
+  /** Catálogos de los modales de rechazo y parámetros del cheque. */
+  configGestion(): Observable<GestionConfig> {
+    return this.http.get<GestionConfig>(`${this.apiUrl}/gestion/config`);
   }
 
   /** Paso 1: el admin da por bueno el comprobante. No mueve dinero. */
@@ -107,6 +108,60 @@ export class PedidosService {
     return this.http.patch<{ message: string; data: PedidoDetalle }>(
       `${this.apiUrl}/${pedidoId}/estado`,
       { estado, comentario: comentario ?? null },
+    );
+  }
+
+    // ---------- Cheques ----------
+
+  /** [Editar]: corrige los datos contra el papel que tiene el admin. */
+  actualizarCheque(
+    pedidoId: number,
+    pagoId: number,
+    payload: ActualizarChequePayload,
+  ): Observable<{ message: string; data: PedidoDetalle }> {
+    return this.http.put<{ message: string; data: PedidoDetalle }>(
+      `${this.apiUrl}/${pedidoId}/pagos/${pagoId}/cheque`,
+      payload,
+    );
+  }
+
+  /** [Descartar cheque]: borra la declaración del checkout. No cancela el pedido. */
+  descartarCheque(
+    pedidoId: number,
+    pagoId: number,
+    payload: DescartarChequePayload,
+  ): Observable<{ message: string; data: PedidoDetalle }> {
+    return this.http.post<{ message: string; data: PedidoDetalle }>(
+      `${this.apiUrl}/${pedidoId}/pagos/${pagoId}/cheque/descartar`,
+      payload,
+    );
+  }
+
+  /**
+   * [Confirmar recepción]: el equivalente de validar el comprobante, pero
+   * con efectos reales. Según la política configurada, descuenta stock y
+   * deja el pedido listo para entrega.
+   */
+  recibirCheque(
+    pedidoId: number,
+    pagoId: number,
+    payload: RecibirChequePayload,
+  ): Observable<{ message: string; data: PedidoDetalle }> {
+    return this.http.post<{ message: string; data: PedidoDetalle }>(
+      `${this.apiUrl}/${pedidoId}/pagos/${pagoId}/cheque/recibir`,
+      payload,
+    );
+  }
+
+  /** [Rechazar cheque]: cancela el pedido y libera la reserva. */
+  rechazarCheque(
+    pedidoId: number,
+    pagoId: number,
+    payload: RechazarChequePayload,
+  ): Observable<{ message: string; data: PedidoDetalle }> {
+    return this.http.post<{ message: string; data: PedidoDetalle }>(
+      `${this.apiUrl}/${pedidoId}/pagos/${pagoId}/cheque/rechazar`,
+      payload,
     );
   }
 

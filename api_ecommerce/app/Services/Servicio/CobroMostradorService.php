@@ -12,6 +12,7 @@ use App\Models\Usuario;
 use App\Models\Venta\VentaCab;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 /**
  * Operaciones PRESENCIALES del cobro del servicio (servicios.cobros.confirmar).
@@ -34,6 +35,7 @@ class CobroMostradorService
         private FacturaServicioService $facturas,
         private PagoServicioVerificacionService $verificacion,
         private EntregaServicioService $entregas,
+        private PoliticaChequeServicio $politicaCheque,
     ) {}
 
     /** @param array{pagos: array<int, array{mpa_codigo: string, monto: int}>} $d */
@@ -53,6 +55,7 @@ class CobroMostradorService
             $this->estadoPago->exigirSinAnticipo($s);
 
             $medios = $this->armarMedios($d['pagos'] ?? []);
+            $this->politicaCheque->exigir($s, array_column($medios, 'metodo'));
 
             if ($medios === []) {
                 throw ValidationException::withMessages(['pagos' => 'Indique el medio y el monto del anticipo.']);
@@ -93,6 +96,7 @@ class CobroMostradorService
 
             if ($medios !== []) {
                 $this->validarSucursal($s, $usuario);
+                $this->politicaCheque->exigir($s, array_column($medios, 'metodo'));
 
                 $saldo    = $this->estadoPago->resumen($s)['saldo'];
                 $asignado = array_sum(array_column($medios, 'monto'));
@@ -133,16 +137,19 @@ class CobroMostradorService
             }
 
             $pendientes = $s->pagos()
-                ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', EstadoPago::PAGO_VERIFICAR))
-                ->get();
+                    ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', EstadoPago::PAGO_VERIFICAR))
+                    ->whereDoesntHave('cheque')
+                    ->get();
 
             if ($pendientes->count() > 1) {
                 throw ValidationException::withMessages([
                     'pago' => 'Hay varios pagos pendientes: registrá cada cobro antes de entregar.',
                 ]);
             }
+			
+			if ($pago = $pendientes->first()) {
+                $cobro = $this->conciliarEfectivo($pago, $cobro);
 
-            if ($pago = $pendientes->first()) {
                 $s = $this->verificacion->registrarCobro($s, $pago->spa_id,
                     $cobro + ['monto_verificado' => (float) $pago->spa_monto], $usuario);
             }
@@ -165,7 +172,13 @@ class CobroMostradorService
                 throw ValidationException::withMessages(['pagos' => 'Cada medio de pago necesita un monto mayor a cero.']);
             }
 
-            $medios[] = ['metodo' => MetodoPago::porCodigo($p['mpa_codigo']), 'monto' => $monto];
+            $metodo = MetodoPago::porCodigo($p['mpa_codigo']);
+
+            $medios[] = [
+                'metodo' => $metodo,
+                'monto'  => $monto,
+                'cheque' => $this->registro->normalizarCheque($metodo, $p['cheque'] ?? null),
+            ];
         }
 
         return $medios;
@@ -187,8 +200,58 @@ class CobroMostradorService
                 'tipo'   => $tipo,
                 'usucob' => $usuario->usu_id,
                 'sucid'  => $s->sse_sucid,
+                'cheque' => $m['cheque'],
+                'cheque_recibido_por' => $m['cheque'] ? $usuario->usu_id : null,
             ], $cubreTodo);
         }
+    }
+	
+	    /**
+     * Efectivo: el cajero informa cuánto recibió. Menos que lo declarado no se
+     * cobra; de más, se entrega vuelto. El cobro queda por el monto declarado
+     * (el vuelto no es ingreso) y lo recibido y el vuelto se dejan en la
+     * observación del cobro. Otros métodos pasan sin cambios.
+     *
+     * @param  array<string, mixed> $cobro
+     * @return array<string, mixed>
+     */
+    private function conciliarEfectivo(ServicioPago $pago, array $cobro): array
+    {
+        $recibido = $cobro['monto_recibido'] ?? null;
+        unset($cobro['monto_recibido']);
+
+        if ($pago->metodoPago?->mpa_codigo !== MetodoPago::CONTRAENTREGA) {
+            return $cobro;
+        }
+
+        if ($recibido === null || $recibido === '') {
+            throw ValidationException::withMessages([
+                'cobro.monto_recibido' => 'Ingresá el efectivo recibido.',
+            ]);
+        }
+
+        $esperado = (int) round((float) $pago->spa_monto);
+        $recibido = (int) $recibido;
+
+        if ($recibido < $esperado) {
+            throw ValidationException::withMessages([
+                'cobro.monto_recibido' => sprintf(
+                    'Se recibieron Gs. %s de los Gs. %s a cobrar: el efectivo no alcanza.',
+                    number_format($recibido, 0, ',', '.'),
+                    number_format($esperado, 0, ',', '.'),
+                ),
+            ]);
+        }
+
+        $vuelto  = $recibido - $esperado;
+        $detalle = 'Efectivo recibido Gs. ' . number_format($recibido, 0, ',', '.')
+            . ($vuelto > 0 ? ' · Vuelto Gs. ' . number_format($vuelto, 0, ',', '.') : '');
+
+        // cob_observ es varchar(255): lo recibido y el vuelto van primero.
+        $nota = trim((string) ($cobro['observacion'] ?? ''));
+        $cobro['observacion'] = Str::limit($nota !== '' ? "{$detalle} — {$nota}" : $detalle, 255, '');
+
+        return $cobro;
     }
 
     private function validarSucursal(SolicitudServicio $s, Usuario $usuario): void
@@ -212,4 +275,5 @@ class CobroMostradorService
     {
         return number_format($monto, 0, ',', '.');
     }
+	
 }

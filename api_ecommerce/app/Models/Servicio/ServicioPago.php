@@ -70,6 +70,12 @@ class ServicioPago extends Model
         return $this->belongsTo(MotivoRechazoPago::class, 'spa_mrpid', 'mrp_id');
     }
 
+    /** Datos del cheque cuando el método es CHEQUE (espejo de comprobante()). */
+    public function cheque(): HasOne
+    {
+        return $this->hasOne(ServicioCheque::class, 'sch_spaid', 'spa_id');
+    }
+
     public function usuarioVerificador(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'spa_usuver', 'usu_id');

@@ -115,9 +115,20 @@
               </dd>
               @if (pg.pagado > 0) { <dt>Pagado</dt><dd>{{ pg.pagado | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd> }
               @if (pg.en_verificacion > 0) { <dt>En verificación</dt><dd>{{ pg.en_verificacion | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd> }
+              @if (pg.cheque_pendiente > 0) { <dt>Cheque por entregar</dt><dd>{{ pg.cheque_pendiente | currency:'PYG':'symbol-narrow':'1.0-0' }}</dd> }
               @if (pg.saldo > 0) { <dt>Saldo</dt><dd><strong>{{ pg.saldo | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong></dd> }
             </dl>
 
+            @if (pg.cheque; as chq) {
+              <div class="uk-alert uk-alert-warning uk-margin-small-top">
+                <p class="uk-margin-remove">
+                  Entregá tu {{ chq.cantidad > 1 ? 'cheques' : 'cheque' }} en la sucursal antes del
+                  <strong>{{ chq.vence | date:'dd/MM/yyyy HH:mm' }}</strong>
+                  ({{ chq.horas_plazo }} horas). Pasado ese plazo, el pago queda sin efecto
+                  y tendrás que pagar el saldo con otro medio.
+                </p>
+              </div>
+            }
             @if (pg.anticipo.permitido) {
               <p class="uk-text-meta uk-margin-small-top uk-margin-remove-bottom">
                 Podés adelantar un monto mientras reparamos tu equipo; se descuenta del total al retirarlo.

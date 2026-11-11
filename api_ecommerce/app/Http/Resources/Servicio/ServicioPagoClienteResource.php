@@ -24,6 +24,7 @@ class ServicioPagoClienteResource extends JsonResource
     public function toArray(Request $request): array
     {
         $rechazado = $this->estadoPago?->epa_codigo === EstadoPago::RECHAZADO;
+        $cheque    = $this->relationLoaded('cheque') ? $this->cheque : null;
 
         return [
             'spa_id'            => (int) $this->spa_id,
@@ -43,6 +44,16 @@ class ServicioPagoClienteResource extends JsonResource
             ] : null,
             // Lo decide el backend: solo un rechazado con comprobante se corrige.
             'reemplazable'      => $rechazado && (bool) $this->metodoPago?->mpa_requcom,
+            // Cheque: misma forma que los pagos de PedidoClienteDetalleResource.
+            'cheque'            => $cheque ? [
+                'tipo'         => $cheque->sch_tipo,
+                'tipo_descri'  => $cheque->descripcionTipo(),
+                'banco'        => $cheque->sch_banco,
+                'nro'          => $cheque->sch_nro,
+                'fecha_cobro'  => $cheque->sch_fecobr?->format('d/m/Y'),
+                'estado'       => $cheque->sch_estado,
+                'estado_label' => $cheque->descripcionEstado(),
+            ] : null,
         ];
     }
 }

@@ -11,6 +11,7 @@ import { RegistrarCobroComponent } from '../registrar-cobro/registrar-cobro.comp
 import { FacturaServicioComponent } from '../factura-servicio/factura-servicio.component';
 import { GenerarFacturaServicioComponent, ModoFactura } from '../generar-factura-servicio/generar-factura-servicio.component';
 import { DevolucionServicioComponent } from '../devolucion-servicio/devolucion-servicio.component';
+import { ChequesServicioComponent } from '../cheques-servicio/cheques-servicio.component';
 
 
 /**
@@ -32,7 +33,7 @@ import { DevolucionServicioComponent } from '../devolucion-servicio/devolucion-s
   imports: [
     CommonModule, FormsModule, BadgeModule, ButtonModule, FormModule, ModalModule, SpinnerModule, TableModule,
     ValidarComprobanteServicioComponent, RechazarPagoServicioComponent, RegistrarCobroComponent,
-    FacturaServicioComponent, GenerarFacturaServicioComponent, DevolucionServicioComponent,
+    FacturaServicioComponent, GenerarFacturaServicioComponent, DevolucionServicioComponent, ChequesServicioComponent,
   ],
   templateUrl: './pagos-solicitud.component.html',
 })
@@ -116,6 +117,8 @@ export class PagosSolicitudComponent implements OnChanges, OnDestroy {
   }
 
   etiquetaEstado(p: PagoServicio): string {
+    if (p.cheque && p.estado.codigo === 'PENDIENTE_PAGO') return 'Cheque por recibir';
+    if (p.cheque && p.estado.codigo === 'PAGO_VERIFICAR') return p.facturado ? 'Por acreditar' : 'Cheque recibido';
     if (p.estado.codigo === 'CONFIRMADO') return 'Cobrado';
     if (p.estado.codigo === 'PAGO_VERIFICAR') return p.facturado ? 'Por cobrar' : 'Declarado';
     return p.estado.descripcion ?? '';

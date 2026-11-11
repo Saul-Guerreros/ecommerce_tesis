@@ -6,7 +6,7 @@ use App\Models\Pedido\Pedido;
 use App\Models\Pedido\TipoEntrega;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-
+use App\Models\Pedido\PagoCheque;
 /**
  * Una fila de "Mis Pedidos" (lado cliente).
  *
@@ -18,7 +18,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class PedidoClienteListaResource extends JsonResource
 {
-    use DescribeEstadoPago;
+   use DescribeEstadoPago;
+   use DescribePlazoCheque;
+   use DescribeEstadoCheque;
 
     public function toArray(Request $request): array
     {
@@ -39,6 +41,7 @@ class PedidoClienteListaResource extends JsonResource
                 'descripcion' => $this->estadoPedido?->est_descri,
             ],
             'estado_pago' => [
+                'estado_cheque' => $this->estadoCheque(),
                 'codigo'      => $this->estadoPago?->epa_codigo,
                 'descripcion' => $this->descripcionEstadoPago(),
             ],
@@ -59,6 +62,15 @@ class PedidoClienteListaResource extends JsonResource
             // Los dos relojes nunca corren a la vez, así que el listado
             // puede mostrar el que tenga valor sin ambigüedad.
             'ped_vencret' => $this->ped_vencret?->toIso8601String(),
+
+            // Tercer reloj: el plazo para acercar el cheque a la sucursal.
+            // Va aparte de ped_vence porque un pedido con cheque declarado
+            // ya no está pendiente de pago en el sentido del checkout: no
+            // hay nada que el cliente pueda hacer en el Paso 3, sino un
+            // papel que tiene que entregar en la tienda.
+            'cheque' => $this->plazoCheque(),
         ];
     }
+
+
 }

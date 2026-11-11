@@ -18,6 +18,7 @@ class ServicioHistorialEstado extends Model
     public const PRESUPUESTO = 'PRESUPUESTO';
     public const NOTA        = 'NOTA';
     public const CONTACTO    = 'CONTACTO';
+    public const CHEQUE      = 'CHEQUE';
 
     /** Registrar contacto con el cliente (she_tipo CONTACTO). */
     public const MEDIOS     = ['TELEFONO', 'WHATSAPP', 'CORREO', 'PRESENCIAL'];

@@ -7,6 +7,7 @@ use App\Models\Pedido\MetodoPago;
 use App\Models\Servicio\ServicioPago;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Models\Pedido\PagoCheque;
 
 /**
  * Un pago del servicio en el PANEL, para las dos tarjetas (igual que
@@ -31,6 +32,7 @@ class ServicioPagoResource extends JsonResource
     public function toArray(Request $request): array
     {
         $comprobante = $this->comprobante;
+        $cheque      = $this->relationLoaded('cheque') ? $this->cheque : null;
         $cobro       = $this->relationLoaded('cobro') ? $this->cobro : null;
         $estado      = $this->estadoPago?->epa_codigo;
         $requcom     = (bool) $this->metodoPago?->mpa_requcom;
@@ -95,6 +97,39 @@ class ServicioPagoResource extends JsonResource
                 'puede_anular'    => (bool) ($this->ctx['anular_cobro'] ?? false),
             ] : null,
 
+            'cheque' => $cheque ? [
+                'sch_id'          => $cheque->sch_id,
+                'tipo'            => $cheque->sch_tipo,
+                'tipo_label'      => $cheque->descripcionTipo(),
+                'diferido'        => $cheque->esDiferido(),
+                'banco'           => $cheque->sch_banco,
+                'nombre'          => $cheque->sch_nombre,
+                'nrodoc'          => $cheque->sch_nrodoc,
+                'nro'             => $cheque->sch_nro,
+                'fecha_cobro'     => $cheque->sch_fecobr?->format('d/m/Y'),
+                'fecha_cobro_iso' => $cheque->sch_fecobr?->format('Y-m-d'),
+                'estado'          => $cheque->sch_estado,
+                'estado_label'    => $cheque->descripcionEstado(),
+                'vence'           => $cheque->sch_fevcto?->toIso8601String(),
+                'vence_label'     => $cheque->sch_fevcto?->format('d/m H:i'),
+                'vencido'         => $cheque->vencido(),
+                'recepcion'       => $cheque->sch_frecep ? [
+                    'fecha'       => $cheque->sch_frecep->format('d/m/Y H:i'),
+                    'por'         => $this->nombre($cheque->usuarioReceptor),
+                    'observacion' => $cheque->sch_motdet,
+                ] : null,
+                'rechazo'         => $cheque->sch_mrpid ? [
+                    'motivo'  => $cheque->motivoRechazo?->mrp_descri,
+                    'detalle' => $cheque->sch_motdet,
+                ] : null,
+                'puede_editar'    => ($this->ctx['verificar'] ?? false) && $cheque->estaPendiente(),
+                'puede_descartar' => ($this->ctx['verificar'] ?? false) && $cheque->sch_estado === PagoCheque::EN_ESPERA,
+                'puede_recibir'   => ($this->ctx['verificar'] ?? false) && $cheque->estaPendiente() && $cheque->datosCompletos(),
+                // Pendiente, o recibido sin factura que lo declare (el papel se devuelve).
+                'puede_rechazar'  => ($this->ctx['verificar'] ?? false) && $cheque->estaPendiente(),
+                'falta_datos'     => $cheque->estaPendiente() && !$cheque->datosCompletos(),
+            ] : null,
+
             // Quién lo registró en el mostrador y dónde.
             'cajero' => $this->spa_usucob ? [
                 'por'      => $this->nombre($this->usuarioCobro),
@@ -105,11 +140,12 @@ class ServicioPagoResource extends JsonResource
             'puede_validar'  => ($this->ctx['verificar'] ?? false)
                 && $pendiente && $comprobante !== null && !$validado,
 
-            'puede_rechazar' => ($this->ctx['verificar'] ?? false) && $pendiente && !$facturado,
+           'puede_rechazar' => ($this->ctx['verificar'] ?? false) && $pendiente && !$facturado && $cheque === null,
 
             'puede_cobrar'   => $pendiente && $documento
                 && (!$web || !$requcom || $validado)
-                && ($enCaja ? ($this->ctx['cajero'] ?? false) : ($this->ctx['gestiona'] ?? false)),
+                && ($cheque === null || $cheque->fueRecibido())
+                && ($enCaja ? ($this->ctx['cajero'] ?? false) : ($this->ctx['gestiona'] ?? false)),   
 
             // ---------- Compatibilidad: ciclo anterior ----------
             'verificacion' => $estado === EstadoPago::CONFIRMADO && $cobro === null && $this->spa_fechver !== null ? [

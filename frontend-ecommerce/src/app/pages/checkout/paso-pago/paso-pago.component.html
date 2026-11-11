@@ -66,7 +66,7 @@
           Esta tarjeta muestra los datos del método seleccionado en el pago que estés editando.
         </p>
 
-        <div class="uk-grid-small uk-child-width-1-3@s" uk-grid>
+        <div class="uk-grid-small uk-child-width-1-4@s" uk-grid>
           <div>
             <button type="button" class="ck-opcion ck-opcion--centrada"
                     [class.ck-opcion--activa]="metodoParaDatos === 'TRANSFERENCIA'"
@@ -100,7 +100,31 @@
               <small>Pagá en efectivo al retirar tu pedido o recibirlo.</small>
             </button>
           </div>
+          <div>
+            <!-- Cuando el cheque no está disponible NO lleva [disabled]: un
+                 botón inhabilitado no dispara (click) y el aviso explicativo
+                 no podría mostrarse. Se marca con aria-disabled y la clase
+                 de estilo; elegirMetodo() atiende el clic sin seleccionarlo. -->
+            <button type="button" class="ck-opcion ck-opcion--centrada"
+                    [class.ck-opcion--activa]="metodoParaDatos === 'CHEQUE'"
+                    [class.ck-opcion--informativa]="esDividido"
+                    [class.ck-opcion--no-disponible]="!chequeHabilitado"
+                    [attr.aria-disabled]="!chequeHabilitado"
+                    [disabled]="esDividido && chequeHabilitado"
+                    (click)="elegirMetodo('CHEQUE')">
+              <span uk-icon="icon: file-text; ratio: 1.3"></span>
+              <strong>Cheque</strong>
+              <small>Pagá con cheque y entregalo en la sucursal.</small>
+            </button>
+          </div>
         </div>
+
+        <!-- Aparece al hacer clic en el cheque cuando el pedido es de envío
+             a domicilio, y se oculta solo a los pocos segundos. -->
+        <p class="uk-text-danger uk-text-small uk-margin-small-top" role="alert"
+           *ngIf="avisoChequeVisible && motivoChequeNoDisponible">
+          <strong>Cheque no disponible:</strong> {{ motivoChequeNoDisponible }}
+        </p>
 
         <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="metodoInvalido">
           Seleccioná un método de pago.
@@ -124,6 +148,25 @@
           <p *ngIf="metodoParaDatos === 'CONTRAENTREGA'" class="uk-text-meta uk-margin-small-top">
             {{ mensajeEfectivo }}
           </p>
+
+          <!-- Cheque. Con un solo método el formulario completo va acá. En
+               el pago dividido el formulario vive dentro de cada bloque y
+               esta tarjeta muestra sólo la descripción del método. -->
+          <ng-container *ngIf="metodoParaDatos === 'CHEQUE'">
+            <app-cheque-form *ngIf="!esDividido"
+                             class="uk-margin-small-top"
+                             [datos]="datosCheque"
+                             [cheque]="cheque"
+                             [mostrarDescripcion]="true"
+                             [intentoContinuar]="intentoEnviar"
+                             idBase="chq-unico"
+                             (chequeChange)="onChequeCambio($event)">
+            </app-cheque-form>
+
+            <p *ngIf="esDividido" class="uk-margin-small-top">
+              {{ datosCheque.descripcion }}
+            </p>
+          </ng-container>
 
           <div *ngIf="!esDividido && metodoRequiereComprobante" class="uk-margin-top">
             <label class="uk-form-label">Adjuntar comprobante <span class="uk-text-danger">*</span></label>
@@ -152,6 +195,7 @@
         *ngIf="esDividido"
         [total]="pedido.ped_total"
         [metodos]="metodos"
+        [datosCheque]="datosCheque"
         [pagosGuardados]="null"
         [intentoContinuar]="intentoEnviar"
         (metodoActivoChange)="metodoActivo = $event"

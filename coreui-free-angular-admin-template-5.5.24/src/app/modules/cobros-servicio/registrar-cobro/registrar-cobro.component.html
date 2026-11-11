@@ -14,6 +14,12 @@
       </div>
     </c-alert>
 
+    <!-- Cheque: registrar el cobro equivale a la acreditación bancaria -->
+    <c-alert color="info" class="py-2 small" *ngIf="pago.cheque as chq">
+      Cheque {{ chq.tipo_label }}<span *ngIf="chq.nro"> N° {{ chq.nro }}</span>
+      <span *ngIf="chq.diferido && chq.fecha_cobro"> · cobro {{ chq.fecha_cobro }}</span>.
+      Registrá el cobro cuando el banco <strong>acredite</strong> el cheque: queda como <strong>Acreditado</strong>.
+    </c-alert>
     <form [formGroup]="form">
       <div class="row g-3">
         <div class="col-md-6">

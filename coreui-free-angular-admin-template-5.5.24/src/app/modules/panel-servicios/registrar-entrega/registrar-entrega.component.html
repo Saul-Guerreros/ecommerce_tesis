@@ -41,6 +41,34 @@
               <div class="text-danger small" *ngIf="errorArchivoCobro || errorCobro('comprobante')">{{ errorArchivoCobro || errorCobro('comprobante') }}</div>
             </div>
           </ng-container>
+		            <ng-container *ngIf="esEfectivo">
+            <div class="col-md-6">
+              <label cLabel>Efectivo recibido (Gs.) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input cFormControl type="number" min="0" formControlName="monto_recibido"
+                       [class.is-invalid]="cobroInvalido('monto_recibido') || errorCobro('monto_recibido')" />
+                <button cButton color="secondary" variant="outline" type="button" (click)="montoExacto()">Exacto</button>
+              </div>
+              <div class="text-danger small" *ngIf="cobroInvalido('monto_recibido') || errorCobro('monto_recibido')">
+                {{ errorCobro('monto_recibido') || 'Ingresá el efectivo recibido; no puede ser menor a Gs. ' + formatoGs(pendiente?.monto_asignado ?? 0) + '.' }}
+              </div>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+              <div class="w-100 border rounded px-3 py-2" [class.border-success]="vuelto > 0">
+                <div class="small text-muted">Vuelto a entregar</div>
+                <div class="fs-5 fw-semibold" [class.text-success]="vuelto > 0">Gs. {{ formatoGs(vuelto) }}</div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="efectivoConfirmado" formControlName="efectivo_confirmado" />
+                <label class="form-check-label" for="efectivoConfirmado">
+                  Confirmo que recibí el efectivo<span *ngIf="montoRecibido > 0"> (Gs. {{ formatoGs(montoRecibido) }})</span>.
+                </label>
+              </div>
+              <div class="text-danger small" *ngIf="cobroInvalido('efectivo_confirmado')">Confirmá que recibiste el efectivo.</div>
+            </div>
+          </ng-container>
           <div class="col-md-6">
             <label cLabel>Fecha del pago</label>
             <input cFormControl type="date" formControlName="fecha_pago" [class.is-invalid]="errorCobro('fecha_pago')" />

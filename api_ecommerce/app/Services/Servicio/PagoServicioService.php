@@ -16,52 +16,84 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Canal WEB del cobro del servicio (C4 - /mis-servicios/:numero).
- *
- *   - registrarAnticipo(): con el equipo recibido y antes de LISTA, UN
- *     anticipo por transferencia o billetera, con comprobante.
- *   - registrar(): en LISTA, el SALDO (total − anticipo − lo ya declarado).
- *
- * Todo pago nace en PAGO_VERIFICAR: el admin valida el comprobante, genera
- * la factura (de anticipo o final) y registra el cobro.
+ * Canal WEB del cobro del servicio (C4).
+ *   - registrarAnticipo(): antes de LISTA, UN anticipo (transferencia, billetera o cheque).
+ *   - registrar(): en LISTA, el SALDO en un pago o dividido.
+ * Cheque -> PENDIENTE_PAGO + servicio_cheque EN_ESPERA; el resto -> PAGO_VERIFICAR.
  */
 class PagoServicioService
 {
     public const MODO_UNICO    = 'unico';
     public const MODO_DIVIDIDO = 'dividido';
 
+    public const RELACIONES_CLIENTE = ['metodoPago', 'estadoPago', 'comprobante', 'cheque', 'motivoRechazo'];
+
     public function __construct(
         private CheckoutPagoService $configuracion,
         private EstadoPagoServicioService $estadoPago,
         private RegistroPagoServicio $registro,
         private SolicitudServicioService $solicitudes,
+        private PoliticaChequeServicio $politicaCheque,
     ) {}
 
-    // ---------- Lectura ----------
-
-    /**
-     * Datos de la pantalla de pago: los mismos de la tienda (banco, Tigo,
-     * mensaje de efectivo) + el resumen de montos y los pagos ya hechos.
-     */
     public function datosIniciales(Usuario $usuario, string $numero): array
     {
-        $s = $this->solicitudes->detalleDelCliente($usuario, $numero);
+        $s     = $this->solicitudes->detalleDelCliente($usuario, $numero);
+        $datos = $this->configuracion->datosIniciales();
 
-        return $this->configuracion->datosIniciales() + [
+        // En el servicio el cheque no depende de la modalidad de entrega:
+        // el papel siempre se acerca a la sucursal donde está el equipo.
+        $datos['cheque_habilitado'] = $this->politicaCheque->admite($s);
+        $datos['cheque_motivo']     = $this->politicaCheque->motivo($s);  
+
+        if (!$datos['cheque_habilitado']) {
+            $datos['metodos'] = $datos['metodos']
+                ->reject(fn ($m) => $m->mpa_codigo === MetodoPago::CHEQUE)
+                ->values();
+        }
+
+        return $datos + [
             'resumen'  => $this->estadoPago->resumen($s),
             'anticipo' => $this->estadoPago->anticipoWeb($s),
-            'pagos'    => $s->pagos()->with(['metodoPago', 'estadoPago', 'comprobante', 'motivoRechazo'])->get(),
+            'pagos'    => $s->pagos()->with(self::RELACIONES_CLIENTE)->get(),
         ];
     }
 
-    // ---------- Escritura ----------
+    public function registrar(Usuario $usuario, string $numero, array $datos): SolicitudServicio
+    {
+        $archivos = [];
 
-       /**
-     * Anticipo web: transferencia o billetera con comprobante. El monto lo
-     * elige el cliente, con tope en lo aprobado del presupuesto (si hay).
-     *
-     * @param array{mpa_codigo: string, monto: int, comprobante: UploadedFile} $datos
-     */
+        try {
+            return DB::transaction(function () use ($usuario, $numero, $datos, &$archivos) {
+                $s     = $this->bloquear($this->solicitudes->detalleDelCliente($usuario, $numero));
+                $saldo = $this->saldoPagable($s);
+
+                $esDividido = ($datos['modo'] ?? self::MODO_UNICO) === self::MODO_DIVIDIDO;
+
+                $pagos = $esDividido
+                    ? $this->armarDividido($s, $datos['pagos'] ?? [], $saldo, $archivos)
+                    : [$this->armarPago($s, $datos['mpa_codigo'], $saldo, $datos['comprobante'] ?? null,
+                        $datos['cheque'] ?? null, $archivos)];
+
+                $this->politicaCheque->exigir($s, array_column($pagos, 'metodo'));        
+                $cubreTodo = count($pagos) === 1 && $saldo === (int) round((float) $s->sse_total);
+
+                foreach ($pagos as $p) {
+                    $this->crearPagoWeb($s, $p, null, $cubreTodo);
+                }
+
+                $this->estadoPago->recalcular($s, $usuario->usu_id, count($pagos) > 1
+                    ? 'Cliente declaró el saldo dividido en ' . count($pagos) . ' pagos'
+                    : 'Cliente declaró su pago: ' . $pagos[0]['metodo']->mpa_descri);
+
+                return $s->fresh(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'pagos.cheque', 'estadoPago']);
+            });
+        } catch (\Throwable $e) {
+            $this->registro->borrarArchivos($archivos);
+            throw $e;
+        }
+    }
+
     public function registrarAnticipo(Usuario $usuario, string $numero, array $datos): SolicitudServicio
     {
         $archivos = [];
@@ -81,10 +113,11 @@ class PagoServicioService
                 $this->estadoPago->exigirSinAnticipo($s);
 
                 $metodo = MetodoPago::porCodigo($datos['mpa_codigo']);
+                $this->politicaCheque->exigir($s, [$metodo]);
 
-                if (!$metodo->mpa_requcom) {
+                if (!$metodo->mpa_requcom && $metodo->mpa_codigo !== MetodoPago::CHEQUE) {
                     throw ValidationException::withMessages([
-                        'mpa_codigo' => 'El anticipo por la web se paga por transferencia o billetera, con comprobante.',
+                        'mpa_codigo' => 'El anticipo por la web se paga por transferencia, billetera o cheque.',
                     ]);
                 }
 
@@ -99,24 +132,16 @@ class PagoServicioService
                     ]);
                 }
 
-                $pago = $this->armarPago($s, $metodo->mpa_codigo, $monto, $datos['comprobante'] ?? null, $archivos);
+                $pago = $this->armarPago($s, $metodo->mpa_codigo, $monto, $datos['comprobante'] ?? null,
+                    $datos['cheque'] ?? null, $archivos);
 
-                $this->registro->crear($s, [
-                    'metodo'      => $pago['metodo'],
-                    'monto'       => $pago['monto'],
-                    'canal'       => ServicioPago::CANAL_WEB,
-                    'epaid'       => EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR)->epa_id,
-                    'tipo'        => ServicioPago::TIPO_ANTICIPO,
-                    'comprobante' => $pago['comprobante'],
-                ]);
+                $this->crearPagoWeb($s, $pago, ServicioPago::TIPO_ANTICIPO);
 
                 $this->estadoPago->recalcular($s, $usuario->usu_id, sprintf(
-                    'Cliente declaró un anticipo de Gs. %s (%s)',
-                    $this->gs($monto),
-                    $metodo->mpa_descri,
+                    'Cliente declaró un anticipo de Gs. %s (%s)', $this->gs($monto), $metodo->mpa_descri,
                 ));
 
-                return $s->fresh(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'estadoPago']);
+                return $s->fresh(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'pagos.cheque', 'estadoPago']);
             });
         } catch (\Throwable $e) {
             $this->registro->borrarArchivos($archivos);
@@ -124,10 +149,6 @@ class PagoServicioService
         }
     }
 
-    /**
-     * El cliente sube un comprobante nuevo para un pago rechazado. Igual que
-     * en el pedido: opera sobre UN pago y el resto queda intacto.
-     */
     public function reemplazarComprobante(Usuario $usuario, string $numero, int $pagoId, UploadedFile $archivo): SolicitudServicio
     {
         $rutaNueva = null;
@@ -141,7 +162,6 @@ class PagoServicioService
                 $rutaAnterior = $pago->comprobante?->sco_archiv;
                 $rutaNueva    = $archivo->store("servicios/{$s->sse_id}/comprobantes", 'public');
 
-                // El pago vuelve a cero: sin rastros de la verificación anterior.
                 $pago->update([
                     'spa_epaid'   => EstadoPago::porCodigo(EstadoPago::PAGO_VERIFICAR)->epa_id,
                     'spa_mrpid'   => null,
@@ -158,7 +178,7 @@ class PagoServicioService
                 $this->estadoPago->recalcular($s, $usuario->usu_id,
                     "Cliente cargó un comprobante nuevo para el Pago {$pago->spa_orden}");
 
-                return $s->fresh(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'estadoPago']);
+                return $s->fresh(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.comprobante', 'pagos.cheque', 'estadoPago']);
             });
         } catch (\Throwable $e) {
             if ($rutaNueva) {
@@ -167,7 +187,6 @@ class PagoServicioService
             throw $e;
         }
 
-        // Recién confirmada la transacción se borra el archivo viejo.
         if ($rutaAnterior && $rutaAnterior !== $rutaNueva) {
             Storage::disk('public')->delete($rutaAnterior);
         }
@@ -175,30 +194,24 @@ class PagoServicioService
         return $s;
     }
 
-    // ---------- Guards ----------
-
-    /**
-     * Saldo que la web puede pagar ahora. Exige LISTA, que admita pagos y
-     * que no haya nada esperando verificación ni corrección: el cliente
-     * paga el saldo completo de una vez (como el total del pedido).
-     */
+    /** Exige LISTA, que admita pagos y que quede saldo sin comprometer (un cheque en espera ya lo compromete). */
     private function saldoPagable(SolicitudServicio $s): int
     {
         $this->estadoPago->exigirQueAdmitaPagos($s);
 
         if ($s->codigoServicio() !== EstadoServicio::LISTA) {
-            throw ValidationException::withMessages([
-                'pago' => 'El pago se habilita cuando tu equipo está listo.',
-            ]);
+            throw ValidationException::withMessages(['pago' => 'El pago se habilita cuando tu equipo está listo.']);
         }
 
         $r = $this->estadoPago->resumen($s);
 
         if ($r['saldo'] <= 0) {
             throw ValidationException::withMessages([
-                'pago' => $r['en_verificacion'] > 0
-                    ? 'Tu pago está en verificación. Te avisamos apenas lo confirmemos.'
-                    : 'Este servicio no tiene saldo pendiente.',
+                'pago' => match (true) {
+                    $r['en_verificacion'] > 0  => 'Tu pago está en verificación. Te avisamos apenas lo confirmemos.',
+                    $r['cheque_pendiente'] > 0 => 'Tu pago con cheque está declarado: acercá el cheque a la sucursal dentro del plazo.',
+                    default                    => 'Este servicio no tiene saldo pendiente.',
+                },
             ]);
         }
 
@@ -207,10 +220,7 @@ class PagoServicioService
 
     private function pagoRechazable(SolicitudServicio $s, int $pagoId): ServicioPago
     {
-        $pago = ServicioPago::where('spa_id', $pagoId)
-            ->where('spa_sseid', $s->sse_id)
-            ->lockForUpdate()
-            ->first();
+        $pago = ServicioPago::where('spa_id', $pagoId)->where('spa_sseid', $s->sse_id)->lockForUpdate()->first();
 
         abort_if(!$pago, 404, 'El pago no pertenece a esta solicitud.');
 
@@ -231,9 +241,7 @@ class PagoServicioService
         return $pago;
     }
 
-    // ---------- Armado ----------
-
-    private function armarPago(SolicitudServicio $s, string $codigo, int $monto, ?UploadedFile $archivo, array &$archivos): array
+    private function armarPago(SolicitudServicio $s, string $codigo, int $monto, ?UploadedFile $archivo, ?array $cheque, array &$archivos): array
     {
         $metodo = MetodoPago::porCodigo($codigo);
 
@@ -241,14 +249,20 @@ class PagoServicioService
             throw ValidationException::withMessages(['comprobante' => 'Adjuntá el comprobante del pago.']);
         }
 
+        $datosCheque = $this->registro->normalizarCheque($metodo, $cheque);
+
+        if ($metodo->mpa_codigo === MetodoPago::CHEQUE && !$datosCheque) {
+            throw ValidationException::withMessages(['cheque' => 'Completá los datos del cheque.']);
+        }
+
         return [
             'metodo'      => $metodo,
             'monto'       => $monto,
             'comprobante' => $metodo->mpa_requcom ? $this->registro->guardarArchivo($s, $archivo, $archivos) : null,
+            'cheque'      => $datosCheque,
         ];
     }
 
-    /** La suma tiene que cubrir exactamente el saldo (igual que ped_total en el checkout). */
     private function armarDividido(SolicitudServicio $s, array $pagos, int $saldo, array &$archivos): array
     {
         $asignado = array_sum(array_map(fn ($p) => (int) ($p['monto'] ?? 0), $pagos));
@@ -261,19 +275,30 @@ class PagoServicioService
             ]);
         }
 
-        // foreach y no array_map con fn(): una arrow function captura $archivos
-        // por valor y las rutas guardadas no llegarían al rollback.
         $resultado = [];
         foreach (array_values($pagos) as $p) {
-            $resultado[] = $this->armarPago($s, $p['mpa_codigo'], (int) $p['monto'], $p['comprobante'] ?? null, $archivos);
+            $resultado[] = $this->armarPago($s, $p['mpa_codigo'], (int) $p['monto'], $p['comprobante'] ?? null,
+                $p['cheque'] ?? null, $archivos);
         }
 
         return $resultado;
     }
 
-    // ---------- Helpers ----------
+    private function crearPagoWeb(SolicitudServicio $s, array $p, ?string $tipo = null, bool $cubreTodo = false): ServicioPago
+    {
+        $estado = $p['cheque'] ? EstadoPago::PENDIENTE_PAGO : EstadoPago::PAGO_VERIFICAR;
 
-    /** SELECT ... FOR UPDATE: dos envíos simultáneos se serializan. */
+        return $this->registro->crear($s, [
+            'metodo'      => $p['metodo'],
+            'monto'       => $p['monto'],
+            'canal'       => ServicioPago::CANAL_WEB,
+            'epaid'       => EstadoPago::porCodigo($estado)->epa_id,
+            'tipo'        => $tipo,
+            'comprobante' => $p['comprobante'],
+            'cheque'      => $p['cheque'],
+        ], $cubreTodo);
+    }
+
     private function bloquear(SolicitudServicio $s): SolicitudServicio
     {
         return SolicitudServicio::whereKey($s->sse_id)->lockForUpdate()->with(['estadoServicio', 'ordenServicio'])->firstOrFail();

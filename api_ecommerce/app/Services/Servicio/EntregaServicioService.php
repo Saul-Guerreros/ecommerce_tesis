@@ -13,6 +13,8 @@ use App\Models\Servicio\SolicitudServicio;
 use App\Models\Usuario;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\Configuracion\ConfiguracionTienda;
+use App\Models\Pedido\PagoCheque;
 
 /**
  * FASE 7 - Entrega y cierre (A5).
@@ -98,14 +100,48 @@ class EntregaServicioService
 
         $confirmado = $s->estadoPago?->epa_codigo === EstadoPago::CONFIRMADO;
 
+        if ($confirmado || $this->cubiertoConChequesRecibidos($s)) {
+            return ['habilitado' => true, 'motivo' => null, 'total' => $total];
+        }
+
         return [
-            'habilitado' => $confirmado,
-            'motivo'     => $confirmado ? null : 'El cobro está pendiente: el equipo se entrega cuando el pago esté confirmado.',
+            'habilitado' => false,
+            'motivo'     => $this->hayChequeRecibidoSinCobrar($s)
+                ? 'Hay un cheque recibido que todavía no se acreditó: según la configuración de la tienda, '
+                . 'el equipo se entrega cuando el banco acredite el cheque y se registre su cobro.'
+                : 'El cobro está pendiente: el equipo se entrega cuando el pago esté confirmado.',
             'total'      => $total,
         ];
     }
 
-       public function registrar(SolicitudServicio $s, array $d, Usuario $usuario): EntregaServicio
+    /** Política RECEPCION: lo no cobrado son cheques recibidos y entre todo cubren el total. */
+    private function cubiertoConChequesRecibidos(SolicitudServicio $s): bool
+    {
+        if (!ConfiguracionTienda::actual()->chequeDescuentaEnRecepcion()) {
+            return false;
+        }
+
+        $pagos = $s->pagos()->with(['estadoPago', 'cheque'])->get()
+            ->filter(fn ($p) => $p->estadoPago?->epa_codigo !== EstadoPago::RECHAZADO);
+
+        $sinCobrar = $pagos->filter(fn ($p) => $p->estadoPago?->epa_codigo !== EstadoPago::CONFIRMADO);
+
+        if ($sinCobrar->isEmpty() || $sinCobrar->contains(fn ($p) => !$p->cheque?->fueRecibido())) {
+            return false;
+        }
+
+        return (float) $pagos->sum(fn ($p) => (float) $p->spa_monto) + 0.01 >= (float) $s->sse_total;
+    }
+
+    private function hayChequeRecibidoSinCobrar(SolicitudServicio $s): bool
+    {
+        return $s->pagos()
+            ->whereHas('estadoPago', fn ($q) => $q->where('epa_codigo', '<>', EstadoPago::CONFIRMADO))
+            ->whereHas('cheque', fn ($q) => $q->where('sch_estado', PagoCheque::RECIBIDO))
+            ->exists();
+    }
+
+    public function registrar(SolicitudServicio $s, array $d, Usuario $usuario): EntregaServicio
     {
         if ($s->codigoServicio() !== EstadoServicio::LISTA || $s->entrega()->exists()) {
             throw ValidationException::withMessages(['modalidad' => 'Solo se entrega un equipo LISTO y sin entrega registrada.']);

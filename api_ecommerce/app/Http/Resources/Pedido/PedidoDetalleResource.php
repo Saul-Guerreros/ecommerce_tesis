@@ -22,6 +22,8 @@ use App\Models\Pedido\EstadoPedido;
  */
 class PedidoDetalleResource extends JsonResource
 {
+    use DescribeEstadoCheque;
+
     public function toArray(Request $request): array
     {
         $pagos = $this->relationLoaded('pagos') ? $this->pagos : collect();
@@ -39,19 +41,32 @@ class PedidoDetalleResource extends JsonResource
             ->filter(fn ($p) => !$p->comprobante?->pco_verifi)
             ->count();
 
+        // Contador del encabezado de la tarjeta: «1 de 2 cheques recibidos».
+        $cheques          = $pagos->pluck('cheque')->filter();
+        $chequesRecibidos = $cheques->filter(fn ($c) => $c->fueRecibido())->count();
+
         $total = (float) $this->ped_total;
 
-                // Un pago contra entrega (efectivo) obliga a esperar a LISTO: la
+        // Un pago contra entrega (efectivo) obliga a esperar a LISTO: la
         // factura se imprime y se entrega junto con la mercaderia.
-        $hayEfectivo = $pagos->contains(fn ($p) => !$p->metodoPago?->mpa_requcom);
+
+        // Efectivo = lo que se cobra recién al entregar. El cheque no entra
+        // acá: es un método que se verifica antes de entregar, y exigirle
+        // LISTO para facturar crearía un círculo con la política ACREDITACION.
+        $hayEfectivo = $pagos->contains(fn ($p) => !$p->metodoPago?->requiereVerificacion());
+
         $estaListo   = $this->estadoPedido?->est_codigo === EstadoPedido::LISTO;
 
         $tieneFactura = $this->factura !== null;
 
-        // Regla de habilitacion de [GENERAR FACTURA]. La pantalla la repite;
-        // la que manda es VentaService::validarHabilitacion().
+        // Un cheque sin recibir bloquea la factura por el mismo motivo que
+        // un comprobante sin validar: todavía no hay nada que respalde el
+        // documento fiscal.
+        $chequesPendientes = $cheques->count() - $chequesRecibidos;
+
         $puedeGenerarFactura = !$tieneFactura
             && $comprobantesPendientes === 0
+            && $chequesPendientes === 0
             && (!$hayEfectivo || $estaListo);
 
         return [
@@ -66,9 +81,13 @@ class PedidoDetalleResource extends JsonResource
                 'descripcion' => $this->estadoPago?->epa_descri,
             ],
             'estado_pedido' => [
+                
                 'codigo'      => $this->estadoPedido?->est_codigo,
                 'descripcion' => $this->estadoPedido?->est_descri,
             ],
+
+            // Tercer eje de la cabecera. null si el pedido no tiene cheques.
+            'estado_cheque' => $this->estadoCheque(),
 
             // Los dos relojes del documento de máquinas de estado (pago y
             // retiro) nunca corren a la vez: en la práctica sólo uno de
@@ -122,6 +141,8 @@ class PedidoDetalleResource extends JsonResource
                 'rechazos'                => (int) $this->ped_rechaz,
                 'rechazos_restantes'      => $this->rechazosRestantes(),
                 'cobro_habilitado'  => $tieneFactura,
+                'cheques_total'     => $cheques->count(),
+                'cheques_recibidos' => $chequesRecibidos,
             ],
         ];
     }

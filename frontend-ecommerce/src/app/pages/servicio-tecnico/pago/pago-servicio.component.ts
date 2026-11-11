@@ -1,36 +1,34 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { of, switchMap } from 'rxjs';
 import {
-  DatosBilletera, DatosTransferencia, MetodoPagoCodigo, MetodoPagoOpcion,
+  ChequeDeclarado, DatosBilletera, DatosCheque, DatosTransferencia, MetodoPagoCodigo, MetodoPagoOpcion,
   ModoPago, PagoDividRequest, RegistrarPagoRequest,
 } from '../../../core/models/checkout.model';
 import { ResumenPagoServicio } from '../../../core/models/servicio-tecnico.model';
 import { PagoServicioService } from '../../../core/services/pago-servicio.service';
+import { ChequeFormComponent, chequeCompleto, chequeVacio } from '../../checkout/cheque-form/cheque-form.component';
 import { PagoDivididoComponent } from '../../checkout/pago-dividido/pago-dividido.component';
 import { ERROR_FACTURACION_SERVICIO, FacturacionServicioComponent } from '../facturacion/facturacion-servicio.component';
 
 /**
  * C4 - Pagar el saldo del servicio técnico (/mis-servicios/:numero/pago).
- *
- * Imita el Paso 3 del checkout (paso-pago) sin tocarlo: mismas tarjetas de
- * modo y método, mismos estilos (se reutiliza su CSS) y el mismo
- * app-pago-dividido, que recibe el SALDO como total. Diferencias:
- *   - No hay plazo ni reserva: el equipo queda en el taller.
- *   - El efectivo es "pagar al retirar": se confirma en el mostrador.
- *   - Datos de facturación (CI/RUC): se guardan JUSTO ANTES de registrar el
- *     pago; la factura se emite cuando el verificador confirma el cobro.
+ * Imita el Paso 3 del checkout: mismas tarjetas, app-pago-dividido con el
+ * SALDO como total y app-cheque-form. El cheque se ofrece según la
+ * modalidad del servicio; si no está disponible, explica por qué.
  */
 @Component({
   selector: 'app-pago-servicio',
   standalone: true,
-  imports: [CommonModule, CurrencyPipe, RouterModule, PagoDivididoComponent, FacturacionServicioComponent],
+  imports: [CommonModule, CurrencyPipe, RouterModule, PagoDivididoComponent, ChequeFormComponent, FacturacionServicioComponent],
   templateUrl: './pago-servicio.component.html',
   styleUrls: ['../../checkout/paso-pago/paso-pago.component.css', './pago-servicio.component.css'],
 })
-export class PagoServicioComponent implements OnInit {
+export class PagoServicioComponent implements OnInit, OnDestroy {
+  private static readonly SEGUNDOS_AVISO_CHEQUE = 5;
+
   @ViewChild(FacturacionServicioComponent) facturacion?: FacturacionServicioComponent;
 
   numero = '';
@@ -40,11 +38,18 @@ export class PagoServicioComponent implements OnInit {
   datosTransferencia!: DatosTransferencia;
   datosBilletera!: DatosBilletera;
   mensajeEfectivo: string | null = null;
+  datosCheque!: DatosCheque;
+
+  chequeHabilitado = false;
+  motivoChequeNoDisponible: string | null = null;
+  avisoChequeVisible = false;
+  private temporizadorAviso?: ReturnType<typeof setTimeout>;
 
   modoPago: ModoPago | null = null;
   metodoSeleccionado: MetodoPagoCodigo | null = null;
   comprobanteArchivo: File | null = null;
   errorArchivo: string | null = null;
+  cheque: ChequeDeclarado = chequeVacio();
   metodoActivo: MetodoPagoCodigo | null = null;
 
   pagosDivididos: PagoDividRequest[] = [];
@@ -66,15 +71,20 @@ export class PagoServicioComponent implements OnInit {
     this.cargar();
   }
 
+  ngOnDestroy(): void {
+    if (this.temporizadorAviso) clearTimeout(this.temporizadorAviso);
+  }
+
   private cargar(): void {
     this.servicio.config(this.numero).subscribe({
       next: (resp) => {
-        // Sin saldo pagable no tiene sentido el formulario: vuelve al detalle.
         if (!resp.resumen.admite_pagos || !resp.resumen.consolidado || resp.resumen.saldo <= 0) {
           this.toastr.info(
-            resp.resumen.en_verificacion > 0
-              ? 'Tu pago está en verificación. Te avisamos apenas lo confirmemos.'
-              : 'Este servicio no tiene saldo pendiente de pago.',
+            resp.resumen.cheque_pendiente > 0
+              ? 'Tu pago con cheque está declarado: acercá el cheque a la sucursal dentro del plazo.'
+              : resp.resumen.en_verificacion > 0
+                ? 'Tu pago está en verificación. Te avisamos apenas lo confirmemos.'
+                : 'Este servicio no tiene saldo pendiente de pago.',
             'Servicio técnico',
           );
           this.volverAlDetalle();
@@ -86,6 +96,9 @@ export class PagoServicioComponent implements OnInit {
         this.datosTransferencia = resp.datos_transferencia;
         this.datosBilletera = resp.datos_billetera;
         this.mensajeEfectivo = resp.mensaje_efectivo;
+        this.datosCheque = resp.datos_cheque;
+        this.chequeHabilitado = resp.cheque_habilitado;
+        this.motivoChequeNoDisponible = resp.cheque_motivo;
         this.cargando = false;
       },
       error: () => {
@@ -99,10 +112,12 @@ export class PagoServicioComponent implements OnInit {
     this.router.navigate(['/mis-servicios', this.numero], { replaceUrl: true });
   }
 
-  // ---------- Selección (misma lógica que paso-pago) ----------
-
   get esDividido(): boolean {
     return this.modoPago === 'dividido';
+  }
+
+  get metodoEsCheque(): boolean {
+    return this.metodoSeleccionado === 'CHEQUE';
   }
 
   get metodoRequiereComprobante(): boolean {
@@ -125,6 +140,11 @@ export class PagoServicioComponent implements OnInit {
     return this.intentoEnviar && !this.esDividido && this.metodoRequiereComprobante && !this.comprobanteArchivo;
   }
 
+  /** En verificación + cheques por entregar: lo comprometido que todavía no se cobró. */
+  get pendienteDeConfirmar(): number {
+    return this.resumen.comprometido - this.resumen.confirmado;
+  }
+
   elegirModo(modo: ModoPago): void {
     if (this.modoPago === modo) return;
 
@@ -134,6 +154,7 @@ export class PagoServicioComponent implements OnInit {
     if (modo === 'dividido') {
       this.metodoSeleccionado = null;
       this.comprobanteArchivo = null;
+      this.cheque = chequeVacio();
     } else {
       this.pagosDivididos = [];
       this.pagosDivididosValidos = false;
@@ -141,8 +162,23 @@ export class PagoServicioComponent implements OnInit {
   }
 
   elegirMetodo(codigo: MetodoPagoCodigo): void {
+    if (codigo === 'CHEQUE' && !this.chequeHabilitado) {
+      this.mostrarAvisoCheque();
+      return;
+    }
+
     if (this.esDividido) return;
     this.metodoSeleccionado = codigo;
+  }
+
+  private mostrarAvisoCheque(): void {
+    this.avisoChequeVisible = true;
+
+    if (this.temporizadorAviso) clearTimeout(this.temporizadorAviso);
+
+    this.temporizadorAviso = setTimeout(() => {
+      this.avisoChequeVisible = false;
+    }, PagoServicioComponent.SEGUNDOS_AVISO_CHEQUE * 1000);
   }
 
   onCambioPagos(evento: { pagos: PagoDividRequest[]; valido: boolean }): void {
@@ -150,7 +186,10 @@ export class PagoServicioComponent implements OnInit {
     this.pagosDivididosValidos = evento.valido;
   }
 
-  /** Misma validación de archivo que pago-dividido (extensión y 5 MB). */
+  onChequeCambio(cheque: ChequeDeclarado): void {
+    this.cheque = cheque;
+  }
+
   onArchivoSeleccionado(evento: Event): void {
     const input = evento.target as HTMLInputElement;
     const archivo = input.files?.[0] ?? null;
@@ -170,8 +209,7 @@ export class PagoServicioComponent implements OnInit {
     input.value = '';
   }
 
-  // ---------- Envío ----------
-
+  /** Mismas tres clases de pago que paso-pago: comprobante, cheque y efectivo. */
   get textoBoton(): string {
     const codigos = this.esDividido
       ? this.pagosDivididos.map((p) => p.mpa_codigo)
@@ -179,10 +217,14 @@ export class PagoServicioComponent implements OnInit {
 
     const requiere = (c: MetodoPagoCodigo) => this.metodos.find((m) => m.mpa_codigo === c)?.mpa_requcom ?? false;
     const conComprobante = codigos.some(requiere);
-    const conEfectivo = codigos.some((c) => !requiere(c));
+    const conCheque = codigos.some((c) => c === 'CHEQUE');
+    const conEfectivo = codigos.some((c) => c !== 'CHEQUE' && !requiere(c));
 
-    if (conComprobante && conEfectivo) return 'Enviar y pagar el resto al retirar';
+    const clases = [conComprobante, conCheque, conEfectivo].filter(Boolean).length;
+
+    if (clases > 1) return 'Enviar y confirmar pago';
     if (conComprobante) return codigos.length > 1 ? 'Enviar comprobantes' : 'Enviar comprobante';
+    if (conCheque) return codigos.length > 1 ? 'Confirmar pagos con cheque' : 'Confirmar pago con cheque';
     if (conEfectivo) return 'Pagar al retirar mi equipo';
 
     return 'Confirmar pago';
@@ -192,6 +234,7 @@ export class PagoServicioComponent implements OnInit {
     if (!this.modoPago) return false;
     if (this.esDividido) return this.pagosDivididosValidos;
     if (!this.metodoSeleccionado) return false;
+    if (this.metodoEsCheque) return chequeCompleto(this.cheque);
 
     return !this.metodoRequiereComprobante || !!this.comprobanteArchivo;
   }
@@ -204,18 +247,21 @@ export class PagoServicioComponent implements OnInit {
 
     const payload: RegistrarPagoRequest = this.esDividido
       ? { modo: 'dividido', pagos: this.pagosDivididos }
-      : { modo: 'unico', mpa_codigo: this.metodoSeleccionado!, comprobante: this.comprobanteArchivo };
+      : {
+          modo: 'unico',
+          mpa_codigo: this.metodoSeleccionado!,
+          comprobante: this.comprobanteArchivo,
+          cheque: this.metodoEsCheque ? this.cheque : null,
+        };
 
     this.enviando = true;
 
-    // 1) datos de facturación  2) pago. Si el 1 falla, no se registra el pago.
     const facturacion$ = this.facturacion ? this.facturacion.guardar() : of(null);
 
     facturacion$.pipe(switchMap(() => this.servicio.registrar(this.numero, payload))).subscribe({
       next: (resp) => {
         this.enviando = false;
         this.toastr.success(resp.message, 'Servicio técnico');
-        // replaceUrl: el formulario queda consumido (el saldo ya está comprometido).
         this.volverAlDetalle();
       },
       error: (e) => {

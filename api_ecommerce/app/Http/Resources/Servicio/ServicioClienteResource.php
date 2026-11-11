@@ -8,6 +8,7 @@ use App\Models\Servicio\GarantiaProveedor;
 use App\Services\Servicio\EstadoPagoServicioService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Models\Pedido\PagoCheque;
 
 /**
  * Vista del CLIENTE (C3/C4): nunca expone los códigos internos de los ejes,
@@ -207,10 +208,29 @@ class ServicioClienteResource extends JsonResource
              // Seña antes de LISTA: el backend decide si se puede y con qué tope.
             'anticipo' => $estadoPago->anticipoWeb($this->resource),
             'en_verificacion' => $resumen['en_verificacion'],
+            'cheque_pendiente' => $resumen['cheque_pendiente'],
+              'cheque'  => $this->plazoCheque(),
             'saldo'   => $resumen['saldo'],
             'pagable' => $this->estadoServicio?->ets_codigo === 'LISTA'
                 && $resumen['admite_pagos'] && $resumen['saldo'] > 0,
             'pagos'   => $this->pagos->map(fn ($p) => (new ServicioPagoClienteResource($p, $this->sse_numero))->resolve())->values(),
+        ];
+    }
+
+    private function plazoCheque(): ?array
+    {
+        $pendientes = $this->pagos
+            ->map(fn ($p) => $p->cheque)
+            ->filter(fn ($c) => $c?->estaPendiente() && $c->sch_fevcto !== null);
+
+        if ($pendientes->isEmpty()) {
+            return null;
+        }
+
+        return [
+            'vence'       => $pendientes->sortBy(fn ($c) => $c->sch_fevcto->getTimestamp())->first()->sch_fevcto->toIso8601String(),
+            'horas_plazo' => PagoCheque::HORAS_PLAZO,
+            'cantidad'    => $pendientes->count(),
         ];
     }
 
@@ -223,7 +243,9 @@ class ServicioClienteResource extends JsonResource
             'PRESUPUESTADA' => 'Revisá y respondé el presupuesto',
             'LISTA'         => match ($this->estadoPago?->epa_codigo) {
                 EstadoPago::RECHAZADO      => 'Revisá tu pago: necesitamos un comprobante nuevo',
-                EstadoPago::PENDIENTE_PAGO => 'Tu equipo está listo: pagá el servicio o abonalo al retirar',
+               EstadoPago::PENDIENTE_PAGO => $this->pagos->contains(fn ($p) => $p->cheque?->estaPendiente())
+    ? 'Acercá tu cheque a la sucursal dentro del plazo de 48 horas'
+    : 'Tu equipo está listo: pagá el servicio o abonalo al retirar',
                 EstadoPago::PAGO_VERIFICAR => 'Estamos verificando tu pago',
                 default                    => 'Tu equipo está listo para retirar',
             },

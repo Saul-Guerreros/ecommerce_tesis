@@ -11,12 +11,14 @@
       <span class="pr-check" uk-icon="icon: check; ratio: 1.6"></span>
 
       <h3 class="uk-margin-small-top uk-margin-remove-bottom">
-        <ng-container *ngIf="resultado.caso !== 'CONTRAENTREGA'">Comprobante enviado</ng-container>
+        <ng-container *ngIf="resultado.caso === 'CHEQUE'">Pedido registrado</ng-container>
+        <ng-container *ngIf="resultado.caso === 'REVISION' || resultado.caso === 'PARCIAL'">Comprobante enviado</ng-container>
         <ng-container *ngIf="resultado.caso === 'CONTRAENTREGA'">Pedido confirmado</ng-container>
       </h3>
 
       <p class="uk-text-meta uk-margin-remove-top">
         Pedido Nº {{ resultado.ped_numero }} ·
+        <ng-container *ngIf="resultado.caso === 'CHEQUE'">Pendiente de recepción del cheque</ng-container>
         <ng-container *ngIf="resultado.caso === 'REVISION'">Pago en revisión</ng-container>
         <ng-container *ngIf="resultado.caso === 'PARCIAL'">Pago parcial en revisión</ng-container>
         <ng-container *ngIf="resultado.caso === 'CONTRAENTREGA'">Pendiente de pago contra entrega</ng-container>
@@ -84,8 +86,56 @@
       <p *ngIf="!esRetiro">Te llevamos el pedido hasta tu dirección y abonás al recibirlo.</p>
     </ng-container>
 
-    <!-- Dónde recibe: aplica a los casos 2 y 3 -->
-    <div class="pr-entrega uk-margin-top" *ngIf="resultado.caso !== 'REVISION'">
+    <!-- CHEQUE: aplica solo o junto a cualquiera de los casos anteriores.
+         Igual para retiro y envío: el cheque siempre se entrega en la sucursal. -->
+    <div class="pr-entrega uk-margin-top" *ngIf="resultado.cheque as chq">
+
+      <!-- Cuánto es el cheque -->
+      <ng-container *ngIf="!variosCheques">
+        <div class="uk-flex uk-flex-between uk-margin-small-bottom">
+          <span class="uk-text-large">Monto del cheque</span>
+          <span class="uk-text-large uk-text-bold">
+            {{ chq.monto | currency:'PYG':'symbol-narrow':'1.0-0' }}
+          </span>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="variosCheques">
+        <p class="uk-margin-remove uk-text-bold">Montos de los cheques</p>
+        <ul class="uk-list uk-list-divider pr-pagos">
+          <li *ngFor="let c of chq.cheques" class="uk-flex uk-flex-between">
+            <span class="uk-text-capitalize">{{ ordinal(c.orden) }} cheque</span>
+            <strong>{{ c.monto | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+          </li>
+        </ul>
+      </ng-container>
+
+      <!-- A nombre de quién debe estar emitido -->
+      <p class="uk-margin-small-top uk-margin-remove-bottom" *ngIf="chq.titular">
+        Emitilo a nombre de <strong>{{ chq.titular }}</strong>.
+      </p>
+
+      <!-- Dónde entregarlo -->
+      <p class="uk-margin-small-top uk-margin-remove-bottom uk-text-bold">
+        <span uk-icon="icon: home; ratio: 0.9"></span>
+        Entregalo en {{ chq.sucursal.nombre }}
+      </p>
+      <p class="uk-margin-remove">{{ chq.sucursal.direccion }}</p>
+      <p class="uk-margin-remove uk-text-meta" *ngIf="chq.sucursal.horario">
+        {{ chq.sucursal.horario }}
+      </p>
+
+      <!-- Hasta cuándo -->
+      <div class="pr-cheque-aviso uk-margin-top" role="note" *ngIf="chq.vence_label">
+        Entregalo antes del <strong>{{ chq.vence_label }}</strong> ({{ chq.horas_plazo }} horas).
+        Pasado ese plazo, el pedido se anula y se libera el stock.
+      </div>
+    </div>
+
+    <!-- Dónde recibe: aplica a los casos 2 y 3. Con cheque solo el bloque de
+         arriba lleva la dirección, porque la sucursal es donde se entrega el papel. -->
+    <div class="pr-entrega uk-margin-top"
+         *ngIf="resultado.caso !== 'REVISION' && resultado.caso !== 'CHEQUE'">
       <ng-container *ngIf="esRetiro">
         <p class="uk-margin-remove uk-text-bold">
           <span uk-icon="icon: home; ratio: 0.9"></span>

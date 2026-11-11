@@ -32,6 +32,12 @@ export interface ConfigEnvio {
   impuestos: number;
 }
 
+/** Modalidades de entrega en las que el admin acepta pago con cheque. */
+export interface ChequeAceptado {
+  retiro: boolean;
+  envio: boolean;
+}
+
 export interface EntregaCheckout {
   modalidad: ModalidadEntrega;
   ten_id: number | null;
@@ -59,12 +65,19 @@ export interface EntregaCheckout {
   costo_envio: number;
 }
 
+/** Modalidades de entrega en las que el admin acepta pago con cheque. */
+export interface ChequeAceptado {
+  retiro: boolean;
+  envio: boolean;
+}
+
 export interface ConfigEntregaResponse {
   sucursales: SucursalRetiro[];
   direcciones: Direccion[];
   titular: TitularCheckout;
   carrito_vacio: boolean;
   envio: ConfigEnvio;
+  cheque_aceptado: ChequeAceptado;
   // Alimenta la tarjeta "Productos en Carrito" del Paso 1.
   items: CarritoItem[];
   entrega: EntregaCheckout | null;
@@ -152,7 +165,7 @@ export interface PedidoConfirmado {
 
 // ---------- Paso 3: Pago de un pedido ya creado ----------
 
-export type MetodoPagoCodigo = 'TRANSFERENCIA' | 'BILLETERA_MOVIL' | 'CONTRAENTREGA';
+export type MetodoPagoCodigo = 'TRANSFERENCIA' | 'BILLETERA_MOVIL' | 'CONTRAENTREGA' | 'CHEQUE';
 
 export interface MetodoPagoOpcion {
   mpa_id: number;
@@ -173,6 +186,45 @@ export interface DatosBilletera {
   referencia: string | null;
 }
 
+/** Los dos tipos se ofrecen siempre: el catálogo es fijo en el backend. */
+export type TipoCheque = 'VISTA' | 'DIFERIDO';
+
+export interface TipoChequeOpcion {
+  codigo: TipoCheque;
+  descri: string;
+}
+
+/**
+ * Textos del método Cheque, ya resueltos por el backend: la tienda sólo
+ * los imprime. 'mensaje' y 'aviso' pueden venir vacíos si el admin los
+ * borra; en ese caso no se muestran.
+ */
+export interface DatosCheque {
+  tipos: TipoChequeOpcion[];
+  titular: string | null;
+  descripcion: string;
+  mensaje: string | null;
+  aviso: string | null;
+}
+
+/**
+ * Datos del cheque que el cliente declara. Es el equivalente del
+ * comprobante adjunto en los métodos que sí llevan archivo.
+ *
+ * 'nro' identifica el papel frente al banco y 'fecha_cobro' le dice a la
+ * sucursal cuándo puede depositarlo. Sin el primero el administrador no
+ * puede verificar que el cheque entregado sea el declarado.
+ */
+export interface ChequeDeclarado {
+  tipo: TipoCheque | null;
+  banco: string;
+  nrodoc: string;
+  nombre: string;
+  nro: string;
+  /** Sólo en el diferido. Formato yyyy-mm-dd; vacío en el cheque a la vista. */
+  fecha_cobro: string;
+}
+
 /** Forma en la que el cliente decide cubrir el total del pedido. */
 export type ModoPago = 'unico' | 'dividido';
 
@@ -190,6 +242,9 @@ export interface ConfigPagoPedidoResponse {
   datos_transferencia: DatosTransferencia;
   datos_billetera: DatosBilletera;
   mensaje_efectivo: string | null;
+  datos_cheque: DatosCheque;
+  cheque_habilitado: boolean;
+  cheque_motivo: string | null;
 
   // Tarjetas de resumen del Paso 3 (Resumen de Compra, Productos en
   // Carrito, Datos de Entrega, Datos de Facturación). 'entrega' y
@@ -206,6 +261,8 @@ export interface PagoDividRequest {
   mpa_codigo: MetodoPagoCodigo;
   monto: number;
   comprobante: File | null;
+  /** Sólo se completa cuando mpa_codigo es CHEQUE. */
+  cheque?: ChequeDeclarado | null;
   /**
    * @deprecated Sin uso desde que el pago dejó de guardarse como borrador:
    * ahora se declara una sola vez y el archivo siempre viaja completo.
@@ -231,6 +288,8 @@ export interface RegistrarPagoRequest {
   modo: ModoPago;
   mpa_codigo?: MetodoPagoCodigo;
   comprobante?: File | null;
+  /** Sólo se completa cuando mpa_codigo es CHEQUE. */
+  cheque?: ChequeDeclarado | null;
   pagos?: PagoDividRequest[];
 }
 
@@ -243,7 +302,7 @@ export interface RegistrarPagoRequest {
  *
  * Lo decide el backend a partir del catálogo metodo_pago, no esta pantalla.
  */
-export type CasoResultadoPago = 'REVISION' | 'PARCIAL' | 'CONTRAENTREGA';
+export type CasoResultadoPago = 'REVISION' | 'PARCIAL' | 'CONTRAENTREGA' | 'CHEQUE';
 
 export interface PagoResultadoItem {
   orden: number;
@@ -267,6 +326,25 @@ export interface EntregaResultado {
   referencia?: string | null;
 }
 
+/**
+ * Lo que el cliente necesita para entregar su cheque. La sucursal viaja
+ * acá aunque la entrega sea a domicilio: el cheque se entrega en la tienda.
+ */
+export interface ChequeResultado {
+  titular: string | null;
+  monto: number;
+  cheques: { orden: number; monto: number }[];
+  /** Plazo más cercano entre los cheques del pedido. */
+  vence: string | null;
+  vence_label: string | null;
+  horas_plazo: number;
+  sucursal: {
+    nombre: string | null;
+    direccion: string | null;
+    horario: string | null;
+  };
+}
+
 export interface ResultadoPago {
   ped_numero: string;
   ped_total: number;
@@ -276,5 +354,6 @@ export interface ResultadoPago {
   pagos: PagoResultadoItem[];
   monto_en_revision: number;
   monto_contraentrega: number;
+  cheque: ChequeResultado | null;
   entrega: EntregaResultado;
 }

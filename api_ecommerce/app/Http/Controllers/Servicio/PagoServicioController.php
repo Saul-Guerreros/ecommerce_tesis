@@ -16,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Http\Requests\Servicio\AnticipoServicioRequest;
+use App\Models\Pedido\MetodoPago;
 
 /**
  * C4 - Pago del servicio desde la tienda. Espejo de PagoPedidoController:
@@ -42,6 +43,9 @@ class PagoServicioController extends Controller
             'datos_transferencia' => $d['datos_transferencia'],
             'datos_billetera'     => $d['datos_billetera'],
             'mensaje_efectivo'    => $d['mensaje_efectivo'],
+            'datos_cheque'        => $d['datos_cheque'],
+            'cheque_habilitado'   => $d['cheque_habilitado'],
+            'cheque_motivo'       => $d['cheque_motivo'],
             'pagos'               => $this->pagosCliente($d['pagos'], $numero),
         ], 200);
     }
@@ -50,8 +54,11 @@ class PagoServicioController extends Controller
     public function registrar(PagoServicioRequest $request, string $numero): JsonResponse
     {
         $s = $this->pagos->registrar($this->clienteAutenticado(), $numero, $this->conArchivos($request));
+        $conCheque = $s->pagos->contains(fn ($p) => $p->cheque?->estaPendiente());
 
-        return $this->respuesta('Recibimos tu pago. Te avisamos apenas lo verifiquemos.', $s, 201);
+        return $this->respuesta($conCheque
+            ? 'Registramos tu pago. Acercá el cheque a la sucursal dentro de las próximas 48 horas.'
+            : 'Recibimos tu pago. Te avisamos apenas lo verifiquemos.', $s, 201);
     }
 
     // POST /api/tienda/servicios/{numero}/anticipo
@@ -62,7 +69,9 @@ class PagoServicioController extends Controller
 
         $s = $this->pagos->registrarAnticipo($this->clienteAutenticado(), $numero, $datos);
 
-        return $this->respuesta('Recibimos tu anticipo. Lo verificamos y te enviamos la factura.', $s, 201);
+        return $this->respuesta(($datos['mpa_codigo'] ?? null) === MetodoPago::CHEQUE
+            ? 'Registramos tu anticipo. Acercá el cheque a la sucursal dentro de las próximas 48 horas.'
+            : 'Recibimos tu anticipo. Lo verificamos y te enviamos la factura.', $s, 201);
     }
 
     // POST /api/tienda/servicios/{numero}/pagos/{pago}/comprobante
@@ -105,7 +114,7 @@ class PagoServicioController extends Controller
 
     private function respuesta(string $mensaje, SolicitudServicio $s, int $status = 200): JsonResponse
     {
-        $s->loadMissing(['pagos.motivoRechazo', 'estadoPago']);
+        $s->loadMissing(['pagos.motivoRechazo', 'pagos.cheque', 'estadoPago']);
 
         return response()->json([
             'message' => $mensaje,

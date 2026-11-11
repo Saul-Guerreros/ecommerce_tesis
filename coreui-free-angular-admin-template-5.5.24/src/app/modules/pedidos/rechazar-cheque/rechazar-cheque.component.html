@@ -1,0 +1,81 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()"
+         backdrop="static" alignment="center" [scrollable]="true">
+  <c-modal-header>
+    <h5 cModalTitle class="text-break" *ngIf="pago && pedido">
+      RECHAZAR CHEQUE {{ pago.orden }} — {{ pedido.numero }}
+    </h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="pago">
+    <form [formGroup]="form">
+
+      <div class="mb-3" *ngIf="pago.cheque as chq">
+        <div class="small text-muted">Cheque</div>
+        <div class="fw-semibold">
+          {{ chq.tipo_label }}
+          <span *ngIf="chq.nro">· N° {{ chq.nro }}</span>
+          <span *ngIf="chq.banco">· {{ chq.banco }}</span>
+        </div>
+        <div class="small text-muted mt-1">
+          Monto asignado: Gs. {{ formatoGs(pago.monto_asignado) }}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Motivo del rechazo</label>
+        <select cSelect formControlName="motivo_id"
+                [class.is-invalid]="errorBackend('motivo_id')">
+          <option [ngValue]="null" disabled>Seleccioná un motivo…</option>
+          <option *ngFor="let m of motivos" [ngValue]="m.mrp_id">{{ m.mrp_descri }}</option>
+        </select>
+        <div class="form-text" *ngIf="cargandoMotivos">Cargando motivos…</div>
+        <div class="invalid-feedback d-block" *ngIf="errorBackend('motivo_id')">
+          {{ errorBackend('motivo_id') }}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">
+          Detalle
+          <span class="text-danger" *ngIf="detalleObligatorio">*</span>
+          <span class="text-muted" *ngIf="!detalleObligatorio">(opcional)</span>
+        </label>
+        <textarea cFormControl rows="2" formControlName="detalle"
+                  placeholder="El titular del cheque no coincide con el declarado"
+                  [class.is-invalid]="errorBackend('detalle')"></textarea>
+        <div class="form-text" *ngIf="detalleObligatorio">
+          Este motivo necesita un detalle: el cliente va a recibir esta explicación.
+        </div>
+        <div class="invalid-feedback d-block" *ngIf="errorBackend('detalle')">
+          {{ errorBackend('detalle') }}
+        </div>
+      </div>
+
+      <c-alert color="danger" class="mb-0">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="confirmaRechazoCheque"
+                 formControlName="confirma" />
+          <label class="form-check-label" for="confirmaRechazoCheque">
+            Entiendo que rechazar el cheque <strong>cancela el pedido</strong> y libera
+            el stock reservado.
+          </label>
+        </div>
+        <p class="mb-0 mt-2 small">
+          No hay segunda oportunidad: el cliente no puede declarar otro cheque sobre
+          este pedido y tendrá que volver a comprar.
+        </p>
+      </c-alert>
+    </form>
+  </c-modal-body>
+
+  <c-modal-footer class="flex-wrap gap-2">
+    <button cButton color="secondary" variant="outline" (click)="cerrar()">Cancelar</button>
+
+    <button cButton color="danger" class="text-white"
+            [disabled]="!puedeGuardar" (click)="rechazar()">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      Rechazar cheque
+    </button>
+  </c-modal-footer>
+</c-modal>

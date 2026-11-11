@@ -3,20 +3,20 @@
 namespace App\Http\Requests\Pedido;
 
 use App\Models\Pedido\MetodoPago;
+use App\Models\Pedido\PagoCheque;
 use App\Services\Pedido\PagoPedidoService;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\Configuracion\ConfiguracionTienda;
+
 
 /**
  * Paso 3 del checkout: el cliente declara con qué pagó un pedido que ya
  * existe.
  *
- * Reemplaza a CheckoutPagoRequest. Diferencia principal: desaparece la
- * bandera "conservar". Antes el pago vivía en un borrador al que el
- * cliente podía volver, así que había que distinguir "subí un archivo
- * nuevo" de "dejá el que ya tenía". Ahora el pago se declara una sola vez
- * y queda escrito en pedido_pago: o viene el archivo, o falta.
+ * El método CHEQUE no lleva archivo adjunto: su equivalente son cuatro
+ * datos declarados (tipo, banco, CI y nombre del titular).
  */
 class PagoPedidoRequest extends FormRequest
 {
@@ -37,20 +37,37 @@ class PagoPedidoRequest extends FormRequest
 
     private function reglasUnico(): array
     {
+        $esCheque = $this->input('mpa_codigo') === MetodoPago::CHEQUE;
+        $exigir   = $esCheque ? 'required' : 'nullable';
+
         return [
             'modo'        => ['required', Rule::in($this->modosValidos())],
             'mpa_codigo'  => ['required', Rule::in($this->codigosValidos())],
             'comprobante' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+
+            'cheque'        => [$exigir, 'array'],
+            'cheque.tipo'   => [$exigir, Rule::in($this->tiposChequeValidos())],
+            'cheque.banco'  => [$exigir, 'string', 'max:80'],
+            'cheque.nrodoc' => [$exigir, 'string', 'max:20'],
+            'cheque.nombre' => [$exigir, 'string', 'max:150'],
+            'cheque.nro'    => [$exigir, 'string', 'max:20'],
+
+            // Sólo obligatoria en el diferido: la condición no se puede
+            // expresar con $exigir, que depende del método y no del tipo.
+            'cheque.fecha_cobro' => [
+                Rule::requiredIf(fn () => $this->esCheque()
+                    && $this->input('cheque.tipo') === PagoCheque::TIPO_DIFERIDO),
+                'nullable', 'date', 'after_or_equal:today',
+            ],
         ];
     }
 
     /**
      * min:2 porque el pago dividido arranca siempre con Pago 1 y Pago 2.
-     * Si el cliente quiere pagar con uno solo, el modo correcto es "unico".
      *
-     * El monto se valida como entero: el guaraní no usa decimales, y
-     * permitir céntimos haría que la suma nunca cierre exacta contra el
-     * total del pedido.
+     * Los campos del cheque van como 'nullable': cuáles son obligatorios
+     * depende del método elegido en cada bloque, y eso sólo se puede
+     * resolver recorriendo el array (withValidator).
      */
     private function reglasDividido(): array
     {
@@ -60,15 +77,22 @@ class PagoPedidoRequest extends FormRequest
             'pagos.*.mpa_codigo'  => ['required', Rule::in($this->codigosValidos())],
             'pagos.*.monto'       => ['required', 'integer', 'min:1', 'max:999999999999'],
             'pagos.*.comprobante' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+
+            'pagos.*.cheque'        => ['nullable', 'array'],
+            'pagos.*.cheque.tipo'   => ['nullable', Rule::in($this->tiposChequeValidos())],
+            'pagos.*.cheque.banco'  => ['nullable', 'string', 'max:80'],
+            'pagos.*.cheque.nrodoc' => ['nullable', 'string', 'max:20'],
+            'pagos.*.cheque.nombre' => ['nullable', 'string', 'max:150'],
+            'pagos.*.cheque.nro'    => ['nullable', 'string', 'max:20'],
+            'pagos.*.cheque.fecha_cobro' => ['nullable', 'date', 'after_or_equal:today'],
         ];
     }
 
     /**
-     * Exigencia del comprobante. Depende sólo del catálogo metodo_pago
-     * (mpa_requcom), por eso vive acá y no en el Service: es una regla de
-     * los datos enviados, no del estado del sistema.
+     * Dos exigencias que dependen del catálogo y no de los datos sueltos:
      *
-     * El efectivo contra entrega nunca lleva comprobante.
+     *   - comprobante obligatorio si mpa_requcom (transferencia, billetera);
+     *   - datos del cheque obligatorios si el método es CHEQUE.
      */
     public function withValidator(Validator $validator): void
     {
@@ -92,18 +116,62 @@ class PagoPedidoRequest extends FormRequest
             foreach ((array) $this->input('pagos', []) as $i => $pago) {
                 $codigo = $pago['mpa_codigo'] ?? null;
 
-                if (!$codigo || !($requiere[$codigo] ?? false)) {
+                if (!$codigo) {
                     continue;
                 }
 
-                if (!$this->hasFile("pagos.$i.comprobante")) {
+                if (($requiere[$codigo] ?? false) && !$this->hasFile("pagos.$i.comprobante")) {
                     $v->errors()->add(
                         "pagos.$i.comprobante",
                         'Adjuntá el comprobante del Pago ' . ($i + 1) . '.',
                     );
                 }
+
+                if ($codigo === MetodoPago::CHEQUE) {
+                    $this->verificarCheque($v, $pago['cheque'] ?? [], $i);
+                }
             }
         });
+    }
+
+    /**
+     * Campos del cheque de un bloque del pago dividido. Se valida campo
+     * por campo para que el cliente vea exactamente cuál le falta, en vez
+     * de un único error genérico sobre todo el bloque.
+    */
+    private function verificarCheque(Validator $v, array $cheque, int $i): void
+    {
+        $n = $i + 1;
+
+        $campos = [
+            'tipo'   => "Elegí el tipo de cheque del Pago {$n}.",
+            'banco'  => "Ingresá el nombre del banco del Pago {$n}.",
+            'nrodoc' => "Ingresá la CI del titular del Pago {$n}.",
+            'nombre' => "Ingresá el nombre del titular del Pago {$n}.",
+            'nro'    => "Ingresá el número del cheque del Pago {$n}.",
+        ];
+
+        foreach ($campos as $campo => $mensaje) {
+            if (trim((string) ($cheque[$campo] ?? '')) === '') {
+                $v->errors()->add("pagos.$i.cheque.$campo", $mensaje);
+            }
+        }
+
+        // La fecha de cobro sólo existe en el diferido: es lo que le dice a
+        // la sucursal cuándo puede depositar el papel.
+        if (($cheque['tipo'] ?? null) === PagoCheque::TIPO_DIFERIDO
+            && trim((string) ($cheque['fecha_cobro'] ?? '')) === '') {
+            $v->errors()->add(
+                "pagos.$i.cheque.fecha_cobro",
+                "Ingresá la fecha de cobro del cheque diferido del Pago {$n}.",
+            );
+        }
+    }
+
+    /** El método elegido en el pago único es cheque. */
+    private function esCheque(): bool
+    {
+        return $this->input('mpa_codigo') === MetodoPago::CHEQUE;
     }
 
     private function modosValidos(): array
@@ -117,7 +185,14 @@ class PagoPedidoRequest extends FormRequest
             MetodoPago::TRANSFERENCIA,
             MetodoPago::BILLETERA_MOVIL,
             MetodoPago::CONTRAENTREGA,
+            MetodoPago::CHEQUE,
         ];
+    }
+
+        /** Tipos que el administrador dejó habilitados en Datos de Pago. */
+    private function tiposChequeValidos(): array
+    {
+        return ConfiguracionTienda::actual()->tiposChequeHabilitados();
     }
 
     public function messages(): array
@@ -131,6 +206,32 @@ class PagoPedidoRequest extends FormRequest
             'comprobante.file'    => 'El comprobante debe ser un archivo válido.',
             'comprobante.mimes'   => 'El comprobante debe ser una imagen (jpg, png) o PDF.',
             'comprobante.max'     => 'El comprobante no puede superar los 5 MB.',
+
+            'cheque.required'        => 'Completá los datos del cheque.',
+            'cheque.tipo.required'   => 'Elegí el tipo de cheque.',
+            'cheque.tipo.in'         => 'El tipo de cheque seleccionado no es válido.',
+            'cheque.banco.required'  => 'Ingresá el nombre del banco.',
+            'cheque.banco.max'       => 'El nombre del banco no puede superar los 80 caracteres.',
+            'cheque.nrodoc.required' => 'Ingresá la CI del titular del cheque.',
+            'cheque.nrodoc.max'      => 'La CI del titular no puede superar los 20 caracteres.',
+            'cheque.nombre.required' => 'Ingresá el nombre del titular del cheque.',
+            'cheque.nombre.max'      => 'El nombre del titular no puede superar los 150 caracteres.',
+
+            'cheque.nro.required'    => 'Ingresá el número del cheque.',
+            'cheque.nro.max'         => 'El número del cheque no puede superar los 20 caracteres.',
+
+            'cheque.fecha_cobro.required'       => 'Ingresá la fecha de cobro del cheque diferido.',
+            'cheque.fecha_cobro.date'           => 'La fecha de cobro no es válida.',
+            'cheque.fecha_cobro.after_or_equal' => 'La fecha de cobro no puede ser anterior a hoy.',
+
+            'pagos.*.cheque.nro.max'                    => 'El número del cheque no puede superar los 20 caracteres.',
+            'pagos.*.cheque.fecha_cobro.date'           => 'La fecha de cobro no es válida.',
+            'pagos.*.cheque.fecha_cobro.after_or_equal' => 'La fecha de cobro no puede ser anterior a hoy.',
+
+            'pagos.*.cheque.tipo.in'     => 'El tipo de cheque seleccionado no es válido.',
+            'pagos.*.cheque.banco.max'   => 'El nombre del banco no puede superar los 80 caracteres.',
+            'pagos.*.cheque.nrodoc.max'  => 'La CI del titular no puede superar los 20 caracteres.',
+            'pagos.*.cheque.nombre.max'  => 'El nombre del titular no puede superar los 150 caracteres.',
 
             'pagos.required' => 'Cargá los pagos con los que vas a cubrir el total.',
             'pagos.min'      => 'El pago dividido requiere al menos dos pagos.',

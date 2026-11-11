@@ -6,22 +6,24 @@ import {
   FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators,
 } from '@angular/forms';
 import {
-  MetodoPagoCodigo, MetodoPagoOpcion, PagoDividRequest, PagoItemCheckout,
+  ChequeDeclarado, DatosCheque, MetodoPagoCodigo, MetodoPagoOpcion, PagoDividRequest,
+  PagoItemCheckout,
 } from '../../../core/models/checkout.model';
+import { ChequeFormComponent, chequeCompleto, chequeVacio } from '../cheque-form/cheque-form.component';
 
 /**
- * Seccion "Pago dividido" del Paso 2.
+ * Seccion "Pago dividido" del Paso 3.
  *
  * Es un componente presentacional: no llama a ningun servicio ni navega.
  * Solo administra el FormArray de pagos y le avisa al contenedor
- * (paso-facturacion) dos cosas: que metodo esta mirando el cliente en este
+ * (paso-pago) dos cosas: que metodo esta mirando el cliente en este
  * momento (para la tarjeta de datos de arriba) y cual es el estado actual
  * de los pagos.
  */
 @Component({
   selector: 'app-pago-dividido',
   standalone: true,
-  imports: [CommonModule, CurrencyPipe, ReactiveFormsModule],
+  imports: [CommonModule, CurrencyPipe, ReactiveFormsModule, ChequeFormComponent],
   templateUrl: './pago-dividido.component.html',
   styleUrl: './pago-dividido.component.css',
 })
@@ -29,6 +31,9 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
   /** Total exigible que llega del backend (config/pago -> total_pedido). */
   @Input() total = 0;
   @Input() metodos: MetodoPagoOpcion[] = [];
+
+  /** Textos del metodo Cheque, para los bloques cuyo metodo sea CHEQUE. */
+  @Input() datosCheque: DatosCheque | null = null;
 
   /** Pagos ya guardados en el borrador, si el cliente vuelve a este paso. */
   @Input() pagosGuardados: PagoItemCheckout[] | null = null;
@@ -51,6 +56,14 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
 
   /** Archivo elegido por bloque. No va en el form: File no es serializable. */
   archivos: Record<number, File | null> = {};
+
+  /**
+   * Datos del cheque por bloque. Tampoco van en el form: se editan en un
+   * componente aparte y llegan como un objeto completo en cada cambio.
+   * Cada indice tiene siempre un objeto (aunque el bloque no sea cheque)
+   * para que la referencia que recibe el componente hijo sea estable.
+   */
+  cheques: Record<number, ChequeDeclarado> = {};
 
   /**
    * Ultimo valor de "monto" (en digitos, sin parsear) que fue valido para
@@ -98,12 +111,14 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
 
     this.archivos = {};
     this.erroresArchivo = {};
+    this.cheques = {};
     this.ultimoMontoValido = {};
     this.montoBloqueado = {};
 
     bloques.forEach((_, i) => {
       const monto = guardados[i]?.monto;
       this.ultimoMontoValido[i] = monto != null ? String(monto) : '';
+      this.cheques[i] = chequeVacio();
     });
 
     this.form.valueChanges.subscribe(() => {
@@ -163,6 +178,15 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
     return this.metodos.find((m) => m.mpa_codigo === codigo)?.mpa_requcom ?? false;
   }
 
+  /** El cheque no lleva archivo: sus datos declarados cumplen ese papel. */
+  esCheque(i: number): boolean {
+    return this.metodoDe(i) === 'CHEQUE';
+  }
+
+  chequeDe(i: number): ChequeDeclarado {
+    return this.cheques[i];
+  }
+
   tieneComprobante(i: number): boolean {
     return !!this.archivos[i] || !!this.grupo(i).getRawValue().tienePrevio;
   }
@@ -183,8 +207,9 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
     const v = this.grupo(i).getRawValue();
     const montoOk = Number(v.monto) > 0;
     const comprobanteOk = !this.requiereComprobante(i) || this.tieneComprobante(i);
+    const chequeOk = !this.esCheque(i) || chequeCompleto(this.cheques[i]);
 
-    return !!v.mpa_codigo && montoOk && comprobanteOk && !this.erroresArchivo[i];
+    return !!v.mpa_codigo && montoOk && comprobanteOk && chequeOk && !this.erroresArchivo[i];
   }
 
   bloqueado(i: number): boolean {
@@ -275,9 +300,11 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
   }
 
   onMetodo(i: number): void {
-    // Cambiar de metodo invalida el comprobante cargado para el anterior.
+    // Cambiar de metodo invalida el comprobante y el cheque cargados para
+    // el anterior.
     this.archivos[i] = null;
     this.erroresArchivo[i] = null;
+    this.cheques[i] = chequeVacio();
     this.grupo(i).patchValue({ tienePrevio: false }, { emitEvent: false });
 
     this.activar(i);
@@ -313,6 +340,17 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
   }
 
   /**
+   * Los datos del cheque no pasan por el FormGroup, asi que su cambio no
+   * dispara valueChanges: hay que re-evaluar el bloqueo del metodo y avisar
+   * al contenedor a mano.
+   */
+  onCheque(i: number, cheque: ChequeDeclarado): void {
+    this.cheques[i] = cheque;
+    this.sincronizarBloqueos();
+    this.emitir();
+  }
+
+  /**
    * Regla 6: el boton solo tiene sentido cuando los bloques existentes ya
    * estan completos y todavia queda monto por cubrir.
    */
@@ -322,6 +360,7 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
 
   agregarPago(): void {
     this.pagos.push(this.nuevoPago());
+    this.cheques[this.pagos.length - 1] = chequeVacio();
     this.emitir();
   }
 
@@ -334,9 +373,10 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
 
     this.pagos.removeAt(i);
 
-    // Reindexa los archivos y los montos: el bloque 3 pasa a ser el 2, etc.
+    // Reindexa los archivos, cheques y montos: el bloque 3 pasa a ser el 2, etc.
     const archivos: Record<number, File | null> = {};
     const errores: Record<number, string | null> = {};
+    const cheques: Record<number, ChequeDeclarado> = {};
     const montos: Record<number, string> = {};
     const bloqueados: Record<number, boolean> = {};
 
@@ -344,12 +384,14 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
       const viejo = nuevo >= i ? nuevo + 1 : nuevo;
       archivos[nuevo] = this.archivos[viejo] ?? null;
       errores[nuevo] = this.erroresArchivo[viejo] ?? null;
+      cheques[nuevo] = this.cheques[viejo] ?? chequeVacio();
       montos[nuevo] = this.ultimoMontoValido[viejo] ?? '';
       bloqueados[nuevo] = this.montoBloqueado[viejo] ?? false;
     });
 
     this.archivos = archivos;
     this.erroresArchivo = errores;
+    this.cheques = cheques;
     this.ultimoMontoValido = montos;
     this.montoBloqueado = bloqueados;
 
@@ -391,6 +433,8 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
         mpa_codigo: v.mpa_codigo,
         monto: Number(v.monto) || 0,
         comprobante: this.archivos[i] ?? null,
+        // Sólo viaja en los bloques cuyo metodo es cheque.
+        cheque: this.esCheque(i) ? this.cheques[i] : null,
         conservar: !!v.tienePrevio,
       };
     });

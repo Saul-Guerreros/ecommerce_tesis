@@ -20,6 +20,11 @@ import { CobrosServicioService } from '../../cobros-servicio/service/cobros-serv
  *
  * Ese cobro completa el total, así que emite la factura: antes se guardan los
  * datos fiscales (CI o RUC) con el bloque reutilizable de cobros-servicio.
+ *
+ * Efectivo: el cajero informa el monto recibido (no menor al cobro) y confirma
+ * que lo recibió. Si el cliente paga con más, se muestra el vuelto a entregar.
+ * El backend vuelve a validar el monto y deja lo recibido y el vuelto en la
+ * observación del cobro.
  */
 @Component({
   selector: 'app-registrar-entrega',
@@ -48,7 +53,7 @@ export class RegistrarEntregaComponent implements OnChanges {
   guardando = false;
   entregado = false;
   devueltos = new Set<number>();
-    /** Único pago pendiente de la factura final (lo cobra A5). */
+  /** Único pago pendiente de la factura final (lo cobra A5). */
   pendiente: PagoServicio | null = null;
 
   constructor(
@@ -58,16 +63,14 @@ export class RegistrarEntregaComponent implements OnChanges {
     private toastr: ToastrService,
   ) {
     // El medio y el monto salen del pago declarado en la factura final.
+    // monto_recibido y efectivo_confirmado solo aplican a pagos en efectivo.
     this.cobroForm = this.fb.group({
       nro_transaccion: ['', Validators.maxLength(50)],
       banco: ['', Validators.maxLength(60)],
       fecha_pago: [''],
       observacion: ['', Validators.maxLength(255)],
-    });
-    this.cobroForm.get('mpa_codigo')!.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      const ref = this.cobroForm.get('nro_transaccion')!;
-      ref.setValidators(this.cobroRequiereReferencia ? [Validators.required, Validators.maxLength(50)] : [Validators.maxLength(50)]);
-      ref.updateValueAndValidity({ emitEvent: false });
+      monto_recibido: [null as number | null],
+      efectivo_confirmado: [false],
     });
 
     this.form = this.fb.group({
@@ -120,7 +123,7 @@ export class RegistrarEntregaComponent implements OnChanges {
     this.ajustar();
   }
 
-   /** Datos del cobro: solo hacen falta si la entrega está bloqueada por la regla 7. */
+  /** Datos del cobro: solo hacen falta si la entrega está bloqueada por la regla 7. */
   private cargarCobro(): void {
     if (!this.fila) return;
     this.pendiente = null;
@@ -133,6 +136,8 @@ export class RegistrarEntregaComponent implements OnChanges {
         const ref = this.cobroForm.get('nro_transaccion')!;
         ref.setValidators(this.cobroRequiereReferencia ? [Validators.required, Validators.maxLength(50)] : [Validators.maxLength(50)]);
         ref.updateValueAndValidity({ emitEvent: false });
+
+        this.configurarEfectivo();
       },
       error: () => (this.cobro = null),   // sin permiso de cobros: queda el bloqueo de siempre
     });
@@ -140,6 +145,7 @@ export class RegistrarEntregaComponent implements OnChanges {
     this.cobroForm.reset({
       nro_transaccion: '', banco: '', observacion: '',
       fecha_pago: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+      monto_recibido: null, efectivo_confirmado: false,
     });
     this.archivoCobro = null;
     this.errorArchivoCobro = null;
@@ -167,10 +173,47 @@ export class RegistrarEntregaComponent implements OnChanges {
     return null;
   }
 
-
   /** Transferencia o giro declarado en el mostrador: la referencia es obligatoria. */
   get cobroRequiereReferencia(): boolean {
     return !!this.pendiente?.metodo.requcom && this.pendiente.canal === 'MOSTRADOR';
+  }
+
+  // ---------- Efectivo: monto recibido, vuelto y confirmación ----------
+
+  /** Pago pendiente en efectivo (el método se llama CONTRAENTREGA en el catálogo). */
+  get esEfectivo(): boolean {
+    return this.pendiente?.metodo.codigo === 'CONTRAENTREGA';
+  }
+
+  get montoRecibido(): number {
+    return Number(this.cobroForm.get('monto_recibido')?.value ?? 0);
+  }
+
+  /** Vuelto a entregar si el cliente paga con un billete mayor al monto. */
+  get vuelto(): number {
+    const a = this.pendiente?.monto_asignado ?? 0;
+    return this.montoRecibido > a ? this.montoRecibido - a : 0;
+  }
+
+  /** En efectivo se exige el monto recibido (no menor al cobro) y la confirmación. */
+  private configurarEfectivo(): void {
+    const recibido  = this.cobroForm.get('monto_recibido')!;
+    const confirmar = this.cobroForm.get('efectivo_confirmado')!;
+
+    if (this.esEfectivo) {
+      recibido.setValidators([Validators.required, Validators.min(this.pendiente?.monto_asignado ?? 1)]);
+      confirmar.setValidators([Validators.requiredTrue]);
+    } else {
+      recibido.clearValidators();
+      confirmar.clearValidators();
+    }
+    recibido.updateValueAndValidity({ emitEvent: false });
+    confirmar.updateValueAndValidity({ emitEvent: false });
+  }
+
+  /** Atajo: el cliente paga justo. */
+  montoExacto(): void {
+    this.cobroForm.get('monto_recibido')!.setValue(this.pendiente?.monto_asignado ?? null);
   }
 
   get pagosEnVerificacion(): boolean {
@@ -274,21 +317,26 @@ export class RegistrarEntregaComponent implements OnChanges {
     });
   }
 
-    /** Cobro del pago pendiente + entrega en una transacción (si algo falla, no queda ni el cobro). */
+  /** Cobro del pago pendiente + entrega en una transacción (si algo falla, no queda ni el cobro). */
   private cobrarYEntregar(entrega: Record<string, unknown>): void {
     if (this.cobroForm.invalid || this.errorArchivoCobro || !this.fila) {
       this.cobroForm.markAllAsTouched();
       return;
     }
 
+    // La casilla de confirmación es solo del front: no viaja al backend.
+    const { efectivo_confirmado: _confirmado, ...cobroDatos } = this.cobroForm.getRawValue();
+
     const datos = CobrosServicioService.formData({
       ...entrega,
       accesorios: [...this.devueltos],
       cobro: {
-        ...this.cobroForm.getRawValue(),
+        ...cobroDatos,
         comprobante: this.pendiente?.canal === 'MOSTRADOR' ? this.archivoCobro : null,
       },
     });
+
+    const vuelto = this.esEfectivo ? this.vuelto : 0;
 
     this.guardando = true;
     this.cobros.cobrarYEntregar(this.fila.sse_id, datos).subscribe({
@@ -296,6 +344,7 @@ export class RegistrarEntregaComponent implements OnChanges {
         this.guardando = false;
         this.entregado = true;
         this.toastr.success(res.message, 'Éxito');
+        if (vuelto > 0) this.toastr.info(`Entregá un vuelto de Gs. ${this.formatoGs(vuelto)}.`, 'Efectivo');
         this.guardado.emit();
       },
       error: (err) => {

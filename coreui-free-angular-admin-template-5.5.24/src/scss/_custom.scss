@@ -15,3 +15,26 @@
 .select-week .calendar-row.current {
   cursor: pointer;
 }
+
+// Modal dentro de otro modal (ej.: Validar comprobante sobre Pagos):
+// difumina y atenúa lo que queda detrás para que no se confundan.
+.modal .modal {
+  background-color: rgba(0, 0, 0, 0.25);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+// Tabla con scroll propio: la barra horizontal queda siempre visible al pie
+// de la pantalla y el encabezado fijo, sin bajar hasta el final de la lista.
+// Se activa agregando la clase "tabla-scroll-fijo" junto a "table-responsive".
+.tabla-scroll-fijo {
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+
+  > .table > thead > tr > th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: var(--cui-body-bg);
+  }
+}

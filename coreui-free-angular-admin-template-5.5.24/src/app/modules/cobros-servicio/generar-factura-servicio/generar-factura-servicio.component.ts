@@ -1,12 +1,12 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { Observable, of, switchMap } from 'rxjs';
 import { AlertModule, ButtonModule, FormModule, ModalModule, SpinnerModule } from '@coreui/angular';
-import { CobroDetalle, MEDIOS_MOSTRADOR, MedioDeclarado, MetodoPagoOpcion, RespuestaCobro } from '../models/cobro-servicio.model';
 import { CobrosServicioService } from '../service/cobros-servicio.service';
 import { DatosFacturacionServicioComponent, ERROR_FACTURACION } from '../datos-facturacion-servicio/datos-facturacion-servicio.component';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChequeDatos, CobroDetalle, MEDIOS_MOSTRADOR, MedioDeclarado, MetodoPagoOpcion, RespuestaCobro } from '../models/cobro-servicio.model';
 
 /**
  *   anticipo      mostrador: el cajero declara los medios + factura de anticipo (tipo 9).
@@ -38,6 +38,8 @@ export class GenerarFacturaServicioComponent implements OnInit, OnChanges {
   @ViewChild(DatosFacturacionServicioComponent) datosFacturacion?: DatosFacturacionServicioComponent;
 
   metodos: MetodoPagoOpcion[] = [];
+    /** Tipos habilitados en Datos de Pago (vista / diferido). */
+  tiposCheque: { codigo: 'VISTA' | 'DIFERIDO'; descri: string }[] = [];
   form: FormGroup;
   errores: string[] = [];
   guardando = false;
@@ -48,8 +50,12 @@ export class GenerarFacturaServicioComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.service.config().subscribe({
-      next: (res) => (this.metodos = res.data.metodos.filter((m) => MEDIOS_MOSTRADOR.includes(m.mpa_codigo))),
+      next: (res) => {
+        this.metodos = res.data.metodos.filter((m) => MEDIOS_MOSTRADOR.includes(m.mpa_codigo));
+        this.tiposCheque = res.data.cheque?.tipos ?? [];
+      },
     });
+      
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -69,7 +75,35 @@ export class GenerarFacturaServicioComponent implements OnInit, OnChanges {
     this.medios.push(this.fb.group({
       mpa_codigo: ['', Validators.required],
       monto: [monto, [Validators.required, Validators.min(1)]],
+      // Cheque en el mostrador: el cajero tiene el papel y el cheque nace RECIBIDO.
+      cheque: this.fb.group({
+        tipo: [this.tiposCheque[0]?.codigo ?? 'VISTA'], banco: [''], nombre: [''], nrodoc: [''], nro: [''], fecha_cobro: [''],
+      }),
     }));
+  }
+
+   /** Igual que pedidos: el cheque se ofrece según la modalidad de la solicitud. */
+  get metodosDisponibles(): MetodoPagoOpcion[] {
+    return this.detalle?.acciones.cheque_habilitado
+      ? this.metodos
+      : this.metodos.filter((m) => m.mpa_codigo !== 'CHEQUE');
+  }
+
+  esCheque(m: AbstractControl): boolean {
+    return m.get('mpa_codigo')?.value === 'CHEQUE';
+  }
+
+  esDiferido(m: AbstractControl): boolean {
+    return m.get('cheque.tipo')?.value === 'DIFERIDO';
+  }
+
+  /** Banco, titular, CI y número; en el diferido, además la fecha de cobro. */
+  chequeIncompleto(m: AbstractControl): boolean {
+    if (!this.esCheque(m)) return false;
+    const c = m.get('cheque')?.value ?? {};
+    const vacio = (x: unknown) => !String(x ?? '').trim();
+    return vacio(c.banco) || vacio(c.nombre) || vacio(c.nrodoc) || vacio(c.nro)
+      || (c.tipo === 'DIFERIDO' && vacio(c.fecha_cobro));
   }
 
   quitarMedio(i: number): void {
@@ -121,16 +155,30 @@ export class GenerarFacturaServicioComponent implements OnInit, OnChanges {
 
   guardar(): void {
     if (this.guardando || !this.detalle || this.bloqueo) return;
-    if ((this.pideMedios && this.form.invalid) || this.errorSuma || this.datosFacturacion?.cargando) {
+     const chequeIncompleto = this.pideMedios && this.medios.controls.some((m) => this.chequeIncompleto(m));
+    if ((this.pideMedios && this.form.invalid) || this.errorSuma || chequeIncompleto || this.datosFacturacion?.cargando) {
       this.form.markAllAsTouched();
       return;
     }
 
     const sseId = this.detalle.sse_id;
     const pagos: MedioDeclarado[] = this.pideMedios
-      ? this.medios.value.map((m: MedioDeclarado) => ({ mpa_codigo: m.mpa_codigo, monto: Number(m.monto) }))
-      : [];
-
+      ? this.medios.value.map((m: MedioDeclarado & { cheque: ChequeDatos }) => ({
+          mpa_codigo: m.mpa_codigo,
+          monto: Number(m.monto),
+          // Solo viaja si el medio es cheque; la fecha de cobro, solo en el diferido.
+          cheque: m.mpa_codigo === 'CHEQUE'
+            ? {
+                tipo: m.cheque.tipo,
+                banco: m.cheque.banco.trim(),
+                nombre: m.cheque.nombre.trim(),
+                nrodoc: m.cheque.nrodoc.trim(),
+                nro: m.cheque.nro.trim(),
+                fecha_cobro: m.cheque.tipo === 'DIFERIDO' ? m.cheque.fecha_cobro : null,
+              }
+            : null,
+        }))
+      : [];  
     const accion$: Observable<RespuestaCobro> =
       this.modo === 'anticipo' ? this.service.declararAnticipo(sseId, pagos)
       : this.modo === 'anticipo-web' ? this.service.generarFacturaAnticipo(sseId)

@@ -1,14 +1,15 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { of, switchMap } from 'rxjs';
-import { DatosBilletera, DatosTransferencia } from '../../../core/models/checkout.model';
 import { PagoServicioService } from '../../../core/services/pago-servicio.service';
 import { ERROR_FACTURACION_SERVICIO, FacturacionServicioComponent } from '../facturacion/facturacion-servicio.component';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { ChequeDeclarado, DatosBilletera, DatosCheque, DatosTransferencia } from '../../../core/models/checkout.model';
+import { ChequeFormComponent, chequeCompleto, chequeVacio } from '../../checkout/cheque-form/cheque-form.component';
 
-type MedioAnticipo = 'TRANSFERENCIA' | 'BILLETERA_MOVIL';
+type MedioAnticipo = 'TRANSFERENCIA' | 'BILLETERA_MOVIL' | 'CHEQUE';
 
 /**
  * C4 - Pagar un anticipo (seña) del servicio (/mis-servicios/:numero/anticipo).
@@ -26,21 +27,29 @@ type MedioAnticipo = 'TRANSFERENCIA' | 'BILLETERA_MOVIL';
 @Component({
   selector: 'app-anticipo-servicio',
   standalone: true,
-  imports: [CommonModule, CurrencyPipe, FormsModule, RouterModule, FacturacionServicioComponent],
+ imports: [CommonModule, CurrencyPipe, FormsModule, RouterModule, ChequeFormComponent, FacturacionServicioComponent],
   templateUrl: './anticipo-servicio.component.html',
   styleUrls: ['../../checkout/paso-pago/paso-pago.component.css', '../pago/pago-servicio.component.css'],
 })
-export class AnticipoServicioComponent implements OnInit {
+export class AnticipoServicioComponent implements OnInit, OnDestroy {
+  private static readonly SEGUNDOS_AVISO_CHEQUE = 5;
+
   @ViewChild(FacturacionServicioComponent) facturacion?: FacturacionServicioComponent;
 
   numero = '';
   tope: number | null = null;
   datosTransferencia!: DatosTransferencia;
   datosBilletera!: DatosBilletera;
+  datosCheque!: DatosCheque;
+  chequeHabilitado = false;
+  motivoChequeNoDisponible: string | null = null;
+  avisoChequeVisible = false;
+  private temporizadorAviso?: ReturnType<typeof setTimeout>;
 
   monto: number | null = null;
   metodo: MedioAnticipo | null = null;
   comprobante: File | null = null;
+  cheque: ChequeDeclarado = chequeVacio();
   errorArchivo: string | null = null;
 
   cargando = true;
@@ -66,6 +75,9 @@ export class AnticipoServicioComponent implements OnInit {
         this.tope = resp.anticipo.tope;
         this.datosTransferencia = resp.datos_transferencia;
         this.datosBilletera = resp.datos_billetera;
+         this.datosCheque = resp.datos_cheque;
+        this.chequeHabilitado = resp.cheque_habilitado;
+        this.motivoChequeNoDisponible = resp.cheque_motivo;
         this.cargando = false;
       },
       error: () => {
@@ -73,6 +85,14 @@ export class AnticipoServicioComponent implements OnInit {
         this.router.navigate(['/perfil-del-cliente'], { queryParams: { tab: 'servicios' }, replaceUrl: true });
       },
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.temporizadorAviso) clearTimeout(this.temporizadorAviso);
+  }
+
+  get esCheque(): boolean {
+    return this.metodo === 'CHEQUE';
   }
 
   volverAlDetalle(): void {
@@ -90,11 +110,30 @@ export class AnticipoServicioComponent implements OnInit {
   }
 
   get puedeEnviar(): boolean {
-    return !this.errorMonto && !!this.metodo && !!this.comprobante;
+    if (this.errorMonto || !this.metodo) return false;
+    return this.esCheque ? chequeCompleto(this.cheque) : !!this.comprobante;
+  }
+
+  get textoBoton(): string {
+    return this.esCheque ? 'Confirmar pago con cheque' : 'Enviar comprobante';
   }
 
   elegirMetodo(codigo: MedioAnticipo): void {
+    if (codigo === 'CHEQUE' && !this.chequeHabilitado) {
+      this.avisoChequeVisible = true;
+      if (this.temporizadorAviso) clearTimeout(this.temporizadorAviso);
+      this.temporizadorAviso = setTimeout(
+        () => (this.avisoChequeVisible = false),
+        AnticipoServicioComponent.SEGUNDOS_AVISO_CHEQUE * 1000,
+      );
+      return;
+    }
+
     this.metodo = codigo;
+  }
+
+  onChequeCambio(cheque: ChequeDeclarado): void {
+    this.cheque = cheque;
   }
 
   /** Misma validación de archivo que la página de pago (extensión y 5 MB). */
@@ -124,7 +163,12 @@ export class AnticipoServicioComponent implements OnInit {
     this.intento = true;
     if (!this.puedeEnviar) return;
 
-    const datos = { mpa_codigo: this.metodo!, monto: Number(this.monto), comprobante: this.comprobante! };
+    const datos = {
+    mpa_codigo: this.metodo!,
+    monto: Number(this.monto),
+    comprobante: this.esCheque ? null : this.comprobante,
+    cheque: this.esCheque ? this.cheque : null,
+    };
     const facturacion$ = this.facturacion ? this.facturacion.guardar() : of(null);
     this.enviando = true;
 

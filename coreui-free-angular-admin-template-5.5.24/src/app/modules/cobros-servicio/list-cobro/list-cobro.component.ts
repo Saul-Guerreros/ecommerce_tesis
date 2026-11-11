@@ -100,7 +100,7 @@ export class ListCobroComponent implements OnInit, OnDestroy {
   }
 
   colorEstado(codigo: string | null): string {
-    return ({ PAGO_VERIFICAR: 'primary', CONFIRMADO: 'success', RECHAZADO: 'danger' } as Record<string, string>)[codigo ?? ''] ?? 'secondary';
+    return ({ PENDIENTE_PAGO: 'warning', PAGO_VERIFICAR: 'primary', CONFIRMADO: 'success', RECHAZADO: 'danger' } as Record<string, string>)[codigo ?? ''] ?? 'secondary';
   }
 
   gestionar(fila: CobroFila): void {

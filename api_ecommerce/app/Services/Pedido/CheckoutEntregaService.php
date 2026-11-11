@@ -4,6 +4,7 @@ namespace App\Services\Pedido;
 
 use App\Models\Carrito\Carrito;
 use App\Models\Configuracion\ConfiguracionEnvio;
+use App\Models\Configuracion\ConfiguracionTienda;
 use App\Models\Configuracion\Sucursal;
 use App\Models\Pedido\PedidoTemporal;
 use App\Models\Pedido\TipoEntrega;
@@ -38,7 +39,7 @@ class CheckoutEntregaService
             'sucursales'    => $sucursales,
             'direcciones'   => $direcciones,
             'titular'       => $this->datosTitular($persona),
-            
+
             // Solo cuenta la modalidad contado: este checkout no procesa
             // los items a credito, que tienen su propio flujo.
             'carrito_vacio' => !Carrito::where('car_idusu', $usuario->usu_id)
@@ -54,6 +55,11 @@ class CheckoutEntregaService
                 'subtotal'     => $subtotal,
                 'impuestos'    => $this->impuestosCarrito($usuario),
             ],
+
+            // Modalidades en las que la tienda acepta pago con cheque. El
+            // Paso 1 la usa para decidir qué aviso mostrar (o ninguno, si
+            // el cheque se acepta en las dos).
+            'cheque_aceptado' => ConfiguracionTienda::actual()->chequeAceptadoPorModalidad(),
         ];
     }
 

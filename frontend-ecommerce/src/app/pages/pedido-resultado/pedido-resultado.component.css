@@ -36,3 +36,13 @@
     width: 100%;
   }
 }
+
+/* Aviso del plazo de entrega del cheque: destacado, como el del checkout. */
+.pr-cheque-aviso {
+  padding: 12px 16px;
+  border-left: 4px solid #f0506e;
+  border-radius: 4px;
+  background: rgba(240, 80, 110, 0.06);
+  font-size: 0.9rem;
+  color: #333;
+}

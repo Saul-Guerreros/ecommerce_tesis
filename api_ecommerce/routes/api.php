@@ -775,6 +775,15 @@ Route::prefix('admin/servicios/cobros')->middleware('auth:api')->group(function 
             ->whereNumber('id')->whereNumber('pago');
         Route::post('/{id}/pagos/{pago}/rechazar', [CobroServicioController::class, 'rechazar'])
             ->whereNumber('id')->whereNumber('pago');
+         // Cheque: mismo permiso que en pedidos
+        Route::put('/{id}/pagos/{pago}/cheque', [CobroServicioController::class, 'actualizarCheque'])
+            ->whereNumber('id')->whereNumber('pago');
+        Route::post('/{id}/pagos/{pago}/cheque/descartar', [CobroServicioController::class, 'descartarCheque'])
+            ->whereNumber('id')->whereNumber('pago');
+        Route::post('/{id}/pagos/{pago}/cheque/recibir', [CobroServicioController::class, 'recibirCheque'])
+            ->whereNumber('id')->whereNumber('pago');
+        Route::post('/{id}/pagos/{pago}/cheque/rechazar', [CobroServicioController::class, 'rechazarCheque'])
+            ->whereNumber('id')->whereNumber('pago');
     });
 
     // 2 y 3. Facturas y cobro: cajero o verificador (coma = cualquiera).
@@ -932,6 +941,20 @@ Route::prefix('admin/pedidos')->middleware('auth:api')->group(function () {
 
     Route::get('/{pedido}/pagos/{pago}/comprobante', [PedidoGestionController::class, 'comprobante'])
     ->middleware('permiso:pedidos.ver');
+
+        // Cheque: mismo permiso que la verificación de pagos. Recibir mueve
+    // stock, así que no es un permiso más laxo que cobrar.
+    Route::put('/{pedido}/pagos/{pago}/cheque', [PedidoGestionController::class, 'actualizarCheque'])
+        ->middleware('permiso:pedidos.pago.verificar');
+
+    Route::post('/{pedido}/pagos/{pago}/cheque/descartar', [PedidoGestionController::class, 'descartarCheque'])
+        ->middleware('permiso:pedidos.pago.verificar');
+
+    Route::post('/{pedido}/pagos/{pago}/cheque/recibir', [PedidoGestionController::class, 'recibirCheque'])
+        ->middleware('permiso:pedidos.pago.verificar');
+
+    Route::post('/{pedido}/pagos/{pago}/cheque/rechazar', [PedidoGestionController::class, 'rechazarCheque'])
+        ->middleware('permiso:pedidos.pago.verificar');
 });
 
 
