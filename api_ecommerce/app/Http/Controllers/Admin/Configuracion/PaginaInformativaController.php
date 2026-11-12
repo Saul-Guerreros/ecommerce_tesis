@@ -13,6 +13,9 @@ class PaginaInformativaController extends Controller
     // GET /api/admin/paginas-informativas
     public function index(): JsonResponse
     {
+        // Autorreparación: si el seeder no corrió en este entorno, crea las que falten.
+        PaginaInformativa::asegurarCatalogo();
+
         $paginas = PaginaInformativa::all()
             ->sortBy(fn ($p) => array_search($p->pgi_slug, PaginaInformativa::ORDEN_SLUGS))
             ->values();
