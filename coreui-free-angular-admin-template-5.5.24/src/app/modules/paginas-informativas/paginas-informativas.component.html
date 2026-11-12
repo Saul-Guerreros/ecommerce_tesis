@@ -4,7 +4,13 @@
   <c-card-body>
     <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
 
-    <form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando">
+    <!-- Error de carga: evita mostrar un formulario que no puede guardar -->
+    <div class="alert alert-danger d-flex justify-content-between align-items-center" *ngIf="!cargando && errorCarga">
+      <span>No se pudo cargar esta página. Verificá la conexión con la API e intentá de nuevo.</span>
+      <button cButton color="secondary" size="sm" type="button" (click)="cargar()">Reintentar</button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="guardar()" *ngIf="!cargando && !errorCarga">
       <div class="mb-4">
         <label cLabel for="pgi_titulo">Título visible en la tienda</label>
         <input cFormControl type="text" id="pgi_titulo" formControlName="pgi_titulo" maxlength="150">

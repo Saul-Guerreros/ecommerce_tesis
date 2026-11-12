@@ -17,17 +17,19 @@ export class PaginasInformativasComponent implements OnInit {
   form: FormGroup;
   cargando = true;
   guardando = false;
+  errorCarga = false;
   paginaId: number | null = null;
   tituloCard = '';
+  private slugActual = '';
 
-  // 👇 ACÁ VA — barra de herramientas del editor
+  // Barra de herramientas del editor
   editorModulos = {
     toolbar: [
-      [{ header: [1, 2, 3, false] }],          // Título / Subtítulo / Normal
-      ['bold', 'italic', 'underline'],          // Negrita, cursiva, subrayado
+      [{ header: [1, 2, 3, false] }],           // Título / Subtítulo / Normal
+      ['bold', 'italic', 'underline'],           // Negrita, cursiva, subrayado
       [{ list: 'ordered' }, { list: 'bullet' }], // Numeración y viñetas
       ['link'],
-      ['clean'],                                // Borrar formato
+      ['clean'],                                 // Borrar formato
     ],
   };
 
@@ -44,21 +46,31 @@ export class PaginasInformativasComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.route.paramMap.subscribe((params) => this.cargar(params.get('slug')!));
+    this.route.paramMap.subscribe((params) => {
+      this.slugActual = params.get('slug') ?? '';
+      this.cargar();
+    });
   }
 
-  private cargar(slug: string): void {
+  /** Carga la página por slug. Público para poder reintentar desde la vista. */
+  cargar(): void {
     this.cargando = true;
-    this.service.getPorSlug(slug).subscribe({
+    this.errorCarga = false;
+    this.paginaId = null;
+    this.tituloCard = '';
+
+    this.service.getPorSlug(this.slugActual).subscribe({
       next: (pagina) => {
         this.paginaId = pagina.pgi_id;
         this.tituloCard = pagina.pgi_titulo;
         this.form.patchValue(pagina);
+        this.form.markAsPristine();
         this.cargando = false;
       },
-      error: () => {
-        this.toastr.error('No se pudo cargar la página', 'Error');
+      error: (err) => {
+        this.errorCarga = true;
         this.cargando = false;
+        this.toastr.error(err?.error?.message ?? err?.message ?? 'No se pudo cargar la página', 'Error');
       },
     });
   }
@@ -69,7 +81,12 @@ export class PaginasInformativasComponent implements OnInit {
   }
 
   guardar(): void {
-    if (this.form.invalid || !this.paginaId) {
+    if (!this.paginaId) {
+      this.toastr.warning('La página aún no está cargada. Recargá la sección e intentá de nuevo.', 'Atención');
+      return;
+    }
+
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
@@ -83,7 +100,10 @@ export class PaginasInformativasComponent implements OnInit {
       },
       error: (err) => {
         this.guardando = false;
-        this.toastr.error(err?.error?.message ?? 'No se pudo guardar', 'Error');
+        const detalle = err?.error?.errors
+          ? Object.values(err.error.errors as Record<string, string[]>).flat().join(' ')
+          : err?.error?.message;
+        this.toastr.error(detalle ?? `No se pudo guardar (HTTP ${err?.status ?? '?'})`, 'Error');
       },
     });
   }
