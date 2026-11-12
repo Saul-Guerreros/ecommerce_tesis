@@ -25,6 +25,7 @@ class TipoComprobante extends Model
     protected $fillable = [
         'tco_codigo',
         'tco_descri',
+        'tco_ambito',
         'tco_reqtim',
         'tco_afecstk',
         'tco_estado',

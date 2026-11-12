@@ -33,6 +33,8 @@ class TipoComprobanteController extends Controller
                 'required', 'string', 'max:45',
                 Rule::unique('tipo_comprobante', 'tco_descri')->ignore($id, 'tco_id'),
             ],
+			// V = ventas, C = compras (p. ej. Autofactura). La columna es NOT NULL.
+            'tco_ambito'  => 'nullable|string|in:V,C',
             'tco_reqtim'  => 'nullable|integer|in:0,1',
             'tco_afecstk' => 'nullable|integer|in:-1,0,1',
             'tco_estado'  => 'nullable|integer|in:0,1',
@@ -145,6 +147,7 @@ class TipoComprobanteController extends Controller
         }
 
         $datos = $validator->validated();
+		$datos['tco_ambito']  = $datos['tco_ambito']  ?? 'V';
         $datos['tco_reqtim']  = $datos['tco_reqtim']  ?? 1;
         $datos['tco_afecstk'] = $datos['tco_afecstk'] ?? 0;
         $datos['tco_estado']  = $datos['tco_estado']  ?? 1;

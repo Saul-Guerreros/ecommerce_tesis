@@ -75,6 +75,10 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            // Las columnas con DEFAULT CURRENT_TIMESTAMP (useCurrent) toman la
+            // hora de la sesion de PostgreSQL; sin esto quedan en UTC mientras
+            // Eloquent escribe en app.timezone (America/Asuncion).
+            'timezone' => env('DB_TIMEZONE', 'America/Asuncion'),
             'sslmode' => 'prefer',
         ],
 

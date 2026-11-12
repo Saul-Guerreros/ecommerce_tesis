@@ -61,11 +61,7 @@ class categorieController extends Controller
             'cat_nombre' => $request->cat_nombre,
              'cat_idpadr' => $request->cat_idpadr,
              'cat_nivel'  => $nivel,
-             'cat_icono' => ['nullable', 'string', Rule::in([
-                    'computadora', 'notebook', 'perifericos', 'componentes', 'redes',
-                    'almacenamiento', 'impresion', 'accesorios', 'audio', 'gaming',
-                    'celulares', 'camara', 'promociones', 'general',
-                ])],
+             'cat_icono'  => $request->cat_icono,
         ]);
 
         return response()->json(new CategorieResource($categoria), 201);
@@ -107,12 +103,7 @@ class categorieController extends Controller
        $categoria->update([
         'cat_nombre' => $request->cat_nombre,
         'cat_idpadr' => $request->cat_idpadr,
-         'cat_nivel'  => $nivel,
-            'cat_icono' => ['nullable', 'string', Rule::in([
-                'computadora', 'notebook', 'perifericos', 'componentes', 'redes',
-                'almacenamiento', 'impresion', 'accesorios', 'audio', 'gaming',
-                'celulares', 'camara', 'promociones', 'general',
-            ])],
+         'cat_icono'  => $request->cat_icono,
         ]);
 
         return response()->json(new CategorieResource($categoria), 200);

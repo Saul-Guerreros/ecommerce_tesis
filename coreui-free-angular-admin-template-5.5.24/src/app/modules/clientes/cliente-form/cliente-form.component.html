@@ -4,7 +4,7 @@
     <h5 cModalTitle>{{ isEdit ? 'Editar Cliente' : 'Nuevo Cliente' }}</h5>
   </c-modal-header>
 
-  <c-modal-body>
+    <c-modal-body (input)="limpiarErrorCampo($event)" (change)="limpiarErrorCampo($event)">
 
     <h6 class="mb-3">Datos de la persona</h6>
     <c-row>

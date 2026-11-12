@@ -13,7 +13,7 @@
 
   <div class="cp-item" *ngFor="let item of items">
     <div class="cp-thumb">
-      <img *ngIf="muestraImagen(item); else sinImagen" [src]="item.imagen" [alt]="item.nombre"
+		<img *ngIf="muestraImagen(item); else sinImagen" [src]="imagenUrl(item.imagen)" [alt]="item.nombre"
            loading="lazy" (error)="marcarRota(item)" />
       <ng-template #sinImagen>
         <span class="cp-thumb-icon" uk-icon="icon: image; ratio: 1.1"></span>

@@ -3,7 +3,7 @@ import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { ProductoPorResenar } from '../../../core/models/resena.model';
 import { ResenaService } from '../../../core/services/resena.service';
-
+import { URL_BACKEND } from '../../../config/config';
 /**
  * Tarjeta "Calificá tus productos" del detalle de un pedido.
  *
@@ -53,6 +53,17 @@ export class CalificarProductosComponent implements OnChanges {
 
   muestraImagen(item: ProductoPorResenar): boolean {
     return !!item.imagen && !this.imagenesRotas.has(item.imagen);
+  }
+  
+    /**
+   * El API devuelve la imagen como ruta relativa ("/storage/productos/x.png").
+   * Igual que en producto-detalle, se antepone URL_BACKEND para que apunte al
+   * servidor de Laravel y no al dominio/puerto de la tienda.
+   */
+  imagenUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    return `${URL_BACKEND.replace(/\/$/, '')}/${url.replace(/^\//, '')}`;
   }
 
   marcarRota(item: ProductoPorResenar): void {

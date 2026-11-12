@@ -107,6 +107,18 @@ export class ClienteFormComponent implements OnChanges {
     this.form.contactos.splice(i, 1);
     this.limpiarErroresContacto();
   }
+  
+   /**
+   * Al editar un campo se quita su mensaje de error del backend, para que no
+   * quede visible un error ya corregido hasta el próximo envío. Se engancha
+   * por bubbling en el modal: el `name` del control es la clave en `errors`.
+   */
+  limpiarErrorCampo(event: Event): void {
+    const nombre = (event.target as HTMLInputElement | null)?.name;
+    if (nombre && this.errors[nombre]) {
+      delete this.errors[nombre];
+    }
+  }
 
   /** Los índices se corren al borrar una fila; se limpian para no mostrar errores desfasados */
   private limpiarErroresContacto(): void {
