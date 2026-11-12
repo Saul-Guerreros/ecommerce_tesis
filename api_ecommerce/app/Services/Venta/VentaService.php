@@ -192,10 +192,7 @@ class VentaService
             );
         }
 
-        $lineas   = $this->construirLineas($pedido, $sucursal);
-        $totales  = $this->calcularTotales($lineas);
-
-        [$lineas, $totales] = $this->armarDocumento($pedido);
+        [$lineas, $totales] = $this->armarDocumento($pedido, $sucursal);
 
         $venta = VentaCab::create($this->datosComunes($pedido, $totales) + [
             'ven_timid'       => $timbrado->tim_id,
@@ -304,9 +301,9 @@ class VentaService
 
 
     /** @return array{0: array<int, array<string, mixed>>, 1: array<string, float>} */
-    private function armarDocumento(Pedido $pedido): array
+    private function armarDocumento(Pedido $pedido, Sucursal $sucursal): array
     {
-        $lineas  = $this->construirLineas($pedido);
+        $lineas  = $this->construirLineas($pedido, $sucursal);
         $totales = $this->calcularTotales($lineas);
 
         $this->verificarCoherencia($pedido, $totales['total']);
