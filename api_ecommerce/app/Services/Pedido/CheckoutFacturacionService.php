@@ -28,7 +28,7 @@ class CheckoutFacturacionService
 
         return [
             'titular' => [
-                'numero'   => $persona->per_cedula,
+				'numero'   => $this->cedulaTitular($persona, $usuario),
                 'nombre'   => $persona->per_nombr1,
                 'apellido' => $persona->per_apell1,
                 'telefono' => $this->telefonoDe($persona),
@@ -77,13 +77,45 @@ class CheckoutFacturacionService
 
     private function resolverCi(Persona $persona, Usuario $usuario): array
     {
+        $cedula = $this->cedulaTitular($persona, $usuario);
+
+        // pedido_facturacion.pfa_nrodoc es NOT NULL: sin cédula el pedido
+        // no se puede crear, mejor avisarlo aquí que fallar al confirmar.
+        if (blank($cedula)) {
+            throw ValidationException::withMessages([
+                'tipo_documento' => 'Necesitamos tu número de cédula para facturar con CI. Cargalo en el paso de entrega o elegí RUC.',
+            ]);
+        }
+
         return [
             'dfi_id'       => null,
-            'pfa_nrodoc'   => $persona->per_cedula,
+            'pfa_nrodoc'   => $cedula,
             'pfa_raznom'   => trim("{$persona->per_nombr1} {$persona->per_apell1}"),
             'pfa_telefono' => $this->telefonoDe($persona),
             'pfa_correo'   => $usuario->usu_login,
         ];
+    }
+	
+	  /**
+     * Cédula del titular. Si la cuenta todavía no la tiene (p. ej. registro
+     * con Google), se usa la que escribió en el Paso 1 como receptor
+     * titular: allí solo queda en el borrador y recién se persiste en la
+     * persona al confirmar el pedido.
+     */
+    private function cedulaTitular(Persona $persona, Usuario $usuario): ?string
+    {
+        if (filled($persona->per_cedula)) {
+            return $persona->per_cedula;
+        }
+
+        $entrega = PedidoTemporal::where('ptm_usuid', $usuario->usu_id)->value('ptm_entrega');
+        if (is_string($entrega)) {
+            $entrega = json_decode($entrega, true);
+        }
+
+        return ($entrega['receptor'] ?? null) === 'titular'
+            ? ($entrega['rec_nrodoc'] ?? null)
+            : null;
     }
 
     private function resolverRuc(Persona $persona, array $datos): array
