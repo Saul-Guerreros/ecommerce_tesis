@@ -58,15 +58,18 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'nombre1' => 'required|string|max:45',
-            'nombre2' => 'nullable|string|max:45',
-            'apellido1' => 'required|string|max:50',
-            'apellido2' => 'nullable|string|max:50',
-            'celular' => 'required|string|max:20',
-            'email' => 'required|email|unique:usuario,usu_login',
-            'password' => 'required|min:8',
-        ]);
+		
+		$validator = Validator::make($request->all(), [
+			'nombre1' => 'required|string|max:45',
+			'nombre2' => 'nullable|string|max:45',
+			'apellido1' => 'required|string|max:50',
+			'apellido2' => 'nullable|string|max:50',
+			'celular' => 'required|string|max:20',
+			'email' => 'required|email|unique:usuario,usu_login',
+			'password' => 'required|min:8',
+		], [
+			'email.unique' => 'Este correo ya está registrado.',
+		]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors()->toJson(), 400);
