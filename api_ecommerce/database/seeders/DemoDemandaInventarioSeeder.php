@@ -22,7 +22,8 @@ use RuntimeException;
  * conteos de ventas), con tendencia propia por producto y estacionalidad
  * mensual de Paraguay (vuelta a clases en feb-mar, Black Friday y fin de año).
  *
- * Requisitos: haber corrido DemoMetricasSeeder (usa sus clientes DEMO).
+ * Clientes: usa los DEMO de DemoMetricasSeeder si existen; si no, factura a
+ * "SIN NOMBRE" (CI 44444401), sin crear personas de prueba.
  * Todo queda marcado con ven_obs / tim_observacion = MARCA.
  * Limpieza: php artisan db:seed --class=LimpiarDemoInventarioSeeder
  *
@@ -32,6 +33,9 @@ use RuntimeException;
 class DemoDemandaInventarioSeeder extends Seeder
 {
     public const MARCA = 'DEMO-INVENTARIO';
+
+    /** CI genérica de la SET para el consumidor final innominado. */
+    public const CI_SIN_NOMBRE = '44444401';
 
     private const SEMANAS = 60;
     private const SEMILLA = 4040;   // misma semilla = mismos datos
@@ -105,7 +109,10 @@ class DemoDemandaInventarioSeeder extends Seeder
             ->get(['c.cli_id', 'p.per_nombr1', 'p.per_apell1', 'p.per_cedula'])
             ->all();
         if (! $clientes) {
-            throw new RuntimeException('No hay clientes DEMO: ejecutá primero DemoMetricasSeeder.');
+            // Sin DemoMetricasSeeder: se factura a "SIN NOMBRE" (consumidor final),
+            // así no hace falta cargar personas de prueba ni tocar clientes reales.
+            $clientes = [$this->clienteSinNombre()];
+            $this->command?->warn('Sin clientes DEMO: las ventas se asignan al cliente "SIN NOMBRE" (CI ' . self::CI_SIN_NOMBRE . ').');
         }
 
         $inicio = $this->primerLunes();
@@ -175,6 +182,41 @@ class DemoDemandaInventarioSeeder extends Seeder
         }
 
         return compact('usuario', 'empresa', 'clientes', 'sucursales', 'productos');
+    }
+
+    /**
+     * Devuelve (creándolo una sola vez si falta) el cliente genérico
+     * "SIN NOMBRE". No lleva la marca DEMO: es un dato válido para facturas
+     * reales a consumidor final, por eso la limpieza no lo borra.
+     */
+    private function clienteSinNombre(): object
+    {
+        $buscar = fn () => DB::table('cliente as c')
+            ->join('persona as p', 'p.per_id', '=', 'c.cli_perid')
+            ->where('p.per_cedula', self::CI_SIN_NOMBRE)
+            ->first(['c.cli_id', 'p.per_nombr1', 'p.per_apell1', 'p.per_cedula']);
+
+        if ($cliente = $buscar()) {
+            return $cliente;
+        }
+
+        $tipoDoc = DB::table('tipo_documento')->orderBy('tpd_id')->value('tpd_id')
+            ?? throw new RuntimeException('Falta el catálogo tipo_documento.');
+        $tipoCli = DB::table('tipo_cliente')->orderBy('tpc_id')->value('tpc_id')
+            ?? throw new RuntimeException('Falta el catálogo tipo_cliente.');
+
+        $perId = DB::table('persona')->where('per_cedula', self::CI_SIN_NOMBRE)->value('per_id')
+            ?? DB::table('persona')->insertGetId([
+                'per_tpdid'  => $tipoDoc,
+                'per_nombr1' => 'SIN',
+                'per_apell1' => 'NOMBRE',
+                'per_cedula' => self::CI_SIN_NOMBRE,
+                'per_estado' => 1,
+            ], 'per_id');
+
+        DB::table('cliente')->insert(['cli_perid' => $perId, 'cli_tpcid' => $tipoCli, 'cli_estado' => 1]);
+
+        return $buscar();
     }
 
     // =====================================================================
