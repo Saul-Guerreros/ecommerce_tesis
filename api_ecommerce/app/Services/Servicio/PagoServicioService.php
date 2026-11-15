@@ -35,11 +35,22 @@ class PagoServicioService
         private SolicitudServicioService $solicitudes,
         private PoliticaChequeServicio $politicaCheque,
     ) {}
+	
+	    /** Aviso del plazo de entrega del cheque, propio del servicio técnico. */
+    public const AVISO_CHEQUE_SERVICIO = 'La entrega del cheque correspondiente al pago de este servicio debe realizarse '
+        . 'en la sucursal en un plazo máximo de 48 horas. Pasado este tiempo el pago quedará sin efecto '
+        . 'y el servicio seguirá pendiente de pago.';
 
     public function datosIniciales(Usuario $usuario, string $numero): array
     {
         $s     = $this->solicitudes->detalleDelCliente($usuario, $numero);
         $datos = $this->configuracion->datosIniciales();
+		
+		        // El aviso configurado habla de "compra", "pedido" y "producto": en el
+        // servicio se reemplaza por uno propio. El de pedidos no cambia.
+        if (filled($datos['datos_cheque']['aviso'] ?? null)) {
+            $datos['datos_cheque']['aviso'] = self::AVISO_CHEQUE_SERVICIO;
+        }
 
         // En el servicio el cheque no depende de la modalidad de entrega:
         // el papel siempre se acerca a la sucursal donde está el equipo.
