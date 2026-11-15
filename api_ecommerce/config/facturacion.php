@@ -12,4 +12,9 @@ return [
 
     // Pide a la API que le mande la factura al cliente (solo a quien eligio CORREO).
     'enviar_correo' => (bool) env('FACTURACION_ENVIAR_CORREO', false),
+	
+	  // ID INTERNO (no el codigo DNIT) de la actividad economica a declarar en las
+    // facturas de servicio tecnico; se consulta con GET /actividades (guia, cap. 20).
+    // Vacio = la API usa la actividad predeterminada de la empresa.
+    'actividad_servicio_id' => env('FACTURACION_ACTIVIDAD_SERVICIO_ID') ?: null,
 ];

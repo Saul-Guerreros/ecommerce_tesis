@@ -67,7 +67,7 @@ class FacturaPayloadBuilder
         $items = $this->items($venta);
         $this->verificarTotal($venta, $items);
 
-        return [
+        $documento = [
             'sede'             => $this->sede($venta),
             'numero'           => (string) $venta->ven_numero,
             'timbrado'         => $venta->ven_timbrado,
@@ -82,6 +82,22 @@ class FacturaPayloadBuilder
             'pagos'            => $this->pagos($venta),
             'enviar_correo'    => $this->enviarCorreo($venta),
         ];
+
+        // Servicio tecnico (factura o anticipo): se declara su propia actividad
+        // economica; sin esto la API usa la predeterminada (comercio).
+        if ($actividad = $this->actividadServicio($venta)) {
+            $documento['actividad_id'] = $actividad;
+        }
+
+        return $documento;
+    }
+
+    /** ID interno de Facturacion_API (GET /actividades), no el codigo DNIT. Guia cap. 20. */
+    private function actividadServicio(VentaCab $venta): ?int
+    {
+        $id = config('facturacion.actividad_servicio_id');
+
+        return $venta->ven_sseid !== null && $id !== null ? (int) $id : null;
     }
 
     // ---------- Partes del documento ----------

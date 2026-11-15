@@ -155,7 +155,7 @@ class NotaCreditoPayloadBuilder
         $items = $this->items($nota, $factura);
         $this->verificarTotal($nota, $items);
 
-        return [
+        $documento = [
             'tipo'            => 'nota_credito',
             'sede'            => $this->sede($nota),
             'numero'          => (string) $nota->ncv_numero,
@@ -174,6 +174,22 @@ class NotaCreditoPayloadBuilder
             'items'           => $items,
             'enviar_correo'   => $this->enviarCorreo($factura),
         ];
+
+        // Misma actividad que la factura que corrige (guia F5.8.13): solo si la
+        // factura original es de servicio tecnico. Las de pedidos no cambian.
+        if ($actividad = $this->actividadServicio($factura)) {
+            $documento['actividad_id'] = $actividad;
+        }
+
+        return $documento;
+    }
+
+    /** ID interno de Facturacion_API (GET /actividades), no el codigo DNIT. Guia cap. 20. */
+    private function actividadServicio(VentaCab $factura): ?int
+    {
+        $id = config('facturacion.actividad_servicio_id');
+
+        return $factura->ven_sseid !== null && $id !== null ? (int) $id : null;
     }
 
     // ---------- Partes del documento ----------

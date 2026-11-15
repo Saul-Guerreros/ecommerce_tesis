@@ -31,11 +31,14 @@ use App\Services\Ruc\DigitoVerificador;
 class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
 {
     /** mpa_codigo del sistema => pagos[].tipo de la API (guía 6.6). */
-    private const MEDIO_PAGO_SERVICIO = [
+	private const MEDIO_PAGO_SERVICIO = [
         'CONTRAENTREGA'   => 1,   // efectivo
+        'CHEQUE'          => 2,   // exige pagos[].cheque {numero, banco} (guia 6.6)
         'TRANSFERENCIA'   => 5,
         'BILLETERA_MOVIL' => 7,   // billetera electrónica (giros Tigo)
     ];
+
+    private const PAGO_CHEQUE = 2;
 
     /** pagos[].tipo 11: pago por anticipo, monto 0 en una final de total cero. */
     private const PAGO_POR_ANTICIPO = 11;
@@ -69,7 +72,7 @@ class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
 
         $venta->loadMissing(['detalle', 'sucursal', 'anticipoAplicado.fe']);
 
-        $solicitud = SolicitudServicio::with(['pagos.metodoPago', 'pagos.estadoPago'])
+        $solicitud = SolicitudServicio::with(['pagos.metodoPago', 'pagos.estadoPago', 'pagos.cheque'])
             ->find($venta->ven_sseid);
 
         if (!$solicitud) {
@@ -269,8 +272,14 @@ class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
                 );
             }
 
-            $monto    = round((float) $pago->spa_monto, 2);
-            $salida[] = ['tipo' => $tipo, 'monto' => $monto];
+            $monto = round((float) $pago->spa_monto, 2);
+            $linea = ['tipo' => $tipo, 'monto' => $monto];
+
+            if ($tipo === self::PAGO_CHEQUE) {
+                $linea['cheque'] = $this->datosCheque($pago);
+            }
+
+            $salida[] = $linea;
             $suma    += $monto;
         }
 
@@ -284,6 +293,31 @@ class FacturaServicioPayloadBuilder extends FacturaPayloadBuilder
         }
 
         return $salida;
+    }
+	
+	    /**
+     * Detalle obligatorio de un pago con cheque (guia 6.6): numero de 8 digitos
+     * (con ceros a la izquierda) y banco de 4 a 20 caracteres.
+     *
+     * @throws EmisionFacturaException si faltan datos del cheque
+     */
+    private function datosCheque($pago): array
+    {
+        $cheque = $pago->cheque;
+        $numero = preg_replace('/\D/', '', (string) $cheque?->sch_nro);
+        $banco  = trim((string) $cheque?->sch_banco);
+
+        if ($numero === '' || strlen($numero) > 8 || mb_strlen($banco) < 4) {
+            throw new EmisionFacturaException(
+                'El cheque del pago #' . $pago->spa_id . ' no tiene número (hasta 8 dígitos) '
+                . 'o banco (mínimo 4 caracteres) válidos. Completá los datos del cheque antes de facturar.'
+            );
+        }
+
+        return [
+            'numero' => str_pad($numero, 8, '0', STR_PAD_LEFT),
+            'banco'  => mb_substr($banco, 0, 20),
+        ];
     }
 
     /**
