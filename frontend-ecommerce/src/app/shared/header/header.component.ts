@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, afterNextRender, afterRender, inject } from '@angular/core';
+import { Component, DestroyRef, afterNextRender, afterRender, effect, inject, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -15,7 +15,7 @@ import { CategoriaIconoComponent } from '../components/categoria-icono/categoria
 import { FavoritoService } from '../../core/services/favorito.service';
 declare const UIkit: any;
 import { PedidosPendientesPopoverComponent } from '../components/pedidos-pendientes-popover/pedidos-pendientes-popover.component';
-
+import { CreditoService } from '../../core/services/credito.service';
 
 @Component({
   selector: 'app-header',
@@ -71,6 +71,8 @@ export class HeaderComponent {
   readonly favoritos = inject(FavoritoService);
   /** Contador del icono "Comparar" (cantidad$ se lee con async en el template). */
   readonly comparador = inject(ComparadorService);
+  /** Ofertas de crédito esperando respuesta: el header solo lee el contador para el número rojo. */
+  readonly credito = inject(CreditoService);
 
   constructor(
     public homeService: HomeService,
@@ -91,6 +93,25 @@ export class HeaderComponent {
           this.totalUnidades = 0;
         },
       });
+
+        // Ofertas de crédito pendientes: se consultan al iniciar sesión (aunque
+    // el login ocurra sin recargar la página) y se limpian al cerrarla.
+    // untracked() evita que las llamadas internas del servicio pasen a ser
+    // dependencias del efecto: solo `sesion` lo dispara.
+    effect(
+      () => {
+        const haySesion = this.authService.sesion();
+
+        untracked(() => {
+          if (haySesion) {
+            this.credito.cargarPendientes();
+          } else {
+            this.credito.limpiarPendientes();
+          }
+        });
+      },
+      { allowSignalWrites: true },
+    );
 
     afterNextRender(() => {
       this.homeService.menus().subscribe({

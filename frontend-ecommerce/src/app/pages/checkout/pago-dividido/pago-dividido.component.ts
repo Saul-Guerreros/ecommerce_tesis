@@ -46,6 +46,13 @@ export class PagoDivididoComponent implements OnInit, OnChanges {
 
   @Output() cambio = new EventEmitter<{ pagos: PagoDividRequest[]; valido: boolean }>();
 
+    /**
+   * Texto del bloque cuyo método no lleva comprobante. El checkout dice
+   * "contra entrega"; el pago de cuotas, "en la sucursal": es el mismo
+   * método de efectivo cubriendo dos situaciones distintas.
+   */
+  @Input() textoSinComprobante = 'El pago en efectivo es contra entrega.';
+
   private static readonly MAX_BYTES = 5 * 1024 * 1024;
   private static readonly EXTENSIONES = ['jpg', 'jpeg', 'png', 'pdf'];
 

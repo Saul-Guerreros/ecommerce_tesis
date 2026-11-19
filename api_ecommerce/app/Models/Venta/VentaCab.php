@@ -157,12 +157,25 @@ class VentaCab extends Model
 
         public function cobros(): HasMany
     {
-        return $this->hasMany(CobroVenta::class, 'cob_venid', 'ven_id')->orderBy('cob_id');
+    
+            return $this->hasMany(Recibo::class, 'rec_venid', 'ven_id')->orderBy('rec_id');
+    }
+
+        /** Cuotas a cobrar de la factura. Vacio en una factura al contado. */
+    public function cuotas(): HasMany
+    {
+        return $this->hasMany(CtaCobrar::class, 'cco_venid', 'ven_id')
+                    ->orderBy('cco_nrocuo');
+    }
+
+    public function esACredito(): bool
+    {
+        return (int) $this->ven_condicion === self::CONDICION_CREDITO;
     }
 
     /** Suma de los cobros activos. Cuando alcanza ven_total la factura pasa a Cobrada. */
     public function totalCobrado(): float{
-        return (float) $this->cobros()->activo()->sum('cob_monto');
+        return (float) $this->cobros()->activo()->sum('rec_monto');
     }
 
     public function notasCredito(): HasMany{

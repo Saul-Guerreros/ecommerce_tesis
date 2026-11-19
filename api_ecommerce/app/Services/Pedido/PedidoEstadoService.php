@@ -88,12 +88,15 @@ class PedidoEstadoService
         $chequesListos   = $this->chequesRecibidos($pedido);
         $esperaAcredit   = $this->esperaAcreditacionCheque($pedido);
 
+        // Pedido de crédito sin factura: no puede entregarse (ver motivoDeBloqueo).
+        $creditoSinFactura = $pedido->esDeCredito() && !$facturado;
+
         return EstadoPedido::whereIn('est_codigo', $destinos)
             ->where('est_estado', 1)
             ->orderBy('est_id')
             ->get()
-            ->map(function (EstadoPedido $estado) use ($pagoCumplido, $cobroCompleto, $facturado, $actualCodigo, $chequesListos, $esperaAcredit) {
-                $motivo = $this->motivoDeBloqueo(
+            ->map(function (EstadoPedido $estado) use ($pagoCumplido, $cobroCompleto, $facturado, $actualCodigo, $chequesListos, $esperaAcredit, $creditoSinFactura) {
+            $motivo = $this->motivoDeBloqueo(
                     $estado->est_codigo,
                     $pagoCumplido,
                     $cobroCompleto,
@@ -101,6 +104,7 @@ class PedidoEstadoService
                     $actualCodigo,
                     $chequesListos,
                     $esperaAcredit,
+                    $creditoSinFactura,
                 );
 
                 return [
@@ -119,7 +123,7 @@ class PedidoEstadoService
      * el combo como la validacion lo consultan. Si el motivo viviera dos
      * veces, el panel y el backend terminarian discrepando.
      */
-          private function motivoDeBloqueo(
+    private function motivoDeBloqueo(
         string $codigoDestino,
         bool $pagoCumplido,
         bool $cobroCompleto,
@@ -127,6 +131,7 @@ class PedidoEstadoService
         ?string $codigoActual = null,
         bool $chequesListos = false,
         bool $esperaAcreditacion = false,
+        bool $creditoSinFactura = false,
     ): ?string {
         // El atajo PENDIENTE_PEDIDO -> LISTO existe sólo para el cheque.
         if ($codigoDestino === EstadoPedido::LISTO
@@ -143,6 +148,14 @@ class PedidoEstadoService
 
         if (in_array($codigoDestino, self::REQUIEREN_PAGO_CONFIRMADO, true) && !$pagoCumplido) {
             return 'Primero hay que cobrar todos los pagos con comprobante del pedido.';
+        }
+
+        // Un pedido de crédito no tiene pagos, así que cobroCompleto() da
+        // verdadero siempre y no frena nada. La factura es lo que respalda la
+        // entrega: la mercadería sale del local junto con ella y con la
+        // documentación firmada.
+        if ($codigoDestino === EstadoPedido::ENTREGADO && $creditoSinFactura) {
+            return 'Primero hay que generar la factura a crédito: el pedido no se entrega sin su factura.';
         }
 
         if (in_array($codigoDestino, self::REQUIEREN_COBRO_COMPLETO, true) && !$cobroCompleto) {
@@ -203,6 +216,7 @@ class PedidoEstadoService
                 $this->cobroCompleto($pedido),
                 $this->tieneFactura($pedido),
                 esperaAcreditacion: $this->esperaAcreditacionCheque($pedido),
+                creditoSinFactura: $pedido->esDeCredito() && !$this->tieneFactura($pedido),
             );
 
             if ($motivo !== null) {

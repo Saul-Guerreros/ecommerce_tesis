@@ -96,8 +96,13 @@
           </div>
         </div>
 
+        <!-- Mis Cuotas: sólo pedidos a crédito. Reemplaza a «Pagos», que en
+        un pedido a crédito diría «no registraste ningún pago». -->
+        <app-mis-cuotas-card *ngIf="pedido.es_credito" [numeroPedido]="numero">
+        </app-mis-cuotas-card>
+
         <!-- Pagos -->
-        <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <div class="uk-card uk-card-default uk-card-body uk-margin" *ngIf="!pedido.es_credito">
           <h4 class="uk-card-title">Pagos</h4>
 
           <p class="uk-text-meta" *ngIf="pedido.pagos.length === 0">

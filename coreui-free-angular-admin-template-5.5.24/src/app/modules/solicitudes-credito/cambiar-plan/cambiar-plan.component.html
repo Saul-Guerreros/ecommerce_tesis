@@ -1,0 +1,77 @@
+<c-modal [visible]="visible" (visibleChange)="$event ? null : cerrar()" size="lg"
+         backdrop="static" alignment="center" [scrollable]="true">
+  <c-modal-header>
+    <h5 cModalTitle class="text-break" *ngIf="linea">CAMBIAR PLAN DE CUOTAS</h5>
+    <button cButtonClose (click)="cerrar()"></button>
+  </c-modal-header>
+
+  <c-modal-body *ngIf="linea as l">
+
+    <div class="border rounded p-3 mb-3">
+      <div class="fw-semibold text-break">{{ l.producto?.pub_titulo || l.scd_descri }}</div>
+      <div class="small text-muted mt-1">
+        Cantidad: {{ l.scd_cantid }} ·
+        Precio al contado: Gs. {{ formatoGs(l.scd_preuni) }} c/u
+      </div>
+      <div class="small text-muted">
+        Plan actual: {{ l.scd_numcuo }} {{ l.scd_numcuo === 1 ? 'cuota' : 'cuotas' }}
+        de Gs. {{ formatoGs(l.scd_moncuo) }}
+        (recargo {{ l.scd_recpct }}%)
+      </div>
+    </div>
+
+    <div class="text-center py-4" *ngIf="cargando">
+      <c-spinner color="primary" size="sm"></c-spinner>
+      <div class="text-muted small mt-2">Cargando planes disponibles...</div>
+    </div>
+
+    <c-alert color="warning" class="py-2 small" *ngIf="errorPlanes">
+      {{ errorPlanes }}
+    </c-alert>
+
+    <div class="table-responsive" *ngIf="!cargando && planes.length > 0">
+      <table cTable hover align="middle" class="mb-0">
+        <thead>
+          <tr>
+            <th style="width: 3rem"></th>
+            <th>Plan</th>
+            <th class="text-end">Recargo</th>
+            <th class="text-end">Cuota</th>
+            <th class="text-end">Total de la línea</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of planes" style="cursor: pointer" (click)="seleccion = p.cantidad">
+            <td>
+              <input class="form-check-input" type="radio" name="planCuota"
+                     [value]="p.cantidad" [(ngModel)]="seleccion" />
+            </td>
+            <td>
+              {{ p.cantidad }} {{ p.cantidad === 1 ? 'cuota' : 'cuotas' }}
+              <span class="badge bg-secondary ms-1" *ngIf="p.actual">Actual</span>
+            </td>
+            <td class="text-end">{{ p.recargo_pct }}%</td>
+            <td class="text-end">Gs. {{ formatoGs(p.monto_cuota) }}</td>
+            <td class="text-end">Gs. {{ formatoGs(p.total_linea) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Aviso de efectos: el cambio no afecta solo a esta línea. -->
+    <c-alert color="info" class="py-2 small mt-3 mb-0" *ngIf="hayCambio && planElegido as pe">
+      Al guardar se recalculan el total de la solicitud, el IVA, el plazo y el
+      cronograma completo. El nuevo total de esta línea será
+      <strong>Gs. {{ formatoGs(pe.total_linea) }}</strong>.
+    </c-alert>
+  </c-modal-body>
+
+  <c-modal-footer class="flex-wrap gap-2">
+    <button cButton color="secondary" variant="outline" (click)="cerrar()">Cancelar</button>
+
+    <button cButton color="primary" [disabled]="!puedeGuardar" (click)="confirmar()">
+      <c-spinner size="sm" *ngIf="guardando" class="me-1"></c-spinner>
+      Guardar cambio
+    </button>
+  </c-modal-footer>
+</c-modal>

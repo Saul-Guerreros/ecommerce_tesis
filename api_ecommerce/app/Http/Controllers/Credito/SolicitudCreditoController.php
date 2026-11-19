@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Credito;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Credito\AceptarOfertaRequest;
 use App\Http\Requests\Credito\GenerarSolicitudRequest;
 use App\Http\Requests\Credito\SolicitudLaboralRequest;
 use App\Http\Requests\Credito\SolicitudPersonalRequest;
@@ -12,10 +13,12 @@ use App\Http\Resources\Credito\EstadoSolicitudResource;
 use App\Http\Resources\Credito\ProfesionResource;
 use App\Http\Resources\Credito\SolicitudCreditoResource;
 use App\Http\Resources\Credito\SolicitudLaboralResource;
+use App\Http\Resources\Credito\SolicitudOfertaResource;
 use App\Http\Resources\Credito\SolicitudPersonalResource;
 use App\Http\Resources\Credito\SolicitudReferenciaResource;
 use App\Http\Resources\Credito\TipoProfesionResource;
 use App\Models\Usuario;
+use App\Services\Credito\OfertaCreditoService;
 use App\Services\Credito\SolicitudBorradorService;
 use App\Services\Credito\SolicitudService;
 use Illuminate\Http\JsonResponse;
@@ -28,12 +31,16 @@ use Illuminate\Http\JsonResponse;
  * La diferencia es que acá son 3 pasos de datos en vez de 3 de checkout,
  * así que el controlador queda más largo pero cada método sigue el
  * mismo esquema.
+ *
+ * Además expone "Mis solicitudes" y la respuesta del cliente a la oferta
+ * aprobada (aceptar / rechazar, etapa D).
  */
 class SolicitudCreditoController extends Controller
 {
     public function __construct(
         private SolicitudBorradorService $borrador,
         private SolicitudService $servicio,
+        private OfertaCreditoService $ofertas,
     ) {
         $this->middleware('auth:api');
     }
@@ -139,6 +146,30 @@ class SolicitudCreditoController extends Controller
         ], 201);
     }
 
+    /**
+     * GET /api/tienda/credito/disponibilidad
+     *
+     * Responde 200 siempre: no es un error que el cliente tenga una
+     * solicitud abierta, es el dato que el guard necesita para decidir
+     * si abre el wizard.
+     */
+    public function disponibilidad(): JsonResponse
+    {
+        $usuario = $this->clienteAutenticado();
+        $enCurso = $this->servicio->solicitudEnCurso($usuario);
+
+        return response()->json([
+            'data' => [
+                'disponible' => $enCurso === null,
+                'solicitud'  => $enCurso ? [
+                    'scr_id' => $enCurso->scr_id,
+                    'numero' => $enCurso->scr_numero,
+                    'estado' => $enCurso->estado?->esc_descri,
+                ] : null,
+            ],
+        ], 200);
+    }
+
     // ---------- "Mis solicitudes" ----------
 
     public function index(): JsonResponse
@@ -146,7 +177,7 @@ class SolicitudCreditoController extends Controller
         $usuario = $this->clienteAutenticado();
 
         return response()->json([
-            'data' => SolicitudCreditoResource::collection($this->servicio->listarDelCliente($usuario)),
+            'data' => SolicitudOfertaResource::collection($this->servicio->listarDelCliente($usuario)),
         ], 200);
     }
 
@@ -155,7 +186,41 @@ class SolicitudCreditoController extends Controller
         $usuario = $this->clienteAutenticado();
 
         return response()->json([
-            'data' => new SolicitudCreditoResource($this->servicio->detalleDelCliente($usuario, $id)),
+            'data' => new SolicitudOfertaResource($this->servicio->detalleDelCliente($usuario, $id)),
+        ], 200);
+    }
+
+    // ---------- Respuesta a la oferta aprobada (etapa D) ----------
+
+    /** GET /tienda/credito/solicitudes/pendientes: número rojo del menú de cuenta. */
+    public function pendientes(): JsonResponse
+    {
+        $usuario = $this->clienteAutenticado();
+
+        return response()->json([
+            'data' => ['cantidad' => $this->ofertas->pendientes($usuario)],
+        ], 200);
+    }
+
+    public function aceptar(AceptarOfertaRequest $request, int $id): JsonResponse
+    {
+        $usuario = $this->clienteAutenticado();
+        $this->ofertas->aceptar($usuario, $id);
+
+        return response()->json([
+            'message' => 'Aceptaste las condiciones del crédito.',
+            'data'    => new SolicitudOfertaResource($this->servicio->detalleDelCliente($usuario, $id)),
+        ], 200);
+    }
+
+    public function rechazar(int $id): JsonResponse
+    {
+        $usuario = $this->clienteAutenticado();
+        $this->ofertas->rechazar($usuario, $id);
+
+        return response()->json([
+            'message' => 'La solicitud fue anulada.',
+            'data'    => new SolicitudOfertaResource($this->servicio->detalleDelCliente($usuario, $id)),
         ], 200);
     }
 

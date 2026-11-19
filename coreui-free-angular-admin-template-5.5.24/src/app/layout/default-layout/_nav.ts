@@ -95,16 +95,29 @@ export const navItems: INavData[] = [
     url: '/pedidos',
     iconComponent: { name: 'cil-notes' }
   },
+    {
+    name: 'Gestión de créditos',
+    url: '/solicitudes-credito',
+    iconComponent: { name: 'cil-credit-card' },
+  },
   {
     name: 'Facturas de Venta',
     url: '/facturas-venta',
     iconComponent: { name: 'cil-description' }
   },
   {
+    name: 'Cuentas por Cobrar',
+    url: '/cuentas-por-cobrar',
+    iconComponent: { name: 'cil-dollar' }
+  },
+
+  {
     name: 'Notas de Crédito',
     url: '/notas-credito-venta',
     iconComponent: { name: 'cil-file' }
   },
+
+  
   // ==========================================
   // SERVICIO TÉCNICO
   // ==========================================

@@ -4,23 +4,23 @@ namespace App\Http\Resources\Servicio;
 
 use App\Models\Pedido\EstadoPago;
 use App\Models\Pedido\MetodoPago;
+use App\Models\Pedido\PagoCheque;
 use App\Models\Servicio\ServicioPago;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\Pedido\PagoCheque;
 
 /**
  * Un pago del servicio en el PANEL, para las dos tarjetas (igual que
  * PedidoPagoDetalleResource):
  *   - Comprobante: lo que subió el cliente + su validación.
- *   - Pago: el cobro registrado contra la factura (cobro_venta).
+ *   - Pago: el cobro registrado contra la factura (recibo).
  *
  * $ctx lo arma CobroServicioConsultaService::detalle(): qué facturas existen,
  * si tienen documento y qué puede hacer el usuario. Los puede_* habilitan
  * botones; la regla real vive en PagoServicioVerificacionService.
  *
  * verificacion.* se mantiene para los servicios cobrados con el ciclo
- * anterior (datos en servicio_pago, sin cobro_venta).
+ * anterior (datos en servicio_pago, sin recibo).
  */
 class ServicioPagoResource extends JsonResource
 {
@@ -85,15 +85,16 @@ class ServicioPagoResource extends JsonResource
 
             // ---------- Tarjeta Pago ----------
             'cobro' => $cobro ? [
-                'cob_id'          => $cobro->cob_id,
-                'monto'           => (float) $cobro->cob_monto,
+                // La clave 'cob_id' se mantiene: el panel Angular la consume.
+                'cob_id'          => $cobro->rec_id,
+                'monto'           => (float) $cobro->rec_monto,
                 'metodo'          => $cobro->metodoPago?->mpa_descri,
-                'nro_transaccion' => $cobro->cob_nrotrx,
-                'banco'           => $cobro->cob_banco,
-                'fecha'           => $cobro->cob_fecha?->format('d/m/Y'),
-                'observacion'     => $cobro->cob_observ,
+                'nro_transaccion' => $cobro->rec_nrotrx,
+                'banco'           => $cobro->rec_banco,
+                'fecha'           => $cobro->rec_fecha?->format('d/m/Y'),
+                'observacion'     => $cobro->rec_observ,
                 'por'             => $this->nombre($cobro->usuario),
-                'registrado'      => $cobro->cob_creado?->format('d/m/Y H:i'),
+                'registrado'      => $cobro->rec_creado?->format('d/m/Y H:i'),
                 'puede_anular'    => (bool) ($this->ctx['anular_cobro'] ?? false),
             ] : null,
 
@@ -140,12 +141,12 @@ class ServicioPagoResource extends JsonResource
             'puede_validar'  => ($this->ctx['verificar'] ?? false)
                 && $pendiente && $comprobante !== null && !$validado,
 
-           'puede_rechazar' => ($this->ctx['verificar'] ?? false) && $pendiente && !$facturado && $cheque === null,
+            'puede_rechazar' => ($this->ctx['verificar'] ?? false) && $pendiente && !$facturado && $cheque === null,
 
             'puede_cobrar'   => $pendiente && $documento
                 && (!$web || !$requcom || $validado)
                 && ($cheque === null || $cheque->fueRecibido())
-                && ($enCaja ? ($this->ctx['cajero'] ?? false) : ($this->ctx['gestiona'] ?? false)),   
+                && ($enCaja ? ($this->ctx['cajero'] ?? false) : ($this->ctx['gestiona'] ?? false)),
 
             // ---------- Compatibilidad: ciclo anterior ----------
             'verificacion' => $estado === EstadoPago::CONFIRMADO && $cobro === null && $this->spa_fechver !== null ? [
@@ -165,7 +166,7 @@ class ServicioPagoResource extends JsonResource
                 'faltante'      => $this->faltante(),
             ] : null,
 
-            'observacion' => $this->spa_mrpid ? null : ($cobro?->cob_observ ?? $this->spa_observ),
+            'observacion' => $this->spa_mrpid ? null : ($cobro?->rec_observ ?? $this->spa_observ),
         ];
     }
 

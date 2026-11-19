@@ -1,0 +1,40 @@
+.pcr-caja {
+  max-width: 620px;
+}
+
+.pcr-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #edfbf6;
+  color: #32d296;
+}
+
+.pcr-medios {
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
+.pcr-cheque {
+  background: #fafafa;
+  border-radius: 4px;
+  padding: 14px;
+}
+
+.pcr-cheque-aviso {
+  background: #fff8e6;
+  border-left: 3px solid #faa05a;
+  padding: 10px 12px;
+  border-radius: 3px;
+  font-size: 0.9rem;
+}
+
+.pcr-botones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}

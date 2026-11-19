@@ -35,6 +35,9 @@ class EstadoPago extends Model
     public const RECHAZADO = 'RECHAZADO';
     public const PARCIAL    = 'PARCIAL';
 
+    /** Pedido que nace de una solicitud de crédito: no se cobra al contado ni vence a las 24 h. */
+    public const A_CREDITO = 'A_CREDITO';
+
     protected $fillable = ['epa_codigo', 'epa_descri', 'epa_estado'];
 
     public static function porCodigo(string $codigo): self

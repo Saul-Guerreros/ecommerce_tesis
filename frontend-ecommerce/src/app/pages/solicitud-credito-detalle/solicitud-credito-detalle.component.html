@@ -1,0 +1,332 @@
+<div class="uk-container uk-margin-large-top uk-margin-large-bottom">
+
+  <ul class="uk-breadcrumb">
+    <li><a routerLink="/">Inicio</a></li>
+    <li><a routerLink="/perfil-del-cliente">Mi cuenta</a></li>
+    <li><a routerLink="/mis-solicitudes-credito">Mis Solicitudes de Crédito</a></li>
+    <li><span>{{ solicitud?.numero || 'Detalle' }}</span></li>
+  </ul>
+
+  <div *ngIf="cargando" class="uk-text-center uk-margin-large">
+    <div uk-spinner="ratio: 1.5"></div>
+  </div>
+
+  <div *ngIf="!cargando && noEncontrada" class="uk-alert uk-alert-danger">
+    No encontramos esa solicitud.
+    <a routerLink="/mis-solicitudes-credito">Volver a mis solicitudes</a>
+  </div>
+
+  <ng-container *ngIf="!cargando && solicitud as s">
+
+    <!-- ============ CABECERA ============ -->
+    <div class="scd-cabecera">
+      <h3 class="uk-margin-remove">SOLICITUD {{ s.numero }}</h3>
+      <span [class]="claseEstado(s.estado.codigo)">{{ s.estado.descripcion }}</span>
+    </div>
+    
+    <p class="uk-text-meta uk-margin-small-top uk-margin-remove-bottom">Enviada el {{ s.fecha }}</p>
+
+    <!-- Plazo que el admin otorgó al aprobar: corre mientras el cliente debe
+         aceptar y completar el pedido. -->
+    <p class="scd-plazo" *ngIf="(vista === 'oferta' || vista === 'aceptada') && s.oferta as o">
+      Plazo:
+      <strong *ngIf="o.vigencia_dias !== null">{{ o.vigencia_dias }} {{ o.vigencia_dias === 1 ? 'día' : 'días' }}</strong>
+      · vence el <strong>{{ o.vigencia_texto }}</strong>
+      <span *ngIf="o.dias_restantes !== null">({{ textoDias(o.dias_restantes) }})</span>
+    </p>
+
+    <!-- ============ MENSAJES POR ESTADO ============ -->
+
+    <div *ngIf="vista === 'oferta'" class="uk-alert uk-alert-success">
+      <p class="uk-margin-remove"><strong>Tu crédito fue aprobado.</strong> Revisá y aceptá las condiciones.</p>
+      <p class="uk-margin-remove">
+        Esta oferta vence el <strong>{{ s.oferta?.vigencia_texto }}</strong>
+        <span *ngIf="s.oferta?.dias_restantes !== null"> ({{ textoDias(s.oferta?.dias_restantes) }})</span>.
+      </p>
+    </div>
+
+    <div *ngIf="vista === 'vencida'" class="uk-alert uk-alert-warning">
+      <p class="uk-margin-remove">
+        <strong>Esta oferta venció</strong> el {{ s.oferta?.vigencia_texto }} y ya no puede aceptarse.
+      </p>
+      <p class="uk-margin-remove">
+        Si todavía te interesa, anulá esta solicitud y generá una nueva desde tu carrito.
+      </p>
+    </div>
+
+    <div *ngIf="vista === 'aceptada'" class="uk-alert uk-alert-primary">
+      <p class="uk-margin-remove">
+        <strong>Aceptaste las condiciones del crédito</strong> el {{ s.oferta?.fecha_aceptacion }}.
+      </p>
+      <p class="uk-margin-remove">
+        Tu producto sigue reservado. Completá la entrega y la facturación para generar tu pedido
+        antes del <strong>{{ s.oferta?.vigencia_texto }}</strong>; pasado ese plazo la solicitud se anula y se libera el stock.
+      </p>
+      <a class="uk-button uk-button-primary uk-margin-small-top"
+         [routerLink]="['/checkout-credito', s.scr_id]">Continuar con la entrega</a>
+    </div>
+
+    <div *ngIf="vista === 'plazo_vencido'" class="uk-alert uk-alert-warning">
+      <p class="uk-margin-remove">
+        <strong>El plazo venció</strong> el {{ s.oferta?.vigencia_texto }} sin completar el pedido.
+        La solicitud se anula automáticamente y se libera el stock reservado.
+      </p>
+      <p class="uk-margin-remove">Si todavía te interesa, podés generar una nueva solicitud desde tu carrito.</p>
+    </div>
+
+    <div *ngIf="vista === 'convertida'" class="uk-alert uk-alert-success">
+      <p class="uk-margin-remove"><strong>Tu pedido ya fue generado.</strong></p>
+      <p class="uk-margin-remove" *ngIf="s.pedido as pedido">
+        Número de pedido: <strong>{{ pedido.numero }}</strong>.
+        <a [routerLink]="['/mis-pedidos', pedido.numero]">Ver mi pedido</a>
+      </p>
+    </div>
+
+    <div *ngIf="vista === 'en_evaluacion'" class="uk-alert">
+      Estamos evaluando tu solicitud. Cuando tengamos una respuesta la vas a ver en esta pantalla.
+    </div>
+
+    <div *ngIf="vista === 'anulada'" class="uk-alert">
+      Esta solicitud fue anulada y ya no admite acciones.
+    </div>
+
+    <!-- ============ RECHAZADA: el motivo ============ -->
+    <div *ngIf="vista === 'rechazada'" class="uk-card uk-card-default uk-card-body uk-margin">
+      <p class="uk-margin-remove-top">Lamentablemente no pudimos aprobar tu solicitud de crédito.</p>
+      <p *ngIf="s.oferta?.motivo_rechazo as motivo">
+        <strong>Motivo:</strong> {{ motivo }}
+      </p>
+      <a routerLink="/" class="uk-button uk-button-primary">Volver a la tienda</a>
+    </div>
+
+    <!-- ============ RESUMEN DEL CRÉDITO (todos los estados) ============ -->
+    <div class="uk-card uk-card-default uk-card-body uk-margin">
+      <h5 class="scd-titulo">{{ mostrarCondiciones ? 'CONDICIONES DEL CRÉDITO' : 'CRÉDITO SOLICITADO' }}</h5>
+
+      <div class="scd-fila">
+        <span class="uk-text-muted">Precio al contado</span>
+        <span>{{ s.credito.total_contado | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
+      </div>
+      <div class="scd-fila">
+        <span class="uk-text-muted">Recargo por financiación</span>
+        <span>{{ s.credito.recargo | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
+      </div>
+      <div class="scd-fila scd-total">
+        <span>TOTAL A PAGAR</span>
+        <span>{{ s.credito.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
+      </div>
+      <div class="scd-fila">
+        <span class="uk-text-muted">Plazo</span>
+        <span>{{ s.credito.plazo }} {{ s.credito.plazo === 1 ? 'mes' : 'meses' }}</span>
+      </div>
+    </div>
+
+    <!-- ============ PRODUCTOS Y PLANES (todos los estados) ============ -->
+    <div class="uk-card uk-card-default uk-card-body uk-margin">
+      <h5 class="scd-titulo">PRODUCTOS Y PLANES</h5>
+
+      <div class="scd-prod-row scd-prod-header uk-visible@s">
+        <div class="scd-prod-img-col"></div>
+        <div>Producto</div>
+        <div class="scd-prod-col-der">Precio<br>Contado</div>
+        <div class="scd-prod-col-der">Cantidad</div>
+        <div class="scd-prod-col-der">Plan de cuotas</div>
+        <div class="scd-prod-col-der">Cuota Mensual</div>
+      </div>
+
+      <ul class="uk-list uk-list-divider uk-margin-remove-top uk-margin-remove-bottom">
+        <li *ngFor="let item of s.detalles">
+          <div class="scd-prod-row">
+
+            <div class="scd-prod-img-col">
+              <img class="scd-prod-img" [src]="resolverImagen(item.producto?.imagen)" [alt]="tituloItem(item)">
+            </div>
+
+            <div>
+              <div class="uk-text-bold">{{ tituloItem(item) }}</div>
+
+              <!-- Solo en mobile: todos los datos apilados -->
+              <div class="uk-hidden@s uk-text-small uk-margin-xsmall-top">
+                <div>Precio contado: {{ item.scd_preuni | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+                <div>Cantidad: {{ item.scd_cantid }}</div>
+                <div>Plan: {{ item.scd_numcuo }} x {{ item.scd_moncuo | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+                <div>Cuota mensual: <strong>{{ item.cuota_mensual | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong></div>
+              </div>
+            </div>
+
+            <div class="scd-prod-col-der uk-visible@s">
+              {{ item.scd_preuni | currency:'PYG':'symbol-narrow':'1.0-0' }}
+            </div>
+
+            <div class="scd-prod-col-der uk-visible@s">{{ item.scd_cantid }}</div>
+
+            <div class="scd-prod-col-der uk-visible@s">
+              {{ item.scd_numcuo }} x {{ item.scd_moncuo | currency:'PYG':'symbol-narrow':'1.0-0' }}
+            </div>
+
+            <div class="scd-prod-col-der uk-visible@s uk-text-bold">
+              {{ item.cuota_mensual | currency:'PYG':'symbol-narrow':'1.0-0' }}
+            </div>
+
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ============ CRONOGRAMA (solo con oferta) ============ -->
+    <div *ngIf="mostrarCondiciones" class="uk-card uk-card-default uk-card-body uk-margin">
+      <h5 class="scd-titulo">CRONOGRAMA DE CUOTAS</h5>
+
+      <p *ngIf="!s.cronograma || s.cronograma.length === 0" class="uk-text-meta uk-margin-remove">
+        El cronograma de cuotas se confirmará junto con la fecha de la primera cuota.
+      </p>
+
+      <div class="uk-overflow-auto" *ngIf="s.cronograma && s.cronograma.length > 0">
+        <table class="uk-table uk-table-small uk-table-divider uk-margin-remove">
+          <thead>
+            <tr>
+              <th>Cuota</th>
+              <th>Vencimiento</th>
+              <th class="uk-text-right">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of s.cronograma">
+              <td>{{ c.numero }}</td>
+              <td>{{ c.vencimiento ? (c.vencimiento | date:'dd/MM/yyyy') : '—' }}</td>
+              <td class="uk-text-right">{{ c.importe | currency:'PYG':'symbol-narrow':'1.0-0' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ RESPUESTA: oferta vigente ============ -->
+    <div *ngIf="vista === 'oferta'" class="uk-card uk-card-default uk-card-body uk-margin">
+
+      <label class="scd-check">
+        <input class="uk-checkbox" type="checkbox" [(ngModel)]="aceptaCondiciones" [disabled]="enviando">
+        <span>Acepto las condiciones del crédito y el cronograma de cuotas</span>
+      </label>
+
+      <label class="scd-check">
+        <input class="uk-checkbox" type="checkbox" [(ngModel)]="aceptaFirma" [disabled]="enviando">
+        <span>Me comprometo a firmar la documentación al recibir el producto</span>
+      </label>
+
+      <div class="scd-acciones" *ngIf="!confirmandoRechazo">
+        <button type="button" class="uk-button uk-button-default"
+                [disabled]="enviando" (click)="confirmandoRechazo = true">
+          Rechazar oferta
+        </button>
+        <button type="button" class="uk-button uk-button-primary"
+                [disabled]="!puedeAceptar" (click)="aceptar()">
+          <span *ngIf="!enviando">ACEPTAR</span>
+          <span *ngIf="enviando" uk-spinner="ratio: 0.6"></span>
+        </button>
+      </div>
+
+      <div class="uk-alert uk-alert-danger uk-margin-top uk-margin-remove-bottom" *ngIf="confirmandoRechazo">
+        <p class="uk-margin-remove">
+          <strong>¿Querés rechazar esta oferta?</strong> La solicitud quedará anulada y vamos a
+          liberar los productos reservados. Para volver a pedir el crédito vas a tener que generar una nueva solicitud.
+        </p>
+        <div class="scd-acciones">
+          <button type="button" class="uk-button uk-button-default uk-button-small"
+                  [disabled]="enviando" (click)="confirmandoRechazo = false">
+            Volver
+          </button>
+          <button type="button" class="uk-button uk-button-danger uk-button-small"
+                  [disabled]="enviando" (click)="rechazar()">
+            Sí, rechazar oferta
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ RESPUESTA: oferta vencida (anular para destrabar) ============ -->
+    <div *ngIf="vista === 'vencida'" class="uk-card uk-card-default uk-card-body uk-margin">
+
+      <div class="scd-acciones" *ngIf="!confirmandoRechazo">
+        <button type="button" class="uk-button uk-button-default"
+                [disabled]="enviando" (click)="confirmandoRechazo = true">
+          Anular solicitud
+        </button>
+      </div>
+
+      <div class="uk-alert uk-alert-danger uk-margin-remove" *ngIf="confirmandoRechazo">
+        <p class="uk-margin-remove">
+          <strong>¿Querés anular esta solicitud?</strong> Después vas a poder generar una nueva desde tu carrito.
+        </p>
+        <div class="scd-acciones">
+          <button type="button" class="uk-button uk-button-default uk-button-small"
+                  [disabled]="enviando" (click)="confirmandoRechazo = false">
+            Volver
+          </button>
+          <button type="button" class="uk-button uk-button-danger uk-button-small"
+                  [disabled]="enviando" (click)="rechazar()">
+            Sí, anular solicitud
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ DATOS ENVIADOS (todos los estados) ============ -->
+    <h4 class="uk-margin-medium-top uk-margin-small-bottom">Datos enviados en tu solicitud</h4>
+
+    <div class="uk-card uk-card-default uk-card-body uk-margin">
+      <h5 class="scd-titulo">DATOS PERSONALES</h5>
+
+      <p class="uk-margin-remove uk-text-bold">
+        {{ s.personal.scr_nombre }} {{ s.personal.scr_apelli }}
+      </p>
+      <p class="uk-margin-remove">C.I.: {{ s.personal.scr_cedula }}</p>
+      <p class="uk-margin-remove">{{ s.personal.scr_celula }} · {{ s.personal.scr_email }}</p>
+      <p class="uk-margin-remove">
+        {{ s.personal.scr_barrio }} - {{ s.personal.scr_calle }}
+        <span *ngIf="s.personal.scr_nrocasa"> {{ s.personal.scr_nrocasa }}</span>
+      </p>
+      <p class="uk-margin-remove" *ngIf="s.personal.scr_referen">
+        Referencia: {{ s.personal.scr_referen }}
+      </p>
+      <p class="uk-margin-remove">{{ s.personal.ciudad }}, {{ s.personal.departamento }}</p>
+      <p class="uk-margin-remove uk-text-meta uk-margin-small-top">
+        {{ etiquetaEstadoCivil(s.personal.scr_estciv) }} · {{ s.personal.tipo_profesion }} · {{ s.personal.profesion }}
+      </p>
+      <p class="uk-margin-remove uk-text-meta">
+        Vivienda: {{ etiquetaTipoVivienda(s.personal.scr_tipviv) }}
+        <span *ngIf="s.personal.scr_sertit"> · Servicio a nombre de {{ s.personal.scr_sertit }}</span>
+      </p>
+    </div>
+
+    <div class="uk-card uk-card-default uk-card-body uk-margin">
+      <h5 class="scd-titulo">DATOS LABORALES</h5>
+
+      <p class="uk-margin-remove uk-text-bold">{{ s.laboral.scr_empres }}</p>
+      <p class="uk-margin-remove">{{ s.laboral.scr_cargo }}</p>
+      <p class="uk-margin-remove">{{ s.laboral.scr_dirlab }}</p>
+      <p class="uk-margin-remove">{{ s.laboral.scr_tellab }}</p>
+      <p class="uk-margin-remove uk-text-meta uk-margin-small-top">
+        Ingreso mensual: {{ s.laboral.scr_ingres | currency:'PYG':'symbol-narrow':'1.0-0' }}
+        <span *ngIf="textoAntiguedad(s.laboral) as antiguedad"> · Antigüedad: {{ antiguedad }}</span>
+      </p>
+    </div>
+
+    <div class="uk-card uk-card-default uk-card-body uk-margin">
+      <h5 class="scd-titulo">REFERENCIAS PERSONALES</h5>
+
+      <div *ngFor="let r of s.referencias; let last = last" [class.uk-margin-small-bottom]="!last">
+        <p class="uk-margin-remove uk-text-bold">{{ r.scf_nombre }}</p>
+        <p class="uk-margin-remove">{{ r.scf_celula }} · {{ r.relacion }}</p>
+      </div>
+    </div>
+
+    <p class="uk-margin-medium-top">
+      <a routerLink="/mis-solicitudes-credito" class="uk-button uk-button-text">← Volver a mis solicitudes</a>
+    </p>
+
+  </ng-container>
+
+</div>

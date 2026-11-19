@@ -1,0 +1,501 @@
+<div class="text-center py-5" *ngIf="cargando">
+  <c-spinner color="primary"></c-spinner>
+  <div class="text-muted small mt-2">Cargando solicitud...</div>
+</div>
+
+<c-card class="mb-4" *ngIf="!cargando && solicitud as s">
+
+  <!-- ====== CABECERA ====== -->
+  <c-card-header class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <strong>SOLICITUD {{ s.numero }}</strong>
+      <c-badge [color]="colorEstado(s.estado.codigo)" class="ms-2">{{ s.estado.descripcion }}</c-badge>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+      <button cButton color="secondary" variant="outline" size="sm" (click)="volver()">
+        Volver al listado
+      </button>
+
+      <button cButton size="sm" color="info" class="text-white"
+              *ngIf="s.acciones.puede_tomar"
+              [disabled]="procesando" (click)="tomarEnEvaluacion()">
+        <c-spinner size="sm" *ngIf="procesando" class="me-1"></c-spinner>
+        Tomar en evaluación
+      </button>
+
+      <button cButton size="sm" color="success" class="text-white"
+              *ngIf="s.acciones.puede_decidir"
+              [disabled]="procesando" (click)="irADecidir('APROBAR')">
+        Aprobar
+      </button>
+
+      <button cButton size="sm" color="danger" class="text-white"
+              *ngIf="s.acciones.puede_decidir"
+              [disabled]="procesando" (click)="irADecidir('RECHAZAR')">
+        Rechazar
+      </button>
+    </div>
+  </c-card-header>
+
+  <c-card-body>
+
+    <!-- Aviso de oferta vencida: el stock sigue apartado hasta el barrido. -->
+    <c-alert color="danger" class="py-2 small" *ngIf="s.evaluacion.oferta_vencida">
+      La oferta venció el {{ s.evaluacion.vigencia_hasta }} sin respuesta del cliente.
+    </c-alert>
+
+    <!-- ====== PESTAÑAS ====== -->
+    <c-nav variant="tabs" class="mb-3">
+      <c-nav-item><a cNavLink role="button" [active]="pestana === 'resumen'" (click)="pestana = 'resumen'">Resumen</a></c-nav-item>
+      <c-nav-item><a cNavLink role="button" [active]="pestana === 'solicitante'" (click)="pestana = 'solicitante'">Solicitante</a></c-nav-item>
+      <c-nav-item><a cNavLink role="button" [active]="pestana === 'laboral'" (click)="pestana = 'laboral'">Laboral</a></c-nav-item>
+      <c-nav-item><a cNavLink role="button" [active]="pestana === 'referencias'" (click)="pestana = 'referencias'">Referencias</a></c-nav-item>
+      <c-nav-item><a cNavLink role="button" [active]="pestana === 'compra'" (click)="pestana = 'compra'">Compra y plan</a></c-nav-item>
+      <c-nav-item><a cNavLink role="button" [active]="pestana === 'evaluacion'" (click)="pestana = 'evaluacion'">Evaluación</a></c-nav-item>
+    </c-nav>
+
+    <!-- ============ RESUMEN ============ -->
+    <div *ngIf="pestana === 'resumen'">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="border rounded p-3 h-100">
+            <div class="small text-muted mb-2">Solicitante</div>
+            <div class="fw-semibold">{{ s.cliente.nombre }}</div>
+            <div class="small text-muted">CI {{ s.personal['scr_cedula'] }}</div>
+            <div class="small text-muted" *ngIf="s.personal['edad']">
+              {{ s.personal['scr_fechna'] }} ({{ s.personal['edad'] }} años)
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="border rounded p-3 h-100">
+            <div class="small text-muted mb-2">Capacidad de pago</div>
+
+            <div class="d-flex justify-content-between">
+              <span class="small text-muted">Ingreso mensual</span>
+              <span class="fw-semibold">Gs. {{ formatoGs(s.analisis.ingreso_mensual) }}</span>
+            </div>
+
+            <div class="d-flex justify-content-between mt-1" *ngIf="s.analisis.cuota_mas_alta as alta">
+              <span class="small text-muted">Cuota más alta</span>
+              <span class="fw-semibold">
+                Gs. {{ formatoGs(alta.importe) }}
+                <small class="text-muted">({{ textoTramo(alta.desde, alta.hasta) }})</small>
+              </span>
+            </div>
+
+            <div class="d-flex justify-content-between mt-1"
+                 *ngIf="s.analisis.cuota_mas_baja as baja">
+              <span class="small text-muted">Cuota más baja</span>
+              <span class="fw-semibold">
+                Gs. {{ formatoGs(baja.importe) }}
+                <small class="text-muted">({{ textoTramo(baja.desde, baja.hasta) }})</small>
+              </span>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+              <span class="small text-muted">Relación cuota / ingreso</span>
+              <c-badge [color]="colorRelacion(s.analisis.relacion_cuota_ingreso)">
+                {{ s.analisis.relacion_cuota_ingreso !== null
+                     ? s.analisis.relacion_cuota_ingreso + '%' : 'Sin datos' }}
+              </c-badge>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historial de estados -->
+      <div class="mt-4">
+        <div class="small text-muted mb-2">Historial</div>
+        <div class="table-responsive">
+          <table cTable hover align="middle" class="mb-0">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Cambio</th>
+                <th>Responsable</th>
+                <th>Observación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let h of s.historial">
+                <td class="small">{{ h.fecha }}</td>
+                <td>
+                  <span class="small text-muted" *ngIf="h.estado_anterior">
+                    {{ h.estado_anterior }} &#8594;
+                  </span>
+                  <c-badge [color]="colorEstado(h.codigo_nuevo)">{{ h.estado_nuevo }}</c-badge>
+                </td>
+                <td class="small">{{ h.autor }}</td>
+                <td class="small text-muted">{{ h.observacion || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SOLICITANTE ============ -->
+    <div *ngIf="pestana === 'solicitante'">
+      <div class="row g-3 small">
+        <div class="col-md-4"><span class="text-muted">Nombre:</span>
+          <div class="fw-semibold">{{ s.personal['scr_nombre'] }} {{ s.personal['scr_apelli'] }}</div></div>
+        <div class="col-md-4"><span class="text-muted">C.I.:</span>
+          <div class="fw-semibold">{{ s.personal['scr_cedula'] }}</div></div>
+        <div class="col-md-4"><span class="text-muted">Fecha de nacimiento:</span>
+          <div class="fw-semibold">{{ s.personal['scr_fechna'] }}</div></div>
+
+        <div class="col-md-4"><span class="text-muted">Celular:</span>
+          <div class="fw-semibold">{{ s.personal['scr_celula'] }}</div></div>
+        <div class="col-md-4"><span class="text-muted">Email:</span>
+          <div class="fw-semibold text-break">{{ s.personal['scr_email'] }}</div></div>
+        
+        <div class="col-md-4"><span class="text-muted">Estado civil:</span>
+          <div class="fw-semibold">{{ etiquetaEstadoCivil(s.personal['scr_estciv']) }}</div></div>
+
+        <div class="col-md-4"><span class="text-muted">Ciudad:</span>
+          <div class="fw-semibold">
+            {{ s.personal['ciudad'] || '—' }}
+            <span class="text-muted fw-normal" *ngIf="s.personal['departamento']">
+              ({{ s.personal['departamento'] }})
+            </span>
+          </div></div>
+        <div class="col-md-4"><span class="text-muted">Barrio:</span>
+          <div class="fw-semibold">{{ s.personal['scr_barrio'] }}</div></div>
+        <div class="col-md-4"><span class="text-muted">Calle y número:</span>
+          <div class="fw-semibold">{{ s.personal['scr_calle'] }} {{ s.personal['scr_nrocasa'] }}</div></div>
+
+        <div class="col-12" *ngIf="s.personal['scr_referen']">
+          <span class="text-muted">Referencia del domicilio:</span>
+          <div class="fw-semibold">{{ s.personal['scr_referen'] }}</div>
+        </div>
+
+        <div class="col-md-4"><span class="text-muted">Vivienda:</span>
+          <div class="fw-semibold">{{ etiquetaTipoVivienda(s.personal['scr_tipviv']) }}</div></div>
+
+        <!-- Los datos del servicio solo existen con casa propia. -->
+        <div class="col-md-4" *ngIf="s.personal['scr_sertit']">
+          <span class="text-muted">N.º de servicio (ANDE/ESSAP):</span>
+          <div class="fw-semibold">{{ s.personal['scr_sertit'] }}</div>
+        </div>
+        <div class="col-md-4" *ngIf="s.personal['scr_relsti']">
+          <span class="text-muted">Relación con el titular:</span>
+          <div class="fw-semibold">{{ s.personal['scr_relsti'] }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ LABORAL ============ -->
+    <div *ngIf="pestana === 'laboral'">
+      <div class="row g-3 small">
+      <!-- Relación laboral y profesión viajan en el bloque 'personal'
+           del Resource, no en 'laboral'. -->
+        <div class="col-md-4"><span class="text-muted">Relación laboral:</span>
+          <div class="fw-semibold">{{ s.personal['tipo_profesion'] || '—' }}</div></div>
+        <div class="col-md-4"><span class="text-muted">Profesión:</span>
+          <div class="fw-semibold">{{ s.personal['profesion'] || '—' }}</div></div>
+
+        <div class="col-md-4"><span class="text-muted">Cargo:</span>
+          <div class="fw-semibold">{{ s.laboral['scr_cargo'] }}</div></div>
+
+        <div class="col-md-4"><span class="text-muted">Empresa:</span>
+          <div class="fw-semibold">{{ s.laboral['scr_empres'] }}</div></div>
+        <div class="col-md-4"><span class="text-muted">Teléfono laboral:</span>
+          <div class="fw-semibold">{{ s.laboral['scr_tellab'] }}</div></div>
+        <div class="col-md-4"><span class="text-muted">Dirección laboral:</span>
+          <div class="fw-semibold text-break">{{ s.laboral['scr_dirlab'] }}</div></div>
+
+        <div class="col-md-4"><span class="text-muted">Ingreso mensual:</span>
+          <div class="fw-semibold">Gs. {{ formatoGs(s.analisis.ingreso_mensual) }}</div></div>
+        <div class="col-md-4"><span class="text-muted">Ingreso desde:</span>
+          <div class="fw-semibold">{{ s.laboral['scr_fecing'] }}</div></div>
+      <div class="col-md-4"><span class="text-muted">Antigüedad:</span>
+          <div class="fw-semibold">{{ s.laboral['antiguedad'] || '—' }}</div></div>
+      </div>
+    </div>
+
+    <!-- ============ REFERENCIAS ============ -->
+    <div *ngIf="pestana === 'referencias'">
+      <div class="table-responsive">
+        <table cTable hover align="middle" class="mb-0">
+          <thead>
+            <tr>
+              <th style="width: 3rem">#</th>
+              <th>Nombre</th>
+              <th>Celular</th>
+              <th>Relación</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of s.referencias">
+              <td>{{ r['scf_orden'] }}</td>
+              <td>{{ r['scf_nombre'] }}</td>
+              <td>{{ r['scf_celula'] }}</td>
+              <td>{{ r['relacion'] || r['scf_relaci'] }}</td>
+            </tr>
+            <tr *ngIf="s.referencias.length === 0">
+              <td colspan="4" class="text-center py-3 text-muted">Sin referencias cargadas.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ COMPRA Y PLAN ============ -->
+    <div *ngIf="pestana === 'compra'">
+
+      <div class="table-responsive mb-4">
+        <table cTable hover align="middle" class="mb-0">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th class="text-center">Cant.</th>
+              <th class="text-end">Contado c/u</th>
+              <th class="text-center">Plan</th>
+              <th class="text-end">Cuota</th>
+              <th class="text-end">Subtotal</th>
+              <th class="text-end" *ngIf="s.acciones.puede_editar">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+                        <tr *ngFor="let d of s.detalles">
+              <td class="text-break">
+                {{ d.producto?.pub_titulo || d.scd_descri }}
+              </td>
+              <td class="text-center">{{ d.scd_cantid }}</td>
+              <td class="text-end">Gs. {{ formatoGs(d.scd_preuni) }}</td>
+              <td class="text-center">
+                {{ d.scd_numcuo }} {{ d.scd_numcuo === 1 ? 'cuota' : 'cuotas' }}
+                <div class="small text-muted">+{{ d.scd_recpct }}%</div>
+              </td>
+              <td class="text-end">
+                Gs. {{ formatoGs(d.scd_moncuo) }}
+                <!-- scd_moncuo es la cuota POR UNIDAD: con cantidad > 1 se
+                     aclara cuánto paga la línea entera cada mes. -->
+                <div class="small text-muted" *ngIf="d.scd_cantid > 1">
+                  línea: Gs. {{ formatoGs(d.cuota_mensual) }}
+                </div>
+              </td>
+              <td class="text-end">Gs. {{ formatoGs(d.scd_subtot) }}</td>
+              <td class="text-end" *ngIf="s.acciones.puede_editar">
+                <button cButton size="sm" color="warning" class="text-white me-2"
+                        [disabled]="procesando" (click)="abrirCambiarPlan(d)">Cambiar</button>
+              </td>
+            </tr>
+
+            <tr *ngIf="s.detalles.length === 0">
+              <td [attr.colspan]="s.acciones.puede_editar ? 7 : 6"
+                  class="text-center py-3 text-muted">Sin productos en la solicitud.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Totales -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-6 offset-md-6">
+          <div class="border rounded p-3 small">
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Precio al contado</span>
+              <span>Gs. {{ formatoGs(s.credito['total_contado']) }}</span>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+              <span class="text-muted">Recargo por financiación</span>
+              <span>Gs. {{ formatoGs(s.credito['recargo']) }}</span>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+              <span class="text-muted">IVA incluido</span>
+              <span>Gs. {{ formatoGs(s.credito['impuestos']) }}</span>
+            </div>
+            <div class="d-flex justify-content-between mt-2 pt-2 border-top fw-semibold">
+              <span>Total a crédito</span>
+              <span>Gs. {{ formatoGs(s.credito['total']) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fecha de la primera cuota -->
+      <div class="row g-2 align-items-end mb-3" *ngIf="s.acciones.puede_editar">
+        <div class="col-md-4">
+          <label class="form-label small text-muted mb-1">Fecha de la primera cuota</label>
+          <input cFormControl type="date" [(ngModel)]="fechaPrimeraCuota" />
+        </div>
+        <div class="col-md-3">
+          <button cButton color="primary" class="w-100"
+                  [disabled]="procesando || !fechaPrimeraCuota" (click)="recalcularCronograma()">
+            <c-spinner size="sm" *ngIf="procesando" class="me-1"></c-spinner>
+            Recalcular
+          </button>
+        </div>
+      </div>
+
+      <!-- Cronograma -->
+      <div class="small text-muted mb-2">
+        Cronograma
+        <span *ngIf="!cronogramaEsFirme">(estimado: fijá la fecha de la primera cuota para confirmarlo)</span>
+      </div>
+
+      <div class="table-responsive">
+        <table cTable hover align="middle" class="mb-0">
+          <thead>
+            <tr>
+              <th style="width: 4rem">Cuota</th>
+              <th>Vencimiento</th>
+              <th class="text-end">Importe</th>
+              <th>Composición</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of cronograma">
+              <td>{{ c.numero }}</td>
+              <td>{{ c.vencimiento || '—' }}</td>
+              <td class="text-end">Gs. {{ formatoGs(c.importe) }}</td>
+              <td class="small text-muted text-break">{{ c.composicion || '—' }}</td>
+            </tr>
+            <tr *ngIf="cronograma.length === 0">
+              <td colspan="4" class="text-center py-3 text-muted">Sin cronograma.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ EVALUACIÓN ============ -->
+    <div *ngIf="pestana === 'evaluacion'">
+
+      <!-- Resolución ya tomada -->
+      <div class="border rounded p-3 mb-3 small" *ngIf="s.evaluacion.fecha_decision">
+        <div class="text-muted mb-2">Resolución</div>
+        <div class="d-flex justify-content-between">
+          <span class="text-muted">Fecha</span>
+          <span class="fw-semibold">{{ s.evaluacion.fecha_decision }}</span>
+        </div>
+        <div class="d-flex justify-content-between mt-1">
+          <span class="text-muted">Responsable</span>
+          <span class="fw-semibold">{{ s.evaluacion.usuario_decision }}</span>
+        </div>
+        <div class="d-flex justify-content-between mt-1" *ngIf="s.evaluacion.vigencia_hasta">
+          <span class="text-muted">Oferta vigente hasta</span>
+          <span class="fw-semibold">{{ s.evaluacion.vigencia_hasta }}</span>
+        </div>
+        <div class="d-flex justify-content-between mt-1" *ngIf="s.evaluacion.motivo">
+          <span class="text-muted">Motivo del rechazo</span>
+          <span class="fw-semibold">{{ s.evaluacion.motivo }}</span>
+        </div>
+        <div class="mt-2" *ngIf="s.evaluacion.detalle_rechazo">
+          <span class="text-muted">Detalle:</span>
+          <div>{{ s.evaluacion.detalle_rechazo }}</div>
+        </div>
+        <div class="d-flex justify-content-between mt-1" *ngIf="s.evaluacion.fecha_aceptacion">
+          <span class="text-muted">Aceptada por el cliente</span>
+          <span class="fw-semibold">{{ s.evaluacion.fecha_aceptacion }}</span>
+        </div>
+      </div>
+
+      <!-- Observaciones internas -->
+      <div class="mb-3">
+        <label class="form-label">Observaciones internas</label>
+        <textarea cFormControl rows="3" [(ngModel)]="observaciones"
+                  [disabled]="!s.acciones.puede_decidir"
+                  placeholder="Notas de la evaluación. No las ve el cliente."
+                  maxlength="500"></textarea>
+        <div class="form-text">{{ observaciones.length }}/500</div>
+      </div>
+
+      <button cButton color="secondary" variant="outline" size="sm" class="mb-4"
+              *ngIf="s.acciones.puede_decidir"
+              [disabled]="procesando" (click)="guardarObservaciones()">
+        Guardar observaciones
+      </button>
+
+      <!-- Formulario de decisión -->
+      <div *ngIf="s.acciones.puede_decidir">
+        <hr />
+        <div class="mb-3">
+          <label class="form-label">Decisión</label>
+          <div class="d-flex gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" id="decAprobar"
+                     value="APROBAR" [(ngModel)]="decision" />
+              <label class="form-check-label" for="decAprobar">Aprobar</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" id="decRechazar"
+                     value="RECHAZAR" [(ngModel)]="decision" />
+              <label class="form-check-label" for="decRechazar">Rechazar</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Solo al aprobar -->
+        <div class="row g-2 mb-3" *ngIf="decision === 'APROBAR'">
+          <div class="col-md-4">
+            <label class="form-label">Vigencia de la oferta (días)</label>
+            <input cFormControl type="number" min="1" max="60" [(ngModel)]="vigenciaDias" />
+            <div class="form-text">
+              El cliente tiene ese plazo para aceptar. Por política, {{ vigenciaDefault }} días.
+            </div>
+          </div>
+        </div>
+
+        <!-- Solo al rechazar -->
+        <div *ngIf="decision === 'RECHAZAR'">
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Motivo</label>
+              <select cSelect [(ngModel)]="motivo">
+                <option value="">Seleccione...</option>
+                <option *ngFor="let m of motivos" [value]="m.codigo">{{ m.etiqueta }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">
+              Detalle
+              <span class="text-danger" *ngIf="motivo === 'OTRO'">*</span>
+            </label>
+            <textarea cFormControl rows="2" [(ngModel)]="detalleRechazo"
+                      placeholder="Explicación que acompaña al rechazo"
+                      maxlength="300"></textarea>
+            <div class="form-text" *ngIf="motivo === 'OTRO'">
+              Obligatorio cuando el motivo es "Otro".
+            </div>
+          </div>
+        </div>
+
+        <c-alert color="info" class="py-2 small" *ngIf="decision === 'APROBAR'">
+          Al aprobar se congela el cronograma y el stock queda reservado hasta
+          que venza la oferta.
+        </c-alert>
+
+        <c-alert color="warning" class="py-2 small" *ngIf="decision === 'RECHAZAR'">
+          Al rechazar se libera el stock reservado y la decisión no se puede deshacer.
+        </c-alert>
+
+        <div class="d-flex gap-2">
+          <button cButton color="secondary" variant="outline"
+                  [disabled]="procesando" (click)="decision = null">Cancelar</button>
+
+          <button cButton [color]="decision === 'RECHAZAR' ? 'danger' : 'success'" class="text-white"
+                  [disabled]="!puedeGuardarDecision" (click)="guardarDecision()">
+            <c-spinner size="sm" *ngIf="procesando" class="me-1"></c-spinner>
+            Guardar decisión
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </c-card-body>
+</c-card>
+
+<!-- ====== MODAL DE CAMBIO DE PLAN ====== -->
+<app-cambiar-plan
+  [(visible)]="modalPlanVisible"
+  [solicitudId]="solicitud?.scr_id ?? null"
+  [linea]="lineaEnEdicion"
+  (guardado)="onPlanGuardado($event)">
+</app-cambiar-plan>

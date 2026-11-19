@@ -15,7 +15,7 @@ use App\Services\Facturacion\FacturaCorreoService;
 use App\Services\Venta\CobroVentaService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use App\Models\Venta\CobroVenta;
+use App\Models\Venta\Recibo;
 use Throwable;
 use App\Models\Pedido\PagoCheque;
 
@@ -423,7 +423,7 @@ class PagoServicioVerificacionService
                 ]);
             }
 
-            $cobro = CobroVenta::with('pagoServicio')->whereKey($cobroId)->lockForUpdate()->first();
+           $cobro = Recibo::with('pagoServicio')->whereKey($cobroId)->lockForUpdate()->first();
 
             abort_if(!$cobro || $cobro->pagoServicio?->spa_sseid !== $s->sse_id, 404,
                 'El cobro no pertenece a esta solicitud.');
@@ -441,7 +441,7 @@ class PagoServicioVerificacionService
 
             $this->estadoPago->recalcular($s, $usuario->usu_id, sprintf(
                 'Cobro de Gs. %s anulado (factura %s) — %s',
-                $this->gs((float) $cobro->cob_monto),
+               $this->gs((float) $cobro->rec_monto),
                 $factura->ven_nrodoc,
                 $motivo,
             ));

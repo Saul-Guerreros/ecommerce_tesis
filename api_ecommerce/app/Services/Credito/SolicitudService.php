@@ -12,6 +12,11 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+use Illuminate\Support\Facades\Log;
+use App\Models\Credito\SolicitudCreditoHistorial;
+
+use Illuminate\Database\Eloquent\Builder;
+
 /**
  * Paso 4 del wizard: [GENERAR SOLICITUD].
  *
@@ -29,6 +34,7 @@ class SolicitudService
 {
     public function __construct(
         private SolicitudBorradorService $borrador,
+        private StockCreditoService $stock,
     ) {}
 
     /**
@@ -55,7 +61,7 @@ class SolicitudService
         ];
     }
 
-    public function generar(Usuario $usuario): SolicitudCredito
+        public function generar(Usuario $usuario): SolicitudCredito
     {
         $temporal = $this->borrador->borradorCompletoOFallar($usuario);
         $items    = $this->itemsCredito($usuario);
@@ -74,6 +80,18 @@ class SolicitudService
         $resumen  = $this->resumenCredito($items);
 
         return DB::transaction(function () use ($usuario, $cliente, $personal, $laboral, $temporal, $items, $resumen) {
+
+            // Una solicitud en curso por cliente. Va PRIMERO y dentro de
+            // la transaccion: si fallara despues de reservar, la reserva
+            // quedaria tomada por una solicitud que nunca se creo.
+            $this->exigirSinSolicitudEnCurso($cliente->cli_id);
+
+            // Reserva el stock ANTES de crear nada. Si no alcanza, la
+            // excepcion revierte la transaccion y el carrito queda
+            // intacto: el cliente se entera ahora, no despues de que el
+            // administrador evalue una solicitud incumplible.
+            $deposito = $this->stock->reservar($items);
+
             $solicitud = SolicitudCredito::create([
                 'scr_cliid' => $cliente->cli_id,
                 'scr_usuid' => $usuario->usu_id,
@@ -114,6 +132,11 @@ class SolicitudService
                 'scr_cuomen' => $resumen['cuota_mensual'],
 
                 'scr_declar' => true,
+
+                // NULL si ningun item controlaba stock: no hay reserva
+                // que liberar despues.
+                'scr_depid'  => $deposito?->dpo_id,
+                'scr_fecres' => $deposito ? now() : null,
             ]);
 
             // Numeración correlativa a partir del id real, mismo criterio
@@ -122,6 +145,16 @@ class SolicitudService
 
             $this->crearDetalle($solicitud, $items);
             $this->crearReferencias($solicitud, $temporal->stm_refere);
+
+            // Primera linea de la bitacora. Desde acá la escribe
+            // GestionSolicitudService en cada transicion.
+            SolicitudCreditoHistorial::create([
+                'sch_scrid'  => $solicitud->scr_id,
+                'sch_escant' => null,
+                'sch_escnue' => $solicitud->scr_escid,
+                'sch_usuid'  => $usuario->usu_id,
+                'sch_observ' => 'Solicitud generada por el cliente.',
+            ]);
 
             // Solo se vacía la modalidad crédito: el carrito al contado
             // (si lo hay) queda intacto, mismo criterio inverso al que ya
@@ -134,6 +167,53 @@ class SolicitudService
 
             return $solicitud->fresh();
         });
+    }
+
+        /**
+     * Solicitudes del cliente que todavia retienen stock. Una sola
+     * definicion para la consulta temprana y para la validacion final de
+     * generar(): si estuvieran separadas, el aviso podria decir que se
+     * puede solicitar y generar() rechazarlo, o al reves.
+     */
+    private function enCursoDelCliente(int $clienteId): Builder
+    {
+        return SolicitudCredito::where('scr_cliid', $clienteId)
+            ->whereHas('estado', fn ($q) => $q->whereIn('esc_codigo', SolicitudCredito::ESTADOS_CON_RESERVA));
+    }
+
+    /**
+     * Consulta SIN bloqueo, para avisar al cliente antes de que llene el
+     * wizard. Es solo cortesia: la barrera real sigue siendo
+     * exigirSinSolicitudEnCurso(), dentro de la transaccion.
+     */
+    public function solicitudEnCurso(Usuario $usuario): ?SolicitudCredito
+    {
+        $cliente = $usuario->persona?->cliente;
+
+        if (! $cliente) {
+            return null; // sin perfil de cliente no puede tener solicitudes
+        }
+
+        return $this->enCursoDelCliente($cliente->cli_id)
+            ->with('estado')
+            ->latest('scr_id')
+            ->first();
+    }
+
+    /**
+     * Validacion final, dentro de la transaccion de generar().
+     * lockForUpdate() es lo que hace real el limite ante un doble clic.
+     */
+    private function exigirSinSolicitudEnCurso(int $clienteId): void
+    {
+        $enCurso = $this->enCursoDelCliente($clienteId)->lockForUpdate()->first();
+
+        if ($enCurso) {
+            throw ValidationException::withMessages([
+                'solicitud' => 'Ya tenés una solicitud de crédito en curso ('
+                    . $enCurso->scr_numero . '). Esperá su resolución antes de generar otra.',
+            ]);
+        }
     }
 
     // ---------- Carrito a crédito ----------
@@ -238,7 +318,7 @@ class SolicitudService
         abort_if(!$cliente, 422, 'Tu cuenta todavía no tiene un perfil de cliente asociado.');
 
         return SolicitudCredito::where('scr_cliid', $cliente->cli_id)
-            ->with(['estado', 'ciudad.departamento', 'profesion', 'tipoProfesion', 'detalles.producto.publicacionWeb', 'referencias'])
-            ->findOrFail($solicitudId);
+        ->with(['estado', 'ciudad.departamento', 'profesion', 'tipoProfesion', 'detalles.producto.publicacionWeb.imagenes', 'referencias', 'cuotas', 'pedido'])
+        ->findOrFail($solicitudId);
     }
 }

@@ -1,0 +1,77 @@
+<c-modal [visible]="visible" (visibleChange)="visible = $event; visibleChange.emit($event)" backdrop="static">
+  <c-modal-header>
+    <h5 cModalTitle>
+      Registrar cobro — {{ cuotas.length > 1 ? 'Cuotas N°' : 'Cuota N°' }} {{ numeros }}
+    </h5>
+  </c-modal-header>
+
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <c-modal-body>
+            <!-- El importe no es editable: cada cuota se cobra entera. -->
+      <div class="mb-3">
+        <strong>Importe a cobrar:</strong> {{ total | number:'1.0-2' }}
+        <ul class="small text-muted mb-1 mt-1 ps-3" *ngIf="cuotas.length > 1">
+          <li *ngFor="let c of cuotas">
+            Cuota N° {{ c.cco_nrocuo }} — vence el {{ c.cco_vencim }} —
+            {{ c.cco_monto | number:'1.0-2' }}
+          </li>
+        </ul>
+        <div class="small text-muted" *ngIf="cuotas.length === 1">
+          Vence el {{ cuotas[0].cco_vencim }}.
+        </div>
+        <div class="small text-muted">
+          Se emite un solo recibo por el total.
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label cLabel for="cob_mpaid">Método de pago <span class="text-danger">*</span></label>
+          <select cSelect id="cob_mpaid" formControlName="cob_mpaid">
+            <option [ngValue]="null">Seleccionar...</option>
+            <option *ngFor="let m of metodos" [ngValue]="m.mpa_id">{{ m.mpa_descri }}</option>
+          </select>
+          <div class="text-danger small"
+               *ngIf="form.get('cob_mpaid')?.invalid && form.get('cob_mpaid')?.touched">
+            Obligatorio.
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="cob_fecha">Fecha del cobro <span class="text-danger">*</span></label>
+          <input cFormControl type="date" id="cob_fecha" formControlName="cob_fecha" [max]="hoy" />
+          <div class="text-danger small"
+               *ngIf="form.get('cob_fecha')?.invalid && form.get('cob_fecha')?.touched">
+            Obligatoria y no puede ser futura.
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="cob_nrotrx">N° de transacción</label>
+          <input cFormControl id="cob_nrotrx" formControlName="cob_nrotrx" maxlength="50"
+                 placeholder="N° de transferencia o recibo" />
+        </div>
+
+        <div class="col-md-6">
+          <label cLabel for="cob_banco">Banco</label>
+          <input cFormControl id="cob_banco" formControlName="cob_banco" maxlength="60" />
+        </div>
+
+        <div class="col-12">
+          <label cLabel for="cob_observ">Observación</label>
+          <textarea cFormControl id="cob_observ" formControlName="cob_observ" rows="2" maxlength="255"></textarea>
+        </div>
+      </div>
+    </c-modal-body>
+
+    <c-modal-footer>
+      <button cButton color="secondary" type="button" (click)="cancelar()" [disabled]="guardando">
+        Cancelar
+      </button>
+      <button cButton color="success" class="text-white" type="submit" [disabled]="guardando">
+        <c-spinner size="sm" *ngIf="guardando" class="me-2"></c-spinner>
+        {{ guardando ? 'Guardando...' : 'Registrar cobro' }}
+      </button>
+    </c-modal-footer>
+  </form>
+</c-modal>

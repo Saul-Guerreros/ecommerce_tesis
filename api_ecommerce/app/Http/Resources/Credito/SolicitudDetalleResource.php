@@ -35,17 +35,55 @@ class SolicitudDetalleResource extends JsonResource
             'recargo'       => $this->recargo(),
             'cuota_mensual' => $this->cuotaMensualLinea(),
 
-            // Imagen y slug: solo cuando el controlador cargo la relacion.
-            // El listado de "Mis solicitudes" no las necesita y no paga el
-            // costo de traerlas.
+            // Titulo, slug e imagen: solo cuando el controlador cargo la
+            // relacion. El listado de "Mis solicitudes" no las necesita y
+            // no paga el costo de traerlas.
             'producto' => $this->whenLoaded('producto', function () {
-                $publicacion = $this->producto->publicacionWeb;
+                $publicacion = $this->producto?->publicacionWeb;
 
-                return $publicacion ? [
+                if (! $publicacion) {
+                    return null;
+                }
+
+                $datos = [
                     'pub_titulo' => $publicacion->pub_titulo,
                     'pub_slug'   => $publicacion->pub_slug,
-                ] : null;
+                ];
+
+                // La imagen solo se arma si 'imagenes' ya viene cargada:
+                // evita un N+1 en quien no la precargo (ej. el panel admin).
+                if ($publicacion->relationLoaded('imagenes')) {
+                    $principal = $publicacion->imagenes->firstWhere('img_princi', 1)
+                        ?? $publicacion->imagenes->first();
+
+                    $datos['imagen'] = $this->urlImagen($principal?->img_url);
+                }
+
+                return $datos;
             }),
         ];
+    }
+
+    /**
+     * Misma normalizacion que CarritoResource::urlImagen(): el campo
+     * img_url no es homogeneo (puede venir con o sin el prefijo /storage).
+     */
+    private function urlImagen(?string $ruta): ?string
+    {
+        if (! $ruta) {
+            return null;
+        }
+
+        if (str_starts_with($ruta, 'http')) {
+            return $ruta;
+        }
+
+        $relativa = ltrim($ruta, '/');
+
+        if (str_starts_with($relativa, 'storage/')) {
+            $relativa = substr($relativa, strlen('storage/'));
+        }
+
+        return asset('storage/' . $relativa);
     }
 }

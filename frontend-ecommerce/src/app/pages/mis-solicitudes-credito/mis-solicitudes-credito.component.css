@@ -1,14 +1,42 @@
+.msc-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .msc-fila {
   cursor: pointer;
-  padding: 8px 4px;
-  border-radius: 4px;
+  transition: box-shadow 0.15s ease;
 }
 
-.msc-fila:hover {
-  background-color: rgba(0, 0, 0, 0.03);
+.msc-fila:hover,
+.msc-fila:focus-visible {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  outline: none;
 }
 
-.msc-detalle {
-  padding-left: 4px;
-  padding-right: 4px;
+.msc-fila-datos {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.msc-col-numero {
+  flex: 1 1 160px;
+}
+
+.msc-col-total {
+  flex: 0 1 150px;
+}
+
+.msc-col-estado {
+  flex: 0 1 130px;
+}
+
+.msc-aviso {
+  font-size: 0.85rem;
+  color: #32d296;
+  font-weight: 500;
 }

@@ -31,9 +31,17 @@ class OpcionesAdminPermisoSeeder extends Seeder
         'servicios.cobros.confirmar',
         'servicios.facturas.anular',
         'inventario-inteligente.ver', 'inventario-inteligente.gestionar',
+
         'inventario-inteligente.ver', 'inventario-inteligente.gestionar',
         // Textos legales e institucionales de la tienda: solo por asignación explícita
         'contenido-web.gestionar',
+        // Decidir sobre un credito compromete dinero: solo por asignacion explicita.
+        'solicitudes-credito.gestionar',
+        // Recibir plata de una cuota: mismo criterio que servicios.cobros.confirmar.
+        'cuentas-por-cobrar.cobrar',
+        // Recibir plata de una cuota: mismo criterio que servicios.cobros.confirmar.
+        'cuentas-por-cobrar.cobrar',
+
     ];
 
     public function run(): void

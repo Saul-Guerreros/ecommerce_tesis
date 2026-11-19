@@ -17,100 +17,48 @@
     <a routerLink="/carrito-de-compra">Volver al carrito</a>
   </div>
 
-  <ul class="uk-list uk-list-divider" *ngIf="!cargando && solicitudes.length > 0">
-    <li *ngFor="let s of solicitudes">
+  <div *ngIf="!cargando && solicitudes.length > 0" class="msc-lista">
 
-      <div class="uk-grid-small uk-flex-middle msc-fila" uk-grid (click)="toggleDetalle(s)">
-        <div class="uk-width-auto">
+    <!-- Toda la fila es el enlace al detalle. role/tabindex/keydown.enter
+         lo hacen accesible con teclado, igual que un <a>. -->
+    <div class="msc-fila uk-card uk-card-default uk-card-body"
+         *ngFor="let s of solicitudes; trackBy: trackById"
+         role="link"
+         tabindex="0"
+         [attr.aria-label]="'Ver solicitud ' + s.numero"
+         (click)="verDetalle(s)"
+         (keydown.enter)="verDetalle(s)">
+
+      <div class="msc-fila-datos">
+        <div class="msc-col-numero">
           <strong>{{ s.numero }}</strong>
+          <div class="uk-text-meta uk-text-small">{{ s.fecha }}</div>
         </div>
-        <div class="uk-width-expand uk-text-meta uk-text-small">{{ s.fecha }}</div>
-        <div class="uk-width-auto">
-          <span [class]="claseEstado(s.estado.codigo)">{{ s.estado.descripcion }}</span>
-        </div>
-        <div class="uk-width-auto uk-text-bold">
+
+        <div class="msc-col-total uk-text-bold">
           {{ s.credito.total | currency:'PYG':'symbol-narrow':'1.0-0' }}
         </div>
-        <div class="uk-width-auto">
-          <span [attr.uk-icon]="'icon: ' + (expandidaId === s.scr_id ? 'chevron-up' : 'chevron-down')"></span>
+
+        <div class="msc-col-estado">
+          <span [class]="claseEstado(s.estado.codigo)">{{ s.estado.descripcion }}</span>
         </div>
       </div>
 
-      <!-- ============ DETALLE EXPANDIDO ============ -->
-      <div class="msc-detalle uk-margin-small-top" *ngIf="expandidaId === s.scr_id">
+      <!-- Aviso solo cuando el cliente tiene una oferta esperando respuesta -->
+      <ng-container *ngIf="s.oferta as o">
+        <p class="msc-aviso uk-margin-small-top uk-margin-remove-bottom"
+           *ngIf="o.puede_responder">
+          Tu crédito fue aprobado. Revisá y respondé la oferta antes del
+          <strong>{{ o.vigencia_texto }}</strong>.
+        </p>
+        <p class="msc-aviso uk-margin-small-top uk-margin-remove-bottom"
+           *ngIf="o.puede_continuar">
+          Aceptaste las condiciones. Completá tu pedido antes del
+          <strong>{{ o.vigencia_texto }}</strong>.
+        </p>
+      </ng-container>
 
-        <div *ngIf="cargandoDetalle" class="uk-text-center uk-margin">
-          <div uk-spinner="ratio: 1"></div>
-        </div>
-
-        <div *ngIf="!cargandoDetalle && detalle" class="uk-card uk-card-default uk-card-body">
-
-          <div class="uk-grid-medium" uk-grid>
-
-            <div class="uk-width-1-2@s">
-              <h5 class="uk-text-meta uk-text-small uk-margin-remove-bottom">Datos personales</h5>
-              <p class="uk-margin-remove">{{ detalle.personal.nombre_completo }}</p>
-              <p class="uk-margin-remove">C.I. {{ detalle.personal.scr_cedula }}</p>
-              <p class="uk-margin-remove">{{ detalle.personal.scr_celula }} · {{ detalle.personal.scr_email }}</p>
-              <p class="uk-margin-remove">
-                {{ detalle.personal.scr_barrio }}, {{ detalle.personal.scr_calle }}
-              </p>
-              <p class="uk-margin-remove">
-                {{ detalle.personal.ciudad }}, {{ detalle.personal.departamento }}
-              </p>
-            </div>
-
-            <div class="uk-width-1-2@s">
-              <h5 class="uk-text-meta uk-text-small uk-margin-remove-bottom">Datos laborales</h5>
-              <p class="uk-margin-remove">{{ detalle.laboral.scr_empres }}</p>
-              <p class="uk-margin-remove">{{ detalle.laboral.scr_cargo }}</p>
-              <p class="uk-margin-remove">
-                Ingreso: {{ detalle.laboral.scr_ingres | currency:'PYG':'symbol-narrow':'1.0-0' }}
-              </p>
-              <p class="uk-margin-remove" *ngIf="detalle.laboral.antiguedad">
-                Antigüedad: {{ detalle.laboral.antiguedad.texto }}
-              </p>
-            </div>
-
-            <div class="uk-width-1-1">
-              <h5 class="uk-text-meta uk-text-small uk-margin-remove-bottom uk-margin-small-top">Referencias</h5>
-              <p class="uk-margin-remove" *ngFor="let r of detalle.referencias">
-                {{ r.scf_nombre }} — {{ r.scf_celula }} ({{ r.relacion }})
-              </p>
-            </div>
-
-            <div class="uk-width-1-1">
-              <hr class="uk-margin-small">
-              <h5 class="uk-text-meta uk-text-small uk-margin-remove-bottom">Crédito solicitado</h5>
-
-              <p class="uk-margin-remove" *ngFor="let item of detalle.detalles">
-                {{ item.scd_descri }} x{{ item.scd_cantid }} —
-                {{ item.scd_numcuo }} cuotas de {{ item.scd_moncuo | currency:'PYG':'symbol-narrow':'1.0-0' }}
-              </p>
-
-              <div class="uk-grid-small uk-margin-small-top" uk-grid>
-                <div class="uk-width-expand uk-text-muted">Precio al contado</div>
-                <div>{{ detalle.credito.total_contado | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
-              </div>
-              <div class="uk-grid-small" uk-grid>
-                <div class="uk-width-expand uk-text-muted">Recargo por financiación</div>
-                <div>{{ detalle.credito.recargo | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
-              </div>
-              <div class="uk-grid-small uk-margin-small-bottom" uk-grid>
-                <div class="uk-width-expand uk-text-bolder">TOTAL A PAGAR</div>
-                <div class="uk-text-bolder">{{ detalle.credito.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
-              </div>
-              <div class="uk-grid-small" uk-grid>
-                <div class="uk-width-expand uk-text-muted">Plazo</div>
-                <div>{{ detalle.credito.plazo }} meses</div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-    </li>
-  </ul>
+    </div>
+  </div>
 
 </div>

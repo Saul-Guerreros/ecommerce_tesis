@@ -36,6 +36,18 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/pedidos-expirar.log'));
 
+        // Ofertas de crédito vencidas: el cliente no aceptó dentro de su
+        // plazo y la mercadería sigue apartada.
+        //
+        // Una vez al día y no cada 15 minutos como los pedidos: la
+        // vigencia del crédito se mide en días, así que liberar a las
+        // 00:20 del día siguiente al vencimiento es suficiente. Correrlo
+        // más seguido solo agregaría consultas sin ganar disponibilidad.
+        $schedule->command('creditos:expirar')
+            ->dailyAt('00:20')
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/creditos-expirar.log'));    
+
         // Mantenimiento
         $schedule->command('actividad:purgar')->monthlyOn(1, '03:00')->withoutOverlapping();
 

@@ -13,6 +13,11 @@ import { CarritoItem } from './carrito.model';
  * colisionar con el viejo.
  */
 
+import { MedioRecepcion, TipoDocumentoFacturacion, TitularFacturacion } from './checkout.model';
+import { DatoFiscal } from './dato-fiscal.model';
+import { EntregaResumenCard, ProductoResumenCardItem } from './resumen-compra.model';
+
+
 export type EstadoCivil = 'SOLTERO' | 'CASADO' | 'DIVORCIADO' | 'VIUDO' | 'UNION_LIBRE';
 export type TipoVivienda = 'PROPIA' | 'ALQUILER';
 export type RelacionReferencia = 'FAMILIAR' | 'LABORAL' | 'AMISTAD';
@@ -159,7 +164,7 @@ export interface SolicitudDetalleItem {
   total_contado: number;
   recargo: number;
   cuota_mensual: number;
-  producto: { pub_titulo: string; pub_slug: string | null } | null;
+    producto: { pub_titulo: string; pub_slug: string | null; imagen?: string | null } | null;
 }
 
 export interface SolicitudCreditoGenerada {
@@ -180,9 +185,116 @@ export interface SolicitudCreditoGenerada {
     plazo: number;
     cuota_mensual: number;
   };
+
+  /** Bloque de la etapa D: vigencia y acciones permitidas al cliente. */
+  oferta?: OfertaCredito;
+
+  /** Pedido generado a partir de la solicitud (solo en estado CONVERTIDA, en el detalle). */
+  pedido?: { numero: string } | null;
+
+  /** Cronograma persistido. Solo viene en el detalle, no en el listado. */
+  cronograma?: CuotaCronograma[];
 }
 
 export interface SolicitudGeneradaResponse {
   message: string;
   data: SolicitudCreditoGenerada;
+}
+
+export interface DisponibilidadCreditoResponse {
+  data: {
+    disponible: boolean;
+    solicitud: { scr_id: number; numero: string; estado: string | null } | null;
+  };
+}
+
+// ---------- Oferta aprobada: aceptación del cliente (etapa D) ----------
+
+export interface CuotaCronograma {
+  numero: number;
+  /** Y-m-d. NULL si el administrador todavía no fijó la fecha de la primera cuota. */
+  vencimiento: string | null;
+  importe: number;
+  composicion: string | null;
+}
+
+export interface OfertaCredito {
+  vigencia_hasta: string | null;
+  /** dd/mm/YYYY, listo para mostrar. */
+  vigencia_texto: string | null;
+  dias_restantes: number | null;
+  /** El backend decide si los botones [ACEPTAR] / [Rechazar oferta] se ofrecen. */
+  puede_responder: boolean;
+  vencida: boolean;
+  fecha_decision: string | null;
+  fecha_aceptacion: string | null;
+  motivo_rechazo: string | null;
+  /** Cantidad de días que el admin otorgó al aprobar (cabecera de la solicitud). */
+  vigencia_dias: number | null;
+  /** Aceptó las condiciones y todavía puede armar el pedido. */
+  puede_continuar: boolean;
+}
+
+export interface AceptarOfertaRequest {
+  acepta_condiciones: boolean;
+  acepta_firma: boolean;
+}
+
+export interface RespuestaOfertaResponse {
+  message: string;
+  data: SolicitudCreditoGenerada;
+}
+
+/**
+ * Clase de color del badge de estado. Una sola definición para el listado
+ * y el detalle: si se agrega un estado, se cambia acá.
+ */
+export function claseEstadoSolicitud(codigo: string): string {
+  const clases: Record<string, string> = {
+    PENDIENTE: 'uk-label',
+    EN_REVISION: 'uk-label uk-label-warning',
+    APROBADA: 'uk-label uk-label-success',
+    ACEPTADA: 'uk-label uk-label-success',
+    RECHAZADA: 'uk-label uk-label-danger',
+    ANULADA: 'uk-label',
+    CONVERTIDA: 'uk-label uk-label-success',
+  };
+  return clases[codigo] ?? 'uk-label';
+}
+
+// ---------- Checkout de la solicitud aceptada (etapa D) ----------
+
+export interface CheckoutCreditoContexto {
+  solicitud: {
+    scr_id: number;
+    numero: string;
+    vigencia_texto: string | null;
+    dias_restantes: number | null;
+  };
+  titular: TitularFacturacion;
+  datos_fiscales: DatoFiscal[];
+  entrega: EntregaResumenCard;
+  items: ProductoResumenCardItem[];
+  resumen: {
+    total_contado: number;
+    recargo: number;
+    impuestos: number;
+    total: number;
+    plazo: number;
+    cuota_mensual: number;
+  };
+  cronograma: CuotaCronograma[];
+}
+
+export interface ConfirmarCheckoutCreditoRequest {
+  tipo_documento: TipoDocumentoFacturacion;
+  dfi_id?: number;
+  pfa_recibe: MedioRecepcion;
+  acepta_condiciones: boolean;
+}
+
+export interface PedidoCreditoCreado {
+  ped_id: number;
+  ped_numero: string;
+  ped_total: number;
 }

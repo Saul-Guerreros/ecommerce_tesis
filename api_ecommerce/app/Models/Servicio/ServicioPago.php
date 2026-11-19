@@ -7,10 +7,10 @@ use App\Models\Pedido\EstadoPago;
 use App\Models\Pedido\MetodoPago;
 use App\Models\Pedido\MotivoRechazoPago;
 use App\Models\Usuario;
+use App\Models\Venta\Recibo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use App\Models\Venta\CobroVenta;
 
 /**
  * Pago del servicio técnico (espejo de PedidoPago + datos del cobro presencial).
@@ -99,6 +99,6 @@ class ServicioPago extends Model
     /** Cobro ACTIVO registrado contra la factura (de anticipo o final). */
     public function cobro(): HasOne
     {
-        return $this->hasOne(CobroVenta::class, 'cob_spaid', 'spa_id')->activo();
+        return $this->hasOne(Recibo::class, 'rec_spaid', 'spa_id')->activo();
     }
 }

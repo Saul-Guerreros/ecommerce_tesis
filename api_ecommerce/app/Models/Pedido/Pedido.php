@@ -31,7 +31,7 @@ class Pedido extends Model
     protected $fillable = [
         'ped_numero', 'ped_cliid', 'ped_subtot', 'ped_impues', 'ped_cosenv', 'ped_total',
         'ped_tenid', 'ped_sucid', 'ped_mpaid', 'ped_pagdiv', 'ped_estid', 'ped_epaid',
-        'ped_vence', 'ped_vencret', 'ped_entreg', 'ped_obsint',
+        'ped_vence', 'ped_vencret', 'ped_entreg', 'ped_obsint', 'ped_scrid',
     ];
 
     protected $casts = [
@@ -86,6 +86,17 @@ class Pedido extends Model
         return $this->pendienteDePago()
             && !$this->vencido()
             && $this->estadoPedido?->est_codigo !== EstadoPedido::CANCELADO;
+    }
+
+    /** Solicitud de crédito de la que nace este pedido (NULL en los pedidos al contado). */
+    public function solicitudCredito(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Credito\SolicitudCredito::class, 'ped_scrid', 'scr_id');
+    }
+
+    public function esDeCredito(): bool
+    {
+        return $this->ped_scrid !== null;
     }
 
   public function scopePendienteDePago($query)

@@ -21,6 +21,7 @@ import { PedidoDetalleComponent } from './pages/pedido-detalle/pedido-detalle.co
 
 // --- Solicitud de Crédito (continúa el flujo del Carrito a Crédito) ---
 import { SolicitudCreditoComponent } from './pages/solicitud-credito/solicitud-credito.component';
+import { sinSolicitudEnCursoGuard } from './pages/solicitud-credito/guard/sin-solicitud-en-curso.guard';
 import { carritoCreditoNoVacioGuard } from './pages/solicitud-credito/guard/carrito-credito-no-vacio.guard';
 import { PasoPersonalComponent } from './pages/solicitud-credito/paso-personal/paso-personal.component';
 import { PasoLaboralComponent } from './pages/solicitud-credito/paso-laboral/paso-laboral.component';
@@ -28,6 +29,11 @@ import { PasoReferenciasComponent } from './pages/solicitud-credito/paso-referen
 import { PasoConfirmacionCreditoComponent } from './pages/solicitud-credito/paso-confirmacion-credito/paso-confirmacion-credito.component';
 import { SolicitudEnviadaComponent } from './pages/solicitud-enviada/solicitud-enviada.component';
 import { MisSolicitudesCreditoComponent } from './pages/mis-solicitudes-credito/mis-solicitudes-credito.component';
+import { SolicitudCreditoDetalleComponent } from './pages/solicitud-credito-detalle/solicitud-credito-detalle.component';
+
+import { CheckoutCreditoComponent } from './pages/checkout-credito/checkout-credito.component';
+import { PasoEntregaCreditoComponent } from './pages/checkout-credito/paso-entrega-credito/paso-entrega-credito.component';
+import { PasoFacturacionCreditoComponent } from './pages/checkout-credito/paso-facturacion-credito/paso-facturacion-credito.component';
 
 export const routes: Routes = [
     {
@@ -148,6 +154,21 @@ export const routes: Routes = [
             { path: 'pago/:numero', component: PasoPagoComponent },
         ],
     },
+
+    // --- Checkout de una solicitud de crédito aceptada (etapa D). Exige sesión. ---
+    {
+        path: 'checkout-credito/:id',
+        component: CheckoutCreditoComponent,
+        canActivate: [suthGuard],
+        canActivateChild: [suthGuard],
+        title: 'Finalizar pedido a crédito | Z Informática',
+        children: [
+            { path: '', pathMatch: 'full', redirectTo: 'entrega' },
+            { path: 'entrega', component: PasoEntregaCreditoComponent },
+            { path: 'facturacion', component: PasoFacturacionCreditoComponent },
+        ],
+    },
+
     // Pantalla final (los 3 casos). Fuera del wizard: ya no es un paso del
     // checkout sino el estado del pedido, y sigue siendo válida siempre.
     {
@@ -177,7 +198,7 @@ export const routes: Routes = [
     {
         path: 'solicitar-credito',
         component: SolicitudCreditoComponent,
-        canActivate: [suthGuard, carritoCreditoNoVacioGuard],
+        canActivate: [suthGuard, carritoCreditoNoVacioGuard, sinSolicitudEnCursoGuard],
         canActivateChild: [suthGuard],
         children: [
             { path: '', pathMatch: 'full', redirectTo: 'personal' },
@@ -197,7 +218,47 @@ export const routes: Routes = [
         component: MisSolicitudesCreditoComponent,
         canActivate: [suthGuard],
     },
-	    {
+    {
+        path: 'mis-solicitudes-credito/:id',
+        component: SolicitudCreditoDetalleComponent,
+        canActivate: [suthGuard],
+        title: 'Detalle de la solicitud de crédito | Z Informática',
+    },
+        // --- Mis Cuotas: sección propia, hermana de Mis Pedidos y Mis
+    // Solicitudes de Crédito. El cronograma salió del detalle del pedido:
+    // un pedido y una cuota ya no son la misma pantalla. ---
+    {
+        path: 'mis-cuotas',
+        loadComponent: () =>
+            import('./pages/mis-cuotas/mis-cuotas.component').then((m) => m.MisCuotasComponent),
+        canActivate: [suthGuard],
+        title: 'Mis cuotas | Z Informática',
+    },
+    {
+        path: 'mis-cuotas/:numero',
+        loadComponent: () =>
+            import('./pages/mis-cuotas/cuota-detalle/cuota-detalle.component')
+                .then((m) => m.CuotaDetalleComponent),
+        canActivate: [suthGuard],
+        title: 'Detalle de cuotas | Z Informática',
+    },
+        {
+        path: 'mis-cuotas/:numero/pagar',
+        loadComponent: () =>
+            import('./pages/mis-cuotas/pago-cuotas/pago-cuotas.component')
+                .then((m) => m.PagoCuotasComponent),
+        canActivate: [suthGuard],
+        title: 'Pagar cuotas | Z Informática',
+    },
+    {
+        path: 'mis-cuotas/:numero/pago/:cpaId',
+        loadComponent: () =>
+            import('./pages/mis-cuotas/pago-resultado/pago-cuota-resultado.component')
+                .then((m) => m.PagoCuotaResultadoComponent),
+        canActivate: [suthGuard],
+        title: 'Pago de cuotas | Z Informática',
+    },
+	{
         path: 'servicio-tecnico',
         loadComponent: () => import('./pages/servicio-tecnico/landing/servicio-landing.component').then(m => m.ServicioLandingComponent),
         title: 'Servicio técnico | Z Informática',

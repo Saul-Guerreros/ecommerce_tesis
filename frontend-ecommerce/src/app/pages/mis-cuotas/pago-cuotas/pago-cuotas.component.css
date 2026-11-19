@@ -1,0 +1,147 @@
+/*
+ * Copia de las clases .ck-* del checkout: los estilos de componente son
+ * encapsulados, así que no se heredan de paso-pago.component.css.
+ */
+
+.pc-container {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.pc-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 959px) {
+  .pc-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pc-cuota {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.pc-cuota:last-of-type {
+  border-bottom: none;
+}
+
+/* Opciones (modo de pago y método) */
+.ck-opcion {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  padding: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ck-opcion:hover:not(:disabled) {
+  border-color: #1e87f0;
+}
+
+.ck-opcion--activa {
+  border-color: #1e87f0;
+  box-shadow: 0 0 0 1px #1e87f0 inset;
+}
+
+.ck-opcion--chica {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ck-opcion--centrada {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  min-height: 130px;
+}
+
+.ck-opcion--centrada small {
+  color: #888;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+/* En pago dividido la tarjeta es sólo informativa. */
+.ck-opcion--informativa {
+  cursor: default;
+  opacity: 0.95;
+}
+
+.ck-opcion--no-disponible {
+  opacity: 0.5;
+}
+
+.ck-dato-pago {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px dashed #eee;
+}
+
+.ck-upload {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ck-upload-nombre {
+  font-size: 0.85rem;
+}
+
+.ck-upload-nombre--vacio {
+  color: #999;
+}
+
+/* Barra de botones: igual que en el checkout (centrada, ambos azules). */
+.ck-barra-botones {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.ck-barra-botones .uk-button {
+  min-width: 305px;
+}
+
+.ck-btn-volver {
+  background-color: var(--uk-global-primary-background, #1e87f0);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.ck-btn-volver:hover,
+.ck-btn-volver:focus {
+  background-color: #0f7ae8;
+  color: #fff;
+}
+
+@media (max-width: 639px) {
+  .ck-barra-botones {
+    gap: 12px;
+  }
+  .ck-barra-botones .uk-button {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}

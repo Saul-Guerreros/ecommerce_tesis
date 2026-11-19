@@ -1,0 +1,311 @@
+<div class="cd-container uk-margin-large-top uk-margin-large-bottom">
+
+  <div *ngIf="cargando" class="uk-text-center uk-margin-large">
+    <div uk-spinner="ratio: 1.5"></div>
+  </div>
+
+  <ng-container *ngIf="!cargando && datos as d">
+
+    <a routerLink="/mis-cuotas" class="uk-link-text uk-text-small">
+      <span uk-icon="icon: chevron-left; ratio: 0.8"></span> Volver a Mis Cuotas
+    </a>
+
+    <div class="cd-layout uk-margin-small-top">
+
+      <!-- ===== Columna principal (ancha) ===== -->
+      <div>
+        <div class="uk-card uk-card-default uk-card-body uk-margin">
+
+          <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+            <div>
+              <h3 class="uk-margin-remove-bottom">Cuotas del pedido Nº {{ d.pedido.numero }}</h3>
+              <p class="uk-text-meta uk-margin-remove-top" *ngIf="d.factura">
+                Factura {{ d.factura.numero }}
+                <ng-container *ngIf="d.factura.fecha">
+                  · emitida el {{ d.factura.fecha | date:'dd/MM/yyyy' }}
+                </ng-container>
+              </p>
+            </div>
+            <a class="uk-link-text uk-text-small" [routerLink]="['/mis-pedidos', d.pedido.numero]">
+              Ver el pedido <span uk-icon="icon: chevron-right; ratio: 0.8"></span>
+            </a>
+          </div>
+
+          <p *ngIf="!d.facturado" class="uk-text-meta uk-margin-top uk-margin-remove-bottom">
+            Acá vas a ver las cuotas a pagar, con su vencimiento y estado, una vez que
+            se genere tu factura a crédito y retires el producto en la tienda.
+          </p>
+
+          <ng-container *ngIf="d.facturado">
+
+            <div class="uk-grid-small uk-child-width-1-3@s uk-margin-top" uk-grid>
+              <div>
+                <div class="uk-text-meta">Cuotas pagadas</div>
+                <div class="uk-text-bold">{{ d.resumen?.cobradas }} / {{ d.resumen?.total_cuotas }}</div>
+              </div>
+              <div>
+                <div class="uk-text-meta">Saldo pendiente</div>
+                <div class="uk-text-bold">{{ d.resumen?.saldo | currency:'Gs. ':'symbol':'1.0-0' }}</div>
+              </div>
+              <div>
+                <div class="uk-text-meta">Próximo vencimiento</div>
+                <div class="uk-text-bold">
+                  {{ (d.resumen?.proximo_venc | date:'dd/MM/yyyy') ?? '—' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- DESPUÉS -->
+            <div class="uk-overflow-auto cd-tabla-wrap">
+              <table class="uk-table uk-table-divider uk-table-small uk-table-middle cd-tabla">
+                <thead>
+                  <tr>
+                    <th class="uk-table-shrink">N°</th>
+                    <th class="uk-table-shrink">Vencimiento</th>
+                    <th>Productos</th>
+                    <th class="uk-text-right">Importe</th>
+                    <th class="uk-table-shrink">Estado</th>
+                    <th class="uk-table-shrink">Acción</th>
+                    <th class="uk-table-shrink uk-text-center">Seleccionar</th>
+                    <th class="uk-table-shrink uk-text-right">Comprobante</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <ng-container *ngFor="let c of d.cuotas">
+                    <tr [class.cd-fila-elegible]="esSiguiente(c)"
+                        [class.cd-fila-marcada]="estaSeleccionada(c)"
+                        (click)="seleccionarSolo(c)">
+
+                      <td class="uk-text-bold">{{ c.numero }}</td>
+
+                      <td [class.uk-text-danger]="c.vencida">
+                        {{ c.vencimiento | date:'dd/MM/yyyy' }}
+                      </td>
+
+                      <td>
+                        <div class="cd-producto" *ngFor="let p of c.productos">
+                          · {{ p.descripcion }}
+                          <span class="uk-text-meta" *ngIf="p.cantidad > 1">(x{{ p.cantidad }})</span>
+                        </div>
+                        <div class="uk-text-meta" *ngIf="c.productos.length === 0">
+                          {{ c.composicion }}
+                        </div>
+                      </td>
+
+                      <!-- DESPUÉS -->
+                      <td class="uk-text-right cd-importe">
+                        <div class="uk-text-bold">
+                          {{ c.importe | currency:'Gs. ':'symbol':'1.0-0' }}
+                        </div>
+                        <div class="uk-text-meta cd-producto" *ngIf="c.productos.length > 1">
+                          <div *ngFor="let p of c.productos">
+                            {{ p.importe | currency:'Gs. ':'symbol':'1.0-0' }}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        <span class="uk-label" [ngClass]="claseEstado(c)">{{ etiquetaEstado(c) }}</span>
+                      </td>
+
+                      <td>
+                        <button *ngIf="c.puede_pagar" type="button"
+                                class="uk-button uk-button-primary uk-button-small"
+                                [disabled]="!puedePagarFila(c)"
+                                (click)="pagarFila(c, $event)">
+                          Pagar
+                        </button>
+                      </td>
+
+                      <td class="uk-text-center">
+                        <input type="checkbox" class="uk-checkbox"
+                               *ngIf="c.puede_pagar"
+                               [checked]="estaSeleccionada(c)"
+                               [disabled]="!casillaHabilitada(c)"
+                               (click)="alternar(c, $event)" />
+                      </td>
+
+                      <!-- Un botón por medio: con pago dividido hay dos
+                           comprobantes distintos para la misma cuota. -->
+                      <td class="uk-text-right">
+                        <div class="cd-medio" *ngFor="let m of medios(c)">
+                          <span class="uk-text-meta uk-text-small" *ngIf="medios(c).length > 1">
+                            {{ m.metodo }}
+                          </span>
+                          <button *ngIf="m.tiene_comprobante" type="button"
+                                  class="uk-button uk-button-default uk-button-small"
+                                  [disabled]="abriendoId === m.cpm_id"
+                                  (click)="verComprobante(m, $event)">
+                            {{ abriendoId === m.cpm_id ? '...' : 'Ver' }}
+                          </button>
+                          <button *ngIf="m.puede_reemplazar" type="button"
+                                  class="uk-button uk-button-primary uk-button-small uk-margin-small-left"
+                                  (click)="abrirReenvio(m, $event)">
+                            Reenviar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <!-- Motivo del rechazo: el cliente tiene que saber qué corregir. -->
+                    <tr *ngFor="let m of rechazos(c)">
+                      <td colspan="8" class="uk-padding-remove-top">
+                        <div class="uk-alert uk-alert-danger uk-margin-remove" uk-alert>
+                          <strong>Rechazamos el comprobante de la cuota N° {{ c.numero }}</strong>
+                          <span *ngIf="medios(c).length > 1"> ({{ m.metodo }})</span>:
+                         <ng-container *ngIf="m.motivo_rechazo as r">
+                            {{ r.motivo }}
+                            <span *ngIf="r.detalle"> — {{ r.detalle }}</span>
+                          </ng-container>
+
+                          <!-- Formulario de reenvío, debajo del motivo -->
+                          <div class="cd-reenvio" *ngIf="reenviandoMedioId === m.cpm_id">
+                            <label class="uk-form-label">Adjuntar un comprobante nuevo</label>
+                            <input class="uk-input" type="file" accept=".jpg,.jpeg,.png,.pdf"
+                                   (change)="onArchivo($event)" />
+                            <p class="uk-text-meta uk-margin-small-top uk-margin-remove-bottom">
+                              JPG, PNG o PDF. Máximo 5 MB.
+                            </p>
+                            <p class="uk-text-danger uk-text-small uk-margin-small-top uk-margin-remove-bottom"
+                               *ngIf="errorArchivo">
+                              {{ errorArchivo }}
+                            </p>
+                            <div class="uk-margin-small-top">
+                              <button type="button" class="uk-button uk-button-primary uk-button-small"
+                                      [disabled]="enviando" (click)="enviarReenvio()">
+                                {{ enviando ? 'Enviando...' : 'Enviar comprobante' }}
+                              </button>
+                              <button type="button"
+                                      class="uk-button uk-button-default uk-button-small uk-margin-small-left"
+                                      [disabled]="enviando" (click)="cerrarReenvio()">
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </ng-container>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pie: cantidad marcada, pago múltiple y total acumulado. -->
+            <div class="cd-pie" *ngIf="pendientes.length > 0">
+              <div class="cd-pie-campo">
+                <label class="uk-form-label">Cantidad de Cuotas a Pagar</label>
+                <output class="cd-pie-valor">{{ cantidadSeleccionada }}</output>
+              </div>
+
+              <button type="button" class="uk-button uk-button-primary"
+                      [disabled]="!puedePagarSeleccionadas"
+                      (click)="pagarSeleccionadas()">
+                Pagar cuotas seleccionadas
+              </button>
+
+              <div class="cd-pie-campo">
+                <label class="uk-form-label">Total a Pagar</label>
+                <output class="cd-pie-valor cd-pie-total">
+                  {{ totalSeleccionado | currency:'Gs. ':'symbol':'1.0-0' }}
+                </output>
+              </div>
+            </div>
+
+            <p class="uk-text-meta uk-text-small uk-margin-small-top" *ngIf="pendientes.length > 0">
+              Las cuotas se pagan en orden, empezando por la más antigua. Marcá varias
+              casillas para pagarlas juntas en un solo pago.
+            </p>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- ===== Columna lateral ===== -->
+      <div>
+        <div class="uk-card uk-card-default uk-card-body ck-resumen uk-margin">
+          <h4 class="uk-card-title">Resumen de Compra</h4>
+
+          <div class="uk-flex uk-flex-between">
+            <span>Subtotal</span>
+            <strong>{{ d.resumen_compra.subtotal | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+          </div>
+
+          <div class="uk-flex uk-flex-between uk-margin-small-top">
+            <span>Impuestos</span>
+            <strong>{{ d.resumen_compra.impuestos | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+          </div>
+
+          <div class="uk-flex uk-flex-between uk-margin-small-top">
+            <span>Envío</span>
+            <strong *ngIf="d.resumen_compra.es_retiro" class="uk-text-success">Retiro en sucursal</strong>
+            <strong *ngIf="!d.resumen_compra.es_retiro && d.resumen_compra.costo_envio > 0">
+              {{ d.resumen_compra.costo_envio | currency:'PYG':'symbol-narrow':'1.0-0' }}
+            </strong>
+            <strong *ngIf="!d.resumen_compra.es_retiro && d.resumen_compra.costo_envio === 0"
+                    class="uk-text-success">
+              Sin cargo
+            </strong>
+          </div>
+
+          <hr>
+
+          <div class="uk-flex uk-flex-between">
+            <span class="uk-text-large">Total</span>
+            <span class="uk-text-large uk-text-bold">
+              {{ d.resumen_compra.total | currency:'PYG':'symbol-narrow':'1.0-0' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="uk-card uk-card-default uk-card-body uk-margin" *ngIf="d.facturacion as f">
+          <h4 class="uk-card-title uk-margin-remove-bottom">Facturación</h4>
+
+          <p class="uk-margin-small-top uk-margin-remove-bottom uk-text-bold">{{ f.razon_social }}</p>
+          <p class="uk-margin-remove uk-text-meta">{{ f.tipo_documento }} {{ f.nro_documento }}</p>
+
+          <button type="button" class="uk-button uk-button-default uk-button-small uk-margin-small-top"
+                  *ngIf="d.factura?.pdf_disponible"
+                  [disabled]="abriendoFactura" (click)="verFactura()">
+            <span uk-icon="icon: file-pdf; ratio: 0.8"></span>
+            {{ abriendoFactura ? 'Abriendo...' : 'Ver factura' }}
+          </button>
+
+          <p class="uk-text-meta uk-text-small uk-margin-small-top uk-margin-remove-bottom"
+             *ngIf="!d.factura?.pdf_disponible">
+            La factura va a estar disponible acá cuando te la enviemos.
+          </p>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ===== Modal de confirmación =====
+       Propio y no uk-modal: UIkit JS maneja el modal por fuera de Angular
+       y hay que sincronizar el estado a mano. Acá el *ngIf alcanza. -->
+  <div class="cd-modal-fondo" *ngIf="modalAbierto" (click)="cancelarModal()">
+    <div class="cd-modal uk-card uk-card-default uk-card-body" (click)="$event.stopPropagation()"
+         role="dialog" aria-modal="true">
+      <h4 class="uk-margin-remove-top">Confirmar pago</h4>
+
+      <p class="uk-margin-small-bottom">
+        ¿Estás seguro de que querés pagar
+        {{ cantidadSeleccionada === 1 ? 'la cuota' : 'las cuotas' }}
+        <strong>{{ numerosElegidos }}</strong>?
+      </p>
+
+      <div class="uk-flex uk-flex-between cd-modal-total">
+        <span>Total a pagar</span>
+        <strong>{{ totalSeleccionado | currency:'Gs. ':'symbol':'1.0-0' }}</strong>
+      </div>
+
+      <div class="cd-modal-botones uk-margin-top">
+        <button type="button" class="uk-button uk-button-default" (click)="cancelarModal()">
+          Cancelar
+        </button>
+        <button type="button" class="uk-button uk-button-primary" (click)="continuarAlPago()">
+          Continuar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

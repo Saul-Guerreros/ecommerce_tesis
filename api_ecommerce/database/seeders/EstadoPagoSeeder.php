@@ -15,6 +15,7 @@ class EstadoPagoSeeder extends Seeder
             ['epa_codigo' => 'CONFIRMADO',     'epa_descri' => 'Pago confirmado'],
             ['epa_codigo' => 'RECHAZADO',      'epa_descri' => 'Pago rechazado'],
             ['epa_codigo' => 'PARCIAL',        'epa_descri' => 'Pago parcial'],
+            ['epa_codigo' => 'A_CREDITO',      'epa_descri' => 'A crédito'],        
         ];
 
         foreach ($estados as $e) {
