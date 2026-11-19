@@ -1,0 +1,69 @@
+<div *ngIf="cargando" class="uk-text-center uk-margin-large">
+  <div uk-spinner="ratio: 1.5"></div>
+</div>
+
+<div *ngIf="!cargando && ctx as c">
+
+  <div class="uk-alert-warning" uk-alert *ngIf="c.solicitud.vigencia_texto">
+    <p class="uk-margin-remove">
+      Tenés tiempo hasta el <strong>{{ c.solicitud.vigencia_texto }}</strong>
+      <span *ngIf="c.solicitud.dias_restantes !== null">({{ textoDias(c.solicitud.dias_restantes) }})</span>
+      para completar tu pedido. Pasado ese plazo la solicitud se anula y se libera el stock reservado.
+    </p>
+  </div>
+
+  <div class="ck-layout">
+
+    <div class="ck-col-principal">
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <h4 class="uk-card-title">Datos de entrega</h4>
+        <p class="uk-text-meta uk-margin-remove-top">
+          Los productos a crédito se retiran en nuestra casa matriz. Los recibe únicamente el titular de la solicitud.
+        </p>
+      </div>
+
+      <app-datos-entrega-card class="uk-margin" [entrega]="c.entrega" [editable]="false"></app-datos-entrega-card>
+    </div>
+
+    <div class="ck-col-lateral">
+      <div class="uk-card uk-card-default uk-card-body ck-resumen uk-margin">
+        <h4 class="uk-card-title">Crédito aceptado</h4>
+
+        <div class="uk-flex uk-flex-between">
+          <span>Precio al contado</span>
+          <strong>{{ c.resumen.total_contado | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Recargo</span>
+          <strong>{{ c.resumen.recargo | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Impuestos</span>
+          <strong>{{ c.resumen.impuestos | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <hr>
+
+        <div class="uk-flex uk-flex-between">
+          <span class="uk-text-large">Total</span>
+          <span class="uk-text-large uk-text-bold">{{ c.resumen.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Plazo</span>
+          <strong>{{ c.resumen.plazo }} meses</strong>
+        </div>
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Cuota mensual</span>
+          <strong>{{ c.resumen.cuota_mensual | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+      </div>
+
+      <app-productos-carrito-card class="uk-margin" [items]="c.items"></app-productos-carrito-card>
+    </div>
+  </div>
+
+  <div class="ck-barra-botones uk-margin-medium-top">
+    <button type="button" class="uk-button ck-btn-volver" (click)="volver()">Volver</button>
+    <button type="button" class="uk-button uk-button-primary ck-btn-continuar" (click)="continuar()">Continuar</button>
+  </div>
+</div>

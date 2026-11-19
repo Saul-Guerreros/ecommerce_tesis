@@ -36,7 +36,48 @@ import { RechazarChequeComponent } from '../rechazar-cheque/rechazar-cheque.comp
   ],
   templateUrl: './detalle-pedido.component.html',
 })
+
 export class DetallePedidoComponent implements OnInit {
+  /**
+   * Orden visual (CSS order) de las tarjetas de la columna derecha.
+   * Al contado se conserva el orden de siempre; a crédito el pedido no tiene
+   * comprobantes que revisar primero, así que la facturación sube y
+   * COMPROBANTE y PAGO quedan al final. RECEPCIÓN DE CHEQUE no aplica a
+   * crédito (no tiene pagos), por eso su valor ahí no tiene efecto visible.
+   */
+  private readonly ORDEN_CONTADO = { productos: 1, comprobante: 2, cheque: 3, facturacion: 4, pago: 5 } as const;
+  private readonly ORDEN_CREDITO = { productos: 1, facturacion: 2, comprobante: 3, cheque: 4, pago: 5 } as const;
+
+  get orden() {
+    return this.pedido?.es_credito ? this.ORDEN_CREDITO : this.ORDEN_CONTADO;
+  }
+
+  /** Texto de «Modalidad» en la tarjeta PAGO. */
+  get modalidadPago(): string {
+    const pago = this.pedido?.pago;
+    if (!pago) return '';
+
+    // A crédito no hay pagos que contar: la deuda nace con la factura.
+    if (this.pedido?.es_credito) return 'A crédito (pago en cuotas)';
+
+    return pago.dividido ? `Pago dividido en ${pago.cantidad} pagos` : 'Pago único';
+  }
+
+    /**
+   * El cliente todavía no envió ningún comprobante, y se espera uno: el
+   * pedido es a crédito o tiene algún pago que lo exige. En un pedido
+   * 100 % contra entrega no se espera ninguno, por eso no entra acá.
+   */
+  get sinComprobanteEnviado(): boolean {
+    const pago = this.pedido?.pago;
+    if (!pago) return false;
+
+    const seEsperaComprobante =
+      !!this.pedido?.es_credito || pago.items.some(p => p.metodo.requcom);
+
+    return seEsperaComprobante && !pago.items.some(p => !!p.comprobante);
+  }
+
   pedido: PedidoDetalle | null = null;
   cargando = false;
   cambiandoEstado = false;
@@ -421,6 +462,11 @@ export class DetallePedidoComponent implements OnInit {
   motivoFactura(): string {
     const pago = this.pedido?.pago;
     if (!pago || this.pedido?.facturacion?.puede_generar) return '';
+
+    // Un pedido a crédito no tiene pagos: su único requisito es estar LISTO.
+    if (this.pedido?.es_credito) {
+      return 'La factura a crédito se habilita cuando el pedido está en «Listo para entrega/retiro».';
+    }
 
     if (pago.comprobantes_pendientes > 0) {
       return pago.comprobantes_pendientes === 1

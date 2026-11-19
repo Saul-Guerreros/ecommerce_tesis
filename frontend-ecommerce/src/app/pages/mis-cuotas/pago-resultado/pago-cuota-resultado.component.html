@@ -1,0 +1,102 @@
+<div class="uk-container uk-margin-large-top uk-margin-large-bottom">
+
+  <div *ngIf="cargando" class="uk-text-center uk-margin-large">
+    <div uk-spinner="ratio: 1.5"></div>
+  </div>
+
+  <div *ngIf="!cargando" class="pcr-caja uk-card uk-card-default uk-card-body uk-margin-auto">
+
+    <div class="uk-text-center">
+      <span class="pcr-check" uk-icon="icon: check; ratio: 1.6"></span>
+
+      <h3 class="uk-margin-small-top uk-margin-remove-bottom">{{ titulo }}</h3>
+
+      <p class="uk-text-meta uk-margin-remove-top">
+        Cuota{{ resultado.cuotas.length === 1 ? '' : 's' }} {{ numerosCuotas }} ·
+        Pedido Nº {{ resultado.ped_numero }}
+      </p>
+    </div>
+
+    <hr>
+
+    <!-- Transferencias / billetera: hay algo que verificar -->
+    <ng-container *ngIf="hayComprobante">
+      <p *ngIf="!variosComprobantes">
+        Estamos verificando tu transferencia. Te notificaremos por correo o al
+        WhatsApp apenas se confirme el pago, con el recibo de tu cuota.
+      </p>
+
+      <p *ngIf="variosComprobantes">
+        Estamos verificando tus transferencias. Te notificaremos por correo o al
+        WhatsApp apenas se confirme el pago, con el recibo de tu cuota.
+      </p>
+    </ng-container>
+
+    <!-- Efectivo: lo abona en la sucursal -->
+    <ng-container *ngIf="mediosEfectivo.length > 0">
+      <p *ngIf="hayComprobante">
+        El saldo pendiente de
+        <strong>{{ resultado.monto_efectivo | currency:'Gs. ':'symbol':'1.0-0' }}</strong>
+        lo abonás en la tienda.
+      </p>
+
+      <p *ngIf="!hayComprobante">
+        El monto lo abonás al acercarte a la tienda y ahí te proporcionamos el
+        recibo de tu cuota.
+      </p>
+    </ng-container>
+
+    <!-- Detalle de los medios: "Pago único: Transferencia  Gs. X" -->
+    <ul class="uk-list uk-list-divider pcr-medios">
+      <li *ngFor="let m of resultado.medios" class="uk-flex uk-flex-between">
+        <span>{{ rotulo(m) }}: {{ m.mpa_descri }}</span>
+        <strong>{{ m.monto | currency:'Gs. ':'symbol':'1.0-0' }}</strong>
+      </li>
+    </ul>
+
+    <!-- Cheque: puede venir solo o junto a cualquiera de los anteriores -->
+    <div class="pcr-cheque uk-margin-top" *ngIf="resultado.cheque as chq">
+
+      <ng-container *ngIf="variosCheques">
+        <p class="uk-margin-remove uk-text-bold">Montos de los cheques</p>
+        <ul class="uk-list uk-list-divider pcr-medios">
+          <li *ngFor="let c of chq.cheques" class="uk-flex uk-flex-between">
+            <span class="uk-text-capitalize">{{ ordinalCheque(c.orden) }} cheque</span>
+            <strong>{{ c.monto | currency:'Gs. ':'symbol':'1.0-0' }}</strong>
+          </li>
+        </ul>
+      </ng-container>
+
+      <p class="uk-margin-small-top uk-margin-remove-bottom" *ngIf="chq.titular">
+        Emitilo a nombre de <strong>{{ chq.titular }}</strong>.
+      </p>
+
+        <ng-container *ngIf="chq.sucursal as s">
+            <p class="uk-margin-small-top uk-margin-remove-bottom uk-text-bold">
+                <span uk-icon="icon: home; ratio: 0.9"></span>
+                Entregalo en {{ s.nombre }}
+            </p>
+            <p class="uk-margin-remove" *ngIf="s.direccion">{{ s.direccion }}</p>
+            <p class="uk-margin-remove uk-text-meta" *ngIf="s.horario">{{ s.horario }}</p>
+      </ng-container>
+
+      <div class="pcr-cheque-aviso uk-margin-top" role="note" *ngIf="chq.vence">
+        Entregalo antes del <strong>{{ chq.vence | date:'dd/MM/yyyy HH:mm' }}</strong>
+        ({{ chq.horas_plazo }} horas). Pasado ese plazo, el proceso de pago se anula
+        y vas a tener que volver a seleccionar un método para pagar.
+      </div>
+    </div>
+
+    <div class="pcr-botones uk-margin-medium-top">
+      <button type="button" class="uk-button uk-button-primary" (click)="volverAlDetalle()">
+        Volver al detalle de la cuota
+      </button>
+      <button type="button" class="uk-button uk-button-default" (click)="irAMisCuotas()">
+        Ir a Mis Cuotas
+      </button>
+      <button type="button" class="uk-button uk-button-default" (click)="volverATienda()">
+        Regresar a la tienda
+      </button>
+    </div>
+  </div>
+</div>

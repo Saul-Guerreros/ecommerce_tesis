@@ -113,6 +113,8 @@ export interface PedidoDetalle {
   ped_creado: string;
   ped_vence: string | null;
   pagable: boolean;
+  /** true si el pedido nace de una solicitud de crédito. */
+  es_credito: boolean;
   /** Intentos que le quedan antes de que el pedido se cancele solo. */
   rechazos_restantes: number;
   /** Fecha límite de retiro en sucursal. Sólo tiene valor con el pedido en LISTO y entrega RETIRO. */

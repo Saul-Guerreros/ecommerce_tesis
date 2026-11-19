@@ -180,6 +180,20 @@
           </a>
           <app-pedidos-pendientes-popover #pendientesPopover
             [activo]="!!user" [enHome]="esHome"></app-pedidos-pendientes-popover>
+
+          <!-- Punto rojo de "Mis solicitudes de crédito": mismo diseño que el
+               de pedidos pendientes, con "ping". Se muestra solo si NO hay
+               pedidos pendientes: en ese caso ya hay un punto en el mismo
+               lugar y dos puntos superpuestos se pisarían. Un clic lleva
+               directo a la lista de solicitudes. -->
+          <a class="cred-dot-wrap"
+             *ngIf="user && credito.ofertasPendientes() > 0 && pendientesPopover.cantidad === 0"
+             routerLink="/mis-solicitudes-credito"
+             title="Tenés una oferta de crédito para responder"
+             aria-label="Tenés una oferta de crédito para responder">
+            <span class="cred-dot-ping"></span>
+            <span class="cred-dot"></span>
+          </a>
         </span>
 
         <div #menuCuenta class="uk-padding-small uk-margin-remove tm-menu-cuenta"
@@ -200,18 +214,30 @@
                   </span>
                 </a>
               </li>
-			      <li>
-			     <a routerLink="/perfil-del-cliente" [queryParams]="{ tab: 'servicios' }" (click)="cerrarMenuCuenta(menuCuenta)">Servicio técnico</a>
-			       </li>
-               <li class="uk-disabled">
-                <li>
-
-                <a routerLink="/favoritos" (click)="cerrarMenuCuenta(menuCuenta)">Favoritos</a>
+              <li>
+                <a routerLink="/mis-solicitudes-credito" (click)="cerrarMenuCuenta(menuCuenta)">
+                  Mis solicitudes de crédito
+                  <span class="uk-badge ppp-badge-inline" *ngIf="credito.ofertasPendientes() > 0">
+                    {{ credito.ofertasPendientes() }}
+                  </span>
+                </a>
               </li>
               <li>
-                <a routerLink="/perfil-del-cliente" (click)="cerrarMenuCuenta(menuCuenta)">Mi perfil</a>
+                <a routerLink="/mis-cuotas" (click)="cerrarMenuCuenta(menuCuenta)">
+                  Mis Cuotas
+                </a>
               </li>
-			    <li class="uk-nav-divider"></li>
+			      <li>
+              <a routerLink="/perfil-del-cliente" [queryParams]="{ tab: 'servicios' }" (click)="cerrarMenuCuenta(menuCuenta)">Servicio técnico</a>
+            </li>
+            <li class="uk-disabled">
+              <li>
+                <a routerLink="/favoritos" (click)="cerrarMenuCuenta(menuCuenta)">Favoritos</a>
+              </li>
+            <li>
+              <a routerLink="/perfil-del-cliente" (click)="cerrarMenuCuenta(menuCuenta)">Mi perfil</a>
+            </li>
+			      <li class="uk-nav-divider"></li>
               <li>
                 <a href="#" onclick="return false" (click)="cerrarMenuCuenta(menuCuenta); logout()">Cerrar sesión</a>
               </li>
@@ -287,6 +313,15 @@
         <ul class="uk-nav uk-nav-default">
           <li *ngIf="!user"><a routerLink="/login">Iniciar sesión</a></li>
                     <li *ngIf="user"><a routerLink="/mis-pedidos">Mis pedidos</a></li>
+                    <li *ngIf="user">
+            <a routerLink="/mis-solicitudes-credito">
+              Mis solicitudes de crédito
+              <span class="uk-badge ppp-badge-inline" *ngIf="credito.ofertasPendientes() > 0">
+                {{ credito.ofertasPendientes() }}
+              </span>
+            </a>
+          </li>
+          <li *ngIf="user"><a routerLink="/mis-cuotas">Mis Cuotas</a></li>
           <li *ngIf="user"><a routerLink="/perfil-del-cliente">Mi perfil</a></li>
           <li *ngIf="user"><a href="#" onclick="return false" (click)="logout()">Cerrar sesión</a></li>
         </ul>

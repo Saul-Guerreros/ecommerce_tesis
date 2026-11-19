@@ -1,0 +1,190 @@
+<div *ngIf="cargando" class="uk-text-center uk-margin-large">
+  <div uk-spinner="ratio: 1.5"></div>
+</div>
+
+<div *ngIf="!cargando && ctx as c">
+
+  <div class="uk-alert-danger uk-margin" uk-alert *ngIf="errorNegocio">
+    <h4 class="uk-margin-remove-bottom">No pudimos generar tu pedido</h4>
+    <p class="uk-margin-remove-top">{{ errorNegocio }}</p>
+  </div>
+
+  <div class="ck-layout">
+
+    <div class="ck-col-principal">
+
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <h4 class="uk-card-title">Datos de facturación</h4>
+
+        <div class="uk-grid-small uk-child-width-1-2@s uk-margin-small-bottom" uk-grid>
+          <div>
+            <button type="button" class="ck-opcion ck-opcion--chica"
+                    [class.ck-opcion--activa]="tipoDocumento === 'CI'"
+                    (click)="elegirTipoDocumento('CI')">C.I.</button>
+          </div>
+          <div>
+            <button type="button" class="ck-opcion ck-opcion--chica"
+                    [class.ck-opcion--activa]="tipoDocumento === 'RUC'"
+                    (click)="elegirTipoDocumento('RUC')">RUC</button>
+          </div>
+        </div>
+
+        <!-- Bloque C.I. -->
+        <div *ngIf="tipoDocumento === 'CI'" class="uk-grid-small uk-child-width-1-2@s uk-margin-small-top" uk-grid>
+          <div>
+            <label class="uk-form-label">Número de C.I.</label>
+            <input class="uk-input" [value]="c.titular.numero || 'No registrada'" readonly>
+          </div>
+          <div>
+            <label class="uk-form-label">Teléfono</label>
+            <input class="uk-input" [value]="c.titular.telefono || '-'" readonly>
+          </div>
+          <div>
+            <label class="uk-form-label">Primer nombre</label>
+            <input class="uk-input" [value]="c.titular.nombre" readonly>
+          </div>
+          <div>
+            <label class="uk-form-label">Primer apellido</label>
+            <input class="uk-input" [value]="c.titular.apellido" readonly>
+          </div>
+        </div>
+
+        <!-- Bloque RUC -->
+        <div *ngIf="tipoDocumento === 'RUC'" class="uk-margin-small-top">
+          <p class="uk-text-meta">¿A nombre de quién va la factura?</p>
+
+          <label *ngFor="let dato of datosFiscales" class="ck-radio"
+                 [class.ck-radio--activa]="dato.dfi_id === datoFiscalSeleccionado?.dfi_id">
+            <input type="radio" class="uk-radio" name="datoFiscal"
+                   [checked]="dato.dfi_id === datoFiscalSeleccionado?.dfi_id"
+                   (change)="seleccionarDatoFiscal(dato)">
+            <div>
+              <strong>{{ dato.dfi_alias }}</strong>
+              <span class="uk-label uk-label-success uk-margin-small-left" *ngIf="dato.dfi_principal">Predeterminada</span>
+              <div class="uk-text-meta">RUC {{ dato.dfi_numero }} — {{ dato.dfi_razon }}</div>
+            </div>
+          </label>
+
+          <p *ngIf="datosFiscales.length === 0" class="uk-text-meta">Todavía no cargaste ningún RUC.</p>
+
+          <button type="button" class="uk-button uk-button-default uk-width-1-1 uk-margin-small-top" (click)="abrirNuevo()">
+            <span uk-icon="icon: plus; ratio: 0.8"></span> Agregar nuevo RUC
+          </button>
+
+          <button type="button" class="uk-button uk-button-text uk-margin-small-top"
+                  *ngIf="datoFiscalSeleccionado" (click)="abrirEditar()">
+            <span uk-icon="icon: pencil; ratio: 0.8"></span> Editar datos actuales
+          </button>
+        </div>
+      </div>
+
+      <div class="uk-card uk-card-default uk-card-body uk-margin">
+        <h4 class="uk-card-title">¿Por qué medio desea recibir su comprobante de compra?</h4>
+
+        <div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+          <div>
+            <button type="button" class="ck-opcion ck-opcion--chica"
+                    [class.ck-opcion--activa]="medioRecepcion === 'CORREO'"
+                    (click)="elegirMedio('CORREO')">
+              <span uk-icon="icon: mail"></span> Correo electrónico
+            </button>
+          </div>
+          <div>
+            <button type="button" class="ck-opcion ck-opcion--chica"
+                    [class.ck-opcion--activa]="medioRecepcion === 'WHATSAPP'"
+                    (click)="elegirMedio('WHATSAPP')">
+              <span uk-icon="icon: comment"></span> WhatsApp
+            </button>
+          </div>
+        </div>
+
+        <p class="uk-text-danger uk-text-small uk-margin-small-top" *ngIf="medioInvalido">
+          Seleccioná un medio para recibir tu comprobante.
+        </p>
+      </div>
+
+    </div>
+
+    <div class="ck-col-lateral">
+      <div class="uk-card uk-card-default uk-card-body ck-resumen uk-margin">
+        <h4 class="uk-card-title">Resumen del crédito</h4>
+
+        <div class="uk-flex uk-flex-between">
+          <span>Precio al contado</span>
+          <strong>{{ c.resumen.total_contado | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Recargo</span>
+          <strong>{{ c.resumen.recargo | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Impuestos</span>
+          <strong>{{ c.resumen.impuestos | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Envío</span>
+          <strong class="uk-text-success">Retiro en casa matriz</strong>
+        </div>
+
+        <hr>
+
+        <div class="uk-flex uk-flex-between">
+          <span class="uk-text-large">Total</span>
+          <span class="uk-text-large uk-text-bold">{{ c.resumen.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Plazo</span>
+          <strong>{{ c.resumen.plazo }} meses</strong>
+        </div>
+        <div class="uk-flex uk-flex-between uk-margin-small-top">
+          <span>Cuota mensual</span>
+          <strong>{{ c.resumen.cuota_mensual | currency:'PYG':'symbol-narrow':'1.0-0' }}</strong>
+        </div>
+
+        <p class="uk-text-meta uk-text-small uk-margin-small-top uk-margin-remove-bottom">
+          Al confirmar, generamos tu pedido y mantenemos tu producto reservado para el retiro en casa matriz.
+          Las cuotas siguen el cronograma que aceptaste.
+        </p>
+      </div>
+
+      <app-productos-carrito-card class="uk-margin" [items]="c.items"></app-productos-carrito-card>
+
+      <app-datos-entrega-card class="uk-margin" [entrega]="c.entrega" [editable]="false"></app-datos-entrega-card>
+    </div>
+  </div>
+
+  <div class="uk-card uk-card-default uk-card-body uk-margin uk-text-center">
+    <label class="uk-flex uk-flex-middle uk-flex-center" style="gap: 8px; cursor: pointer;">
+      <input class="uk-checkbox" type="checkbox" [(ngModel)]="aceptaCondiciones">
+      <span>
+        He leído y acepto las
+        <a href="#" (click)="abrirCondiciones($event)">condiciones de compra</a>
+        y los
+        <a routerLink="/terminos-y-condiciones">Términos y Condiciones</a>
+      </span>
+    </label>
+  </div>
+
+  <div class="ck-barra-botones uk-margin-medium-top">
+    <button type="button" class="uk-button ck-btn-volver" [disabled]="confirmando" (click)="volver()">Volver</button>
+    <button type="button" class="uk-button uk-button-primary ck-btn-continuar"
+            [disabled]="confirmando || !aceptaCondiciones" (click)="confirmar()">
+      <span *ngIf="!confirmando">Confirmar Pedido</span>
+      <span *ngIf="confirmando"><span uk-spinner="ratio: 0.6"></span> Confirmando...</span>
+    </button>
+  </div>
+
+  <app-form-dato-fiscal
+    [visible]="modalVisible"
+    [datoFiscal]="datoFiscalEditar"
+    [datosFiscales]="datosFiscales"
+    [titular]="c.titular"
+    (visibleChange)="modalVisible = $event"
+    (guardado)="onGuardado($event)">
+  </app-form-dato-fiscal>
+
+  <app-modal-condiciones-compra
+    [visible]="modalCondicionesVisible"
+    (visibleChange)="modalCondicionesVisible = $event">
+  </app-modal-condiciones-compra>
+</div>

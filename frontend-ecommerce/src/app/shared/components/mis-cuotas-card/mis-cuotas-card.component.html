@@ -1,0 +1,41 @@
+<div class="uk-card uk-card-default uk-card-body uk-margin">
+
+  <div *ngIf="cargando" class="uk-text-meta">Cargando información de cuotas...</div>
+
+  <ng-container *ngIf="!cargando && datos as d">
+
+    <!-- Sin factura todavía: la deuda todavía no existe. -->
+    <ng-container *ngIf="!d.facturado">
+      <h4 class="uk-card-title">Mis Cuotas</h4>
+      <p class="uk-text-meta uk-margin-remove-bottom">
+        Vas a poder pagar tus cuotas una vez que se genere tu factura a crédito
+        y retires el producto en la tienda. Te avisamos cuando estén disponibles.
+      </p>
+    </ng-container>
+
+    <!-- Facturado: las cuotas ya existen y viven en su propia sección. -->
+    <ng-container *ngIf="d.facturado">
+      <h4 class="uk-card-title">Cuotas generadas de la compra</h4>
+
+      <p class="uk-margin-small-top uk-margin-remove-bottom">
+        Se generaron <strong>{{ d.resumen?.total_cuotas }} cuotas</strong> para este pedido.
+        <ng-container *ngIf="pendientes > 0">
+          Te quedan <strong>{{ pendientes }}</strong> por pagar, con un saldo de
+          <strong>{{ d.resumen?.saldo | currency:'Gs. ':'symbol':'1.0-0' }}</strong>.
+        </ng-container>
+        <ng-container *ngIf="pendientes === 0">
+          Ya no tenés cuotas pendientes.
+        </ng-container>
+      </p>
+
+      <p class="uk-text-meta uk-text-small uk-margin-small-top">
+        El pago de las cuotas se hace desde la sección Mis Cuotas.
+      </p>
+
+      <a class="uk-button uk-button-primary uk-margin-small-top"
+         [routerLink]="['/mis-cuotas', numeroPedido]">
+        Ir a sección Cuotas
+      </a>
+    </ng-container>
+  </ng-container>
+</div>

@@ -8,6 +8,7 @@ import { PedidoClienteService } from '../../core/services/pedido-cliente.service
 import { DatosEntregaCardComponent } from '../../shared/components/datos-entrega-card/datos-entrega-card.component';
 import { DatosFacturacionCardComponent } from '../../shared/components/datos-facturacion-card/datos-facturacion-card.component';
 import { ProductosCarritoCardComponent } from '../../shared/components/productos-carrito-card/productos-carrito-card.component';
+import { MisCuotasCardComponent } from '../../shared/components/mis-cuotas-card/mis-cuotas-card.component';
 
 /** Mismo límite y formatos que el comprobante del Paso 3 del checkout. */
 const TIPOS_COMPROBANTE = ['image/jpeg', 'image/png', 'application/pdf'];
@@ -33,6 +34,7 @@ const MAX_COMPROBANTE_BYTES = 5 * 1024 * 1024;
     ProductosCarritoCardComponent,
     DatosEntregaCardComponent,
     DatosFacturacionCardComponent,
+    MisCuotasCardComponent,
   ],
   templateUrl: './pedido-detalle.component.html',
   styleUrl: './pedido-detalle.component.css',

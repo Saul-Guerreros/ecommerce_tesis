@@ -1,0 +1,158 @@
+/*
+ * La tabla de cuotas tiene 8 columnas, varias de ellas con contenido de
+ * varias líneas (productos). El contenedor estándar de UIkit la dejaba
+ * apretada: acá se ensancha y la barra lateral queda fija en 300 px.
+ */
+.cd-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.cd-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1199px) {
+  .cd-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* DESPUÉS */
+.cd-tabla th {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: none;
+  color: #333;
+  text-align: center !important;
+}
+
+.cd-tabla td {
+  vertical-align: top;
+}
+
+/* La fila pagable se ofrece al clic; las demás no son seleccionables
+   porque las cuotas se pagan en orden. */
+.cd-fila-elegible {
+  cursor: pointer;
+}
+
+.cd-fila-elegible:hover {
+  background: #fafafa;
+}
+
+.cd-fila-marcada {
+  background: #f2f8fe;
+}
+
+.cd-producto {
+  line-height: 1.35;
+  font-size: 0.85rem;
+}
+
+/* DESPUÉS */
+.cd-pie {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.cd-pie-campo {
+  display: flex;
+  flex-direction: column;
+}
+
+.cd-pie-valor {
+  min-width: 130px;
+  padding: 7px 10px;
+  border: 1px solid #e5e5e5;
+  background: #fafafa;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.cd-pie-total {
+  min-width: 170px;
+  text-align: right;
+}
+
+/* Copia de .ck-resumen del checkout (los estilos de componente son
+   encapsulados, no se heredan de paso-pago.component.css). */
+.ck-resumen {
+  text-align: center;
+}
+
+.ck-resumen .uk-flex-between {
+  text-align: left;
+}
+
+/* Un medio por línea en la columna Comprobante: con pago dividido hay
+   dos archivos distintos para la misma cuota. */
+.cd-medio {
+  margin-bottom: 4px;
+}
+
+.cd-medio:last-child {
+  margin-bottom: 0;
+}
+
+.cd-reenvio {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cd-reenvio input[type='file'] {
+  padding: 4px;
+  height: auto;
+}
+
+/* Modal propio: UIkit JS maneja el suyo por fuera de Angular. */
+.cd-modal-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1010;
+  padding: 20px;
+}
+
+.cd-modal {
+  width: 100%;
+  max-width: 420px;
+}
+
+.cd-modal-total {
+  padding-top: 10px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.cd-modal-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+
+/* Separación entre el resumen (cuotas pagadas / saldo / próximo
+   vencimiento) y la cabecera de la tabla. */
+.cd-tabla-wrap {
+  margin-top: 32px;
+}
+
+/* El importe ("Gs. 94.183") va siempre en una sola línea. */
+.cd-importe {
+  white-space: nowrap;
+}

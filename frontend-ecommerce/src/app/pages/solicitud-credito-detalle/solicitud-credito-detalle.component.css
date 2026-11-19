@@ -1,0 +1,108 @@
+.scd-cabecera {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.scd-titulo {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #666;
+}
+
+.scd-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.scd-total {
+  font-weight: 700;
+  border-top: 1px solid #e5e5e5;
+  margin-top: 6px;
+  padding-top: 8px;
+}
+
+.scd-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.scd-check .uk-checkbox {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.scd-acciones {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* ---------- Tabla de productos (mismo diseño que la confirmación) ---------- */
+
+/* 6 columnas: foto, producto, precio contado, cantidad, plan de cuotas,
+   cuota mensual. */
+.scd-prod-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 110px 90px 160px 130px;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+}
+
+.scd-prod-header {
+  font-size: 0.8rem;
+  color: var(--uk-global-muted-color, #999);
+  text-transform: uppercase;
+  background-color: rgba(0, 0, 0, 0.025);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 0 -12px 4px;
+}
+
+.scd-prod-col-der {
+  text-align: right;
+}
+
+.scd-prod-img-col {
+  width: 64px;
+  height: 64px;
+}
+
+.scd-prod-img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--uk-global-border, #e5e5e5);
+}
+
+@media (max-width: 639px) {
+  .scd-prod-row {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+  .scd-prod-col-der {
+    display: none;
+  }
+  .scd-prod-img,
+  .scd-prod-img-col {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+.scd-plazo {
+  margin: 4px 0 14px;
+  font-size: 0.9rem;
+}

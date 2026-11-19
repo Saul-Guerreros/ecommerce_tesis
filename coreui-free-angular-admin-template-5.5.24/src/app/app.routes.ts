@@ -295,10 +295,16 @@ export const routes: Routes = [
         data: { title: 'Configuración de Precios' },
       },
 
-            {
+      {
         path: 'cuentas-por-pagar',
         loadChildren: () => import('./modules/cuentas-por-pagar/cuentas-por-pagar.module').then(m => m.CuentasPorPagarModule),
         data: { title: 'Cuentas por Pagar' },
+      },
+
+      {
+        path: 'cuentas-por-cobrar',
+        loadChildren: () => import('./modules/cuentas-por-cobrar/cuentas-por-cobrar.module').then(m => m.CuentasPorCobrarModule),
+        data: { title: 'Cuentas por Cobrar' },
       },
 
       {
@@ -348,6 +354,12 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/pedidos/pedidos.module').then(m => m.PedidosModule),
         canActivate: [permissionGuard('pedidos.ver')],
         data: { title: 'Pedidos' },
+      },
+
+      {                                                                    // ← PEGÁ ACÁ, inmediatamente después
+        path: 'solicitudes-credito',
+        loadChildren: () => import('./modules/solicitudes-credito/solicitudes-credito.module').then(m => m.SolicitudesCreditoModule),
+        canActivate: [permissionGuard('solicitudes-credito.ver')],
       },
 
 	    {

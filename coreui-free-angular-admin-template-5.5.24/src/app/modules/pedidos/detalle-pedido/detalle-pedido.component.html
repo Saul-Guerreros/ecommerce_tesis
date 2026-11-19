@@ -199,10 +199,12 @@
     </div>
 
     <!-- ============ COLUMNA DERECHA ============ -->
-    <div class="col-lg-8">
+    <!-- d-flex + flex-column: permite reordenar las tarjetas con [style.order]
+         sin mover bloques de HTML (el orden depende de si el pedido es a crédito). -->
+    <div class="col-lg-8 d-flex flex-column">
 
       <!-- ====== 3.1 PRODUCTOS ====== -->
-      <c-card class="mb-3">
+     <c-card class="mb-3" [style.order]="orden.productos">
         <c-card-header><strong>PRODUCTOS</strong></c-card-header>
         <c-card-body>
           <div class="table-responsive">
@@ -263,13 +265,18 @@
       </c-card>
 
             <!-- ====== 3.2 COMPROBANTE ====== -->
-      <c-card class="mb-3" *ngIf="!soloCheques">
+        <c-card class="mb-3" *ngIf="!soloCheques" [style.order]="orden.comprobante">
         <c-card-header class="d-flex justify-content-between align-items-center">
           <strong>COMPROBANTE</strong>
-          <span class="small text-muted">
-            {{ pedido.pago.comprobantes_pendientes === 0
-                ? 'Todos validados'
-                : pedido.pago.comprobantes_pendientes + ' sin validar' }}
+                    <span class="small text-muted">
+            <ng-container *ngIf="sinComprobanteEnviado; else resumenComprobantes">
+              (Todavía no se ha enviado un comprobante)
+            </ng-container>
+            <ng-template #resumenComprobantes>
+              {{ pedido.pago.comprobantes_pendientes === 0
+                  ? 'Todos validados'
+                  : pedido.pago.comprobantes_pendientes + ' sin validar' }}
+            </ng-template>
           </span>
         </c-card-header>
 
@@ -362,7 +369,7 @@
       </c-card>
 
             <!-- ====== 3.3 RECEPCIÓN DE CHEQUE ====== -->
-      <c-card class="mb-3" *ngIf="pedido.pago.cheques_total > 0">
+      <c-card class="mb-3" *ngIf="pedido.pago.cheques_total > 0" [style.order]="orden.cheque">
         <c-card-header class="d-flex justify-content-between align-items-center">
           <strong>RECEPCIÓN DE CHEQUE</strong>
           <span class="small text-muted">{{ contadorCheques }}</span>
@@ -571,7 +578,7 @@
       </c-card>
 
       <!-- ====== 3.4 DATOS DE FACTURACIÓN ====== -->
-      <c-card class="mb-3" *ngIf="pedido.facturacion as fac">
+      <c-card class="mb-3" *ngIf="pedido.facturacion as fac" [style.order]="orden.facturacion">
         <c-card-header>
           <strong>DATOS DE FACTURACIÓN</strong>
           <span class="text-muted small ms-2">(declarados por el cliente)</span>
@@ -645,7 +652,7 @@
                     [title]="motivoFactura()"
                     (click)="generarFactura()">
               <c-spinner size="sm" *ngIf="generandoFactura" class="me-1"></c-spinner>
-              GENERAR FACTURA
+               {{ pedido.es_credito ? 'GENERAR FACTURA A CRÉDITO' : 'GENERAR FACTURA' }}
             </button>
 
             <button cButton color="primary" variant="outline" size="sm"
@@ -667,7 +674,7 @@
       </c-card>
 
       <!-- ====== 3.5 PAGO / PAGOS ====== -->
-      <c-card class="mb-3">
+     <c-card class="mb-3" [style.order]="orden.pago">
         <c-card-header class="d-flex justify-content-between align-items-center">
           <strong>{{ pedido.pago.dividido ? 'PAGOS' : 'PAGO' }}</strong>
           <c-badge [color]="colorEstadoPago(pedido.estado_pago.codigo)">
@@ -679,11 +686,7 @@
           <div class="d-flex justify-content-between small mb-2">
             <span>
               Modalidad:
-              <strong>
-                {{ pedido.pago.dividido
-                    ? 'Pago dividido en ' + pedido.pago.cantidad + ' pagos'
-                    : 'Pago único' }}
-              </strong>
+              <strong>{{ modalidadPago }}</strong>
             </span>
             <span>Total del pedido: <strong>Gs. {{ formatoGs(pedido.pago.total_pedido) }}</strong></span>
           </div>

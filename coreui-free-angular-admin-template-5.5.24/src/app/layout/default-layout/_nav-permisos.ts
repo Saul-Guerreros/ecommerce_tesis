@@ -77,6 +77,8 @@ export const PERMISO_POR_RUTA: Record<string, string> = {
   '/reportes/promociones': 'reportes.promociones.ver',
   '/reportes/chatbot': 'reportes.chatbot.ver',
   '/reportes/comportamiento': 'reportes.comportamiento.ver',
+  '/solicitudes-credito': 'solicitudes-credito.ver',
+    '/cuentas-por-cobrar': 'cuentas-por-cobrar.ver',
 };
 
 // Claves más largas primero: '/categories/new' gana sobre '/categories'.

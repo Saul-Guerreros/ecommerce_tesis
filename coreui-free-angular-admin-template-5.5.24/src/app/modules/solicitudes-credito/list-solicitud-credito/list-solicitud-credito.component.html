@@ -1,0 +1,166 @@
+<c-card class="mb-4">
+
+  <!-- ====== CABECERA ====== -->
+  <c-card-header class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <strong>SOLICITUDES DE CRÉDITO</strong>
+
+    <button cButton color="secondary" variant="outline" size="sm"
+            (click)="filtrosVisibles = !filtrosVisibles">
+      {{ filtrosVisibles ? 'Ocultar filtros' : 'Filtros' }}
+    </button>
+  </c-card-header>
+
+  <c-card-body>
+
+    <!-- ====== BÚSQUEDA (combo + una caja) ====== -->
+    <div class="row g-2 mb-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small text-muted mb-1">Buscar por</label>
+        <select cSelect [(ngModel)]="campo" (ngModelChange)="onCampoChange()">
+          <option *ngFor="let c of camposBusqueda" [ngValue]="c.codigo">{{ c.etiqueta }}</option>
+        </select>
+      </div>
+
+      <div class="col-md-8">
+        <label class="form-label small text-muted mb-1">Término</label>
+        <input cFormControl [placeholder]="placeholderBusqueda"
+               [(ngModel)]="termino"
+               (ngModelChange)="onBusquedaChange()"
+               (keyup.enter)="buscarAhora()" />
+      </div>
+    </div>
+
+    <!-- ====== FILTROS ====== -->
+    <div *ngIf="filtrosVisibles">
+      <div class="row g-2 mb-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Estado</label>
+          <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar(1)">
+            <option [ngValue]="null">Todos</option>
+            <option *ngFor="let e of estados" [ngValue]="e.esc_id">{{ e.esc_descri }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Desde</label>
+          <input cFormControl type="date" [(ngModel)]="desde" [max]="hasta || null" />
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Hasta</label>
+          <input cFormControl type="date" [(ngModel)]="hasta" [min]="desde || null"
+                 [class.is-invalid]="rangoFechasInvalido" />
+          <div class="invalid-feedback d-block" *ngIf="rangoFechasInvalido">
+            La fecha "Hasta" no puede ser anterior a "Desde".
+          </div>
+        </div>
+
+        <div class="col-md-3 d-flex gap-2">
+          <button cButton color="primary" class="w-100"
+                  [disabled]="rangoFechasInvalido" (click)="aplicar()">Aplicar</button>
+          <button cButton color="secondary" variant="outline" class="w-100"
+                  (click)="limpiar()">Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== ALERTA DE PENDIENTES ======
+         Mide trabajo sin hacer, no resultados del filtro: cada solicitud
+         sin evaluar tiene stock apartado que nadie está usando. -->
+    <c-alert color="warning" class="py-2 d-flex justify-content-between align-items-center"
+             *ngIf="pendientes > 0">
+      <span>
+        <strong>{{ pendientes }}</strong>
+        {{ pendientes === 1 ? 'solicitud sin evaluar' : 'solicitudes sin evaluar' }}
+      </span>
+      <button cButton color="warning" variant="outline" size="sm" (click)="verPendientes()">
+        Ver pendientes
+      </button>
+    </c-alert>
+
+    <!-- ====== CONTADOR ====== -->
+    <div class="text-muted small mb-2" *ngIf="!cargando">
+      {{ total }} solicitud(es) encontrada(s)
+    </div>
+
+    <div class="text-center py-5" *ngIf="cargando">
+      <c-spinner color="primary"></c-spinner>
+      <div class="text-muted small mt-2">Cargando solicitudes...</div>
+    </div>
+
+    <!-- ====== TABLA ====== -->
+    <div class="table-responsive" *ngIf="!cargando">
+      <table cTable hover align="middle">
+        <thead>
+          <tr>
+            <th>N.º</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th class="text-end">Contado</th>
+            <th class="text-end">Total a crédito</th>
+            <th class="text-center">Plazo</th>
+            <th>Estado</th>
+            <th class="text-end">Acción</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let s of solicitudes" style="cursor: pointer" (click)="verSolicitud(s)">
+            <td><strong>{{ s.numero }}</strong></td>
+
+            <td [title]="s.fecha_completa">{{ s.fecha }}</td>
+
+            <td>
+              {{ s.cliente.nombre }}
+              <div class="small text-muted" *ngIf="s.cliente.cedula">CI {{ s.cliente.cedula }}</div>
+            </td>
+
+            <td class="text-end">Gs. {{ formatoGs(s.total_contado) }}</td>
+
+            <td class="text-end">Gs. {{ formatoGs(s.total) }}</td>
+
+            <td class="text-center">{{ s.plazo }} {{ s.plazo === 1 ? 'mes' : 'meses' }}</td>
+
+            <td>
+              <c-badge [color]="colorEstado(s.estado.codigo)">{{ s.estado.descripcion }}</c-badge>
+            </td>
+
+            <td class="text-end">
+              <button cButton size="sm" color="info" class="text-white"
+                      (click)="verSolicitud(s); $event.stopPropagation()">Ver</button>
+            </td>
+          </tr>
+
+          <tr *ngIf="solicitudes.length === 0">
+            <td colspan="8" class="text-center py-4 text-muted">
+              No se encontraron solicitudes con los criterios aplicados.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ====== PAGINACIÓN ====== -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2"
+         *ngIf="!cargando && total > 0">
+      <div class="text-muted small">
+        Mostrando {{ rangoDesde }}-{{ rangoHasta }} de {{ total }}
+      </div>
+
+      <nav *ngIf="lastPage > 1">
+        <ul cPagination class="mb-0">
+          <li cPageItem [disabled]="currentPage === 1">
+            <a cPageLink role="button" (click)="cambiarPagina(currentPage - 1)">&#9664;</a>
+          </li>
+          <li cPageItem *ngFor="let p of pagesArray" [active]="p === currentPage">
+            <a cPageLink role="button" (click)="cambiarPagina(p)">{{ p }}</a>
+          </li>
+          <li cPageItem [disabled]="currentPage === lastPage">
+            <a cPageLink role="button" (click)="cambiarPagina(currentPage + 1)">&#9654;</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+  </c-card-body>
+</c-card>

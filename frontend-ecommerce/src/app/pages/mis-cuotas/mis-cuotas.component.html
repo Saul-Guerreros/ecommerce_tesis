@@ -1,0 +1,73 @@
+<div class="uk-container uk-margin-large-top uk-margin-large-bottom">
+  <h2 class="uk-margin-remove-bottom">Mis Cuotas</h2>
+  <p class="uk-text-meta uk-margin-small-top">
+    Tus compras a crédito con cuotas generadas. Entrá a una para ver el detalle
+    y pagar.
+  </p>
+
+  <div *ngIf="cargando" class="uk-text-center uk-margin-large">
+    <div uk-spinner="ratio: 1.5"></div>
+  </div>
+
+  <div *ngIf="!cargando && compras.length === 0" class="uk-text-center uk-margin-large">
+    <span uk-icon="icon: credit-card; ratio: 2.5" class="uk-text-muted"></span>
+    <p class="uk-text-meta">
+      Todavía no tenés cuotas para pagar. Aparecen acá cuando generamos la
+      factura de tu compra a crédito.
+    </p>
+    <a routerLink="/mis-pedidos" class="uk-button uk-button-default">Ir a Mis Pedidos</a>
+  </div>
+
+  <div *ngIf="!cargando && compras.length > 0" class="mc-lista">
+    <div class="mc-fila uk-card uk-card-default uk-card-body"
+         *ngFor="let c of compras" (click)="verDetalle(c.ped_numero)">
+
+      <div class="mc-fila-top">
+        <div>
+          <strong>Pedido Nº {{ c.ped_numero }}</strong>
+          <div class="uk-text-meta uk-text-small">
+            Factura {{ c.factura_numero }}
+            <ng-container *ngIf="c.factura_fecha">
+              · {{ c.factura_fecha | date:'dd/MM/yyyy' }}
+            </ng-container>
+          </div>
+        </div>
+        <div class="uk-text-right">
+          <div class="uk-text-bold">{{ c.total | currency:'PYG':'symbol-narrow':'1.0-0' }}</div>
+          <div class="uk-text-meta uk-text-small">Total financiado</div>
+        </div>
+      </div>
+
+      <div class="mc-fila-bottom">
+        <div class="mc-datos">
+          <span class="mc-dato">
+            <span class="mc-dato-etiqueta">Cuotas pagadas</span>
+            <strong>{{ c.cobradas }} / {{ c.total_cuotas }}</strong>
+          </span>
+
+          <span class="mc-dato">
+            <span class="mc-dato-etiqueta">Saldo pendiente</span>
+            <strong [class.uk-text-success]="saldada(c)">
+              {{ c.saldo | currency:'Gs. ':'symbol':'1.0-0' }}
+            </strong>
+          </span>
+
+          <span class="mc-dato" *ngIf="c.proximo_venc">
+            <span class="mc-dato-etiqueta">Próximo vencimiento</span>
+            <strong>{{ c.proximo_venc | date:'dd/MM/yyyy' }}</strong>
+          </span>
+
+          <span class="uk-label uk-label-danger" *ngIf="c.vencidas > 0">
+            {{ c.vencidas }} cuota{{ c.vencidas === 1 ? '' : 's' }} vencida{{ c.vencidas === 1 ? '' : 's' }}
+          </span>
+
+          <span class="uk-label uk-label-success" *ngIf="saldada(c)">Saldada</span>
+        </div>
+
+        <button type="button" class="uk-button uk-button-primary uk-button-small">
+          Ver cuotas
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

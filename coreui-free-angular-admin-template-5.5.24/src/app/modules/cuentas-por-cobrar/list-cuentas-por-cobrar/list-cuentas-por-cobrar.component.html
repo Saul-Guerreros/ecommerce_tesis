@@ -1,0 +1,95 @@
+<c-card class="mb-4">
+  <c-card-header><strong>Cuentas por Cobrar</strong></c-card-header>
+
+  <c-card-body>
+    <div class="row g-2 mb-3">
+      <div class="col-md-3">
+        <input cFormControl placeholder="Buscar por N° de factura, cliente o documento..."
+               [(ngModel)]="search" (ngModelChange)="onSearchChange()" />
+      </div>
+      <div class="col-md-3">
+        <select cSelect [(ngModel)]="filtroCliente" (ngModelChange)="cargar()">
+          <option [ngValue]="null">Todos los clientes</option>
+          <option *ngFor="let c of clientes" [ngValue]="c.ven_cliid">{{ c.ven_cli_razon }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select cSelect [(ngModel)]="filtroEstado" (ngModelChange)="cargar()">
+          <option value="pendientes">Con saldo</option>
+          <option value="vencidas">Vencidas</option>
+          <option value="todas">Todas</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input cFormControl type="date" [(ngModel)]="desde" (ngModelChange)="cargar()"
+               title="Vence desde" />
+      </div>
+      <div class="col-md-2">
+        <input cFormControl type="date" [(ngModel)]="hasta" (ngModelChange)="cargar()"
+               title="Vence hasta" />
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2" *ngIf="!cargando">
+      <span class="text-muted small">
+        {{ totales.facturas }} factura(s)
+        <span class="text-danger fw-semibold ms-2" *ngIf="totales.vencidas > 0">
+          · {{ totales.vencidas }} vencida(s)
+        </span>
+      </span>
+      <button cButton color="secondary" variant="outline" size="sm" (click)="limpiarFiltros()">
+        Limpiar filtros
+      </button>
+    </div>
+
+    <div class="text-center py-4" *ngIf="cargando"><c-spinner color="primary"></c-spinner></div>
+
+    <table cTable striped hover *ngIf="!cargando">
+      <thead>
+        <tr>
+          <th>Cliente</th><th>Factura</th><th>Próx. vencimiento</th>
+          <th class="text-center">Cuotas cobradas</th>
+          <th class="text-end">Saldo pendiente</th>
+          <th class="text-end">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let f of facturas">
+          <td>
+            {{ f.ven_cli_razon }}
+            <div class="small text-muted">{{ f.ven_cli_doc }}</div>
+          </td>
+          <td>{{ f.ven_nrodoc }}</td>
+          <td [class.text-danger]="f.vencida" [class.fw-semibold]="f.vencida">
+            {{ f.cuo_proxvencim ?? '-' }}
+          </td>
+          <td class="text-center">
+            <c-badge [color]="f.cuo_pendientes > 0 ? (f.vencida ? 'danger' : 'warning') : 'success'">
+              {{ f.cuo_total - f.cuo_pendientes }}/{{ f.cuo_total }}
+            </c-badge>
+          </td>
+          <td class="text-end">{{ f.cuo_saldo | number:'1.0-2' }}</td>
+          <td class="text-end">
+            <button cButton size="sm" color="info" class="me-2 text-white"
+                    (click)="abrirDetalle(f)">Ver Cuotas</button>
+          </td>
+        </tr>
+        <tr *ngIf="facturas.length === 0">
+          <td colspan="6" class="text-center">No hay facturas a crédito con estos filtros</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="text-end fw-bold mt-2" *ngIf="!cargando">
+      Total por cobrar: {{ totales.saldo | number:'1.0-2' }}
+    </div>
+  </c-card-body>
+</c-card>
+
+<app-detalle-cuotas-cobrar
+  [visible]="detalleVisible"
+  [factura]="facturaSeleccionada"
+  [metodos]="metodos"
+  (visibleChange)="detalleVisible = $event"
+  (cobroRegistrado)="onCobroRegistrado()">
+</app-detalle-cuotas-cobrar>
