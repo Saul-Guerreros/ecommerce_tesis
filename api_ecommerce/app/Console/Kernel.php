@@ -41,6 +41,8 @@ class Kernel extends ConsoleKernel
 
         // Gestión inteligente de inventario
          $schedule->command('inventario:pronosticar')->weeklyOn(1, '02:00')->withoutOverlapping();
+        // Sistema de recomendación: reentrena la matriz de similitud cada noche.
+        $schedule->command('recomendaciones:entrenar')->dailyAt('03:30')->withoutOverlapping();
 		 // Alertas: cada hora de 07:00 a 20:00 (horario comercial) para reflejar las ventas del día.
          $schedule->command('inventario:alertas')->hourly()->between('07:00', '20:00')->withoutOverlapping();
          $schedule->command('facturacion:reintentar-nc')->everyTenMinutes()->withoutOverlapping();

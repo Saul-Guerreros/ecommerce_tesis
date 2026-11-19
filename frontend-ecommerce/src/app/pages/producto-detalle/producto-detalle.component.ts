@@ -21,6 +21,7 @@ import { ActividadTiendaService } from '../../core/services/actividad-tienda.ser
 import { StockSucursalesModalComponent } from '../../shared/components/stock-sucursales-modal/stock-sucursales-modal.component';
 import { ResenasProductoComponent } from './resenas-producto/resenas-producto.component';
 import { ResumenResenas } from '../../core/models/resena.model';
+import { RecomendacionesComponent } from '../../shared/components/recomendaciones/recomendaciones.component';
 
 type TabDetalle = 'descripcion' | 'especificaciones' | 'resenas';
 
@@ -32,7 +33,7 @@ interface CuotaVista extends CuotaOpcion {
 @Component({
   selector: 'app-producto-detalle',
   standalone: true,
-   imports: [CommonModule, MonedaPyPipe, RouterModule, FlashCountdownComponent, SelectorCantidadComponent, ProductoCardComponent, StockSucursalesModalComponent, ResenasProductoComponent],
+   imports: [CommonModule, MonedaPyPipe, RouterModule, FlashCountdownComponent, SelectorCantidadComponent, ProductoCardComponent, StockSucursalesModalComponent, ResenasProductoComponent,RecomendacionesComponent],
   templateUrl: './producto-detalle.component.html',
   styleUrl: './producto-detalle.component.css',
 })

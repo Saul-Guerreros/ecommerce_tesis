@@ -25,13 +25,14 @@ import { CommonModule, CurrencyPipe, isPlatformBrowser } from '@angular/common';
 import { Component, OnInit, PLATFORM_ID, afterNextRender, inject } from '@angular/core';
 import { ResenaService } from '../../core/services/resena.service';
 import { ResenaDestacada } from '../../core/models/resena.model';
+import { RecomendacionesComponent } from '../../shared/components/recomendaciones/recomendaciones.component';
 
 declare const UIkit: any;
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, MonedaPyPipe, CurrencyPipe, RouterModule, FlashCountdownComponent, CuoteroComponent, CategoriaIconoComponent],
+  imports: [CommonModule, MonedaPyPipe, CurrencyPipe, RouterModule, FlashCountdownComponent, CuoteroComponent, CategoriaIconoComponent, RecomendacionesComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })

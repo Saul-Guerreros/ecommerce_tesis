@@ -118,6 +118,7 @@ use App\Http\Controllers\Admin\Configuracion\PaginaNosotrosController;
 use App\Http\Controllers\Admin\Configuracion\DatosContactoController;
 use App\Http\Controllers\Api\PaginaInstitucionalController;
 use App\Http\Controllers\Admin\Servicio\AnticipoDevolucionController;
+use App\Http\Controllers\Api\RecomendacionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -199,6 +200,11 @@ Route::group([
 
     // Análisis de comportamiento: vista de producto (invitado o cliente con JWT).
     Route::post('actividad/vista', [ActividadController::class, 'vista'])->middleware('throttle:60,1');
+
+    // Sistema inteligente de recomendación (invitado o cliente con JWT).
+    Route::get('recomendaciones/para-ti', [RecomendacionController::class, 'paraTi'])->middleware('throttle:60,1');
+    Route::get('recomendaciones/producto/{slug}', [RecomendacionController::class, 'producto'])->middleware('throttle:60,1');
+    Route::get('recomendaciones/tendencias', [RecomendacionController::class, 'tendencias'])->middleware('throttle:60,1');
     // Catálogo de estados de Solicitud de Crédito (público: se usa para
     // leyendas antes de loguear, ej. en "Mis Solicitudes").
     Route::get('credito/estados', [SolicitudCreditoController::class, 'estados']);

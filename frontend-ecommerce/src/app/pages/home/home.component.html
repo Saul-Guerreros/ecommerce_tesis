@@ -127,6 +127,13 @@
             </div>
           </section>
         }
+		
+		 <!-- Sistema inteligente de recomendación -->
+        <section class="uk-section uk-section-default uk-section-small">
+          <div class="uk-container">
+            <app-recomendaciones [tipo]="'para-ti'" titulo="Recomendado para vos" [limite]="8"></app-recomendaciones>
+          </div>
+        </section>
         <!-- Trending Products -->
 <section class="uk-section uk-section-default uk-section-small">
   <div class="uk-container">
@@ -586,6 +593,7 @@
             </div>
         
         </section>
+
         <!-- popular brands -->
         <section class="uk-section uk-section-default uk-section-small">
           <div class="uk-container">
